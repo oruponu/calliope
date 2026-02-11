@@ -7,6 +7,7 @@ class PianoRollComponent : public juce::Component
 {
 public:
     void setSequence(const MidiSequence* seq);
+    void setPlayheadTick(int tick);
     void paint(juce::Graphics& g) override;
 
     static constexpr int keyboardWidth = 72;
@@ -19,6 +20,7 @@ private:
     void drawKeyboard(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
+    void drawPlayhead(juce::Graphics& g);
     void updateSize();
 
     int noteToY(int noteNumber) const;
@@ -30,4 +32,5 @@ private:
     static juce::String getNoteName(int noteNumber);
 
     const MidiSequence* sequence = nullptr;
+    int playheadTick = 0;
 };

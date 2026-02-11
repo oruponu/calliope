@@ -21,14 +21,40 @@ MainComponent::MainComponent()
         {
             playbackEngine.stop();
             playButton.setButtonText("Play");
+            stopTimer();
         }
         else
         {
-            playbackEngine.setPositionInTicks(0);
             playbackEngine.play();
-            playButton.setButtonText("Stop");
+            playButton.setButtonText("Pause");
+            startTimerHz(30);
         }
     };
+
+    addAndMakeVisible(stopButton);
+    stopButton.onClick = [this]()
+    {
+        playbackEngine.stop();
+        playbackEngine.setPositionInTicks(0);
+        playButton.setButtonText("Play");
+        stopTimer();
+        pianoRoll.setPlayheadTick(0);
+        updatePositionLabel();
+    };
+
+    addAndMakeVisible(bpmLabel);
+    bpmLabel.setJustificationType(juce::Justification::centredRight);
+
+    addAndMakeVisible(bpmSlider);
+    bpmSlider.setRange(30.0, 300.0, 1.0);
+    bpmSlider.setValue(sequence.getBpm());
+    bpmSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 45, 24);
+    bpmSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    bpmSlider.onValueChange = [this]() { sequence.setBpm(bpmSlider.getValue()); };
+
+    addAndMakeVisible(positionLabel);
+    positionLabel.setJustificationType(juce::Justification::centredLeft);
+    updatePositionLabel();
 
     setSize(800, 600);
 
@@ -38,6 +64,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    stopTimer();
     playbackEngine.stop();
     playbackEngine.removeListener(&midiOutput);
     midiOutput.close();
@@ -52,8 +79,34 @@ void MainComponent::resized()
 {
     auto area = getLocalBounds();
     auto toolbar = area.removeFromTop(40);
-    playButton.setBounds(toolbar.removeFromLeft(90).reduced(5));
+
+    playButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
+    stopButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
+
+    toolbar.removeFromLeft(10);
+    bpmLabel.setBounds(toolbar.removeFromLeft(35));
+    bpmSlider.setBounds(toolbar.removeFromLeft(160).reduced(5));
+
+    toolbar.removeFromLeft(10);
+    positionLabel.setBounds(toolbar.removeFromLeft(100));
+
     viewport.setBounds(area);
+}
+
+void MainComponent::timerCallback()
+{
+    int tick = playbackEngine.getCurrentTick();
+    pianoRoll.setPlayheadTick(tick);
+    updatePositionLabel();
+}
+
+void MainComponent::updatePositionLabel()
+{
+    int tick = playbackEngine.getCurrentTick();
+    int ppq = sequence.getTicksPerQuarterNote();
+    int bar = tick / (ppq * PianoRollComponent::beatsPerBar) + 1;
+    int beat = (tick / ppq) % PianoRollComponent::beatsPerBar + 1;
+    positionLabel.setText(juce::String(bar) + " : " + juce::String(beat), juce::dontSendNotification);
 }
 
 void MainComponent::buildTestSequence()
