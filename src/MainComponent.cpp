@@ -80,6 +80,51 @@ MainComponent::~MainComponent()
 void MainComponent::paint(juce::Graphics& g)
 {
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+
+    if (fileDragOver)
+    {
+        g.setColour(juce::Colours::white.withAlpha(0.1f));
+        g.fillRect(getLocalBounds());
+        g.setColour(juce::Colours::dodgerblue);
+        g.drawRect(getLocalBounds(), 2);
+    }
+}
+
+bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files)
+{
+    for (auto& file : files)
+        if (file.endsWithIgnoreCase(".mid") || file.endsWithIgnoreCase(".midi"))
+            return true;
+    return false;
+}
+
+void MainComponent::fileDragEnter(const juce::StringArray&, int, int)
+{
+    fileDragOver = true;
+    repaint();
+}
+
+void MainComponent::fileDragExit(const juce::StringArray&)
+{
+    fileDragOver = false;
+    repaint();
+}
+
+void MainComponent::filesDropped(const juce::StringArray& files, int, int)
+{
+    fileDragOver = false;
+    repaint();
+
+    for (auto& path : files)
+    {
+        if (path.endsWithIgnoreCase(".mid") || path.endsWithIgnoreCase(".midi"))
+        {
+            juce::File file(path);
+            if (MidiFileIO::load(sequence, file))
+                onSequenceLoaded();
+            break;
+        }
+    }
 }
 
 void MainComponent::resized()
