@@ -273,7 +273,7 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
     int phX = tickToX(playheadTick);
     if (phX >= visibleLeft && phX <= visibleRight)
     {
-        g.setColour(juce::Colour(255, 80, 80));
+        g.setColour(juce::Colours::white);
         g.drawVerticalLine(phX, static_cast<float>(hTop), static_cast<float>(hTop + headerHeight));
     }
 
@@ -391,7 +391,7 @@ void PianoRollComponent::drawPlayhead(juce::Graphics& g)
     auto clip = g.getClipBounds();
     if (x < clip.getX() || x > clip.getRight())
         return;
-    g.setColour(juce::Colour(255, 80, 80));
+    g.setColour(juce::Colours::white);
     g.drawVerticalLine(x, static_cast<float>(clip.getY()), static_cast<float>(clip.getBottom()));
 }
 
