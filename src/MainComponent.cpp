@@ -161,6 +161,13 @@ void MainComponent::timerCallback()
     pianoRoll.setPlayheadTick(tick);
     updatePositionLabel();
     bpmSlider.setValue(sequence.getTempoAt(tick), juce::dontSendNotification);
+
+    int playheadX = pianoRoll.tickToX(tick);
+    int viewX = viewport.getViewPositionX();
+    int viewRight = viewX + viewport.getViewWidth();
+
+    if (playheadX < viewX + PianoRollComponent::keyboardWidth || playheadX > viewRight - 20)
+        viewport.setViewPosition(playheadX - PianoRollComponent::keyboardWidth, viewport.getViewPositionY());
 }
 
 void MainComponent::updatePositionLabel()
