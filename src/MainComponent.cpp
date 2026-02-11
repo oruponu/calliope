@@ -65,7 +65,7 @@ MainComponent::MainComponent()
 
     setSize(800, 600);
 
-    int c4Y = (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
+    int c4Y = PianoRollComponent::headerHeight + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
 }
 
@@ -156,7 +156,7 @@ void MainComponent::onSequenceLoaded()
     pianoRoll.setPlayheadTick(0);
     updatePositionLabel();
 
-    int c4Y = (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
+    int c4Y = PianoRollComponent::headerHeight + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
 }
 

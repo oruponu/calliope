@@ -21,6 +21,7 @@ public:
     static constexpr int totalNotes = 128;
     static constexpr int beatsPerBar = 4;
     static constexpr int snapTicks = 480;
+    static constexpr int headerHeight = 24;
     static constexpr int resizeEdgeWidth = 6;
 
 private:
@@ -39,6 +40,7 @@ private:
     };
 
     void drawKeyboard(juce::Graphics& g);
+    void drawHeader(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
@@ -56,6 +58,7 @@ private:
     bool isOnRightEdge(int x, const MidiNote& note) const;
 
     int getKeyboardLeft() const;
+    int getHeaderTop() const;
 
     static bool isBlackKey(int noteNumber);
     static juce::String getNoteName(int noteNumber);
