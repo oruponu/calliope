@@ -77,8 +77,8 @@ void PlaybackEngine::hiResTimerCallback()
 
     if (currentTick > previousTick)
     {
-        processNoteOns(previousTick, currentTick);
         processEvents(previousTick, currentTick);
+        processNoteOns(previousTick, currentTick);
         processNoteOffs(currentTick);
     }
 }
