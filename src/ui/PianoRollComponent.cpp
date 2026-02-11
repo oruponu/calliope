@@ -387,13 +387,28 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
 
             bool isSelected = (selectedNote.trackIndex == trackIdx && selectedNote.noteIndex == i);
 
-            g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
-            g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
-                                   static_cast<float>(noteHeight - 2), 2.0f);
+            if (note.channel == 10)
+            {
+                float diameter = static_cast<float>(noteHeight - 2);
+                float cx = static_cast<float>(x);
+                float cy = static_cast<float>(y + 1) + diameter * 0.5f;
 
-            g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
-            g.drawRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
-                                   static_cast<float>(noteHeight - 2), 2.0f, 1.0f);
+                g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
+                g.fillEllipse(cx - diameter * 0.5f, cy - diameter * 0.5f, diameter, diameter);
+
+                g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
+                g.drawEllipse(cx - diameter * 0.5f, cy - diameter * 0.5f, diameter, diameter, 1.0f);
+            }
+            else
+            {
+                g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
+                g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
+                                       static_cast<float>(noteHeight - 2), 2.0f);
+
+                g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
+                g.drawRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
+                                       static_cast<float>(noteHeight - 2), 2.0f, 1.0f);
+            }
         }
     }
 }
