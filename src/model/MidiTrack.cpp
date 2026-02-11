@@ -11,6 +11,11 @@ void MidiTrack::removeNote(int index)
     notes.erase(notes.begin() + index);
 }
 
+void MidiTrack::clear()
+{
+    notes.clear();
+}
+
 void MidiTrack::sortByStartTime()
 {
     std::sort(notes.begin(), notes.end(),

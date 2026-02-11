@@ -10,6 +10,8 @@ public:
 
     MidiSequence();
 
+    void clear();
+
     MidiTrack& addTrack();
     void removeTrack(int index);
 
@@ -20,6 +22,7 @@ public:
     void setBpm(double newBpm);
     double getBpm() const;
     int getTicksPerQuarterNote() const;
+    void setTicksPerQuarterNote(int ppq);
 
     double ticksToSeconds(int ticks) const;
     int secondsToTicks(double seconds) const;
