@@ -1,6 +1,48 @@
 #include "MainComponent.h"
 #include "io/MidiFileIO.h"
 
+void MainComponent::TransportButton::paint(juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+    bool hover = isMouseOver();
+    float alpha = hover ? 1.0f : 0.65f;
+
+    if (type == Stop)
+    {
+        g.setColour(juce::Colours::white.withAlpha(alpha * 0.7f));
+        auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) * 0.42f;
+        g.fillRoundedRectangle(bounds.withSizeKeepingCentre(size, size), 2.0f);
+    }
+    else if (type == Play)
+    {
+        g.setColour(juce::Colours::white.withAlpha(alpha));
+        auto h = bounds.getHeight() * 0.5f;
+        auto w = h * 0.85f;
+        auto cx = bounds.getCentreX();
+        auto cy = bounds.getCentreY();
+        juce::Path path;
+        path.addTriangle(cx - w * 0.38f, cy - h / 2, cx - w * 0.38f, cy + h / 2, cx + w * 0.62f, cy);
+        g.fillPath(path);
+    }
+    else
+    {
+        g.setColour(juce::Colours::white.withAlpha(alpha));
+        auto h = bounds.getHeight() * 0.45f;
+        auto barW = bounds.getWidth() * 0.14f;
+        auto gap = bounds.getWidth() * 0.12f;
+        auto cx = bounds.getCentreX();
+        auto cy = bounds.getCentreY();
+        g.fillRoundedRectangle(cx - gap / 2 - barW, cy - h / 2, barW, h, 1.5f);
+        g.fillRoundedRectangle(cx + gap / 2, cy - h / 2, barW, h, 1.5f);
+    }
+}
+
+void MainComponent::TransportButton::mouseUp(const juce::MouseEvent& e)
+{
+    if (getLocalBounds().contains(e.getPosition()) && onClick)
+        onClick();
+}
+
 MainComponent::MainComponent()
 {
     midiOutput.open();
@@ -14,7 +56,7 @@ MainComponent::MainComponent()
     pianoRoll.onPlayheadMoved = [this](int tick)
     {
         playbackEngine.setPositionInTicks(tick);
-        updatePositionLabel();
+        updateTransportDisplay();
     };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, true);
@@ -26,15 +68,15 @@ MainComponent::MainComponent()
         if (playbackEngine.isPlaying())
         {
             playbackEngine.stop();
-            playButton.setButtonText("Play");
+            playButton.setType(TransportButton::Play);
             stopTimer();
             pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
-            updatePositionLabel();
+            updateTransportDisplay();
         }
         else
         {
             playbackEngine.play();
-            playButton.setButtonText("Pause");
+            playButton.setType(TransportButton::Pause);
             startTimerHz(30);
         }
     };
@@ -43,10 +85,10 @@ MainComponent::MainComponent()
     stopButton.onClick = [this]()
     {
         playbackEngine.stop();
-        playButton.setButtonText("Play");
+        playButton.setType(TransportButton::Play);
         stopTimer();
         pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
-        updatePositionLabel();
+        updateTransportDisplay();
     };
 
     addAndMakeVisible(saveButton);
@@ -55,19 +97,35 @@ MainComponent::MainComponent()
     addAndMakeVisible(loadButton);
     loadButton.onClick = [this]() { loadFile(); };
 
-    addAndMakeVisible(bpmLabel);
-    bpmLabel.setJustificationType(juce::Justification::centredRight);
+    auto headerColour = juce::Colour(0xff8888aa);
+    auto headerFont = juce::Font(juce::FontOptions(12.0f));
 
-    addAndMakeVisible(bpmSlider);
-    bpmSlider.setRange(30.0, 300.0, 1.0);
-    bpmSlider.setValue(sequence.getBpm());
-    bpmSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 45, 24);
-    bpmSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    bpmSlider.onValueChange = [this]() { sequence.setBpm(bpmSlider.getValue()); };
+    for (auto* label : {&positionHeaderLabel, &timeSigHeaderLabel, &keyHeaderLabel, &tempoHeaderLabel})
+    {
+        addAndMakeVisible(label);
+        label->setFont(headerFont);
+        label->setColour(juce::Label::textColourId, headerColour);
+        label->setJustificationType(juce::Justification::centred);
+    }
 
     addAndMakeVisible(positionLabel);
-    positionLabel.setJustificationType(juce::Justification::centredLeft);
-    updatePositionLabel();
+    positionLabel.setFont(juce::Font(juce::FontOptions(28.0f)));
+    positionLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+    positionLabel.setJustificationType(juce::Justification::centred);
+
+    for (auto* label : {&timeSigValueLabel, &keyValueLabel, &tempoValueLabel})
+    {
+        addAndMakeVisible(label);
+        label->setFont(juce::Font(juce::FontOptions(24.0f)));
+        label->setColour(juce::Label::textColourId, juce::Colours::white);
+        label->setJustificationType(juce::Justification::centred);
+    }
+
+    bpmSlider.setRange(30.0, 300.0, 0.01);
+    bpmSlider.setValue(sequence.getBpm());
+    bpmSlider.onValueChange = [this]() { sequence.setBpm(bpmSlider.getValue()); };
+
+    updateTransportDisplay();
 
     setSize(1280, 800);
 
@@ -86,6 +144,9 @@ MainComponent::~MainComponent()
 void MainComponent::paint(juce::Graphics& g)
 {
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+
+    g.setColour(juce::Colour(0xff1c1c2c));
+    g.fillRect(0, 0, getWidth(), transportBarHeight);
 
     if (fileDragOver)
     {
@@ -136,21 +197,50 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
 void MainComponent::resized()
 {
     auto area = getLocalBounds();
-    auto toolbar = area.removeFromTop(40);
+    auto toolbar = area.removeFromTop(transportBarHeight);
 
-    playButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
-    stopButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
+    auto rightEdge = toolbar.removeFromRight(150);
+    saveButton.setBounds(rightEdge.removeFromLeft(70).reduced(4, 18));
+    loadButton.setBounds(rightEdge.removeFromLeft(70).reduced(4, 18));
 
-    toolbar.removeFromLeft(10);
-    saveButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
-    loadButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
+    const int posW = 190;
+    const int btnW = 84;
+    const int tsW = 55;
+    const int keyW = 55;
+    const int tempoW = 90;
+    const int g1 = 28, g2 = 36, g3 = 36, g4 = 36;
+    const int contentWidth = posW + g1 + btnW + g2 + tsW + g3 + keyW + g4 + tempoW;
 
-    toolbar.removeFromLeft(10);
-    bpmLabel.setBounds(toolbar.removeFromLeft(35));
-    bpmSlider.setBounds(toolbar.removeFromLeft(160).reduced(5));
+    auto content = toolbar.withSizeKeepingCentre(contentWidth, transportBarHeight);
 
-    toolbar.removeFromLeft(10);
-    positionLabel.setBounds(toolbar.removeFromLeft(150));
+    const int topPad = 8;
+    const int headerH = 18;
+
+    auto layoutSection = [&](int width, juce::Label& header, juce::Label& value)
+    {
+        auto section = content.removeFromLeft(width);
+        section.removeFromTop(topPad);
+        header.setBounds(section.removeFromTop(headerH));
+        value.setBounds(section);
+    };
+
+    layoutSection(posW, positionHeaderLabel, positionLabel);
+    content.removeFromLeft(g1);
+
+    auto btnSection = content.removeFromLeft(btnW);
+    auto btnArea = btnSection.withSizeKeepingCentre(84, 40);
+    stopButton.setBounds(btnArea.removeFromLeft(40));
+    btnArea.removeFromLeft(4);
+    playButton.setBounds(btnArea.removeFromLeft(40));
+    content.removeFromLeft(g2);
+
+    layoutSection(tsW, timeSigHeaderLabel, timeSigValueLabel);
+    content.removeFromLeft(g3);
+
+    layoutSection(keyW, keyHeaderLabel, keyValueLabel);
+    content.removeFromLeft(g4);
+
+    layoutSection(tempoW, tempoHeaderLabel, tempoValueLabel);
 
     viewport.setBounds(area);
 }
@@ -159,7 +249,7 @@ void MainComponent::timerCallback()
 {
     int tick = playbackEngine.getCurrentTick();
     pianoRoll.setPlayheadTick(tick);
-    updatePositionLabel();
+    updateTransportDisplay();
     bpmSlider.setValue(sequence.getTempoAt(tick), juce::dontSendNotification);
 
     int playheadX = pianoRoll.tickToX(tick);
@@ -170,13 +260,23 @@ void MainComponent::timerCallback()
         viewport.setViewPosition(playheadX - PianoRollComponent::keyboardWidth, viewport.getViewPositionY());
 }
 
-void MainComponent::updatePositionLabel()
+void MainComponent::updateTransportDisplay()
 {
     int tick = playbackEngine.getCurrentTick();
+
     auto bbt = sequence.tickToBarBeatTick(tick);
     positionLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3) + "." + juce::String(bbt.beat).paddedLeft('0', 2) +
                               "." + juce::String(bbt.tick).paddedLeft('0', 4),
                           juce::dontSendNotification);
+
+    auto ts = sequence.getTimeSignatureAt(tick);
+    timeSigValueLabel.setText(juce::String(ts.numerator) + "/" + juce::String(ts.denominator),
+                              juce::dontSendNotification);
+
+    keyValueLabel.setText("--", juce::dontSendNotification);
+
+    double tempo = sequence.getTempoAt(tick);
+    tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
 }
 
 void MainComponent::saveFile()
@@ -207,13 +307,13 @@ void MainComponent::onSequenceLoaded()
 {
     playbackEngine.stop();
     playbackEngine.setPositionInTicks(0);
-    playButton.setButtonText("Play");
+    playButton.setType(TransportButton::Play);
     stopTimer();
 
     bpmSlider.setValue(sequence.getBpm(), juce::dontSendNotification);
     pianoRoll.setSequence(&sequence);
     pianoRoll.setPlayheadTick(0);
-    updatePositionLabel();
+    updateTransportDisplay();
 
     int c4Y = PianoRollComponent::headerHeight + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
