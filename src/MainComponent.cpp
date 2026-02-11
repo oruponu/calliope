@@ -144,7 +144,7 @@ void MainComponent::resized()
     bpmSlider.setBounds(toolbar.removeFromLeft(160).reduced(5));
 
     toolbar.removeFromLeft(10);
-    positionLabel.setBounds(toolbar.removeFromLeft(100));
+    positionLabel.setBounds(toolbar.removeFromLeft(150));
 
     viewport.setBounds(area);
 }
@@ -162,7 +162,10 @@ void MainComponent::updatePositionLabel()
     int ppq = sequence.getTicksPerQuarterNote();
     int bar = tick / (ppq * PianoRollComponent::beatsPerBar) + 1;
     int beat = (tick / ppq) % PianoRollComponent::beatsPerBar + 1;
-    positionLabel.setText(juce::String(bar) + " : " + juce::String(beat), juce::dontSendNotification);
+    int tickInBeat = tick % ppq;
+    positionLabel.setText(juce::String(bar).paddedLeft('0', 3) + "." + juce::String(beat).paddedLeft('0', 2) + "." +
+                              juce::String(tickInBeat).paddedLeft('0', 4),
+                          juce::dontSendNotification);
 }
 
 void MainComponent::saveFile()
