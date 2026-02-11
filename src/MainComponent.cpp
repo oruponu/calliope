@@ -63,7 +63,7 @@ MainComponent::MainComponent()
     positionLabel.setJustificationType(juce::Justification::centredLeft);
     updatePositionLabel();
 
-    setSize(800, 600);
+    setSize(1280, 800);
 
     int c4Y = PianoRollComponent::headerHeight + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
