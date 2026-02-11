@@ -7,10 +7,23 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
     midiFile.setTicksPerQuarterNote(ppq);
 
     juce::MidiMessageSequence tempoTrack;
-    int microsecondsPerBeat = static_cast<int>(60000000.0 / sequence.getBpm());
-    auto tempoEvent = juce::MidiMessage::tempoMetaEvent(microsecondsPerBeat);
-    tempoEvent.setTimeStamp(0);
-    tempoTrack.addEvent(tempoEvent);
+
+    for (const auto& tc : sequence.getTempoChanges())
+    {
+        int microsecondsPerBeat = static_cast<int>(60000000.0 / tc.bpm);
+        auto tempoEvent = juce::MidiMessage::tempoMetaEvent(microsecondsPerBeat);
+        tempoEvent.setTimeStamp(tc.tick);
+        tempoTrack.addEvent(tempoEvent);
+    }
+
+    for (const auto& ts : sequence.getTimeSignatureChanges())
+    {
+        auto tsEvent = juce::MidiMessage::timeSignatureMetaEvent(ts.numerator, ts.denominator);
+        tsEvent.setTimeStamp(ts.tick);
+        tempoTrack.addEvent(tsEvent);
+    }
+
+    tempoTrack.sort();
 
     auto endOfTempoTrack = juce::MidiMessage::endOfTrack();
     endOfTempoTrack.setTimeStamp(0);
@@ -137,8 +150,15 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
             if (msg.isTempoMetaEvent())
             {
                 double bpm = 60000000.0 / msg.getTempoSecondsPerQuarterNote() / 1000000.0;
-                sequence.setBpm(bpm);
-                break;
+                int tick = static_cast<int>(msg.getTimeStamp());
+                sequence.addTempoChange(tick, bpm);
+            }
+            else if (msg.isTimeSignatureMetaEvent())
+            {
+                int numerator, denominator;
+                msg.getTimeSignatureInfo(numerator, denominator);
+                int tick = static_cast<int>(msg.getTimeStamp());
+                sequence.addTimeSignatureChange(tick, numerator, denominator);
             }
         }
     }
