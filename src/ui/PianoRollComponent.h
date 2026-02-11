@@ -19,7 +19,6 @@ public:
     static constexpr int noteHeight = 14;
     static constexpr int beatWidth = 80;
     static constexpr int totalNotes = 128;
-    static constexpr int beatsPerBar = 4;
     static constexpr int snapTicks = 480;
     static constexpr int headerHeight = 24;
     static constexpr int resizeEdgeWidth = 6;
