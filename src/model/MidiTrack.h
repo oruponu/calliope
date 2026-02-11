@@ -1,5 +1,6 @@
 #pragma once
 
+#include "MidiEvent.h"
 #include "MidiNote.h"
 #include <vector>
 
@@ -16,6 +17,13 @@ public:
     const MidiNote& getNote(int index) const;
     int getNumNotes() const;
 
+    void addEvent(const MidiEvent& event);
+    void removeEvent(int index);
+    const std::vector<MidiEvent>& getEvents() const;
+    const MidiEvent& getEvent(int index) const;
+    int getNumEvents() const;
+
 private:
     std::vector<MidiNote> notes;
+    std::vector<MidiEvent> events;
 };
