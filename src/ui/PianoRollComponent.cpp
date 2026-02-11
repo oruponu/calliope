@@ -1,6 +1,7 @@
 #include "PianoRollComponent.h"
+#include <algorithm>
 
-void PianoRollComponent::setSequence(const MidiSequence* seq)
+void PianoRollComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;
     updateSize();
@@ -20,6 +21,113 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawNotes(g);
     drawPlayhead(g);
     drawKeyboard(g);
+}
+
+void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
+{
+    if (!sequence || sequence->getNumTracks() == 0 || e.x < keyboardWidth)
+        return;
+
+    auto hit = hitTestNote(e.x, e.y);
+
+    if (e.mods.isRightButtonDown())
+    {
+        if (hit.isValid())
+        {
+            sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
+            selectedNote = {};
+            repaint();
+        }
+        return;
+    }
+
+    if (hit.isValid())
+    {
+        selectedNote = hit;
+        const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
+        originalStartTick = note.startTick;
+        originalNoteNumber = note.noteNumber;
+        originalDuration = note.duration;
+        dragStartTick = xToTick(e.x);
+        dragStartNote = yToNote(e.y);
+
+        dragMode = isOnRightEdge(e.x, note) ? DragMode::Resizing : DragMode::Moving;
+    }
+    else
+    {
+        int tick = snapTick(xToTick(e.x));
+        int noteNum = yToNote(e.y);
+        if (noteNum < 0 || noteNum > 127)
+            return;
+
+        auto& track = sequence->getTrack(0);
+        track.addNote({noteNum, 100, tick, snapTicks});
+        selectedNote = {0, track.getNumNotes() - 1};
+        dragMode = DragMode::None;
+        updateSize();
+        repaint();
+    }
+}
+
+void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
+{
+    if (!sequence || !selectedNote.isValid() || dragMode == DragMode::None)
+        return;
+
+    auto& note = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
+
+    if (dragMode == DragMode::Moving)
+    {
+        int currentTick = xToTick(e.x);
+        int currentNote = yToNote(e.y);
+        int deltaTick = currentTick - dragStartTick;
+        int deltaNote = currentNote - dragStartNote;
+
+        int newStart = snapTick(originalStartTick + deltaTick);
+        int newNote = std::clamp(originalNoteNumber + deltaNote, 0, 127);
+
+        note.startTick = std::max(0, newStart);
+        note.noteNumber = newNote;
+    }
+    else if (dragMode == DragMode::Resizing)
+    {
+        int currentTick = xToTick(e.x);
+        int newDuration = snapTick(currentTick - originalStartTick);
+        note.duration = std::max(snapTicks, newDuration);
+    }
+
+    repaint();
+}
+
+void PianoRollComponent::mouseUp(const juce::MouseEvent&)
+{
+    if (dragMode != DragMode::None)
+        updateSize();
+
+    dragMode = DragMode::None;
+}
+
+void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
+{
+    if (!sequence || e.x < keyboardWidth)
+    {
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+        return;
+    }
+
+    auto hit = hitTestNote(e.x, e.y);
+    if (hit.isValid())
+    {
+        const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
+        if (isOnRightEdge(e.x, note))
+            setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);
+        else
+            setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+    }
+    else
+    {
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+    }
 }
 
 void PianoRollComponent::drawKeyboard(juce::Graphics& g)
@@ -121,11 +229,13 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
             int y = noteToY(note.noteNumber);
             int w = tickToWidth(note.duration);
 
-            g.setColour(juce::Colour(100, 160, 255));
+            bool isSelected = (selectedNote.trackIndex == trackIdx && selectedNote.noteIndex == i);
+
+            g.setColour(isSelected ? juce::Colour(140, 200, 255) : juce::Colour(100, 160, 255));
             g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
                                    static_cast<float>(noteHeight - 2), 2.0f);
 
-            g.setColour(juce::Colour(70, 130, 220));
+            g.setColour(isSelected ? juce::Colour(200, 230, 255) : juce::Colour(70, 130, 220));
             g.drawRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
                                    static_cast<float>(noteHeight - 2), 2.0f, 1.0f);
         }
@@ -173,6 +283,25 @@ int PianoRollComponent::tickToWidth(int durationTicks) const
     return static_cast<int>(beats * beatWidth);
 }
 
+int PianoRollComponent::xToTick(int x) const
+{
+    if (!sequence)
+        return 0;
+
+    double beats = static_cast<double>(x - keyboardWidth) / beatWidth;
+    return static_cast<int>(beats * sequence->getTicksPerQuarterNote());
+}
+
+int PianoRollComponent::yToNote(int y) const
+{
+    return totalNotes - 1 - (y / noteHeight);
+}
+
+int PianoRollComponent::snapTick(int tick) const
+{
+    return (tick / snapTicks) * snapTicks;
+}
+
 int PianoRollComponent::getTotalBeats() const
 {
     if (!sequence || sequence->getNumTracks() == 0)
@@ -192,6 +321,36 @@ int PianoRollComponent::getTotalBeats() const
 
     int beats = lastTick / sequence->getTicksPerQuarterNote() + 4;
     return beats;
+}
+
+PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
+{
+    if (!sequence)
+        return {};
+
+    for (int trackIdx = 0; trackIdx < sequence->getNumTracks(); ++trackIdx)
+    {
+        const auto& track = sequence->getTrack(trackIdx);
+
+        for (int i = 0; i < track.getNumNotes(); ++i)
+        {
+            const auto& note = track.getNote(i);
+            int nx = tickToX(note.startTick);
+            int ny = noteToY(note.noteNumber);
+            int nw = tickToWidth(note.duration);
+
+            if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
+                return {trackIdx, i};
+        }
+    }
+
+    return {};
+}
+
+bool PianoRollComponent::isOnRightEdge(int x, const MidiNote& note) const
+{
+    int rightX = tickToX(note.endTick());
+    return std::abs(x - rightX) <= resizeEdgeWidth;
 }
 
 bool PianoRollComponent::isBlackKey(int noteNumber)
