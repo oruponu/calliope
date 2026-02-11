@@ -150,51 +150,56 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 void PianoRollComponent::drawKeyboard(juce::Graphics& g)
 {
     int kbLeft = getKeyboardLeft();
-    int blackKeyWidth = keyboardWidth * 55 / 100;
+    int blackKeyW = keyboardWidth * 55 / 100;
 
     auto clip = g.getClipBounds();
-    int minNote = std::max(0, yToNote(clip.getBottom()));
-    int maxNote = std::min(totalNotes - 1, yToNote(clip.getY()));
 
     g.setColour(juce::Colour(235, 235, 235));
     g.fillRect(kbLeft, clip.getY(), keyboardWidth, clip.getHeight());
 
-    // 白鍵の境界線（EとF、BとCの隣接箇所のみ）
-    for (int note = minNote; note <= maxNote; ++note)
+    double whiteKeyH = 12.0 * noteHeight / 7.0;
+    int minOctave = std::max(0, yToNote(clip.getBottom())) / 12;
+    int maxOctave = std::min(totalNotes - 1, yToNote(clip.getY())) / 12;
+
+    g.setColour(juce::Colour(180, 180, 180));
+    for (int oct = minOctave; oct <= maxOctave; ++oct)
     {
-        int semitone = note % 12;
-        if (semitone == 0 || semitone == 5)
+        double octBottom = static_cast<double>(noteToY(oct * 12) + noteHeight);
+        for (int wk = 0; wk <= 7; ++wk)
         {
-            int y = noteToY(note) + noteHeight;
-            g.setColour(juce::Colour(180, 180, 180));
-            g.drawHorizontalLine(y, static_cast<float>(kbLeft), static_cast<float>(kbLeft + keyboardWidth));
+            int y = static_cast<int>(octBottom - wk * whiteKeyH + 0.5);
+            if (y >= clip.getY() && y <= clip.getBottom())
+                g.drawHorizontalLine(y, static_cast<float>(kbLeft), static_cast<float>(kbLeft + keyboardWidth));
         }
     }
 
-    for (int note = minNote; note <= maxNote; ++note)
+    static const int bkSemitones[] = {1, 3, 6, 8, 10};
+    int bkH = static_cast<int>(whiteKeyH * 0.65);
+    for (int oct = minOctave; oct <= maxOctave; ++oct)
     {
-        if (!isBlackKey(note))
-            continue;
+        int base = oct * 12;
+        for (int i = 0; i < 5; ++i)
+        {
+            double centerY = noteToY(base + bkSemitones[i]) + noteHeight / 2.0;
+            int bkTop = static_cast<int>(centerY - bkH / 2.0);
+            if (bkTop + bkH < clip.getY() || bkTop > clip.getBottom())
+                continue;
 
-        int y = noteToY(note);
-
-        g.setColour(juce::Colour(25, 25, 25));
-        g.fillRect(kbLeft, y, blackKeyWidth, noteHeight);
-
-        g.setColour(juce::Colour(60, 60, 60));
-        g.drawHorizontalLine(y, static_cast<float>(kbLeft), static_cast<float>(kbLeft + blackKeyWidth));
+            g.setColour(juce::Colour(25, 25, 25));
+            g.fillRect(kbLeft, bkTop, blackKeyW, bkH);
+        }
     }
 
-    for (int note = minNote; note <= maxNote; ++note)
+    g.setColour(juce::Colour(80, 80, 80));
+    g.setFont(10.0f);
+    for (int oct = minOctave; oct <= maxOctave; ++oct)
     {
-        if (note % 12 == 0)
-        {
-            int y = noteToY(note);
-            g.setColour(juce::Colour(80, 80, 80));
-            g.setFont(10.0f);
-            g.drawText(getNoteName(note), kbLeft + blackKeyWidth + 3, y, keyboardWidth - blackKeyWidth - 5, noteHeight,
-                       juce::Justification::centredLeft);
-        }
+        int base = oct * 12;
+        double octBottom = static_cast<double>(noteToY(base) + noteHeight);
+        int cTop = static_cast<int>(octBottom - whiteKeyH + 0.5);
+        int cH = static_cast<int>(whiteKeyH);
+        if (cTop + cH >= clip.getY() && cTop <= clip.getBottom())
+            g.drawText(getNoteName(base), kbLeft, cTop, keyboardWidth - 4, cH, juce::Justification::centredRight);
     }
 
     g.setColour(juce::Colour(60, 60, 60));
