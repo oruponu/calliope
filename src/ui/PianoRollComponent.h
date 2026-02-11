@@ -26,6 +26,8 @@ public:
     static constexpr int headerHeight = 24;
     static constexpr int resizeEdgeWidth = 6;
 
+    int tickToX(int tick) const;
+
 private:
     enum class DragMode
     {
@@ -49,7 +51,6 @@ private:
     void updateSize();
 
     int noteToY(int noteNumber) const;
-    int tickToX(int tick) const;
     int tickToWidth(int durationTicks) const;
     int xToTick(int x) const;
     int yToNote(int y) const;
