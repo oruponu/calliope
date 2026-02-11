@@ -373,11 +373,11 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
     for (int trackIdx = 0; trackIdx < sequence->getNumTracks(); ++trackIdx)
     {
         const auto& track = sequence->getTrack(trackIdx);
-        auto baseColour = trackColours[trackIdx % numTrackColours];
 
         for (int i = 0; i < track.getNumNotes(); ++i)
         {
             const auto& note = track.getNote(i);
+            auto baseColour = trackColours[(note.channel - 1) % numTrackColours];
             int x = tickToX(note.startTick);
             int y = noteToY(note.noteNumber);
             int w = tickToWidth(note.duration);
