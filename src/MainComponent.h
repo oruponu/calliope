@@ -21,9 +21,37 @@ public:
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
 private:
+    class TransportButton : public juce::Component
+    {
+    public:
+        enum Type
+        {
+            Stop,
+            Play,
+            Pause
+        };
+        TransportButton(Type t) : type(t)
+        {
+            setRepaintsOnMouseActivity(true);
+            setMouseCursor(juce::MouseCursor::PointingHandCursor);
+        }
+        void setType(Type t)
+        {
+            type = t;
+            repaint();
+        }
+        Type getType() const { return type; }
+        void paint(juce::Graphics& g) override;
+        void mouseUp(const juce::MouseEvent& e) override;
+        std::function<void()> onClick;
+
+    private:
+        Type type;
+    };
+
     void timerCallback() override;
     void buildTestSequence();
-    void updatePositionLabel();
+    void updateTransportDisplay();
     void saveFile();
     void loadFile();
     void onSequenceLoaded();
@@ -35,16 +63,30 @@ private:
     PianoRollComponent pianoRoll;
     juce::Viewport viewport;
 
-    juce::TextButton playButton{"Play"};
-    juce::TextButton stopButton{"Stop"};
+    TransportButton stopButton{TransportButton::Stop};
+    TransportButton playButton{TransportButton::Play};
+
     juce::TextButton saveButton{"Save"};
     juce::TextButton loadButton{"Load"};
-    juce::Label bpmLabel{"", "BPM"};
-    juce::Slider bpmSlider;
+
+    juce::Label positionHeaderLabel{"", "Bar"};
     juce::Label positionLabel;
+
+    juce::Label timeSigHeaderLabel{"", "Beat"};
+    juce::Label timeSigValueLabel;
+
+    juce::Label keyHeaderLabel{"", "Key"};
+    juce::Label keyValueLabel;
+
+    juce::Label tempoHeaderLabel{"", "Tempo"};
+    juce::Label tempoValueLabel;
+
+    juce::Slider bpmSlider;
 
     std::unique_ptr<juce::FileChooser> fileChooser;
     bool fileDragOver = false;
+
+    static constexpr int transportBarHeight = 64;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
