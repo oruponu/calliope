@@ -7,11 +7,18 @@ void PianoRollComponent::setSequence(const MidiSequence* seq)
     repaint();
 }
 
+void PianoRollComponent::setPlayheadTick(int tick)
+{
+    playheadTick = tick;
+    repaint();
+}
+
 void PianoRollComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(30, 30, 30));
     drawGrid(g);
     drawNotes(g);
+    drawPlayhead(g);
     drawKeyboard(g);
 }
 
@@ -123,6 +130,13 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
                                    static_cast<float>(noteHeight - 2), 2.0f, 1.0f);
         }
     }
+}
+
+void PianoRollComponent::drawPlayhead(juce::Graphics& g)
+{
+    int x = tickToX(playheadTick);
+    g.setColour(juce::Colour(255, 80, 80));
+    g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
 }
 
 void PianoRollComponent::updateSize()
