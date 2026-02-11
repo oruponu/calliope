@@ -13,6 +13,7 @@ target_sources(Calliope PRIVATE
     src/model/MidiTrack.cpp
     src/model/MidiSequence.cpp
     src/engine/PlaybackEngine.cpp
+    src/audio/MidiDeviceOutput.cpp
 )
 
 target_compile_definitions(Calliope PRIVATE
