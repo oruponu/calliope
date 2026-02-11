@@ -67,7 +67,8 @@ void PlaybackEngine::hiResTimerCallback()
     double elapsedMs = now - lastCallbackTimeMs;
     lastCallbackTimeMs = now;
 
-    double ticksPerMs = (sequence->getBpm() * sequence->getTicksPerQuarterNote()) / 60000.0;
+    double ticksPerMs =
+        (sequence->getTempoAt(static_cast<int>(tickPosition)) * sequence->getTicksPerQuarterNote()) / 60000.0;
     double elapsedTicks = elapsedMs * ticksPerMs;
 
     int previousTick = static_cast<int>(tickPosition);

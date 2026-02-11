@@ -193,23 +193,36 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
     g.setColour(juce::Colour(50, 50, 55));
     g.fillRect(kbLeft, hTop, getWidth() - kbLeft, headerHeight);
 
-    int totalBeats = getTotalBeats();
-    for (int beat = 0; beat <= totalBeats; ++beat)
+    int ppq = sequence->getTicksPerQuarterNote();
+    int totalTicks = getTotalBeats() * ppq;
+    int tick = 0;
+    int barNumber = 1;
+
+    while (tick < totalTicks)
     {
-        int x = tickToX(beat * sequence->getTicksPerQuarterNote());
-        bool isBar = (beat % beatsPerBar == 0);
+        auto ts = sequence->getTimeSignatureAt(tick);
+        int ticksPerBeat = ppq * 4 / ts.denominator;
+        int beatsInBar = ts.numerator;
 
-        g.setColour(isBar ? juce::Colour(90, 90, 100) : juce::Colour(60, 60, 65));
-        g.drawVerticalLine(x, static_cast<float>(hTop), static_cast<float>(hTop + headerHeight));
-
-        if (isBar)
+        for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
         {
-            int barNumber = beat / beatsPerBar + 1;
-            g.setColour(juce::Colour(180, 180, 190));
-            g.setFont(11.0f);
-            g.drawText(juce::String(barNumber), x + 4, hTop + 2, 30, headerHeight - 4,
-                       juce::Justification::centredLeft);
+            int x = tickToX(tick + beat * ticksPerBeat);
+            bool isBar = (beat == 0);
+
+            g.setColour(isBar ? juce::Colour(90, 90, 100) : juce::Colour(60, 60, 65));
+            g.drawVerticalLine(x, static_cast<float>(hTop), static_cast<float>(hTop + headerHeight));
+
+            if (isBar)
+            {
+                g.setColour(juce::Colour(180, 180, 190));
+                g.setFont(11.0f);
+                g.drawText(juce::String(barNumber), x + 4, hTop + 2, 30, headerHeight - 4,
+                           juce::Justification::centredLeft);
+            }
         }
+
+        tick += beatsInBar * ticksPerBeat;
+        barNumber++;
     }
 
     int phX = tickToX(playheadTick);
@@ -224,7 +237,6 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
 {
     int gridLeft = keyboardWidth;
     int gridWidth = getWidth() - keyboardWidth;
-    int totalBeats = getTotalBeats();
 
     for (int note = 0; note < totalNotes; ++note)
     {
@@ -244,13 +256,26 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
         g.drawHorizontalLine(y, static_cast<float>(gridLeft), static_cast<float>(gridLeft + gridWidth));
     }
 
-    for (int beat = 0; beat <= totalBeats; ++beat)
-    {
-        int x = tickToX(beat * sequence->getTicksPerQuarterNote());
-        bool isBar = (beat % beatsPerBar == 0);
+    int ppq = sequence->getTicksPerQuarterNote();
+    int totalTicks = getTotalBeats() * ppq;
+    int tick = 0;
 
-        g.setColour(isBar ? juce::Colour(90, 90, 100) : juce::Colour(55, 55, 60));
-        g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
+    while (tick < totalTicks)
+    {
+        auto ts = sequence->getTimeSignatureAt(tick);
+        int ticksPerBeat = ppq * 4 / ts.denominator;
+        int beatsInBar = ts.numerator;
+
+        for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
+        {
+            int x = tickToX(tick + beat * ticksPerBeat);
+            bool isBar = (beat == 0);
+
+            g.setColour(isBar ? juce::Colour(90, 90, 100) : juce::Colour(55, 55, 60));
+            g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
+        }
+
+        tick += beatsInBar * ticksPerBeat;
     }
 }
 

@@ -154,17 +154,15 @@ void MainComponent::timerCallback()
     int tick = playbackEngine.getCurrentTick();
     pianoRoll.setPlayheadTick(tick);
     updatePositionLabel();
+    bpmSlider.setValue(sequence.getTempoAt(tick), juce::dontSendNotification);
 }
 
 void MainComponent::updatePositionLabel()
 {
     int tick = playbackEngine.getCurrentTick();
-    int ppq = sequence.getTicksPerQuarterNote();
-    int bar = tick / (ppq * PianoRollComponent::beatsPerBar) + 1;
-    int beat = (tick / ppq) % PianoRollComponent::beatsPerBar + 1;
-    int tickInBeat = tick % ppq;
-    positionLabel.setText(juce::String(bar).paddedLeft('0', 3) + "." + juce::String(beat).paddedLeft('0', 2) + "." +
-                              juce::String(tickInBeat).paddedLeft('0', 4),
+    auto bbt = sequence.tickToBarBeatTick(tick);
+    positionLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3) + "." + juce::String(bbt.beat).paddedLeft('0', 2) +
+                              "." + juce::String(bbt.tick).paddedLeft('0', 4),
                           juce::dontSendNotification);
 }
 
