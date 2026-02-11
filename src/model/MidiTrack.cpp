@@ -14,12 +14,14 @@ void MidiTrack::removeNote(int index)
 void MidiTrack::clear()
 {
     notes.clear();
+    events.clear();
 }
 
 void MidiTrack::sortByStartTime()
 {
     std::sort(notes.begin(), notes.end(),
               [](const MidiNote& a, const MidiNote& b) { return a.startTick < b.startTick; });
+    std::sort(events.begin(), events.end(), [](const MidiEvent& a, const MidiEvent& b) { return a.tick < b.tick; });
 }
 
 const std::vector<MidiNote>& MidiTrack::getNotes() const
@@ -40,4 +42,29 @@ const MidiNote& MidiTrack::getNote(int index) const
 int MidiTrack::getNumNotes() const
 {
     return static_cast<int>(notes.size());
+}
+
+void MidiTrack::addEvent(const MidiEvent& event)
+{
+    events.push_back(event);
+}
+
+void MidiTrack::removeEvent(int index)
+{
+    events.erase(events.begin() + index);
+}
+
+const std::vector<MidiEvent>& MidiTrack::getEvents() const
+{
+    return events;
+}
+
+const MidiEvent& MidiTrack::getEvent(int index) const
+{
+    return events[index];
+}
+
+int MidiTrack::getNumEvents() const
+{
+    return static_cast<int>(events.size());
 }
