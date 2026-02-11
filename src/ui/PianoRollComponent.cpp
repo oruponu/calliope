@@ -25,7 +25,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
 
 void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 {
-    if (!sequence || sequence->getNumTracks() == 0 || e.x < keyboardWidth)
+    if (!sequence || sequence->getNumTracks() == 0 || e.x < getKeyboardLeft() + keyboardWidth)
         return;
 
     auto hit = hitTestNote(e.x, e.y);
@@ -109,7 +109,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
 void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 {
-    if (!sequence || e.x < keyboardWidth)
+    if (!sequence || e.x < getKeyboardLeft() + keyboardWidth)
     {
         setMouseCursor(juce::MouseCursor::NormalCursor);
         return;
@@ -132,10 +132,11 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 
 void PianoRollComponent::drawKeyboard(juce::Graphics& g)
 {
+    int kbLeft = getKeyboardLeft();
     int blackKeyWidth = keyboardWidth * 55 / 100;
 
     g.setColour(juce::Colour(235, 235, 235));
-    g.fillRect(0, 0, keyboardWidth, getHeight());
+    g.fillRect(kbLeft, 0, keyboardWidth, getHeight());
 
     // 白鍵の境界線（EとF、BとCの隣接箇所のみ）
     for (int note = 0; note < totalNotes; ++note)
@@ -145,7 +146,7 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
         {
             int y = noteToY(note) + noteHeight;
             g.setColour(juce::Colour(180, 180, 180));
-            g.drawHorizontalLine(y, 0.0f, static_cast<float>(keyboardWidth));
+            g.drawHorizontalLine(y, static_cast<float>(kbLeft), static_cast<float>(kbLeft + keyboardWidth));
         }
     }
 
@@ -157,10 +158,10 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
         int y = noteToY(note);
 
         g.setColour(juce::Colour(25, 25, 25));
-        g.fillRect(0, y, blackKeyWidth, noteHeight);
+        g.fillRect(kbLeft, y, blackKeyWidth, noteHeight);
 
         g.setColour(juce::Colour(60, 60, 60));
-        g.drawHorizontalLine(y, 0.0f, static_cast<float>(blackKeyWidth));
+        g.drawHorizontalLine(y, static_cast<float>(kbLeft), static_cast<float>(kbLeft + blackKeyWidth));
     }
 
     for (int note = 0; note < totalNotes; ++note)
@@ -170,13 +171,13 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
             int y = noteToY(note);
             g.setColour(juce::Colour(80, 80, 80));
             g.setFont(10.0f);
-            g.drawText(getNoteName(note), blackKeyWidth + 3, y, keyboardWidth - blackKeyWidth - 5, noteHeight,
+            g.drawText(getNoteName(note), kbLeft + blackKeyWidth + 3, y, keyboardWidth - blackKeyWidth - 5, noteHeight,
                        juce::Justification::centredLeft);
         }
     }
 
     g.setColour(juce::Colour(60, 60, 60));
-    g.drawVerticalLine(keyboardWidth - 1, 0.0f, static_cast<float>(getHeight()));
+    g.drawVerticalLine(kbLeft + keyboardWidth - 1, 0.0f, static_cast<float>(getHeight()));
 }
 
 void PianoRollComponent::drawGrid(juce::Graphics& g)
@@ -351,6 +352,13 @@ bool PianoRollComponent::isOnRightEdge(int x, const MidiNote& note) const
 {
     int rightX = tickToX(note.endTick());
     return std::abs(x - rightX) <= resizeEdgeWidth;
+}
+
+int PianoRollComponent::getKeyboardLeft() const
+{
+    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+        return vp->getViewPositionX();
+    return 0;
 }
 
 bool PianoRollComponent::isBlackKey(int noteNumber)

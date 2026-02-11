@@ -55,6 +55,8 @@ private:
     NoteRef hitTestNote(int x, int y) const;
     bool isOnRightEdge(int x, const MidiNote& note) const;
 
+    int getKeyboardLeft() const;
+
     static bool isBlackKey(int noteNumber);
     static juce::String getNoteName(int noteNumber);
 
