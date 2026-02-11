@@ -26,8 +26,23 @@ void PianoRollComponent::paint(juce::Graphics& g)
 
 void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 {
-    if (!sequence || sequence->getNumTracks() == 0 || e.x < getKeyboardLeft() + keyboardWidth ||
-        e.y < getHeaderTop() + headerHeight)
+    if (!sequence || sequence->getNumTracks() == 0)
+        return;
+
+    if (e.y < getHeaderTop() + headerHeight)
+    {
+        if (e.x >= getKeyboardLeft() + keyboardWidth)
+        {
+            int tick = snapTick(xToTick(e.x));
+            playheadTick = std::max(0, tick);
+            repaint();
+            if (onPlayheadMoved)
+                onPlayheadMoved(playheadTick);
+        }
+        return;
+    }
+
+    if (e.x < getKeyboardLeft() + keyboardWidth)
         return;
 
     auto hit = hitTestNote(e.x, e.y);
@@ -365,7 +380,7 @@ int PianoRollComponent::yToNote(int y) const
 
 int PianoRollComponent::snapTick(int tick) const
 {
-    return (tick / snapTicks) * snapTicks;
+    return ((tick + snapTicks / 2) / snapTicks) * snapTicks;
 }
 
 int PianoRollComponent::getTotalBeats() const

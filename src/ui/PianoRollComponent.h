@@ -2,6 +2,7 @@
 
 #include "../model/MidiSequence.h"
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <functional>
 
 class PianoRollComponent : public juce::Component
 {
@@ -9,6 +10,8 @@ public:
     void setSequence(MidiSequence* seq);
     void setPlayheadTick(int tick);
     void paint(juce::Graphics& g) override;
+
+    std::function<void(int tick)> onPlayheadMoved;
 
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
