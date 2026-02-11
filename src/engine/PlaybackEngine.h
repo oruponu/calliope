@@ -13,6 +13,7 @@ public:
         virtual ~Listener() = default;
         virtual void onNoteOn(int trackIndex, const MidiNote& note) = 0;
         virtual void onNoteOff(int trackIndex, const MidiNote& note) = 0;
+        virtual void onMidiEvent(int trackIndex, const MidiEvent& event) = 0;
     };
 
     PlaybackEngine();
@@ -33,6 +34,7 @@ public:
 private:
     void hiResTimerCallback() override;
     void processNoteOns(int fromTick, int toTick);
+    void processEvents(int fromTick, int toTick);
     void processNoteOffs(int toTick);
     void sendAllNoteOffs();
 

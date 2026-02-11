@@ -14,6 +14,7 @@ public:
 
     void onNoteOn(int trackIndex, const MidiNote& note) override;
     void onNoteOff(int trackIndex, const MidiNote& note) override;
+    void onMidiEvent(int trackIndex, const MidiEvent& event) override;
 
 private:
     std::unique_ptr<juce::MidiOutput> midiOutput;

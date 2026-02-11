@@ -77,6 +77,7 @@ void PlaybackEngine::hiResTimerCallback()
     if (currentTick > previousTick)
     {
         processNoteOns(previousTick, currentTick);
+        processEvents(previousTick, currentTick);
         processNoteOffs(currentTick);
     }
 }
@@ -94,6 +95,23 @@ void PlaybackEngine::processNoteOns(int fromTick, int toTick)
                 activeNotes.push_back({trackIdx, &note});
                 for (auto* listener : listeners)
                     listener->onNoteOn(trackIdx, note);
+            }
+        }
+    }
+}
+
+void PlaybackEngine::processEvents(int fromTick, int toTick)
+{
+    for (int trackIdx = 0; trackIdx < sequence->getNumTracks(); ++trackIdx)
+    {
+        const auto& track = sequence->getTrack(trackIdx);
+        for (int eventIdx = 0; eventIdx < track.getNumEvents(); ++eventIdx)
+        {
+            const auto& event = track.getEvent(eventIdx);
+            if (event.tick >= fromTick && event.tick < toTick)
+            {
+                for (auto* listener : listeners)
+                    listener->onMidiEvent(trackIdx, event);
             }
         }
     }

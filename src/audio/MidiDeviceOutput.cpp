@@ -30,11 +30,40 @@ void MidiDeviceOutput::onNoteOn(int, const MidiNote& note)
 {
     if (midiOutput)
         midiOutput->sendMessageNow(
-            juce::MidiMessage::noteOn(1, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
+            juce::MidiMessage::noteOn(note.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
 }
 
 void MidiDeviceOutput::onNoteOff(int, const MidiNote& note)
 {
     if (midiOutput)
-        midiOutput->sendMessageNow(juce::MidiMessage::noteOff(1, note.noteNumber));
+        midiOutput->sendMessageNow(juce::MidiMessage::noteOff(note.channel, note.noteNumber));
+}
+
+void MidiDeviceOutput::onMidiEvent(int, const MidiEvent& event)
+{
+    if (!midiOutput)
+        return;
+
+    juce::MidiMessage msg;
+
+    switch (event.type)
+    {
+    case MidiEvent::Type::ControlChange:
+        msg = juce::MidiMessage::controllerEvent(event.channel, event.data1, event.data2);
+        break;
+    case MidiEvent::Type::ProgramChange:
+        msg = juce::MidiMessage::programChange(event.channel, event.data1);
+        break;
+    case MidiEvent::Type::PitchBend:
+        msg = juce::MidiMessage::pitchWheel(event.channel, event.data1);
+        break;
+    case MidiEvent::Type::ChannelPressure:
+        msg = juce::MidiMessage::channelPressureChange(event.channel, event.data1);
+        break;
+    case MidiEvent::Type::KeyPressure:
+        msg = juce::MidiMessage::aftertouchChange(event.channel, event.data1, event.data2);
+        break;
+    }
+
+    midiOutput->sendMessageNow(msg);
 }
