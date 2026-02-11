@@ -10,6 +10,8 @@ juce_add_gui_app(Calliope
 target_sources(Calliope PRIVATE
     src/Main.cpp
     src/MainComponent.cpp
+    src/model/MidiTrack.cpp
+    src/model/MidiSequence.cpp
 )
 
 target_compile_definitions(Calliope PRIVATE
