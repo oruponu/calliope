@@ -11,6 +11,11 @@ MainComponent::MainComponent()
     playbackEngine.addListener(&midiOutput);
 
     pianoRoll.setSequence(&sequence);
+    pianoRoll.onPlayheadMoved = [this](int tick)
+    {
+        playbackEngine.setPositionInTicks(tick);
+        updatePositionLabel();
+    };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, true);
     addAndMakeVisible(viewport);
