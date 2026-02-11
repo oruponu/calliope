@@ -356,11 +356,24 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
     if (!sequence)
         return;
 
+    static const juce::Colour trackColours[] = {
+        {100, 160, 255}, // ブルー
+        {100, 210, 140}, // グリーン
+        {255, 170, 80},  // オレンジ
+        {180, 130, 255}, // パープル
+        {255, 120, 160}, // ピンク
+        {80, 200, 220},  // シアン
+        {220, 200, 100}, // イエロー
+        {200, 140, 120}, // ブラウン
+    };
+    static const int numTrackColours = sizeof(trackColours) / sizeof(trackColours[0]);
+
     auto clip = g.getClipBounds();
 
     for (int trackIdx = 0; trackIdx < sequence->getNumTracks(); ++trackIdx)
     {
         const auto& track = sequence->getTrack(trackIdx);
+        auto baseColour = trackColours[trackIdx % numTrackColours];
 
         for (int i = 0; i < track.getNumNotes(); ++i)
         {
@@ -374,11 +387,11 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
 
             bool isSelected = (selectedNote.trackIndex == trackIdx && selectedNote.noteIndex == i);
 
-            g.setColour(isSelected ? juce::Colour(140, 200, 255) : juce::Colour(100, 160, 255));
+            g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
             g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
                                    static_cast<float>(noteHeight - 2), 2.0f);
 
-            g.setColour(isSelected ? juce::Colour(200, 230, 255) : juce::Colour(70, 130, 220));
+            g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
             g.drawRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
                                    static_cast<float>(noteHeight - 2), 2.0f, 1.0f);
         }
