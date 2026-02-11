@@ -19,6 +19,9 @@ private:
     void timerCallback() override;
     void buildTestSequence();
     void updatePositionLabel();
+    void saveFile();
+    void loadFile();
+    void onSequenceLoaded();
 
     MidiSequence sequence;
     PlaybackEngine playbackEngine;
@@ -29,9 +32,13 @@ private:
 
     juce::TextButton playButton{"Play"};
     juce::TextButton stopButton{"Stop"};
+    juce::TextButton saveButton{"Save"};
+    juce::TextButton loadButton{"Load"};
     juce::Label bpmLabel{"", "BPM"};
     juce::Slider bpmSlider;
     juce::Label positionLabel;
+
+    std::unique_ptr<juce::FileChooser> fileChooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

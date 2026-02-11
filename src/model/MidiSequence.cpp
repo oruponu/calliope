@@ -2,6 +2,13 @@
 
 MidiSequence::MidiSequence() = default;
 
+void MidiSequence::clear()
+{
+    tracks.clear();
+    bpm = 120.0;
+    ticksPerQuarterNote = defaultTicksPerQuarterNote;
+}
+
 MidiTrack& MidiSequence::addTrack()
 {
     tracks.emplace_back();
@@ -41,6 +48,11 @@ double MidiSequence::getBpm() const
 int MidiSequence::getTicksPerQuarterNote() const
 {
     return ticksPerQuarterNote;
+}
+
+void MidiSequence::setTicksPerQuarterNote(int ppq)
+{
+    ticksPerQuarterNote = ppq;
 }
 
 double MidiSequence::ticksToSeconds(int ticks) const

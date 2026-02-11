@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "io/MidiFileIO.h"
 
 MainComponent::MainComponent()
 {
@@ -42,6 +43,12 @@ MainComponent::MainComponent()
         updatePositionLabel();
     };
 
+    addAndMakeVisible(saveButton);
+    saveButton.onClick = [this]() { saveFile(); };
+
+    addAndMakeVisible(loadButton);
+    loadButton.onClick = [this]() { loadFile(); };
+
     addAndMakeVisible(bpmLabel);
     bpmLabel.setJustificationType(juce::Justification::centredRight);
 
@@ -84,6 +91,10 @@ void MainComponent::resized()
     stopButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
 
     toolbar.removeFromLeft(10);
+    saveButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
+    loadButton.setBounds(toolbar.removeFromLeft(70).reduced(5));
+
+    toolbar.removeFromLeft(10);
     bpmLabel.setBounds(toolbar.removeFromLeft(35));
     bpmSlider.setBounds(toolbar.removeFromLeft(160).reduced(5));
 
@@ -107,6 +118,46 @@ void MainComponent::updatePositionLabel()
     int bar = tick / (ppq * PianoRollComponent::beatsPerBar) + 1;
     int beat = (tick / ppq) % PianoRollComponent::beatsPerBar + 1;
     positionLabel.setText(juce::String(bar) + " : " + juce::String(beat), juce::dontSendNotification);
+}
+
+void MainComponent::saveFile()
+{
+    fileChooser = std::make_unique<juce::FileChooser>("Save MIDI File", juce::File{}, "*.mid");
+    fileChooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+                             [this](const juce::FileChooser& fc)
+                             {
+                                 auto file = fc.getResult();
+                                 if (file != juce::File{})
+                                     MidiFileIO::save(sequence, file);
+                             });
+}
+
+void MainComponent::loadFile()
+{
+    fileChooser = std::make_unique<juce::FileChooser>("Open MIDI File", juce::File{}, "*.mid");
+    fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                             [this](const juce::FileChooser& fc)
+                             {
+                                 auto file = fc.getResult();
+                                 if (file != juce::File{} && MidiFileIO::load(sequence, file))
+                                     onSequenceLoaded();
+                             });
+}
+
+void MainComponent::onSequenceLoaded()
+{
+    playbackEngine.stop();
+    playbackEngine.setPositionInTicks(0);
+    playButton.setButtonText("Play");
+    stopTimer();
+
+    bpmSlider.setValue(sequence.getBpm(), juce::dontSendNotification);
+    pianoRoll.setSequence(&sequence);
+    pianoRoll.setPlayheadTick(0);
+    updatePositionLabel();
+
+    int c4Y = (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
+    viewport.setViewPosition(0, c4Y);
 }
 
 void MainComponent::buildTestSequence()
