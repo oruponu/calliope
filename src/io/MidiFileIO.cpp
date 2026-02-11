@@ -90,9 +90,32 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
 
 bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
 {
-    juce::FileInputStream stream(file);
-    if (!stream.openedOk())
+    juce::MemoryBlock fileData;
+    if (!file.loadFileAsData(fileData))
         return false;
+
+    auto* data = static_cast<const uint8_t*>(fileData.getData());
+    size_t size = fileData.getSize();
+
+    // MThdやMTrk以外の非標準チャンクをフィルタリング（YAMAHA XGファイルのXFIH等）
+    juce::MemoryBlock filteredData;
+    {
+        size_t pos = 0;
+        while (pos + 8 <= size)
+        {
+            uint32_t chunkSize = (data[pos + 4] << 24) | (data[pos + 5] << 16) | (data[pos + 6] << 8) | data[pos + 7];
+            size_t totalSize = 8 + chunkSize;
+            if (pos + totalSize > size)
+                break;
+
+            if (memcmp(data + pos, "MThd", 4) == 0 || memcmp(data + pos, "MTrk", 4) == 0)
+                filteredData.append(data + pos, totalSize);
+
+            pos += totalSize;
+        }
+    }
+
+    juce::MemoryInputStream stream(filteredData.getData(), filteredData.getSize(), false);
 
     juce::MidiFile midiFile;
     if (!midiFile.readFrom(stream))
