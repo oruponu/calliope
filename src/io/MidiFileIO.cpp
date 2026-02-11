@@ -27,16 +27,48 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         {
             const auto& note = track.getNote(i);
 
-            auto noteOn = juce::MidiMessage::noteOn(1, note.noteNumber, static_cast<juce::uint8>(note.velocity));
+            auto noteOn =
+                juce::MidiMessage::noteOn(note.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity));
             noteOn.setTimeStamp(note.startTick);
             msgSeq.addEvent(noteOn);
 
-            auto noteOff = juce::MidiMessage::noteOff(1, note.noteNumber);
+            auto noteOff = juce::MidiMessage::noteOff(note.channel, note.noteNumber);
             noteOff.setTimeStamp(note.endTick());
             msgSeq.addEvent(noteOff);
 
             if (note.endTick() > lastTick)
                 lastTick = note.endTick();
+        }
+
+        for (int i = 0; i < track.getNumEvents(); ++i)
+        {
+            const auto& event = track.getEvent(i);
+            juce::MidiMessage msg;
+
+            switch (event.type)
+            {
+            case MidiEvent::Type::ControlChange:
+                msg = juce::MidiMessage::controllerEvent(event.channel, event.data1, event.data2);
+                break;
+            case MidiEvent::Type::ProgramChange:
+                msg = juce::MidiMessage::programChange(event.channel, event.data1);
+                break;
+            case MidiEvent::Type::PitchBend:
+                msg = juce::MidiMessage::pitchWheel(event.channel, event.data1);
+                break;
+            case MidiEvent::Type::ChannelPressure:
+                msg = juce::MidiMessage::channelPressureChange(event.channel, event.data1);
+                break;
+            case MidiEvent::Type::KeyPressure:
+                msg = juce::MidiMessage::aftertouchChange(event.channel, event.data1, event.data2);
+                break;
+            }
+
+            msg.setTimeStamp(event.tick);
+            msgSeq.addEvent(msg);
+
+            if (event.tick > lastTick)
+                lastTick = event.tick;
         }
 
         msgSeq.sort();
@@ -101,21 +133,84 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
             const auto* event = sorted.getEventPointer(i);
             const auto& msg = event->message;
 
-            if (!msg.isNoteOn())
-                continue;
+            if (msg.isNoteOn())
+            {
+                if (!track)
+                    track = &sequence.addTrack();
 
-            if (!track)
-                track = &sequence.addTrack();
+                int noteNumber = msg.getNoteNumber();
+                int velocity = msg.getVelocity();
+                int startTick = static_cast<int>(msg.getTimeStamp());
+                int endTick = startTick + ppq;
+                int channel = msg.getChannel();
 
-            int noteNumber = msg.getNoteNumber();
-            int velocity = msg.getVelocity();
-            int startTick = static_cast<int>(msg.getTimeStamp());
-            int endTick = startTick + ppq;
+                if (event->noteOffObject != nullptr)
+                    endTick = static_cast<int>(event->noteOffObject->message.getTimeStamp());
 
-            if (event->noteOffObject != nullptr)
-                endTick = static_cast<int>(event->noteOffObject->message.getTimeStamp());
+                track->addNote({noteNumber, velocity, startTick, endTick - startTick, channel});
+            }
+            else if (msg.isController())
+            {
+                if (!track)
+                    track = &sequence.addTrack();
 
-            track->addNote({noteNumber, velocity, startTick, endTick - startTick});
+                MidiEvent ev;
+                ev.type = MidiEvent::Type::ControlChange;
+                ev.channel = msg.getChannel();
+                ev.tick = static_cast<int>(msg.getTimeStamp());
+                ev.data1 = msg.getControllerNumber();
+                ev.data2 = msg.getControllerValue();
+                track->addEvent(ev);
+            }
+            else if (msg.isProgramChange())
+            {
+                if (!track)
+                    track = &sequence.addTrack();
+
+                MidiEvent ev;
+                ev.type = MidiEvent::Type::ProgramChange;
+                ev.channel = msg.getChannel();
+                ev.tick = static_cast<int>(msg.getTimeStamp());
+                ev.data1 = msg.getProgramChangeNumber();
+                track->addEvent(ev);
+            }
+            else if (msg.isPitchWheel())
+            {
+                if (!track)
+                    track = &sequence.addTrack();
+
+                MidiEvent ev;
+                ev.type = MidiEvent::Type::PitchBend;
+                ev.channel = msg.getChannel();
+                ev.tick = static_cast<int>(msg.getTimeStamp());
+                ev.data1 = msg.getPitchWheelValue();
+                track->addEvent(ev);
+            }
+            else if (msg.isChannelPressure())
+            {
+                if (!track)
+                    track = &sequence.addTrack();
+
+                MidiEvent ev;
+                ev.type = MidiEvent::Type::ChannelPressure;
+                ev.channel = msg.getChannel();
+                ev.tick = static_cast<int>(msg.getTimeStamp());
+                ev.data1 = msg.getChannelPressureValue();
+                track->addEvent(ev);
+            }
+            else if (msg.isAftertouch())
+            {
+                if (!track)
+                    track = &sequence.addTrack();
+
+                MidiEvent ev;
+                ev.type = MidiEvent::Type::KeyPressure;
+                ev.channel = msg.getChannel();
+                ev.tick = static_cast<int>(msg.getTimeStamp());
+                ev.data1 = msg.getNoteNumber();
+                ev.data2 = msg.getAfterTouchValue();
+                track->addEvent(ev);
+            }
         }
     }
 
