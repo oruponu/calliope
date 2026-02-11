@@ -28,6 +28,8 @@ MainComponent::MainComponent()
             playbackEngine.stop();
             playButton.setButtonText("Play");
             stopTimer();
+            pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
+            updatePositionLabel();
         }
         else
         {
@@ -41,10 +43,9 @@ MainComponent::MainComponent()
     stopButton.onClick = [this]()
     {
         playbackEngine.stop();
-        playbackEngine.setPositionInTicks(0);
         playButton.setButtonText("Play");
         stopTimer();
-        pianoRoll.setPlayheadTick(0);
+        pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
         updatePositionLabel();
     };
 
