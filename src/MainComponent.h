@@ -3,6 +3,7 @@
 #include "audio/MidiDeviceOutput.h"
 #include "engine/PlaybackEngine.h"
 #include "model/MidiSequence.h"
+#include "ui/PianoRollComponent.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
 class MainComponent : public juce::Component
@@ -20,6 +21,9 @@ private:
     MidiSequence sequence;
     PlaybackEngine playbackEngine;
     MidiDeviceOutput midiOutput;
+
+    PianoRollComponent pianoRoll;
+    juce::Viewport viewport;
 
     juce::TextButton playButton{"Play"};
 

@@ -9,6 +9,11 @@ MainComponent::MainComponent()
     playbackEngine.setSequence(&sequence);
     playbackEngine.addListener(&midiOutput);
 
+    pianoRoll.setSequence(&sequence);
+    viewport.setViewedComponent(&pianoRoll, false);
+    viewport.setScrollBarsShown(true, true);
+    addAndMakeVisible(viewport);
+
     addAndMakeVisible(playButton);
     playButton.onClick = [this]()
     {
@@ -26,6 +31,9 @@ MainComponent::MainComponent()
     };
 
     setSize(800, 600);
+
+    int c4Y = (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
+    viewport.setViewPosition(0, c4Y);
 }
 
 MainComponent::~MainComponent()
@@ -42,7 +50,10 @@ void MainComponent::paint(juce::Graphics& g)
 
 void MainComponent::resized()
 {
-    playButton.setBounds(10, 10, 80, 30);
+    auto area = getLocalBounds();
+    auto toolbar = area.removeFromTop(40);
+    playButton.setBounds(toolbar.removeFromLeft(90).reduced(5));
+    viewport.setBounds(area);
 }
 
 void MainComponent::buildTestSequence()
