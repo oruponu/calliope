@@ -64,6 +64,7 @@ private:
     PianoRollComponent pianoRoll;
     juce::Viewport viewport;
     TrackListComponent trackList;
+    juce::Viewport trackListViewport;
 
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
