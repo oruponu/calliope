@@ -53,7 +53,9 @@ void TrackListComponent::paint(juce::Graphics& g)
 
         g.setColour(juce::Colours::white);
         g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
-        g.drawText("Track " + juce::String(i + 1), 10, y + 4, getWidth() - 62, 20, juce::Justification::centredLeft);
+        juce::String trackLabel =
+            track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
+        g.drawText(trackLabel, 10, y + 4, getWidth() - 62, 20, juce::Justification::centredLeft);
 
         int channel = -1;
         if (track.getNumNotes() > 0)
