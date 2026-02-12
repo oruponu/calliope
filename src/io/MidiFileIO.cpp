@@ -25,6 +25,13 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         tempoTrack.addEvent(tsEvent);
     }
 
+    for (const auto& ks : sequence.getKeySignatureChanges())
+    {
+        auto ksEvent = juce::MidiMessage::keySignatureMetaEvent(ks.sharpsOrFlats, ks.isMinor);
+        ksEvent.setTimeStamp(ks.tick);
+        tempoTrack.addEvent(ksEvent);
+    }
+
     tempoTrack.sort();
 
     auto endOfTempoTrack = juce::MidiMessage::endOfTrack();
@@ -175,6 +182,13 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 msg.getTimeSignatureInfo(numerator, denominator);
                 int tick = static_cast<int>(msg.getTimeStamp());
                 sequence.addTimeSignatureChange(tick, numerator, denominator);
+            }
+            else if (msg.isKeySignatureMetaEvent())
+            {
+                int tick = static_cast<int>(msg.getTimeStamp());
+                int sf = msg.getKeySignatureNumberOfSharpsOrFlats();
+                bool isMinor = !msg.isKeySignatureMajorKey();
+                sequence.addKeySignatureChange(tick, sf, isMinor);
             }
         }
     }
