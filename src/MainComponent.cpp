@@ -285,7 +285,14 @@ void MainComponent::updateTransportDisplay()
     timeSigValueLabel.setText(juce::String(ts.numerator) + "/" + juce::String(ts.denominator),
                               juce::dontSendNotification);
 
-    keyValueLabel.setText("--", juce::dontSendNotification);
+    if (sequence.getKeySignatureChanges().empty())
+        keyValueLabel.setText("--", juce::dontSendNotification);
+    else
+    {
+        auto ks = sequence.getKeySignatureAt(tick);
+        keyValueLabel.setText(MidiSequence::keySignatureToString(ks.sharpsOrFlats, ks.isMinor),
+                              juce::dontSendNotification);
+    }
 
     double tempo = sequence.getTempoAt(tick);
     tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
