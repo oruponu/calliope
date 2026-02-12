@@ -61,6 +61,8 @@ MainComponent::MainComponent()
     pianoRoll.onNotesChanged = [this]() { trackList.refresh(); };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, true);
+    viewport.onReachedEnd = [this]() { pianoRoll.extendContent(); };
+    viewport.onVisibleAreaChanged = [this]() { pianoRoll.updateSize(); };
     addAndMakeVisible(viewport);
 
     trackList.setSequence(&sequence);
@@ -261,7 +263,13 @@ void MainComponent::onVBlank()
     int viewRight = viewX + viewport.getViewWidth();
 
     if (playheadX < viewX + PianoRollComponent::keyboardWidth || playheadX > viewRight - 20)
-        viewport.setViewPosition(playheadX - PianoRollComponent::keyboardWidth, viewport.getViewPositionY());
+    {
+        int desiredX = playheadX - PianoRollComponent::keyboardWidth;
+        while (desiredX + viewport.getViewWidth() > pianoRoll.getWidth())
+            pianoRoll.extendContent();
+
+        viewport.setViewPosition(desiredX, viewport.getViewPositionY());
+    }
 }
 
 void MainComponent::updateTransportDisplay()

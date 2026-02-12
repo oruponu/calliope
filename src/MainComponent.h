@@ -61,8 +61,58 @@ private:
     PlaybackEngine playbackEngine;
     MidiDeviceOutput midiOutput;
 
+    class PianoRollViewport : public juce::Viewport
+    {
+    public:
+        std::function<void()> onReachedEnd;
+        std::function<void()> onVisibleAreaChanged;
+
+        PianoRollViewport() { getHorizontalScrollBar().addMouseListener(&scrollBarListener, false); }
+
+        ~PianoRollViewport() override { getHorizontalScrollBar().removeMouseListener(&scrollBarListener); }
+
+        void visibleAreaChanged(const juce::Rectangle<int>&) override
+        {
+            pendingExtend = isAtRightEdge();
+            if (onVisibleAreaChanged)
+                onVisibleAreaChanged();
+        }
+
+        void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
+        {
+            juce::Viewport::mouseWheelMove(e, wheel);
+            if (isAtRightEdge() && onReachedEnd)
+                onReachedEnd();
+        }
+
+    private:
+        bool isAtRightEdge() const
+        {
+            if (auto* content = getViewedComponent())
+                return getViewPositionX() + getViewWidth() >= content->getWidth() - 1;
+            return false;
+        }
+
+        struct ScrollBarListener : public juce::MouseListener
+        {
+            PianoRollViewport& owner;
+            explicit ScrollBarListener(PianoRollViewport& o) : owner(o) {}
+            void mouseUp(const juce::MouseEvent&) override
+            {
+                if (owner.pendingExtend && owner.onReachedEnd)
+                {
+                    owner.pendingExtend = false;
+                    owner.onReachedEnd();
+                }
+            }
+        };
+
+        ScrollBarListener scrollBarListener{*this};
+        bool pendingExtend = false;
+    };
+
     PianoRollComponent pianoRoll;
-    juce::Viewport viewport;
+    PianoRollViewport viewport;
     TrackListComponent trackList;
     juce::Viewport trackListViewport;
 
