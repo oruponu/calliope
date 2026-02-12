@@ -5,6 +5,24 @@
 void PianoRollComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;
+
+    contentBeats = 16;
+    if (sequence && sequence->getNumTracks() > 0)
+    {
+        int lastTick = 0;
+        for (int t = 0; t < sequence->getNumTracks(); ++t)
+        {
+            const auto& track = sequence->getTrack(t);
+            for (int i = 0; i < track.getNumNotes(); ++i)
+            {
+                int end = track.getNote(i).endTick();
+                if (end > lastTick)
+                    lastTick = end;
+            }
+        }
+        contentBeats = std::max(contentBeats, lastTick / sequence->getTicksPerQuarterNote() + 4);
+    }
+
     updateSize();
     repaint();
 }
@@ -111,7 +129,6 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         track.addNote({noteNum, 100, tick, defaultDuration});
         selectedNote = {selectedTrackIndex, track.getNumNotes() - 1};
         dragMode = DragMode::None;
-        updateSize();
         repaint();
         if (onNotesChanged)
             onNotesChanged();
@@ -153,7 +170,6 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
     if (dragMode != DragMode::None)
     {
-        updateSize();
         if (onNotesChanged)
             onNotesChanged();
     }
@@ -260,7 +276,7 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
     g.fillRect(kbLeft, hTop, getWidth() - kbLeft, headerHeight);
 
     int ppq = sequence->getTicksPerQuarterNote();
-    int totalTicks = getTotalBeats() * ppq;
+    int totalTicks = xToTick(getWidth());
     int tick = 0;
     int barNumber = 1;
 
@@ -353,7 +369,7 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
     }
 
     int ppq = sequence->getTicksPerQuarterNote();
-    int totalTicks = getTotalBeats() * ppq;
+    int totalTicks = xToTick(getWidth());
     int tick = 0;
 
     while (tick < totalTicks)
@@ -466,8 +482,11 @@ void PianoRollComponent::updateSize()
     if (!sequence)
         return;
 
-    int totalBeats = getTotalBeats();
-    int width = keyboardWidth + totalBeats * beatWidth;
+    int width = keyboardWidth + contentBeats * beatWidth;
+
+    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+        width = std::max(width, vp->getMaximumVisibleWidth());
+
     int height = headerHeight + totalNotes * noteHeight;
     setSize(width, height);
 }
@@ -520,25 +539,10 @@ int PianoRollComponent::snapTick(int tick) const
     return ((tick + grid / 2) / grid) * grid;
 }
 
-int PianoRollComponent::getTotalBeats() const
+void PianoRollComponent::extendContent()
 {
-    if (!sequence || sequence->getNumTracks() == 0)
-        return 16;
-
-    int lastTick = 0;
-    for (int t = 0; t < sequence->getNumTracks(); ++t)
-    {
-        const auto& track = sequence->getTrack(t);
-        for (int i = 0; i < track.getNumNotes(); ++i)
-        {
-            int end = track.getNote(i).endTick();
-            if (end > lastTick)
-                lastTick = end;
-        }
-    }
-
-    int beats = lastTick / sequence->getTicksPerQuarterNote() + 4;
-    return beats;
+    contentBeats += 32;
+    updateSize();
 }
 
 PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const

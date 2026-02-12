@@ -31,6 +31,8 @@ public:
     static constexpr int resizeEdgeWidth = 6;
 
     int tickToX(int tick) const;
+    void updateSize();
+    void extendContent();
 
 private:
     enum class DragMode
@@ -52,14 +54,12 @@ private:
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
-    void updateSize();
 
     int noteToY(int noteNumber) const;
     int tickToWidth(int durationTicks) const;
     int xToTick(int x) const;
     int yToNote(int y) const;
     int snapTick(int tick) const;
-    int getTotalBeats() const;
 
     NoteRef hitTestNote(int x, int y) const;
     bool isOnRightEdge(int x, const MidiNote& note) const;
@@ -81,4 +81,5 @@ private:
     int originalStartTick = 0;
     int originalNoteNumber = 0;
     int originalDuration = 0;
+    int contentBeats = 0;
 };
