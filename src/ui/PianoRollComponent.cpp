@@ -397,7 +397,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
             int y = noteToY(note.noteNumber);
             int w = tickToWidth(note.duration);
 
-            if (x + w < clip.getX() || x > clip.getRight() || y + noteHeight < clip.getY() || y > clip.getBottom())
+            if (y + noteHeight < clip.getY() || y > clip.getBottom())
                 continue;
 
             bool isSelected = (selectedNote.trackIndex == trackIdx && selectedNote.noteIndex == i);
@@ -407,15 +407,22 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
                 float diameter = static_cast<float>(noteHeight - 2);
                 float cx = static_cast<float>(x);
                 float cy = static_cast<float>(y + 1) + diameter * 0.5f;
+                float left = cx - diameter * 0.5f;
+
+                if (left + diameter < clip.getX() || left > clip.getRight())
+                    continue;
 
                 g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
-                g.fillEllipse(cx - diameter * 0.5f, cy - diameter * 0.5f, diameter, diameter);
+                g.fillEllipse(left, cy - diameter * 0.5f, diameter, diameter);
 
                 g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
-                g.drawEllipse(cx - diameter * 0.5f, cy - diameter * 0.5f, diameter, diameter, 1.0f);
+                g.drawEllipse(left, cy - diameter * 0.5f, diameter, diameter, 1.0f);
             }
             else
             {
+                if (x + w < clip.getX() || x > clip.getRight())
+                    continue;
+
                 g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
                 g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
                                        static_cast<float>(noteHeight - 2), 2.0f);
