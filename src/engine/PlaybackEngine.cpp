@@ -85,9 +85,14 @@ void PlaybackEngine::hiResTimerCallback()
 
 void PlaybackEngine::processNoteOns(int fromTick, int toTick)
 {
+    bool anySolo = sequence->isAnySolo();
     for (int trackIdx = 0; trackIdx < sequence->getNumTracks(); ++trackIdx)
     {
         const auto& track = sequence->getTrack(trackIdx);
+        if (track.isMuted())
+            continue;
+        if (anySolo && !track.isSolo())
+            continue;
         for (int noteIdx = 0; noteIdx < track.getNumNotes(); ++noteIdx)
         {
             const auto& note = track.getNote(noteIdx);
@@ -103,9 +108,14 @@ void PlaybackEngine::processNoteOns(int fromTick, int toTick)
 
 void PlaybackEngine::processEvents(int fromTick, int toTick)
 {
+    bool anySolo = sequence->isAnySolo();
     for (int trackIdx = 0; trackIdx < sequence->getNumTracks(); ++trackIdx)
     {
         const auto& track = sequence->getTrack(trackIdx);
+        if (track.isMuted())
+            continue;
+        if (anySolo && !track.isSolo())
+            continue;
         for (int eventIdx = 0; eventIdx < track.getNumEvents(); ++eventIdx)
         {
             const auto& event = track.getEvent(eventIdx);

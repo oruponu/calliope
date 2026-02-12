@@ -68,3 +68,21 @@ int MidiTrack::getNumEvents() const
 {
     return static_cast<int>(events.size());
 }
+
+bool MidiTrack::isMuted() const
+{
+    return muted;
+}
+void MidiTrack::setMuted(bool m)
+{
+    muted = m;
+}
+
+bool MidiTrack::isSolo() const
+{
+    return solo;
+}
+void MidiTrack::setSolo(bool s)
+{
+    solo = s;
+}
