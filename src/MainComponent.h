@@ -51,7 +51,6 @@ private:
     };
 
     void onVBlank();
-    void buildTestSequence();
     void updateTransportDisplay();
     void saveFile();
     void loadFile();
