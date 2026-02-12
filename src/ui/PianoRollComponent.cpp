@@ -8,10 +8,23 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     repaint();
 }
 
-void PianoRollComponent::setPlayheadTick(int tick)
+void PianoRollComponent::setPlayheadTick(double tick)
 {
+    auto toX = [this](double t) -> int
+    {
+        if (!sequence)
+            return keyboardWidth;
+        return keyboardWidth + static_cast<int>(t / sequence->getTicksPerQuarterNote() * beatWidth);
+    };
+
+    int oldX = toX(playheadTick);
     playheadTick = tick;
-    repaint();
+    int newX = toX(playheadTick);
+
+    int margin = 2;
+    int h = getHeight();
+    repaint(oldX - margin, 0, margin * 2 + 2, h);
+    repaint(newX - margin, 0, margin * 2 + 2, h);
 }
 
 void PianoRollComponent::paint(juce::Graphics& g)
@@ -270,11 +283,13 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
         barNumber++;
     }
 
-    int phX = tickToX(playheadTick);
-    if (phX >= visibleLeft && phX <= visibleRight)
+    float phX = sequence
+                    ? static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth)
+                    : static_cast<float>(keyboardWidth);
+    if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
     {
         g.setColour(juce::Colours::white);
-        g.drawVerticalLine(phX, static_cast<float>(hTop), static_cast<float>(hTop + headerHeight));
+        g.drawLine(phX, static_cast<float>(hTop), phX, static_cast<float>(hTop + headerHeight), 1.0f);
     }
 
     g.setColour(juce::Colour(70, 70, 80));
@@ -415,12 +430,14 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
 
 void PianoRollComponent::drawPlayhead(juce::Graphics& g)
 {
-    int x = tickToX(playheadTick);
+    if (!sequence)
+        return;
+    float x = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
     auto clip = g.getClipBounds();
-    if (x < clip.getX() || x > clip.getRight())
+    if (x < static_cast<float>(clip.getX()) - 1.0f || x > static_cast<float>(clip.getRight()) + 1.0f)
         return;
     g.setColour(juce::Colours::white);
-    g.drawVerticalLine(x, static_cast<float>(clip.getY()), static_cast<float>(clip.getBottom()));
+    g.drawLine(x, static_cast<float>(clip.getY()), x, static_cast<float>(clip.getBottom()), 1.0f);
 }
 
 void PianoRollComponent::updateSize()

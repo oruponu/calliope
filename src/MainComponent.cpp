@@ -69,7 +69,7 @@ MainComponent::MainComponent()
         {
             playbackEngine.stop();
             playButton.setType(TransportButton::Play);
-            stopTimer();
+            vblankAttachment.reset();
             pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
             updateTransportDisplay();
         }
@@ -77,7 +77,7 @@ MainComponent::MainComponent()
         {
             playbackEngine.play();
             playButton.setType(TransportButton::Pause);
-            startTimerHz(30);
+            vblankAttachment = std::make_unique<juce::VBlankAttachment>(this, [this]() { onVBlank(); });
         }
     };
 
@@ -86,7 +86,7 @@ MainComponent::MainComponent()
     {
         playbackEngine.stop();
         playButton.setType(TransportButton::Play);
-        stopTimer();
+        vblankAttachment.reset();
         pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
         updateTransportDisplay();
     };
@@ -135,7 +135,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
-    stopTimer();
+    vblankAttachment.reset();
     playbackEngine.stop();
     playbackEngine.removeListener(&midiOutput);
     midiOutput.close();
@@ -245,9 +245,9 @@ void MainComponent::resized()
     viewport.setBounds(area);
 }
 
-void MainComponent::timerCallback()
+void MainComponent::onVBlank()
 {
-    int tick = playbackEngine.getCurrentTick();
+    double tick = playbackEngine.getCurrentTick();
     pianoRoll.setPlayheadTick(tick);
     updateTransportDisplay();
     bpmSlider.setValue(sequence.getTempoAt(tick), juce::dontSendNotification);
@@ -262,7 +262,7 @@ void MainComponent::timerCallback()
 
 void MainComponent::updateTransportDisplay()
 {
-    int tick = playbackEngine.getCurrentTick();
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
 
     auto bbt = sequence.tickToBarBeatTick(tick);
     positionLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3) + "." + juce::String(bbt.beat).paddedLeft('0', 2) +
@@ -308,7 +308,7 @@ void MainComponent::onSequenceLoaded()
     playbackEngine.stop();
     playbackEngine.setPositionInTicks(0);
     playButton.setType(TransportButton::Play);
-    stopTimer();
+    vblankAttachment.reset();
 
     bpmSlider.setValue(sequence.getBpm(), juce::dontSendNotification);
     pianoRoll.setSequence(&sequence);

@@ -38,9 +38,9 @@ bool PlaybackEngine::isPlaying() const
     return playing;
 }
 
-int PlaybackEngine::getCurrentTick() const
+double PlaybackEngine::getCurrentTick() const
 {
-    return static_cast<int>(tickPosition);
+    return tickPosition;
 }
 
 void PlaybackEngine::setPositionInTicks(int tick)
