@@ -47,6 +47,8 @@ MainComponent::MainComponent()
 {
     midiOutput.open();
 
+    sequence.addTrack();
+
     playbackEngine.setSequence(&sequence);
     playbackEngine.addListener(&midiOutput);
 
