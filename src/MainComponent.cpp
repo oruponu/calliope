@@ -64,7 +64,9 @@ MainComponent::MainComponent()
     addAndMakeVisible(viewport);
 
     trackList.setSequence(&sequence);
-    addAndMakeVisible(trackList);
+    trackListViewport.setViewedComponent(&trackList, false);
+    trackListViewport.setScrollBarsShown(true, false);
+    addAndMakeVisible(trackListViewport);
     trackList.onTrackSelected = [this](int idx) { pianoRoll.setSelectedTrackIndex(idx); };
     trackList.onMuteSoloChanged = []() {};
 
@@ -244,7 +246,8 @@ void MainComponent::resized()
 
     layoutSection(tempoW, tempoHeaderLabel, tempoValueLabel);
 
-    trackList.setBounds(area.removeFromLeft(trackListWidth));
+    trackListViewport.setBounds(area.removeFromLeft(trackListWidth));
+    trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
     viewport.setBounds(area);
 }
 
