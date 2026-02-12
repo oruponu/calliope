@@ -26,6 +26,7 @@ private:
     int getRowIndexAt(int y) const;
     juce::Rectangle<int> getMuteButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getSoloButtonBounds(int rowIndex) const;
+    void updateSize();
 
     MidiSequence* sequence = nullptr;
     int selectedTrackIndex = 0;

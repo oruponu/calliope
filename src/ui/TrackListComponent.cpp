@@ -5,12 +5,21 @@ void TrackListComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;
     selectedTrackIndex = (seq && seq->getNumTracks() > 0) ? 0 : -1;
+    updateSize();
     repaint();
 }
 
 void TrackListComponent::refresh()
 {
+    updateSize();
     repaint();
+}
+
+void TrackListComponent::updateSize()
+{
+    int numTracks = sequence ? sequence->getNumTracks() : 0;
+    int requiredHeight = numTracks * trackRowHeight;
+    setSize(getWidth(), juce::jmax(requiredHeight, getParentHeight()));
 }
 
 int TrackListComponent::getSelectedTrackIndex() const
