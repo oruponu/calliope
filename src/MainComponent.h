@@ -4,6 +4,7 @@
 #include "engine/PlaybackEngine.h"
 #include "model/MidiSequence.h"
 #include "ui/PianoRollComponent.h"
+#include "ui/TrackListComponent.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
 class MainComponent : public juce::Component, public juce::FileDragAndDropTarget
@@ -62,6 +63,7 @@ private:
 
     PianoRollComponent pianoRoll;
     juce::Viewport viewport;
+    TrackListComponent trackList;
 
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
@@ -86,6 +88,7 @@ private:
     bool fileDragOver = false;
 
     static constexpr int transportBarHeight = 64;
+    static constexpr int trackListWidth = 180;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
