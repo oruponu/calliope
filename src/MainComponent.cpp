@@ -250,9 +250,9 @@ void MainComponent::onVBlank()
     double tick = playbackEngine.getCurrentTick();
     pianoRoll.setPlayheadTick(tick);
     updateTransportDisplay();
-    bpmSlider.setValue(sequence.getTempoAt(tick), juce::dontSendNotification);
+    bpmSlider.setValue(sequence.getTempoAt(static_cast<int>(tick)), juce::dontSendNotification);
 
-    int playheadX = pianoRoll.tickToX(tick);
+    int playheadX = pianoRoll.tickToX(static_cast<int>(tick));
     int viewX = viewport.getViewPositionX();
     int viewRight = viewX + viewport.getViewWidth();
 

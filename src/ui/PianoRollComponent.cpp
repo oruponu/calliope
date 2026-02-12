@@ -50,7 +50,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             playheadTick = std::max(0, tick);
             repaint();
             if (onPlayheadMoved)
-                onPlayheadMoved(playheadTick);
+                onPlayheadMoved(static_cast<int>(playheadTick));
         }
         return;
     }
