@@ -6,7 +6,7 @@
 #include "ui/PianoRollComponent.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
-class MainComponent : public juce::Component, public juce::FileDragAndDropTarget, private juce::Timer
+class MainComponent : public juce::Component, public juce::FileDragAndDropTarget
 {
 public:
     MainComponent();
@@ -49,7 +49,7 @@ private:
         Type type;
     };
 
-    void timerCallback() override;
+    void onVBlank();
     void buildTestSequence();
     void updateTransportDisplay();
     void saveFile();
@@ -84,6 +84,7 @@ private:
     juce::Slider bpmSlider;
 
     std::unique_ptr<juce::FileChooser> fileChooser;
+    std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
 
     static constexpr int transportBarHeight = 64;

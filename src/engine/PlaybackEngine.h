@@ -25,7 +25,7 @@ public:
     void stop();
     bool isPlaying() const;
 
-    int getCurrentTick() const;
+    double getCurrentTick() const;
     void setPositionInTicks(int tick);
 
     void addListener(Listener* listener);

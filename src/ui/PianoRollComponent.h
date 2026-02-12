@@ -8,7 +8,7 @@ class PianoRollComponent : public juce::Component
 {
 public:
     void setSequence(MidiSequence* seq);
-    void setPlayheadTick(int tick);
+    void setPlayheadTick(double tick);
     void paint(juce::Graphics& g) override;
 
     std::function<void(int tick)> onPlayheadMoved;
@@ -67,7 +67,7 @@ private:
     static juce::String getNoteName(int noteNumber);
 
     MidiSequence* sequence = nullptr;
-    int playheadTick = 0;
+    double playheadTick = 0.0;
 
     NoteRef selectedNote;
     DragMode dragMode = DragMode::None;
