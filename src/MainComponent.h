@@ -81,8 +81,6 @@ private:
     juce::Label tempoHeaderLabel{"", "Tempo"};
     juce::Label tempoValueLabel;
 
-    juce::Slider bpmSlider;
-
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;

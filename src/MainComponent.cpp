@@ -121,10 +121,6 @@ MainComponent::MainComponent()
         label->setJustificationType(juce::Justification::centred);
     }
 
-    bpmSlider.setRange(30.0, 300.0, 0.01);
-    bpmSlider.setValue(sequence.getBpm());
-    bpmSlider.onValueChange = [this]() { sequence.setBpm(bpmSlider.getValue()); };
-
     updateTransportDisplay();
 
     setSize(1280, 800);
@@ -250,8 +246,6 @@ void MainComponent::onVBlank()
     double tick = playbackEngine.getCurrentTick();
     pianoRoll.setPlayheadTick(tick);
     updateTransportDisplay();
-    bpmSlider.setValue(sequence.getTempoAt(static_cast<int>(tick)), juce::dontSendNotification);
-
     int playheadX = pianoRoll.tickToX(static_cast<int>(tick));
     int viewX = viewport.getViewPositionX();
     int viewRight = viewX + viewport.getViewWidth();
@@ -310,7 +304,6 @@ void MainComponent::onSequenceLoaded()
     playButton.setType(TransportButton::Play);
     vblankAttachment.reset();
 
-    bpmSlider.setValue(sequence.getBpm(), juce::dontSendNotification);
     pianoRoll.setSequence(&sequence);
     pianoRoll.setPlayheadTick(0);
     updateTransportDisplay();
