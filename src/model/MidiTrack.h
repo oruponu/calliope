@@ -2,6 +2,7 @@
 
 #include "MidiEvent.h"
 #include "MidiNote.h"
+#include <string>
 #include <vector>
 
 class MidiTrack
@@ -29,9 +30,13 @@ public:
     bool isSolo() const;
     void setSolo(bool solo);
 
+    const std::string& getName() const;
+    void setName(const std::string& name);
+
 private:
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
+    std::string name;
     bool muted = false;
     bool solo = false;
 };
