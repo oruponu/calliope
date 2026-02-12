@@ -58,9 +58,15 @@ MainComponent::MainComponent()
         playbackEngine.setPositionInTicks(tick);
         updateTransportDisplay();
     };
+    pianoRoll.onNotesChanged = [this]() { trackList.refresh(); };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, true);
     addAndMakeVisible(viewport);
+
+    trackList.setSequence(&sequence);
+    addAndMakeVisible(trackList);
+    trackList.onTrackSelected = [this](int idx) { pianoRoll.setSelectedTrackIndex(idx); };
+    trackList.onMuteSoloChanged = []() {};
 
     addAndMakeVisible(playButton);
     playButton.onClick = [this]()
@@ -238,6 +244,7 @@ void MainComponent::resized()
 
     layoutSection(tempoW, tempoHeaderLabel, tempoValueLabel);
 
+    trackList.setBounds(area.removeFromLeft(trackListWidth));
     viewport.setBounds(area);
 }
 
@@ -305,8 +312,11 @@ void MainComponent::onSequenceLoaded()
     vblankAttachment.reset();
 
     pianoRoll.setSequence(&sequence);
+    pianoRoll.setSelectedTrackIndex(0);
     pianoRoll.setPlayheadTick(0);
     updateTransportDisplay();
+
+    trackList.setSequence(&sequence);
 
     int c4Y = PianoRollComponent::headerHeight + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
