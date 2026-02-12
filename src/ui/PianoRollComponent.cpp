@@ -1,4 +1,5 @@
 #include "PianoRollComponent.h"
+#include "TrackColours.h"
 #include <algorithm>
 
 void PianoRollComponent::setSequence(MidiSequence* seq)
@@ -6,6 +7,19 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     sequence = seq;
     updateSize();
     repaint();
+}
+
+void PianoRollComponent::setSelectedTrackIndex(int index)
+{
+    selectedTrackIndex = index;
+    selectedNote = {};
+    dragMode = DragMode::None;
+    repaint();
+}
+
+int PianoRollComponent::getSelectedTrackIndex() const
+{
+    return selectedTrackIndex;
 }
 
 void PianoRollComponent::setPlayheadTick(double tick)
@@ -67,6 +81,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
             selectedNote = {};
             repaint();
+            if (onNotesChanged)
+                onNotesChanged();
         }
         return;
     }
@@ -90,13 +106,15 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         if (noteNum < 0 || noteNum > 127)
             return;
 
-        auto& track = sequence->getTrack(0);
+        auto& track = sequence->getTrack(selectedTrackIndex);
         int defaultDuration = sequence ? sequence->getTicksPerQuarterNote() : snapTicks;
         track.addNote({noteNum, 100, tick, defaultDuration});
-        selectedNote = {0, track.getNumNotes() - 1};
+        selectedNote = {selectedTrackIndex, track.getNumNotes() - 1};
         dragMode = DragMode::None;
         updateSize();
         repaint();
+        if (onNotesChanged)
+            onNotesChanged();
     }
 }
 
@@ -134,7 +152,11 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
     if (dragMode != DragMode::None)
+    {
         updateSize();
+        if (onNotesChanged)
+            onNotesChanged();
+    }
 
     dragMode = DragMode::None;
 }
@@ -373,28 +395,18 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
     if (!sequence)
         return;
 
-    static const juce::Colour trackColours[] = {
-        {100, 160, 255}, // ブルー
-        {100, 210, 140}, // グリーン
-        {255, 170, 80},  // オレンジ
-        {180, 130, 255}, // パープル
-        {255, 120, 160}, // ピンク
-        {80, 200, 220},  // シアン
-        {220, 200, 100}, // イエロー
-        {200, 140, 120}, // ブラウン
-    };
-    static const int numTrackColours = sizeof(trackColours) / sizeof(trackColours[0]);
-
     auto clip = g.getClipBounds();
 
-    for (int trackIdx = 0; trackIdx < sequence->getNumTracks(); ++trackIdx)
+    int trackIdx = selectedTrackIndex;
+    if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
+        return;
     {
         const auto& track = sequence->getTrack(trackIdx);
 
         for (int i = 0; i < track.getNumNotes(); ++i)
         {
             const auto& note = track.getNote(i);
-            auto baseColour = trackColours[(note.channel - 1) % numTrackColours];
+            auto baseColour = TrackColours::getColour(note.channel - 1);
             int x = tickToX(note.startTick);
             int y = noteToY(note.noteNumber);
             int w = tickToWidth(note.duration);
@@ -534,20 +546,20 @@ PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
     if (!sequence)
         return {};
 
-    for (int trackIdx = 0; trackIdx < sequence->getNumTracks(); ++trackIdx)
+    int trackIdx = selectedTrackIndex;
+    if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
+        return {};
+
+    const auto& track = sequence->getTrack(trackIdx);
+    for (int i = 0; i < track.getNumNotes(); ++i)
     {
-        const auto& track = sequence->getTrack(trackIdx);
+        const auto& note = track.getNote(i);
+        int nx = tickToX(note.startTick);
+        int ny = noteToY(note.noteNumber);
+        int nw = tickToWidth(note.duration);
 
-        for (int i = 0; i < track.getNumNotes(); ++i)
-        {
-            const auto& note = track.getNote(i);
-            int nx = tickToX(note.startTick);
-            int ny = noteToY(note.noteNumber);
-            int nw = tickToWidth(note.duration);
-
-            if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
-                return {trackIdx, i};
-        }
+        if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
+            return {trackIdx, i};
     }
 
     return {};

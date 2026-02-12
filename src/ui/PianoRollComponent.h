@@ -12,6 +12,10 @@ public:
     void paint(juce::Graphics& g) override;
 
     std::function<void(int tick)> onPlayheadMoved;
+    std::function<void()> onNotesChanged;
+
+    void setSelectedTrackIndex(int index);
+    int getSelectedTrackIndex() const;
 
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
@@ -68,6 +72,7 @@ private:
 
     MidiSequence* sequence = nullptr;
     double playheadTick = 0.0;
+    int selectedTrackIndex = 0;
 
     NoteRef selectedNote;
     DragMode dragMode = DragMode::None;
