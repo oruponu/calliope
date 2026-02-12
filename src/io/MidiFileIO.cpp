@@ -36,6 +36,13 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         juce::MidiMessageSequence msgSeq;
         int lastTick = 0;
 
+        if (!track.getName().empty())
+        {
+            auto nameEvent = juce::MidiMessage::textMetaEvent(3, track.getName());
+            nameEvent.setTimeStamp(0);
+            msgSeq.addEvent(nameEvent);
+        }
+
         for (int i = 0; i < track.getNumNotes(); ++i)
         {
             const auto& note = track.getNote(i);
@@ -170,13 +177,18 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
         sorted.updateMatchedPairs();
 
         MidiTrack* track = nullptr;
+        juce::String trackName;
 
         for (int i = 0; i < sorted.getNumEvents(); ++i)
         {
             const auto* event = sorted.getEventPointer(i);
             const auto& msg = event->message;
 
-            if (msg.isNoteOn())
+            if (msg.isTrackNameEvent())
+            {
+                trackName = msg.getTextFromTextMetaEvent();
+            }
+            else if (msg.isNoteOn())
             {
                 if (!track)
                     track = &sequence.addTrack();
@@ -255,6 +267,9 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 track->addEvent(ev);
             }
         }
+
+        if (track && trackName.isNotEmpty())
+            track->setName(trackName.toStdString());
     }
 
     if (sequence.getNumTracks() == 0)
