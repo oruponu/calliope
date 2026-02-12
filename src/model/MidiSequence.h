@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MidiTrack.h"
+#include <string>
 #include <vector>
 
 struct TempoChange
@@ -14,6 +15,13 @@ struct TimeSignatureChange
     int tick;
     int numerator;
     int denominator;
+};
+
+struct KeySignatureChange
+{
+    int tick;
+    int sharpsOrFlats; // -7..+7 (negative=flats, positive=sharps)
+    bool isMinor;
 };
 
 struct BarBeatTick
@@ -48,11 +56,17 @@ public:
     double getTempoAt(int tick) const;
     TimeSignatureChange getTimeSignatureAt(int tick) const;
 
+    KeySignatureChange getKeySignatureAt(int tick) const;
+
     const std::vector<TempoChange>& getTempoChanges() const;
     const std::vector<TimeSignatureChange>& getTimeSignatureChanges() const;
+    const std::vector<KeySignatureChange>& getKeySignatureChanges() const;
 
     void addTempoChange(int tick, double bpm);
     void addTimeSignatureChange(int tick, int num, int den);
+    void addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor);
+
+    static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
 
     double ticksToSeconds(int ticks) const;
     int secondsToTicks(double seconds) const;
@@ -63,5 +77,6 @@ private:
     std::vector<MidiTrack> tracks;
     std::vector<TempoChange> tempoChanges;
     std::vector<TimeSignatureChange> timeSignatureChanges;
+    std::vector<KeySignatureChange> keySignatureChanges;
     int ticksPerQuarterNote = defaultTicksPerQuarterNote;
 };
