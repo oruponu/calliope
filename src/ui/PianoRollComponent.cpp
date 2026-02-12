@@ -91,7 +91,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             return;
 
         auto& track = sequence->getTrack(0);
-        track.addNote({noteNum, 100, tick, snapTicks});
+        int defaultDuration = sequence ? sequence->getTicksPerQuarterNote() : snapTicks;
+        track.addNote({noteNum, 100, tick, defaultDuration});
         selectedNote = {0, track.getNumNotes() - 1};
         dragMode = DragMode::None;
         updateSize();
@@ -123,7 +124,8 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     {
         int currentTick = xToTick(e.x);
         int newDuration = snapTick(currentTick - originalStartTick);
-        note.duration = std::max(snapTicks, newDuration);
+        int minDuration = sequence ? sequence->getTicksPerQuarterNote() : snapTicks;
+        note.duration = std::max(minDuration, newDuration);
     }
 
     repaint();
@@ -497,7 +499,13 @@ int PianoRollComponent::yToNote(int y) const
 
 int PianoRollComponent::snapTick(int tick) const
 {
-    return ((tick + snapTicks / 2) / snapTicks) * snapTicks;
+    if (!sequence)
+        return ((tick + snapTicks / 2) / snapTicks) * snapTicks;
+
+    int ppq = sequence->getTicksPerQuarterNote();
+    auto ts = sequence->getTimeSignatureAt(tick);
+    int grid = ppq * 4 / ts.denominator;
+    return ((tick + grid / 2) / grid) * grid;
 }
 
 int PianoRollComponent::getTotalBeats() const
