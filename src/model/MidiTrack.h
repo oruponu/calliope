@@ -23,7 +23,15 @@ public:
     const MidiEvent& getEvent(int index) const;
     int getNumEvents() const;
 
+    bool isMuted() const;
+    void setMuted(bool muted);
+
+    bool isSolo() const;
+    void setSolo(bool solo);
+
 private:
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
+    bool muted = false;
+    bool solo = false;
 };
