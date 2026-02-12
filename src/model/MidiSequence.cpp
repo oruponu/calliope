@@ -14,6 +14,7 @@ void MidiSequence::clear()
     tempoChanges.push_back({0, 120.0});
     timeSignatureChanges.clear();
     timeSignatureChanges.push_back({0, 4, 4});
+    keySignatureChanges.clear();
     ticksPerQuarterNote = defaultTicksPerQuarterNote;
 }
 
@@ -145,6 +146,55 @@ void MidiSequence::addTimeSignatureChange(int tick, int num, int den)
     timeSignatureChanges.push_back({tick, num, den});
     std::sort(timeSignatureChanges.begin(), timeSignatureChanges.end(),
               [](const TimeSignatureChange& a, const TimeSignatureChange& b) { return a.tick < b.tick; });
+}
+
+KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
+{
+    KeySignatureChange ks = {0, 0, false};
+    for (auto it = keySignatureChanges.rbegin(); it != keySignatureChanges.rend(); ++it)
+    {
+        if (it->tick <= tick)
+        {
+            ks = *it;
+            break;
+        }
+    }
+    return ks;
+}
+
+const std::vector<KeySignatureChange>& MidiSequence::getKeySignatureChanges() const
+{
+    return keySignatureChanges;
+}
+
+void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor)
+{
+    for (auto& ks : keySignatureChanges)
+    {
+        if (ks.tick == tick)
+        {
+            ks.sharpsOrFlats = sharpsOrFlats;
+            ks.isMinor = isMinor;
+            return;
+        }
+    }
+    keySignatureChanges.push_back({tick, sharpsOrFlats, isMinor});
+    std::sort(keySignatureChanges.begin(), keySignatureChanges.end(),
+              [](const KeySignatureChange& a, const KeySignatureChange& b) { return a.tick < b.tick; });
+}
+
+std::string MidiSequence::keySignatureToString(int sharpsOrFlats, bool isMinor)
+{
+    static const char* majorKeys[] = {"Cb", "Gb", "Db", "Ab", "Eb", "Bb", "F", "C",
+                                      "G",  "D",  "A",  "E",  "B",  "F#", "C#"};
+    static const char* minorKeys[] = {"Abm", "Ebm", "Bbm", "Fm",  "Cm",  "Gm",  "Dm", "Am",
+                                      "Em",  "Bm",  "F#m", "C#m", "G#m", "D#m", "A#m"};
+
+    int index = sharpsOrFlats + 7;
+    if (index < 0 || index > 14)
+        return "--";
+
+    return isMinor ? minorKeys[index] : majorKeys[index];
 }
 
 double MidiSequence::ticksToSeconds(int ticks) const
