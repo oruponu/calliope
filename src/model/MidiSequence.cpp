@@ -43,6 +43,16 @@ int MidiSequence::getNumTracks() const
     return static_cast<int>(tracks.size());
 }
 
+bool MidiSequence::isAnySolo() const
+{
+    for (const auto& track : tracks)
+    {
+        if (track.isSolo())
+            return true;
+    }
+    return false;
+}
+
 void MidiSequence::setBpm(double newBpm)
 {
     if (!tempoChanges.empty() && tempoChanges[0].tick == 0)

@@ -38,6 +38,7 @@ public:
     MidiTrack& getTrack(int index);
     const MidiTrack& getTrack(int index) const;
     int getNumTracks() const;
+    bool isAnySolo() const;
 
     void setBpm(double newBpm);
     double getBpm() const;
