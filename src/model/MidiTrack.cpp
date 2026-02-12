@@ -86,3 +86,13 @@ void MidiTrack::setSolo(bool s)
 {
     solo = s;
 }
+
+const std::string& MidiTrack::getName() const
+{
+    return name;
+}
+
+void MidiTrack::setName(const std::string& n)
+{
+    name = n;
+}
