@@ -27,6 +27,7 @@ private:
     public:
         enum Type
         {
+            ReturnToStart,
             Stop,
             Play,
             Pause
@@ -115,6 +116,7 @@ private:
     TrackListComponent trackList;
     juce::Viewport trackListViewport;
 
+    TransportButton returnToStartButton{TransportButton::ReturnToStart};
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
 
