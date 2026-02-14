@@ -8,8 +8,16 @@
 class PianoRollComponent : public juce::Component
 {
 public:
+    enum class EditMode
+    {
+        Edit,
+        Select
+    };
+
     void setSequence(MidiSequence* seq);
     void setPlayheadTick(double tick);
+    void setEditMode(EditMode mode);
+    EditMode getEditMode() const;
     void paint(juce::Graphics& g) override;
 
     std::function<void(int tick)> onPlayheadMoved;
@@ -40,7 +48,8 @@ private:
     {
         None,
         Moving,
-        Resizing
+        Resizing,
+        RubberBand
     };
 
     struct NoteRef
@@ -48,6 +57,16 @@ private:
         int trackIndex = -1;
         int noteIndex = -1;
         bool isValid() const { return trackIndex >= 0 && noteIndex >= 0; }
+        bool operator<(const NoteRef& other) const
+        {
+            if (trackIndex != other.trackIndex)
+                return trackIndex < other.trackIndex;
+            return noteIndex < other.noteIndex;
+        }
+        bool operator==(const NoteRef& other) const
+        {
+            return trackIndex == other.trackIndex && noteIndex == other.noteIndex;
+        }
     };
 
     void drawKeyboard(juce::Graphics& g);
@@ -76,7 +95,13 @@ private:
     std::set<int> selectedTrackIndices = {0};
     int activeTrackIndex = 0;
 
+    bool isNoteSelected(const NoteRef& ref) const;
+    void drawRubberBand(juce::Graphics& g);
+    std::vector<NoteRef> findNotesInRect(const juce::Rectangle<int>& rect) const;
+
+    EditMode editMode = EditMode::Edit;
     NoteRef selectedNote;
+    std::set<NoteRef> selectedNotes;
     DragMode dragMode = DragMode::None;
     int dragStartTick = 0;
     int dragStartNote = 0;
@@ -84,4 +109,6 @@ private:
     int originalNoteNumber = 0;
     int originalDuration = 0;
     int contentBeats = 0;
+    juce::Point<int> rubberBandStart;
+    juce::Rectangle<int> rubberBandRect;
 };

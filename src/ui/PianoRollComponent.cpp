@@ -1,6 +1,7 @@
 #include "PianoRollComponent.h"
 #include "TrackColours.h"
 #include <algorithm>
+#include <vector>
 
 void PianoRollComponent::setSequence(MidiSequence* seq)
 {
@@ -32,8 +33,61 @@ void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>&
     activeTrackIndex = activeIndex;
     selectedTrackIndices = selectedIndices;
     selectedNote = {};
+    selectedNotes.clear();
     dragMode = DragMode::None;
     repaint();
+}
+
+void PianoRollComponent::setEditMode(EditMode mode)
+{
+    editMode = mode;
+    selectedNote = {};
+    selectedNotes.clear();
+    dragMode = DragMode::None;
+    repaint();
+}
+
+PianoRollComponent::EditMode PianoRollComponent::getEditMode() const
+{
+    return editMode;
+}
+
+bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
+{
+    if (editMode == EditMode::Edit)
+        return selectedNote.isValid() && selectedNote == ref;
+    return selectedNotes.count(ref) > 0;
+}
+
+std::vector<PianoRollComponent::NoteRef> PianoRollComponent::findNotesInRect(const juce::Rectangle<int>& rect) const
+{
+    std::vector<NoteRef> result;
+    if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return result;
+
+    const auto& track = sequence->getTrack(activeTrackIndex);
+    for (int i = 0; i < track.getNumNotes(); ++i)
+    {
+        const auto& note = track.getNote(i);
+        int nx = tickToX(note.startTick);
+        int ny = noteToY(note.noteNumber);
+        int nw = tickToWidth(note.duration);
+        juce::Rectangle<int> noteRect(nx, ny, nw, noteHeight);
+        if (rect.intersects(noteRect))
+            result.push_back({activeTrackIndex, i});
+    }
+    return result;
+}
+
+void PianoRollComponent::drawRubberBand(juce::Graphics& g)
+{
+    if (dragMode != DragMode::RubberBand || rubberBandRect.isEmpty())
+        return;
+
+    g.setColour(juce::Colour(100, 150, 255).withAlpha(0.15f));
+    g.fillRect(rubberBandRect);
+    g.setColour(juce::Colour(100, 150, 255).withAlpha(0.6f));
+    g.drawRect(rubberBandRect, 1);
 }
 
 int PianoRollComponent::getActiveTrackIndex() const
@@ -65,6 +119,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
     g.fillAll(juce::Colour(30, 30, 30));
     drawGrid(g);
     drawNotes(g);
+    drawRubberBand(g);
     drawPlayhead(g);
     drawKeyboard(g);
     drawHeader(g);
@@ -93,52 +148,123 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 
     auto hit = hitTestNote(e.x, e.y);
 
-    if (e.mods.isRightButtonDown())
+    if (editMode == EditMode::Edit)
     {
+        if (e.mods.isRightButtonDown())
+        {
+            if (hit.isValid())
+            {
+                sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
+                selectedNote = {};
+                repaint();
+                if (onNotesChanged)
+                    onNotesChanged();
+            }
+            return;
+        }
+
         if (hit.isValid())
         {
-            sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
-            selectedNote = {};
+            selectedNote = hit;
+            const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
+            originalStartTick = note.startTick;
+            originalNoteNumber = note.noteNumber;
+            originalDuration = note.duration;
+            dragStartTick = xToTick(e.x);
+            dragStartNote = yToNote(e.y);
+
+            dragMode = isOnRightEdge(e.x, note) ? DragMode::Resizing : DragMode::Moving;
+        }
+        else
+        {
+            int tick = snapTick(xToTick(e.x));
+            int noteNum = yToNote(e.y);
+            if (noteNum < 0 || noteNum > 127)
+                return;
+
+            auto& track = sequence->getTrack(activeTrackIndex);
+            int defaultDuration = sequence ? sequence->getTicksPerQuarterNote() : snapTicks;
+            track.addNote({noteNum, 100, tick, defaultDuration});
+            selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
+            dragMode = DragMode::None;
             repaint();
             if (onNotesChanged)
                 onNotesChanged();
         }
-        return;
     }
-
-    if (hit.isValid())
+    else // Select mode
     {
-        selectedNote = hit;
-        const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
-        originalStartTick = note.startTick;
-        originalNoteNumber = note.noteNumber;
-        originalDuration = note.duration;
-        dragStartTick = xToTick(e.x);
-        dragStartNote = yToNote(e.y);
+        if (e.mods.isRightButtonDown())
+        {
+            if (!selectedNotes.empty())
+            {
+                std::map<int, std::vector<int>> toRemove;
+                for (const auto& ref : selectedNotes)
+                    toRemove[ref.trackIndex].push_back(ref.noteIndex);
 
-        dragMode = isOnRightEdge(e.x, note) ? DragMode::Resizing : DragMode::Moving;
-    }
-    else
-    {
-        int tick = snapTick(xToTick(e.x));
-        int noteNum = yToNote(e.y);
-        if (noteNum < 0 || noteNum > 127)
+                for (auto& [trackIdx, indices] : toRemove)
+                {
+                    std::sort(indices.begin(), indices.end(), std::greater<int>());
+                    for (int idx : indices)
+                        sequence->getTrack(trackIdx).removeNote(idx);
+                }
+
+                selectedNotes.clear();
+                repaint();
+                if (onNotesChanged)
+                    onNotesChanged();
+            }
             return;
+        }
 
-        auto& track = sequence->getTrack(activeTrackIndex);
-        int defaultDuration = sequence ? sequence->getTicksPerQuarterNote() : snapTicks;
-        track.addNote({noteNum, 100, tick, defaultDuration});
-        selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
-        dragMode = DragMode::None;
-        repaint();
-        if (onNotesChanged)
-            onNotesChanged();
+        if (hit.isValid())
+        {
+            if (e.mods.isShiftDown())
+            {
+                if (selectedNotes.count(hit) > 0)
+                    selectedNotes.erase(hit);
+                else
+                    selectedNotes.insert(hit);
+            }
+            else
+            {
+                selectedNotes.clear();
+                selectedNotes.insert(hit);
+            }
+            dragMode = DragMode::None;
+            repaint();
+        }
+        else
+        {
+            if (!e.mods.isShiftDown())
+                selectedNotes.clear();
+
+            rubberBandStart = e.getPosition();
+            rubberBandRect = {};
+            dragMode = DragMode::RubberBand;
+            repaint();
+        }
     }
 }
 
 void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 {
-    if (!sequence || !selectedNote.isValid() || dragMode == DragMode::None)
+    if (!sequence)
+        return;
+
+    if (dragMode == DragMode::RubberBand)
+    {
+        auto current = e.getPosition();
+        int x = std::min(rubberBandStart.x, current.x);
+        int y = std::min(rubberBandStart.y, current.y);
+        int w = std::abs(current.x - rubberBandStart.x);
+        int h = std::abs(current.y - rubberBandStart.y);
+        rubberBandRect = {x, y, w, h};
+        repaint();
+        return;
+    }
+
+    if (!selectedNote.isValid() || dragMode == DragMode::None)
         return;
 
     auto& note = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
@@ -169,6 +295,20 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
 void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
+    if (dragMode == DragMode::RubberBand)
+    {
+        if (!rubberBandRect.isEmpty())
+        {
+            auto found = findNotesInRect(rubberBandRect);
+            for (const auto& ref : found)
+                selectedNotes.insert(ref);
+        }
+        rubberBandRect = {};
+        dragMode = DragMode::None;
+        repaint();
+        return;
+    }
+
     if (dragMode != DragMode::None)
     {
         if (onNotesChanged)
@@ -187,6 +327,16 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
     }
 
     auto hit = hitTestNote(e.x, e.y);
+
+    if (editMode == EditMode::Select)
+    {
+        if (hit.isValid())
+            setMouseCursor(juce::MouseCursor::PointingHandCursor);
+        else
+            setMouseCursor(juce::MouseCursor::NormalCursor);
+        return;
+    }
+
     if (hit.isValid())
     {
         const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
@@ -435,7 +585,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
             if (y + noteHeight < clip.getY() || y > clip.getBottom())
                 continue;
 
-            bool isSelected = (selectedNote.trackIndex == trackIdx && selectedNote.noteIndex == i);
+            bool isSelected = isNoteSelected({trackIdx, i});
 
             if (note.channel == 10)
             {
@@ -485,7 +635,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
             if (y + noteHeight < clip.getY() || y > clip.getBottom())
                 continue;
 
-            bool isSelected = (selectedNote.trackIndex == activeTrackIndex && selectedNote.noteIndex == i);
+            bool isSelected = isNoteSelected({activeTrackIndex, i});
 
             if (note.channel == 10)
             {
