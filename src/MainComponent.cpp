@@ -7,7 +7,20 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
     bool hover = isMouseOver();
     float alpha = hover ? 1.0f : 0.65f;
 
-    if (type == Stop)
+    if (type == ReturnToStart)
+    {
+        g.setColour(juce::Colours::white.withAlpha(alpha * 0.7f));
+        auto h = bounds.getHeight() * 0.45f;
+        auto w = h * 0.55f;
+        auto cx = bounds.getCentreX();
+        auto cy = bounds.getCentreY();
+        auto barW = bounds.getWidth() * 0.08f;
+        g.fillRoundedRectangle(cx - w * 0.45f - barW, cy - h / 2, barW, h, 1.0f);
+        juce::Path path;
+        path.addTriangle(cx + w * 0.55f, cy - h / 2, cx + w * 0.55f, cy + h / 2, cx - w * 0.4f, cy);
+        g.fillPath(path);
+    }
+    else if (type == Stop)
     {
         g.setColour(juce::Colours::white.withAlpha(alpha * 0.7f));
         auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) * 0.42f;
@@ -72,6 +85,15 @@ MainComponent::MainComponent()
     trackList.onTrackSelected = [this](int activeIdx, const std::set<int>& selected)
     { pianoRoll.setSelectedTracks(activeIdx, selected); };
     trackList.onMuteSoloChanged = []() {};
+
+    addAndMakeVisible(returnToStartButton);
+    returnToStartButton.onClick = [this]()
+    {
+        playbackEngine.setPositionInTicks(0);
+        pianoRoll.setPlayheadTick(0);
+        updateTransportDisplay();
+        viewport.setViewPosition(0, viewport.getViewPositionY());
+    };
 
     addAndMakeVisible(playButton);
     playButton.onClick = [this]()
@@ -211,7 +233,7 @@ void MainComponent::resized()
     loadButton.setBounds(rightEdge.removeFromLeft(70).reduced(4, 18));
 
     const int posW = 190;
-    const int btnW = 84;
+    const int btnW = 128;
     const int tsW = 55;
     const int keyW = 55;
     const int tempoW = 90;
@@ -235,7 +257,9 @@ void MainComponent::resized()
     content.removeFromLeft(g1);
 
     auto btnSection = content.removeFromLeft(btnW);
-    auto btnArea = btnSection.withSizeKeepingCentre(84, 40);
+    auto btnArea = btnSection.withSizeKeepingCentre(128, 40);
+    returnToStartButton.setBounds(btnArea.removeFromLeft(40));
+    btnArea.removeFromLeft(4);
     stopButton.setBounds(btnArea.removeFromLeft(40));
     btnArea.removeFromLeft(4);
     playButton.setBounds(btnArea.removeFromLeft(40));
