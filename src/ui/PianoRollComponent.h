@@ -99,7 +99,7 @@ private:
     void drawRubberBand(juce::Graphics& g);
     std::vector<NoteRef> findNotesInRect(const juce::Rectangle<int>& rect) const;
 
-    EditMode editMode = EditMode::Edit;
+    EditMode editMode = EditMode::Select;
     NoteRef selectedNote;
     std::set<NoteRef> selectedNotes;
     DragMode dragMode = DragMode::None;

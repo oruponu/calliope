@@ -205,10 +205,10 @@ MainComponent::MainComponent()
     }
 
     addAndMakeVisible(editToolButton);
-    editToolButton.setActive(true);
     editToolButton.onClick = [this]() { setActiveTool(PianoRollComponent::EditMode::Edit); };
 
     addAndMakeVisible(selectToolButton);
+    selectToolButton.setActive(true);
     selectToolButton.onClick = [this]() { setActiveTool(PianoRollComponent::EditMode::Select); };
 
     updateTransportDisplay();
