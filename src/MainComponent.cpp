@@ -186,6 +186,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         playbackEngine.setPositionInTicks(newTick);
         pianoRoll.setPlayheadTick(newTick);
         updateTransportDisplay();
+        scrollToPlayhead(newTick);
         return true;
     }
     if (key.getTextCharacter() == '.')
@@ -196,6 +197,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         playbackEngine.setPositionInTicks(newTick);
         pianoRoll.setPlayheadTick(newTick);
         updateTransportDisplay();
+        scrollToPlayhead(newTick);
         return true;
     }
     return false;
@@ -314,7 +316,12 @@ void MainComponent::onVBlank()
     double tick = playbackEngine.getCurrentTick();
     pianoRoll.setPlayheadTick(tick);
     updateTransportDisplay();
-    int playheadX = pianoRoll.tickToX(static_cast<int>(tick));
+    scrollToPlayhead(static_cast<int>(tick));
+}
+
+void MainComponent::scrollToPlayhead(int tick)
+{
+    int playheadX = pianoRoll.tickToX(tick);
     int viewX = viewport.getViewPositionX();
     int viewRight = viewX + viewport.getViewWidth();
 
