@@ -8,7 +8,9 @@ void TrackListComponent::setSequence(MidiSequence* seq)
     {
         activeTrackIndex = 0;
         anchorTrackIndex = 0;
-        selectedTrackIndices = {0};
+        selectedTrackIndices.clear();
+        for (int i = 0; i < seq->getNumTracks(); ++i)
+            selectedTrackIndices.insert(i);
     }
     else
     {
