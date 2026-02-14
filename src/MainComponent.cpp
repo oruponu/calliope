@@ -78,6 +78,9 @@ MainComponent::MainComponent()
     { pianoRoll.setSelectedTracks(activeIdx, selected); };
     trackList.onMuteSoloChanged = []() {};
 
+    menuBar.setModel(this);
+    addAndMakeVisible(menuBar);
+
     addAndMakeVisible(returnToStartButton);
     returnToStartButton.onClick = [this]()
     {
@@ -116,14 +119,6 @@ MainComponent::MainComponent()
         updateTransportDisplay();
     };
 
-    addAndMakeVisible(saveButton);
-    saveButton.setWantsKeyboardFocus(false);
-    saveButton.onClick = [this]() { saveFile(); };
-
-    addAndMakeVisible(loadButton);
-    loadButton.setWantsKeyboardFocus(false);
-    loadButton.onClick = [this]() { loadFile(); };
-
     auto headerColour = juce::Colour(0xff8888aa);
     auto headerFont = juce::Font(juce::FontOptions(12.0f));
 
@@ -159,6 +154,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();
     playbackEngine.removeListener(&midiOutput);
@@ -170,11 +166,61 @@ void MainComponent::parentHierarchyChanged()
     grabKeyboardFocus();
 }
 
+juce::StringArray MainComponent::getMenuBarNames()
+{
+    return {"File"};
+}
+
+juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String&)
+{
+    juce::PopupMenu menu;
+    if (menuIndex == 0)
+    {
+        juce::PopupMenu::Item open;
+        open.itemID = openFile;
+        open.text = "Open...";
+        open.shortcutKeyDescription = "Ctrl+O";
+        menu.addItem(open);
+
+        juce::PopupMenu::Item save;
+        save.itemID = saveFile_;
+        save.text = "Save...";
+        save.shortcutKeyDescription = "Ctrl+S";
+        menu.addItem(save);
+    }
+    return menu;
+}
+
+void MainComponent::menuItemSelected(int menuItemID, int)
+{
+    switch (menuItemID)
+    {
+    case openFile:
+        loadFile();
+        break;
+    case saveFile_:
+        saveFile();
+        break;
+    default:
+        break;
+    }
+}
+
 bool MainComponent::keyPressed(const juce::KeyPress& key)
 {
     if (key == juce::KeyPress::spaceKey)
     {
         playButton.onClick();
+        return true;
+    }
+    if (key.getKeyCode() == 'O' && key.getModifiers().isCtrlDown())
+    {
+        loadFile();
+        return true;
+    }
+    if (key.getKeyCode() == 'S' && key.getModifiers().isCtrlDown())
+    {
+        saveFile();
         return true;
     }
     if (key.getKeyCode() == ',' && key.getModifiers().isCtrlDown())
@@ -216,7 +262,7 @@ void MainComponent::paint(juce::Graphics& g)
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
     g.setColour(juce::Colour(0xff1c1c2c));
-    g.fillRect(0, 0, getWidth(), transportBarHeight);
+    g.fillRect(0, menuBarHeight, getWidth(), transportBarHeight);
 
     if (fileDragOver)
     {
@@ -267,11 +313,8 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
 void MainComponent::resized()
 {
     auto area = getLocalBounds();
+    menuBar.setBounds(area.removeFromTop(menuBarHeight));
     auto toolbar = area.removeFromTop(transportBarHeight);
-
-    auto rightEdge = toolbar.removeFromRight(150);
-    saveButton.setBounds(rightEdge.removeFromLeft(70).reduced(4, 18));
-    loadButton.setBounds(rightEdge.removeFromLeft(70).reduced(4, 18));
 
     const int posW = 190;
     const int btnW = 128;
