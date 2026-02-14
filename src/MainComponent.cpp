@@ -145,6 +145,8 @@ MainComponent::MainComponent()
 
     updateTransportDisplay();
 
+    commandManager.registerAllCommandsForTarget(this);
+    setApplicationCommandManagerToWatch(&commandManager);
     setWantsKeyboardFocus(true);
     setSize(1280, 800);
 
@@ -163,7 +165,8 @@ MainComponent::~MainComponent()
 
 void MainComponent::parentHierarchyChanged()
 {
-    grabKeyboardFocus();
+    if (auto* topLevel = getTopLevelComponent())
+        topLevel->addKeyListener(commandManager.getKeyMappings());
 }
 
 juce::StringArray MainComponent::getMenuBarNames()
@@ -177,61 +180,88 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     if (menuIndex == 0)
     {
         juce::PopupMenu::Item open;
-        open.itemID = openFile;
+        open.itemID = CommandID::openFile;
         open.text = "Open...";
         open.shortcutKeyDescription = "Ctrl+O";
+        open.action = [this]() { commandManager.invokeDirectly(CommandID::openFile, true); };
         menu.addItem(open);
 
         juce::PopupMenu::Item save;
-        save.itemID = saveFile_;
+        save.itemID = CommandID::saveFile_;
         save.text = "Save...";
         save.shortcutKeyDescription = "Ctrl+S";
+        save.action = [this]() { commandManager.invokeDirectly(CommandID::saveFile_, true); };
         menu.addItem(save);
     }
     return menu;
 }
 
-void MainComponent::menuItemSelected(int menuItemID, int)
+void MainComponent::menuItemSelected(int, int) {}
+
+juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 {
-    switch (menuItemID)
+    return findFirstTargetParentComponent();
+}
+
+void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
+{
+    commands.addArray({CommandID::openFile, CommandID::saveFile_, CommandID::togglePlay, CommandID::returnToStart,
+                       CommandID::prevBar, CommandID::nextBar});
+}
+
+void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
+{
+    switch (commandID)
     {
-    case openFile:
-        loadFile();
+    case CommandID::openFile:
+        result.setInfo("Open...", "", "File", 0);
+        result.addDefaultKeypress('O', juce::ModifierKeys::ctrlModifier);
         break;
-    case saveFile_:
-        saveFile();
+    case CommandID::saveFile_:
+        result.setInfo("Save...", "", "File", 0);
+        result.addDefaultKeypress('S', juce::ModifierKeys::ctrlModifier);
+        break;
+    case CommandID::togglePlay:
+        result.setInfo("Play/Stop", "", "Transport", 0);
+        result.addDefaultKeypress(juce::KeyPress::spaceKey, 0);
+        break;
+    case CommandID::returnToStart:
+        result.setInfo("Return to Start", "", "Transport", 0);
+        result.addDefaultKeypress(',', juce::ModifierKeys::ctrlModifier);
+        break;
+    case CommandID::prevBar:
+        result.setInfo("Previous Bar", "", "Transport", 0);
+        result.addDefaultKeypress(',', 0);
+        break;
+    case CommandID::nextBar:
+        result.setInfo("Next Bar", "", "Transport", 0);
+        result.addDefaultKeypress('.', 0);
         break;
     default:
         break;
     }
 }
 
-bool MainComponent::keyPressed(const juce::KeyPress& key)
+bool MainComponent::perform(const InvocationInfo& info)
 {
-    if (key == juce::KeyPress::spaceKey)
+    switch (info.commandID)
     {
-        playButton.onClick();
-        return true;
-    }
-    if (key.getKeyCode() == 'O' && key.getModifiers().isCtrlDown())
-    {
+    case CommandID::openFile:
         loadFile();
         return true;
-    }
-    if (key.getKeyCode() == 'S' && key.getModifiers().isCtrlDown())
-    {
+    case CommandID::saveFile_:
         saveFile();
         return true;
-    }
-    if (key.getKeyCode() == ',' && key.getModifiers().isCtrlDown())
-    {
+    case CommandID::togglePlay:
+        playButton.onClick();
+        return true;
+    case CommandID::returnToStart:
         playbackEngine.setPositionInTicks(0);
         pianoRoll.setPlayheadTick(0);
         updateTransportDisplay();
         viewport.setViewPosition(0, viewport.getViewPositionY());
         return true;
-    }
-    if (key.getTextCharacter() == ',')
+    case CommandID::prevBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
         auto bbt = sequence.tickToBarBeatTick(currentTick);
@@ -243,7 +273,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         scrollToPlayhead(newTick);
         return true;
     }
-    if (key.getTextCharacter() == '.')
+    case CommandID::nextBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
         auto bbt = sequence.tickToBarBeatTick(currentTick);
@@ -254,7 +284,9 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         scrollToPlayhead(newTick);
         return true;
     }
-    return false;
+    default:
+        return false;
+    }
 }
 
 void MainComponent::paint(juce::Graphics& g)
