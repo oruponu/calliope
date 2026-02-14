@@ -218,7 +218,7 @@ MainComponent::MainComponent()
     setWantsKeyboardFocus(true);
     setSize(1280, 800);
 
-    int c4Y = PianoRollComponent::headerHeight + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
+    int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
 }
 
@@ -602,6 +602,6 @@ void MainComponent::onSequenceLoaded()
 
     trackList.setSequence(&sequence);
 
-    int c4Y = PianoRollComponent::headerHeight + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
+    int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
 }
