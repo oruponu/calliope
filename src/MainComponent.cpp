@@ -48,6 +48,67 @@ void MainComponent::TransportButton::mouseUp(const juce::MouseEvent& e)
         onClick();
 }
 
+void MainComponent::ToolButton::paint(juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+    bool hover = isMouseOver();
+
+    if (active)
+    {
+        g.setColour(juce::Colour(60, 100, 200).withAlpha(0.4f));
+        g.fillRoundedRectangle(bounds.reduced(1.0f), 4.0f);
+    }
+    else if (hover)
+    {
+        g.setColour(juce::Colours::white.withAlpha(0.08f));
+        g.fillRoundedRectangle(bounds.reduced(1.0f), 4.0f);
+    }
+
+    auto iconColour = active ? juce::Colour(130, 170, 255) : juce::Colours::white.withAlpha(hover ? 0.85f : 0.55f);
+    g.setColour(iconColour);
+
+    float cx = bounds.getCentreX();
+    float cy = bounds.getCentreY();
+
+    if (type == EditTool)
+    {
+        float size = bounds.getHeight() * 0.38f;
+        juce::Path path;
+        path.addLineSegment({cx - size * 0.7f, cy + size * 0.7f, cx + size * 0.3f, cy - size * 0.7f}, size * 0.28f);
+        g.fillPath(path);
+        juce::Path tip;
+        tip.addTriangle(cx - size * 0.7f, cy + size * 0.7f, cx - size * 0.45f, cy + size * 0.55f, cx - size * 0.55f,
+                        cy + size * 0.45f);
+        g.fillPath(tip);
+    }
+    else if (type == SelectTool)
+    {
+        float size = bounds.getHeight() * 0.42f;
+        juce::Path arrow;
+        arrow.startNewSubPath(cx - size * 0.3f, cy - size * 0.75f);
+        arrow.lineTo(cx - size * 0.3f, cy + size * 0.75f);
+        arrow.lineTo(cx + size * 0.05f, cy + size * 0.35f);
+        arrow.lineTo(cx + size * 0.5f, cy + size * 0.35f);
+        arrow.closeSubPath();
+        g.fillPath(arrow);
+    }
+}
+
+void MainComponent::ToolButton::mouseUp(const juce::MouseEvent& e)
+{
+    if (active)
+        return;
+    if (getLocalBounds().contains(e.getPosition()) && onClick)
+        onClick();
+}
+
+void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
+{
+    editToolButton.setActive(mode == PianoRollComponent::EditMode::Edit);
+    selectToolButton.setActive(mode == PianoRollComponent::EditMode::Select);
+    pianoRoll.setEditMode(mode);
+}
+
 MainComponent::MainComponent()
 {
     midiOutput.open();
@@ -143,6 +204,13 @@ MainComponent::MainComponent()
         label->setJustificationType(juce::Justification::centred);
     }
 
+    addAndMakeVisible(editToolButton);
+    editToolButton.setActive(true);
+    editToolButton.onClick = [this]() { setActiveTool(PianoRollComponent::EditMode::Edit); };
+
+    addAndMakeVisible(selectToolButton);
+    selectToolButton.onClick = [this]() { setActiveTool(PianoRollComponent::EditMode::Select); };
+
     updateTransportDisplay();
 
     commandManager.registerAllCommandsForTarget(this);
@@ -214,7 +282,8 @@ juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
     commands.addArray({CommandID::openFile, CommandID::saveFile_, CommandID::quitApp, CommandID::togglePlay,
-                       CommandID::returnToStart, CommandID::prevBar, CommandID::nextBar});
+                       CommandID::returnToStart, CommandID::prevBar, CommandID::nextBar, CommandID::switchToEditTool,
+                       CommandID::switchToSelectTool});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -247,6 +316,14 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case CommandID::nextBar:
         result.setInfo("Next Bar", "", "Transport", 0);
         result.addDefaultKeypress('.', 0);
+        break;
+    case CommandID::switchToSelectTool:
+        result.setInfo("Select Tool", "", "Tools", 0);
+        result.addDefaultKeypress('1', 0);
+        break;
+    case CommandID::switchToEditTool:
+        result.setInfo("Edit Tool", "", "Tools", 0);
+        result.addDefaultKeypress('2', 0);
         break;
     default:
         break;
@@ -298,6 +375,12 @@ bool MainComponent::perform(const InvocationInfo& info)
         scrollToPlayhead(newTick);
         return true;
     }
+    case CommandID::switchToEditTool:
+        setActiveTool(PianoRollComponent::EditMode::Edit);
+        return true;
+    case CommandID::switchToSelectTool:
+        setActiveTool(PianoRollComponent::EditMode::Select);
+        return true;
     default:
         return false;
     }
@@ -309,6 +392,12 @@ void MainComponent::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff1c1c2c));
     g.fillRect(0, menuBarHeight, getWidth(), transportBarHeight);
+
+    int toolBarTop = menuBarHeight + transportBarHeight;
+    g.setColour(juce::Colour(38, 38, 48));
+    g.fillRect(0, toolBarTop, getWidth(), toolBarHeight);
+    g.setColour(juce::Colour(55, 55, 65));
+    g.drawHorizontalLine(toolBarTop + toolBarHeight - 1, 0.0f, static_cast<float>(getWidth()));
 
     if (fileDragOver)
     {
@@ -360,7 +449,8 @@ void MainComponent::resized()
 {
     auto area = getLocalBounds();
     menuBar.setBounds(area.removeFromTop(menuBarHeight));
-    auto toolbar = area.removeFromTop(transportBarHeight);
+    auto transportArea = area.removeFromTop(transportBarHeight);
+    auto toolbar = transportArea;
 
     const int posW = 190;
     const int btnW = 128;
@@ -402,6 +492,17 @@ void MainComponent::resized()
     content.removeFromLeft(g4);
 
     layoutSection(tempoW, tempoHeaderLabel, tempoValueLabel);
+
+    auto toolBarArea = area.removeFromTop(toolBarHeight);
+    {
+        const int btnSize = 28;
+        const int pad = 4;
+        auto toolBtnArea = toolBarArea.withTrimmedLeft(pad).withSizeKeepingCentre(toolBarArea.getWidth(), btnSize);
+        auto left = toolBtnArea.removeFromLeft(btnSize + pad);
+        left.removeFromLeft(pad);
+        selectToolButton.setBounds(left.removeFromLeft(btnSize));
+        editToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
+    }
 
     trackListViewport.setBounds(area.removeFromLeft(trackListWidth));
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
