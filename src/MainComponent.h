@@ -7,7 +7,10 @@
 #include "ui/TrackListComponent.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
-class MainComponent : public juce::Component, public juce::MenuBarModel, public juce::FileDragAndDropTarget
+class MainComponent : public juce::Component,
+                      public juce::MenuBarModel,
+                      public juce::ApplicationCommandTarget,
+                      public juce::FileDragAndDropTarget
 {
 public:
     MainComponent();
@@ -17,11 +20,14 @@ public:
     void resized() override;
     void parentHierarchyChanged() override;
 
-    bool keyPressed(const juce::KeyPress& key) override;
-
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int menuIndex, const juce::String& menuName) override;
     void menuItemSelected(int menuItemID, int topLevelMenuIndex) override;
+
+    juce::ApplicationCommandTarget* getNextCommandTarget() override;
+    void getAllCommands(juce::Array<juce::CommandID>& commands) override;
+    void getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result) override;
+    bool perform(const InvocationInfo& info) override;
 
     bool isInterestedInFileDrag(const juce::StringArray& files) override;
     void fileDragEnter(const juce::StringArray& files, int x, int y) override;
@@ -121,11 +127,17 @@ private:
     TrackListComponent trackList;
     juce::Viewport trackListViewport;
 
-    enum MenuCommandID
+    enum CommandID
     {
         openFile = 1,
-        saveFile_
+        saveFile_,
+        togglePlay,
+        returnToStart,
+        prevBar,
+        nextBar
     };
+
+    juce::ApplicationCommandManager commandManager;
 
     juce::MenuBarComponent menuBar;
 
