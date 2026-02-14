@@ -177,6 +177,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         playButton.onClick();
         return true;
     }
+    if (key.getKeyCode() == ',' && key.getModifiers().isCtrlDown())
+    {
+        playbackEngine.setPositionInTicks(0);
+        pianoRoll.setPlayheadTick(0);
+        updateTransportDisplay();
+        viewport.setViewPosition(0, viewport.getViewPositionY());
+        return true;
+    }
     if (key.getTextCharacter() == ',')
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
