@@ -28,7 +28,8 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
     }
     else if (type == Play)
     {
-        g.setColour(juce::Colours::white.withAlpha(alpha));
+        auto colour = active ? juce::Colour(0xff00c853) : juce::Colours::white;
+        g.setColour(colour.withAlpha(active ? 1.0f : alpha));
         auto h = bounds.getHeight() * 0.5f;
         auto w = h * 0.85f;
         auto cx = bounds.getCentreX();
@@ -37,21 +38,12 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
         path.addTriangle(cx - w * 0.38f, cy - h / 2, cx - w * 0.38f, cy + h / 2, cx + w * 0.62f, cy);
         g.fillPath(path);
     }
-    else
-    {
-        g.setColour(juce::Colours::white.withAlpha(alpha));
-        auto h = bounds.getHeight() * 0.45f;
-        auto barW = bounds.getWidth() * 0.14f;
-        auto gap = bounds.getWidth() * 0.12f;
-        auto cx = bounds.getCentreX();
-        auto cy = bounds.getCentreY();
-        g.fillRoundedRectangle(cx - gap / 2 - barW, cy - h / 2, barW, h, 1.5f);
-        g.fillRoundedRectangle(cx + gap / 2, cy - h / 2, barW, h, 1.5f);
-    }
 }
 
 void MainComponent::TransportButton::mouseUp(const juce::MouseEvent& e)
 {
+    if (active)
+        return;
     if (getLocalBounds().contains(e.getPosition()) && onClick)
         onClick();
 }
@@ -101,7 +93,7 @@ MainComponent::MainComponent()
         if (playbackEngine.isPlaying())
         {
             playbackEngine.stop();
-            playButton.setType(TransportButton::Play);
+            playButton.setActive(false);
             vblankAttachment.reset();
             pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
             updateTransportDisplay();
@@ -109,7 +101,7 @@ MainComponent::MainComponent()
         else
         {
             playbackEngine.play();
-            playButton.setType(TransportButton::Pause);
+            playButton.setActive(true);
             vblankAttachment = std::make_unique<juce::VBlankAttachment>(this, [this]() { onVBlank(); });
         }
     };
@@ -118,7 +110,7 @@ MainComponent::MainComponent()
     stopButton.onClick = [this]()
     {
         playbackEngine.stop();
-        playButton.setType(TransportButton::Play);
+        playButton.setActive(false);
         vblankAttachment.reset();
         pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
         updateTransportDisplay();
@@ -351,7 +343,7 @@ void MainComponent::onSequenceLoaded()
 {
     playbackEngine.stop();
     playbackEngine.setPositionInTicks(0);
-    playButton.setType(TransportButton::Play);
+    playButton.setActive(false);
     vblankAttachment.reset();
 
     pianoRoll.setSequence(&sequence);
