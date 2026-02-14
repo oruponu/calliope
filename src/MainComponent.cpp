@@ -148,6 +148,7 @@ MainComponent::MainComponent()
 
     updateTransportDisplay();
 
+    setWantsKeyboardFocus(true);
     setSize(1280, 800);
 
     int c4Y = PianoRollComponent::headerHeight + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
@@ -160,6 +161,16 @@ MainComponent::~MainComponent()
     playbackEngine.stop();
     playbackEngine.removeListener(&midiOutput);
     midiOutput.close();
+}
+
+bool MainComponent::keyPressed(const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::spaceKey)
+    {
+        playButton.onClick();
+        return true;
+    }
+    return false;
 }
 
 void MainComponent::paint(juce::Graphics& g)
