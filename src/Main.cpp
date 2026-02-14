@@ -30,6 +30,21 @@ private:
         }
 
         void closeButtonPressed() override { JUCEApplication::getInstance()->systemRequestedQuit(); }
+
+        void activeWindowStatusChanged() override
+        {
+            if (isActiveWindow())
+            {
+                auto safeThis = juce::Component::SafePointer<MainWindow>(this);
+                juce::MessageManager::callAsync(
+                    [safeThis]()
+                    {
+                        if (safeThis != nullptr)
+                            if (auto* content = safeThis->getContentComponent())
+                                content->grabKeyboardFocus();
+                    });
+            }
+        }
     };
 
     std::unique_ptr<MainWindow> mainWindow;
