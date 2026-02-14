@@ -150,7 +150,16 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
 
     if (getMuteButtonBounds(row).contains(e.x, e.y))
     {
-        track.setMuted(!track.isMuted());
+        bool newMuted = !track.isMuted();
+        if (selectedTrackIndices.count(row) > 0)
+        {
+            for (int idx : selectedTrackIndices)
+                sequence->getTrack(idx).setMuted(newMuted);
+        }
+        else
+        {
+            track.setMuted(newMuted);
+        }
         repaint();
         if (onMuteSoloChanged)
             onMuteSoloChanged();
@@ -159,7 +168,16 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
 
     if (getSoloButtonBounds(row).contains(e.x, e.y))
     {
-        track.setSolo(!track.isSolo());
+        bool newSolo = !track.isSolo();
+        if (selectedTrackIndices.count(row) > 0)
+        {
+            for (int idx : selectedTrackIndices)
+                sequence->getTrack(idx).setSolo(newSolo);
+        }
+        else
+        {
+            track.setSolo(newSolo);
+        }
         repaint();
         if (onMuteSoloChanged)
             onMuteSoloChanged();
