@@ -34,7 +34,6 @@ private:
         TransportButton(Type t) : type(t)
         {
             setRepaintsOnMouseActivity(true);
-            setMouseCursor(juce::MouseCursor::PointingHandCursor);
         }
         Type getType() const { return type; }
         void setActive(bool a)
