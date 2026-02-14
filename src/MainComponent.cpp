@@ -591,7 +591,12 @@ void MainComponent::onSequenceLoaded()
     vblankAttachment.reset();
 
     pianoRoll.setSequence(&sequence);
-    pianoRoll.setSelectedTracks(0, {0});
+    {
+        std::set<int> allTracks;
+        for (int i = 0; i < sequence.getNumTracks(); ++i)
+            allTracks.insert(i);
+        pianoRoll.setSelectedTracks(0, allTracks);
+    }
     pianoRoll.setPlayheadTick(0);
     updateTransportDisplay();
 
