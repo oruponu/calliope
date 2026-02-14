@@ -123,6 +123,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawPlayhead(g);
     drawKeyboard(g);
     drawTempoTrack(g);
+    drawTimeSignatureTrack(g);
     drawHeader(g);
 }
 
@@ -643,6 +644,121 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 
     g.setColour(juce::Colour(60, 62, 70));
     g.drawHorizontalLine(tTop + tempoTrackHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
+}
+
+void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
+{
+    if (!sequence)
+        return;
+
+    int hTop = getHeaderTop();
+    int tsTop = hTop + headerHeight + tempoTrackHeight;
+    int kbLeft = getKeyboardLeft();
+
+    auto clip = g.getClipBounds();
+    int visibleLeft = clip.getX();
+    int visibleRight = clip.getRight();
+
+    g.setColour(juce::Colour(40, 42, 48));
+    g.fillRect(kbLeft, tsTop, getWidth() - kbLeft, timeSignatureTrackHeight);
+
+    {
+        int ppq = sequence->getTicksPerQuarterNote();
+        int totalTicks = xToTick(getWidth());
+        int tick = 0;
+        float tsTopF = static_cast<float>(tsTop);
+        float tsBottomF = static_cast<float>(tsTop + timeSignatureTrackHeight);
+
+        while (tick < totalTicks)
+        {
+            auto ts = sequence->getTimeSignatureAt(tick);
+            int ticksPerBeat = ppq * 4 / ts.denominator;
+            int beatsInBar = ts.numerator;
+            int barEndTick = tick + beatsInBar * ticksPerBeat;
+
+            if (tickToX(tick) > visibleRight)
+                break;
+
+            if (tickToX(barEndTick) < visibleLeft)
+            {
+                tick = barEndTick;
+                continue;
+            }
+
+            for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
+            {
+                int x = tickToX(tick + beat * ticksPerBeat);
+                if (x > visibleRight)
+                    break;
+                if (x < visibleLeft)
+                    continue;
+
+                bool isBar = (beat == 0);
+                g.setColour(isBar ? juce::Colour(70, 70, 80) : juce::Colour(50, 52, 58));
+                g.drawVerticalLine(x, tsTopF, tsBottomF);
+            }
+
+            tick = barEndTick;
+        }
+    }
+
+    g.setColour(juce::Colour(160, 160, 170));
+    g.setFont(10.0f);
+    g.drawText("Time Sig", kbLeft + 4, tsTop, keyboardWidth - 8, timeSignatureTrackHeight,
+               juce::Justification::centredLeft);
+
+    const auto& tsChanges = sequence->getTimeSignatureChanges();
+    if (tsChanges.empty())
+    {
+        g.setColour(juce::Colour(100, 180, 220));
+        g.setFont(11.0f);
+        g.drawText("4/4", kbLeft + keyboardWidth + 4, tsTop, 40, timeSignatureTrackHeight,
+                   juce::Justification::centredLeft);
+    }
+    else
+    {
+        juce::Colour tsColour(100, 180, 220);
+
+        for (size_t i = 0; i < tsChanges.size(); ++i)
+        {
+            int x = tickToX(tsChanges[i].tick);
+
+            if (x > visibleRight)
+                break;
+
+            int nextX = (i + 1 < tsChanges.size()) ? tickToX(tsChanges[i + 1].tick) : tickToX(xToTick(getWidth()));
+            if (nextX < visibleLeft)
+                continue;
+
+            if (i > 0 && x >= visibleLeft && x <= visibleRight)
+            {
+                g.setColour(tsColour.withAlpha(0.6f));
+                g.drawVerticalLine(x, static_cast<float>(tsTop + 2),
+                                   static_cast<float>(tsTop + timeSignatureTrackHeight - 2));
+            }
+
+            if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
+            {
+                g.setColour(tsColour);
+                g.setFont(11.0f);
+                juce::String label =
+                    juce::String(tsChanges[i].numerator) + "/" + juce::String(tsChanges[i].denominator);
+                int textX = (i == 0 && tsChanges[i].tick == 0) ? kbLeft + keyboardWidth + 4 : x + 4;
+                g.drawText(label, textX, tsTop, 40, timeSignatureTrackHeight, juce::Justification::centredLeft);
+            }
+        }
+    }
+
+    float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
+    if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
+    {
+        g.setColour(juce::Colours::white);
+        g.drawLine(phX, static_cast<float>(tsTop), phX, static_cast<float>(tsTop + timeSignatureTrackHeight), 1.0f);
+    }
+
+    g.setColour(juce::Colour(60, 62, 70));
+    g.drawHorizontalLine(tsTop + timeSignatureTrackHeight - 1, static_cast<float>(kbLeft),
+                         static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawGrid(juce::Graphics& g)
