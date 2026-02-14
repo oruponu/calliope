@@ -55,6 +55,7 @@ private:
     };
 
     void onVBlank();
+    void scrollToPlayhead(int tick);
     void updateTransportDisplay();
     void saveFile();
     void loadFile();
