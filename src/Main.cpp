@@ -27,6 +27,7 @@ private:
             setResizable(true, true);
             centreWithSize(getWidth(), getHeight());
             setVisible(true);
+            setFullScreen(true);
         }
 
         void closeButtonPressed() override { JUCEApplication::getInstance()->systemRequestedQuit(); }
