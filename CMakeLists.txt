@@ -32,3 +32,8 @@ target_link_libraries(Calliope PRIVATE
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags
 )
+
+if(NOT WIN32)
+    find_package(Iconv REQUIRED)
+    target_link_libraries(Calliope PRIVATE Iconv::Iconv)
+endif()
