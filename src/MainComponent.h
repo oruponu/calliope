@@ -29,26 +29,27 @@ private:
         {
             ReturnToStart,
             Stop,
-            Play,
-            Pause
+            Play
         };
         TransportButton(Type t) : type(t)
         {
             setRepaintsOnMouseActivity(true);
             setMouseCursor(juce::MouseCursor::PointingHandCursor);
         }
-        void setType(Type t)
+        Type getType() const { return type; }
+        void setActive(bool a)
         {
-            type = t;
+            active = a;
             repaint();
         }
-        Type getType() const { return type; }
+        bool isActive() const { return active; }
         void paint(juce::Graphics& g) override;
         void mouseUp(const juce::MouseEvent& e) override;
         std::function<void()> onClick;
 
     private:
         Type type;
+        bool active = false;
     };
 
     void onVBlank();
