@@ -170,6 +170,27 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         playButton.onClick();
         return true;
     }
+    if (key.getTextCharacter() == ',')
+    {
+        int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
+        auto bbt = sequence.tickToBarBeatTick(currentTick);
+        int targetBar = juce::jmax(1, bbt.bar - 1);
+        int newTick = sequence.barStartToTick(targetBar);
+        playbackEngine.setPositionInTicks(newTick);
+        pianoRoll.setPlayheadTick(newTick);
+        updateTransportDisplay();
+        return true;
+    }
+    if (key.getTextCharacter() == '.')
+    {
+        int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
+        auto bbt = sequence.tickToBarBeatTick(currentTick);
+        int newTick = sequence.barStartToTick(bbt.bar + 1);
+        playbackEngine.setPositionInTicks(newTick);
+        pianoRoll.setPlayheadTick(newTick);
+        updateTransportDisplay();
+        return true;
+    }
     return false;
 }
 
