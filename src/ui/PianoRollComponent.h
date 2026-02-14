@@ -37,6 +37,8 @@ public:
     static constexpr int totalNotes = 128;
     static constexpr int snapTicks = 480;
     static constexpr int headerHeight = 24;
+    static constexpr int tempoTrackHeight = 48;
+    static constexpr int gridTopOffset = headerHeight + tempoTrackHeight;
     static constexpr int resizeEdgeWidth = 6;
 
     int tickToX(int tick) const;
@@ -71,6 +73,7 @@ private:
 
     void drawKeyboard(juce::Graphics& g);
     void drawHeader(juce::Graphics& g);
+    void drawTempoTrack(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
