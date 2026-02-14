@@ -283,3 +283,38 @@ BarBeatTick MidiSequence::tickToBarBeatTick(int tick) const
 
     return {bar, 1, 0};
 }
+
+int MidiSequence::barStartToTick(int targetBar) const
+{
+    if (targetBar <= 1)
+        return 0;
+
+    int bar = 1;
+    int pos = 0;
+
+    for (size_t i = 0; i < timeSignatureChanges.size(); ++i)
+    {
+        const auto& ts = timeSignatureChanges[i];
+        int ticksPerBeat = ticksPerQuarterNote * 4 / ts.denominator;
+        int ticksPerBar = ticksPerBeat * ts.numerator;
+
+        if (i + 1 < timeSignatureChanges.size())
+        {
+            int nextChangeTick = timeSignatureChanges[i + 1].tick;
+            int sectionTicks = nextChangeTick - pos;
+            int barsInSection = sectionTicks / ticksPerBar;
+
+            if (bar + barsInSection >= targetBar)
+                return pos + (targetBar - bar) * ticksPerBar;
+
+            bar += barsInSection;
+            pos = nextChangeTick;
+        }
+        else
+        {
+            return pos + (targetBar - bar) * ticksPerBar;
+        }
+    }
+
+    return 0;
+}

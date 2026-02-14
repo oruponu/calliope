@@ -72,6 +72,7 @@ public:
     int secondsToTicks(double seconds) const;
 
     BarBeatTick tickToBarBeatTick(int tick) const;
+    int barStartToTick(int barNumber) const;
 
 private:
     std::vector<MidiTrack> tracks;
