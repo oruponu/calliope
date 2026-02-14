@@ -122,6 +122,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawRubberBand(g);
     drawPlayhead(g);
     drawKeyboard(g);
+    drawTempoTrack(g);
     drawHeader(g);
 }
 
@@ -142,6 +143,9 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         }
         return;
     }
+
+    if (e.y < getHeaderTop() + gridTopOffset)
+        return;
 
     if (e.x < getKeyboardLeft() + keyboardWidth)
         return;
@@ -320,7 +324,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
 void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 {
-    if (!sequence || e.x < getKeyboardLeft() + keyboardWidth || e.y < getHeaderTop() + headerHeight)
+    if (!sequence || e.x < getKeyboardLeft() + keyboardWidth || e.y < getHeaderTop() + gridTopOffset)
     {
         setMouseCursor(juce::MouseCursor::NormalCursor);
         return;
@@ -485,6 +489,160 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
 
     g.setColour(juce::Colour(70, 70, 80));
     g.drawHorizontalLine(hTop + headerHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
+}
+
+void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
+{
+    if (!sequence)
+        return;
+
+    int hTop = getHeaderTop();
+    int tTop = hTop + headerHeight;
+    int kbLeft = getKeyboardLeft();
+
+    auto clip = g.getClipBounds();
+    int visibleLeft = clip.getX();
+    int visibleRight = clip.getRight();
+
+    g.setColour(juce::Colour(40, 42, 48));
+    g.fillRect(kbLeft, tTop, getWidth() - kbLeft, tempoTrackHeight);
+
+    {
+        int ppq = sequence->getTicksPerQuarterNote();
+        int totalTicks = xToTick(getWidth());
+        int tick = 0;
+        float tTopF = static_cast<float>(tTop);
+        float tBottomF = static_cast<float>(tTop + tempoTrackHeight);
+
+        while (tick < totalTicks)
+        {
+            auto ts = sequence->getTimeSignatureAt(tick);
+            int ticksPerBeat = ppq * 4 / ts.denominator;
+            int beatsInBar = ts.numerator;
+            int barEndTick = tick + beatsInBar * ticksPerBeat;
+
+            if (tickToX(tick) > visibleRight)
+                break;
+
+            if (tickToX(barEndTick) < visibleLeft)
+            {
+                tick = barEndTick;
+                continue;
+            }
+
+            for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
+            {
+                int x = tickToX(tick + beat * ticksPerBeat);
+                if (x > visibleRight)
+                    break;
+                if (x < visibleLeft)
+                    continue;
+
+                bool isBar = (beat == 0);
+                g.setColour(isBar ? juce::Colour(70, 70, 80) : juce::Colour(50, 52, 58));
+                g.drawVerticalLine(x, tTopF, tBottomF);
+            }
+
+            tick = barEndTick;
+        }
+    }
+
+    g.setColour(juce::Colour(160, 160, 170));
+    g.setFont(10.0f);
+    g.drawText("Tempo", kbLeft + 4, tTop, keyboardWidth - 8, tempoTrackHeight, juce::Justification::centredLeft);
+
+    const auto& tempoChanges = sequence->getTempoChanges();
+    if (tempoChanges.empty())
+    {
+        g.setColour(juce::Colour(220, 160, 60));
+        g.setFont(9.0f);
+        g.drawText("120.00", kbLeft + keyboardWidth + 4, tTop, 60, tempoTrackHeight, juce::Justification::centredLeft);
+    }
+    else
+    {
+        double minBpm = tempoChanges[0].bpm;
+        double maxBpm = tempoChanges[0].bpm;
+        for (const auto& tc : tempoChanges)
+        {
+            minBpm = std::min(minBpm, tc.bpm);
+            maxBpm = std::max(maxBpm, tc.bpm);
+        }
+
+        double range = maxBpm - minBpm;
+        if (range < 1.0)
+        {
+            minBpm -= 10.0;
+            maxBpm += 10.0;
+            range = 20.0;
+        }
+        else
+        {
+            double pad = range * 0.15;
+            minBpm -= pad;
+            maxBpm += pad;
+            range = maxBpm - minBpm;
+        }
+
+        int graphTop = tTop + 3;
+        int graphBottom = tTop + tempoTrackHeight - 4;
+        int graphHeight = graphBottom - graphTop;
+
+        auto bpmToY = [&](double bpm) -> float
+        {
+            double normalized = (bpm - minBpm) / range;
+            return static_cast<float>(graphBottom - normalized * graphHeight);
+        };
+
+        juce::Colour amberColour(220, 160, 60);
+        g.setColour(amberColour);
+
+        int totalTicks = xToTick(getWidth());
+
+        for (size_t i = 0; i < tempoChanges.size(); ++i)
+        {
+            int startX = tickToX(tempoChanges[i].tick);
+            int endX = (i + 1 < tempoChanges.size()) ? tickToX(tempoChanges[i + 1].tick) : tickToX(totalTicks);
+            float y = bpmToY(tempoChanges[i].bpm);
+
+            int drawStartX = std::max(startX, visibleLeft);
+            int drawEndX = std::min(endX, visibleRight);
+
+            if (drawEndX < visibleLeft || drawStartX > visibleRight)
+                continue;
+
+            g.drawLine(static_cast<float>(drawStartX), y, static_cast<float>(drawEndX), y, 1.5f);
+
+            if (i > 0 && startX >= visibleLeft && startX <= visibleRight)
+            {
+                float prevY = bpmToY(tempoChanges[i - 1].bpm);
+                g.drawLine(static_cast<float>(startX), prevY, static_cast<float>(startX), y, 1.0f);
+            }
+
+            if (startX + 4 >= visibleLeft - 60 && startX <= visibleRight)
+            {
+                g.setFont(9.0f);
+                int textH = 12;
+                float midY = static_cast<float>(tTop) + tempoTrackHeight * 0.5f;
+                int textY;
+                if (y > midY)
+                    textY = tTop + 1;
+                else
+                    textY = tTop + tempoTrackHeight - textH - 2;
+                g.drawText(juce::String(tempoChanges[i].bpm, 1), startX + 4, textY, 50, textH,
+                           juce::Justification::centredLeft);
+            }
+        }
+    }
+
+    float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
+    if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
+    {
+        g.setColour(juce::Colours::white);
+        g.drawLine(phX, static_cast<float>(tTop), phX, static_cast<float>(tTop + tempoTrackHeight), 1.0f);
+    }
+
+    g.setColour(juce::Colour(60, 62, 70));
+    g.drawHorizontalLine(tTop + tempoTrackHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawGrid(juce::Graphics& g)
@@ -692,13 +850,13 @@ void PianoRollComponent::updateSize()
     if (auto* vp = findParentComponentOfClass<juce::Viewport>())
         width = std::max(width, vp->getMaximumVisibleWidth());
 
-    int height = headerHeight + totalNotes * noteHeight;
+    int height = gridTopOffset + totalNotes * noteHeight;
     setSize(width, height);
 }
 
 int PianoRollComponent::noteToY(int noteNumber) const
 {
-    return headerHeight + (totalNotes - 1 - noteNumber) * noteHeight;
+    return gridTopOffset + (totalNotes - 1 - noteNumber) * noteHeight;
 }
 
 int PianoRollComponent::tickToX(int tick) const
@@ -730,7 +888,7 @@ int PianoRollComponent::xToTick(int x) const
 
 int PianoRollComponent::yToNote(int y) const
 {
-    return totalNotes - 1 - ((y - headerHeight) / noteHeight);
+    return totalNotes - 1 - ((y - gridTopOffset) / noteHeight);
 }
 
 int PianoRollComponent::snapTick(int tick) const
