@@ -3,6 +3,7 @@
 #include "../model/MidiSequence.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include <set>
 
 class PianoRollComponent : public juce::Component
 {
@@ -14,8 +15,8 @@ public:
     std::function<void(int tick)> onPlayheadMoved;
     std::function<void()> onNotesChanged;
 
-    void setSelectedTrackIndex(int index);
-    int getSelectedTrackIndex() const;
+    void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
+    int getActiveTrackIndex() const;
 
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
@@ -72,7 +73,8 @@ private:
 
     MidiSequence* sequence = nullptr;
     double playheadTick = 0.0;
-    int selectedTrackIndex = 0;
+    std::set<int> selectedTrackIndices = {0};
+    int activeTrackIndex = 0;
 
     NoteRef selectedNote;
     DragMode dragMode = DragMode::None;

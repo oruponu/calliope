@@ -69,7 +69,8 @@ MainComponent::MainComponent()
     trackListViewport.setViewedComponent(&trackList, false);
     trackListViewport.setScrollBarsShown(true, false);
     addAndMakeVisible(trackListViewport);
-    trackList.onTrackSelected = [this](int idx) { pianoRoll.setSelectedTrackIndex(idx); };
+    trackList.onTrackSelected = [this](int activeIdx, const std::set<int>& selected)
+    { pianoRoll.setSelectedTracks(activeIdx, selected); };
     trackList.onMuteSoloChanged = []() {};
 
     addAndMakeVisible(playButton);
@@ -330,7 +331,7 @@ void MainComponent::onSequenceLoaded()
     vblankAttachment.reset();
 
     pianoRoll.setSequence(&sequence);
-    pianoRoll.setSelectedTrackIndex(0);
+    pianoRoll.setSelectedTracks(0, {0});
     pianoRoll.setPlayheadTick(0);
     updateTransportDisplay();
 
