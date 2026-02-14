@@ -7,7 +7,7 @@
 #include "ui/TrackListComponent.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
-class MainComponent : public juce::Component, public juce::FileDragAndDropTarget
+class MainComponent : public juce::Component, public juce::MenuBarModel, public juce::FileDragAndDropTarget
 {
 public:
     MainComponent();
@@ -18,6 +18,10 @@ public:
     void parentHierarchyChanged() override;
 
     bool keyPressed(const juce::KeyPress& key) override;
+
+    juce::StringArray getMenuBarNames() override;
+    juce::PopupMenu getMenuForIndex(int menuIndex, const juce::String& menuName) override;
+    void menuItemSelected(int menuItemID, int topLevelMenuIndex) override;
 
     bool isInterestedInFileDrag(const juce::StringArray& files) override;
     void fileDragEnter(const juce::StringArray& files, int x, int y) override;
@@ -34,10 +38,7 @@ private:
             Stop,
             Play
         };
-        TransportButton(Type t) : type(t)
-        {
-            setRepaintsOnMouseActivity(true);
-        }
+        TransportButton(Type t) : type(t) { setRepaintsOnMouseActivity(true); }
         Type getType() const { return type; }
         void setActive(bool a)
         {
@@ -120,12 +121,17 @@ private:
     TrackListComponent trackList;
     juce::Viewport trackListViewport;
 
+    enum MenuCommandID
+    {
+        openFile = 1,
+        saveFile_
+    };
+
+    juce::MenuBarComponent menuBar;
+
     TransportButton returnToStartButton{TransportButton::ReturnToStart};
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
-
-    juce::TextButton saveButton{"Save"};
-    juce::TextButton loadButton{"Load"};
 
     juce::Label positionHeaderLabel{"", "Bar"};
     juce::Label positionLabel;
@@ -143,6 +149,7 @@ private:
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
 
+    static constexpr int menuBarHeight = 24;
     static constexpr int transportBarHeight = 64;
     static constexpr int trackListWidth = 180;
 
