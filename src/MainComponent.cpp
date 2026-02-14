@@ -192,6 +192,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
         save.shortcutKeyDescription = "Ctrl+S";
         save.action = [this]() { commandManager.invokeDirectly(CommandID::saveFile_, true); };
         menu.addItem(save);
+
+        menu.addSeparator();
+
+        juce::PopupMenu::Item quit;
+        quit.itemID = CommandID::quitApp;
+        quit.text = "Exit";
+        quit.action = [this]() { commandManager.invokeDirectly(CommandID::quitApp, true); };
+        menu.addItem(quit);
     }
     return menu;
 }
@@ -205,8 +213,8 @@ juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 
 void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
-    commands.addArray({CommandID::openFile, CommandID::saveFile_, CommandID::togglePlay, CommandID::returnToStart,
-                       CommandID::prevBar, CommandID::nextBar});
+    commands.addArray({CommandID::openFile, CommandID::saveFile_, CommandID::quitApp, CommandID::togglePlay,
+                       CommandID::returnToStart, CommandID::prevBar, CommandID::nextBar});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -220,6 +228,9 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case CommandID::saveFile_:
         result.setInfo("Save...", "", "File", 0);
         result.addDefaultKeypress('S', juce::ModifierKeys::ctrlModifier);
+        break;
+    case CommandID::quitApp:
+        result.setInfo("Exit", "", "File", 0);
         break;
     case CommandID::togglePlay:
         result.setInfo("Play/Stop", "", "Transport", 0);
@@ -251,6 +262,9 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case CommandID::saveFile_:
         saveFile();
+        return true;
+    case CommandID::quitApp:
+        juce::JUCEApplication::getInstance()->systemRequestedQuit();
         return true;
     case CommandID::togglePlay:
         playButton.onClick();

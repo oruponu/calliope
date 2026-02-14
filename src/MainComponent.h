@@ -131,6 +131,7 @@ private:
     {
         openFile = 1,
         saveFile_,
+        quitApp,
         togglePlay,
         returnToStart,
         prevBar,
