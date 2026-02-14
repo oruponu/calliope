@@ -117,9 +117,11 @@ MainComponent::MainComponent()
     };
 
     addAndMakeVisible(saveButton);
+    saveButton.setWantsKeyboardFocus(false);
     saveButton.onClick = [this]() { saveFile(); };
 
     addAndMakeVisible(loadButton);
+    loadButton.setWantsKeyboardFocus(false);
     loadButton.onClick = [this]() { loadFile(); };
 
     auto headerColour = juce::Colour(0xff8888aa);
@@ -161,6 +163,11 @@ MainComponent::~MainComponent()
     playbackEngine.stop();
     playbackEngine.removeListener(&midiOutput);
     midiOutput.close();
+}
+
+void MainComponent::parentHierarchyChanged()
+{
+    grabKeyboardFocus();
 }
 
 bool MainComponent::keyPressed(const juce::KeyPress& key)
