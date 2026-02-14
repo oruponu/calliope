@@ -61,6 +61,32 @@ private:
         bool active = false;
     };
 
+    class ToolButton : public juce::Component
+    {
+    public:
+        enum Type
+        {
+            EditTool,
+            SelectTool
+        };
+        ToolButton(Type t) : type(t) { setRepaintsOnMouseActivity(true); }
+        Type getType() const { return type; }
+        void setActive(bool a)
+        {
+            active = a;
+            repaint();
+        }
+        bool isActive() const { return active; }
+        void paint(juce::Graphics& g) override;
+        void mouseUp(const juce::MouseEvent& e) override;
+        std::function<void()> onClick;
+
+    private:
+        Type type;
+        bool active = false;
+    };
+
+    void setActiveTool(PianoRollComponent::EditMode mode);
     void onVBlank();
     void scrollToPlayhead(int tick);
     void updateTransportDisplay();
@@ -135,7 +161,9 @@ private:
         togglePlay,
         returnToStart,
         prevBar,
-        nextBar
+        nextBar,
+        switchToEditTool,
+        switchToSelectTool
     };
 
     juce::ApplicationCommandManager commandManager;
@@ -145,6 +173,9 @@ private:
     TransportButton returnToStartButton{TransportButton::ReturnToStart};
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
+
+    ToolButton editToolButton{ToolButton::EditTool};
+    ToolButton selectToolButton{ToolButton::SelectTool};
 
     juce::Label positionHeaderLabel{"", "Bar"};
     juce::Label positionLabel;
@@ -164,6 +195,7 @@ private:
 
     static constexpr int menuBarHeight = 24;
     static constexpr int transportBarHeight = 64;
+    static constexpr int toolBarHeight = 32;
     static constexpr int trackListWidth = 180;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
