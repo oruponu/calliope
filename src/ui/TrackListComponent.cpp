@@ -4,7 +4,18 @@
 void TrackListComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;
-    selectedTrackIndex = (seq && seq->getNumTracks() > 0) ? 0 : -1;
+    if (seq && seq->getNumTracks() > 0)
+    {
+        activeTrackIndex = 0;
+        anchorTrackIndex = 0;
+        selectedTrackIndices = {0};
+    }
+    else
+    {
+        activeTrackIndex = -1;
+        anchorTrackIndex = -1;
+        selectedTrackIndices.clear();
+    }
     updateSize();
     repaint();
 }
@@ -22,19 +33,42 @@ void TrackListComponent::updateSize()
     setSize(getWidth(), juce::jmax(requiredHeight, getParentHeight()));
 }
 
-int TrackListComponent::getSelectedTrackIndex() const
+int TrackListComponent::getActiveTrackIndex() const
 {
-    return selectedTrackIndex;
+    return activeTrackIndex;
 }
 
-void TrackListComponent::setSelectedTrackIndex(int index)
+void TrackListComponent::setActiveTrackIndex(int index)
 {
     if (!sequence || index < 0 || index >= sequence->getNumTracks())
         return;
-    selectedTrackIndex = index;
+    activeTrackIndex = index;
+    anchorTrackIndex = index;
+    selectedTrackIndices = {index};
     repaint();
+    notifySelectionChanged();
+}
+
+const std::set<int>& TrackListComponent::getSelectedTrackIndices() const
+{
+    return selectedTrackIndices;
+}
+
+bool TrackListComponent::isTrackSelected(int index) const
+{
+    return selectedTrackIndices.count(index) > 0;
+}
+
+void TrackListComponent::setSelectedTrackIndices(const std::set<int>& indices)
+{
+    selectedTrackIndices = indices;
+    repaint();
+}
+
+void TrackListComponent::notifySelectionChanged()
+{
     if (onTrackSelected)
-        onTrackSelected(selectedTrackIndex);
+        onTrackSelected(activeTrackIndex, selectedTrackIndices);
 }
 
 void TrackListComponent::paint(juce::Graphics& g)
@@ -51,8 +85,10 @@ void TrackListComponent::paint(juce::Graphics& g)
 
         auto rowBounds = juce::Rectangle<int>(0, y, getWidth(), trackRowHeight);
 
-        if (i == selectedTrackIndex)
+        if (i == activeTrackIndex)
             g.setColour(juce::Colour(55, 55, 70));
+        else if (selectedTrackIndices.count(i) > 0)
+            g.setColour(juce::Colour(48, 48, 60));
         else
             g.setColour(juce::Colour(40, 40, 48));
         g.fillRect(rowBounds);
@@ -130,13 +166,41 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
-    if (row != selectedTrackIndex)
+    if (e.mods.isCtrlDown())
     {
-        selectedTrackIndex = row;
-        repaint();
-        if (onTrackSelected)
-            onTrackSelected(selectedTrackIndex);
+        if (selectedTrackIndices.count(row) > 0)
+        {
+            if (selectedTrackIndices.size() > 1)
+            {
+                selectedTrackIndices.erase(row);
+                if (activeTrackIndex == row)
+                    activeTrackIndex = *selectedTrackIndices.rbegin();
+            }
+        }
+        else
+        {
+            selectedTrackIndices.insert(row);
+        }
+        activeTrackIndex = row;
+        anchorTrackIndex = row;
     }
+    else if (e.mods.isShiftDown())
+    {
+        selectedTrackIndices.clear();
+        int lo = std::min(anchorTrackIndex, row);
+        int hi = std::max(anchorTrackIndex, row);
+        for (int i = lo; i <= hi; ++i)
+            selectedTrackIndices.insert(i);
+        activeTrackIndex = row;
+    }
+    else
+    {
+        activeTrackIndex = row;
+        anchorTrackIndex = row;
+        selectedTrackIndices = {row};
+    }
+    repaint();
+    notifySelectionChanged();
 }
 
 int TrackListComponent::getRowIndexAt(int y) const
