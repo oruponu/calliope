@@ -124,7 +124,11 @@ MainComponent::MainComponent()
         playbackEngine.setPositionInTicks(tick);
         updateTransportDisplay();
     };
-    pianoRoll.onNotesChanged = [this]() { trackList.refresh(); };
+    pianoRoll.onNotesChanged = [this]()
+    {
+        trackList.refresh();
+        eventList.refresh();
+    };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, true);
     viewport.onReachedEnd = [this]() { pianoRoll.extendContent(); };
@@ -136,8 +140,15 @@ MainComponent::MainComponent()
     trackListViewport.setScrollBarsShown(true, false);
     addAndMakeVisible(trackListViewport);
     trackList.onTrackSelected = [this](int activeIdx, const std::set<int>& selected)
-    { pianoRoll.setSelectedTracks(activeIdx, selected); };
+    {
+        pianoRoll.setSelectedTracks(activeIdx, selected);
+        eventList.setSelectedTracks(selected);
+    };
     trackList.onMuteSoloChanged = []() {};
+
+    eventList.setSequence(&sequence);
+    eventList.setSelectedTracks({0});
+    addAndMakeVisible(eventList);
 
     menuBar.setModel(this);
     addAndMakeVisible(menuBar);
@@ -506,6 +517,7 @@ void MainComponent::resized()
 
     trackListViewport.setBounds(area.removeFromLeft(trackListWidth));
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
+    eventList.setBounds(area.removeFromRight(eventListWidth));
     viewport.setBounds(area);
 }
 
@@ -601,6 +613,14 @@ void MainComponent::onSequenceLoaded()
     updateTransportDisplay();
 
     trackList.setSequence(&sequence);
+
+    eventList.setSequence(&sequence);
+    {
+        std::set<int> allTracks;
+        for (int i = 0; i < sequence.getNumTracks(); ++i)
+            allTracks.insert(i);
+        eventList.setSelectedTracks(allTracks);
+    }
 
     int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
