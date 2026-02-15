@@ -4,6 +4,7 @@
 #include "engine/PlaybackEngine.h"
 #include "model/MidiSequence.h"
 #include "ui/PianoRollComponent.h"
+#include "ui/EventListComponent.h"
 #include "ui/TrackListComponent.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
@@ -153,6 +154,8 @@ private:
     TrackListComponent trackList;
     juce::Viewport trackListViewport;
 
+    EventListComponent eventList;
+
     enum CommandID
     {
         openFile = 1,
@@ -197,6 +200,7 @@ private:
     static constexpr int transportBarHeight = 64;
     static constexpr int toolBarHeight = 32;
     static constexpr int trackListWidth = 180;
+    static constexpr int eventListWidth = 280;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
