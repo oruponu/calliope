@@ -37,6 +37,7 @@ public:
     void setSequence(MidiSequence* seq);
     void setSelectedTracks(const std::set<int>& selected);
     void refresh();
+    void setPlayheadTick(double tick);
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -62,6 +63,7 @@ private:
     std::vector<EventListItem> items;
 
     juce::ListBox listBox;
+    int lastPlayheadRow = -1;
 
     static constexpr int colPosition = 90;
     static constexpr int colEvent = 80;
