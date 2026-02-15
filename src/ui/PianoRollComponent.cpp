@@ -432,6 +432,9 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
     g.setColour(juce::Colour(50, 50, 55));
     g.fillRect(kbLeft, hTop, getWidth() - kbLeft, headerHeight);
 
+    g.saveState();
+    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
+
     int ppq = sequence->getTicksPerQuarterNote();
     int totalTicks = xToTick(getWidth());
     int tick = 0;
@@ -489,6 +492,11 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
         g.drawLine(phX, static_cast<float>(hTop), phX, static_cast<float>(hTop + headerHeight), 1.0f);
     }
 
+    g.restoreState();
+
+    g.setColour(juce::Colour(60, 60, 60));
+    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(hTop), static_cast<float>(hTop + headerHeight));
+
     g.setColour(juce::Colour(70, 70, 80));
     g.drawHorizontalLine(hTop + headerHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
@@ -508,6 +516,9 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 
     g.setColour(juce::Colour(40, 42, 48));
     g.fillRect(kbLeft, tTop, getWidth() - kbLeft, tempoTrackHeight);
+
+    g.saveState();
+    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
 
     {
         int ppq = sequence->getTicksPerQuarterNote();
@@ -548,10 +559,6 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
             tick = barEndTick;
         }
     }
-
-    g.setColour(juce::Colour(160, 160, 170));
-    g.setFont(10.0f);
-    g.drawText("Tempo", kbLeft + 4, tTop, keyboardWidth - 8, tempoTrackHeight, juce::Justification::centredLeft);
 
     const auto& tempoChanges = sequence->getTempoChanges();
     if (tempoChanges.empty())
@@ -643,6 +650,16 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
         g.drawLine(phX, static_cast<float>(tTop), phX, static_cast<float>(tTop + tempoTrackHeight), 1.0f);
     }
 
+    g.restoreState();
+
+    g.setColour(juce::Colour(160, 160, 170));
+    g.setFont(10.0f);
+    g.drawText("Tempo", kbLeft + 4, tTop, keyboardWidth - 8, tempoTrackHeight, juce::Justification::centredLeft);
+
+    g.setColour(juce::Colour(60, 60, 60));
+    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(tTop),
+                       static_cast<float>(tTop + tempoTrackHeight));
+
     g.setColour(juce::Colour(60, 62, 70));
     g.drawHorizontalLine(tTop + tempoTrackHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
@@ -662,6 +679,9 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
 
     g.setColour(juce::Colour(40, 42, 48));
     g.fillRect(kbLeft, tsTop, getWidth() - kbLeft, timeSignatureTrackHeight);
+
+    g.saveState();
+    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
 
     {
         int ppq = sequence->getTicksPerQuarterNote();
@@ -702,11 +722,6 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
             tick = barEndTick;
         }
     }
-
-    g.setColour(juce::Colour(160, 160, 170));
-    g.setFont(10.0f);
-    g.drawText("Time Sig", kbLeft + 4, tsTop, keyboardWidth - 8, timeSignatureTrackHeight,
-               juce::Justification::centredLeft);
 
     const auto& tsChanges = sequence->getTimeSignatureChanges();
     if (tsChanges.empty())
@@ -757,6 +772,17 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
         g.drawLine(phX, static_cast<float>(tsTop), phX, static_cast<float>(tsTop + timeSignatureTrackHeight), 1.0f);
     }
 
+    g.restoreState();
+
+    g.setColour(juce::Colour(160, 160, 170));
+    g.setFont(10.0f);
+    g.drawText("Time Sig", kbLeft + 4, tsTop, keyboardWidth - 8, timeSignatureTrackHeight,
+               juce::Justification::centredLeft);
+
+    g.setColour(juce::Colour(60, 60, 60));
+    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(tsTop),
+                       static_cast<float>(tsTop + timeSignatureTrackHeight));
+
     g.setColour(juce::Colour(60, 62, 70));
     g.drawHorizontalLine(tsTop + timeSignatureTrackHeight - 1, static_cast<float>(kbLeft),
                          static_cast<float>(getWidth()));
@@ -777,6 +803,9 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
 
     g.setColour(juce::Colour(40, 42, 48));
     g.fillRect(kbLeft, ksTop, getWidth() - kbLeft, keySignatureTrackHeight);
+
+    g.saveState();
+    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
 
     {
         int ppq = sequence->getTicksPerQuarterNote();
@@ -817,10 +846,6 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
             tick = barEndTick;
         }
     }
-
-    g.setColour(juce::Colour(160, 160, 170));
-    g.setFont(10.0f);
-    g.drawText("Key", kbLeft + 4, ksTop, keyboardWidth - 8, keySignatureTrackHeight, juce::Justification::centredLeft);
 
     const auto& ksChanges = sequence->getKeySignatureChanges();
     if (ksChanges.empty())
@@ -870,6 +895,16 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
         g.setColour(juce::Colours::white);
         g.drawLine(phX, static_cast<float>(ksTop), phX, static_cast<float>(ksTop + keySignatureTrackHeight), 1.0f);
     }
+
+    g.restoreState();
+
+    g.setColour(juce::Colour(160, 160, 170));
+    g.setFont(10.0f);
+    g.drawText("Key", kbLeft + 4, ksTop, keyboardWidth - 8, keySignatureTrackHeight, juce::Justification::centredLeft);
+
+    g.setColour(juce::Colour(60, 60, 60));
+    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(ksTop),
+                       static_cast<float>(ksTop + keySignatureTrackHeight));
 
     g.setColour(juce::Colour(60, 62, 70));
     g.drawHorizontalLine(ksTop + keySignatureTrackHeight - 1, static_cast<float>(kbLeft),
