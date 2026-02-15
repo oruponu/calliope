@@ -122,6 +122,7 @@ MainComponent::MainComponent()
     pianoRoll.onPlayheadMoved = [this](int tick)
     {
         playbackEngine.setPositionInTicks(tick);
+        eventList.setPlayheadTick(tick);
         updateTransportDisplay();
     };
     pianoRoll.onNotesChanged = [this]()
@@ -158,6 +159,7 @@ MainComponent::MainComponent()
     {
         playbackEngine.setPositionInTicks(0);
         pianoRoll.setPlayheadTick(0);
+        eventList.setPlayheadTick(0);
         updateTransportDisplay();
         viewport.setViewPosition(0, viewport.getViewPositionY());
     };
@@ -171,6 +173,7 @@ MainComponent::MainComponent()
             playButton.setActive(false);
             vblankAttachment.reset();
             pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
+            eventList.setPlayheadTick(playbackEngine.getCurrentTick());
             updateTransportDisplay();
         }
         else
@@ -188,6 +191,7 @@ MainComponent::MainComponent()
         playButton.setActive(false);
         vblankAttachment.reset();
         pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
+        eventList.setPlayheadTick(playbackEngine.getCurrentTick());
         updateTransportDisplay();
     };
 
@@ -360,6 +364,7 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::returnToStart:
         playbackEngine.setPositionInTicks(0);
         pianoRoll.setPlayheadTick(0);
+        eventList.setPlayheadTick(0);
         updateTransportDisplay();
         viewport.setViewPosition(0, viewport.getViewPositionY());
         return true;
@@ -371,6 +376,7 @@ bool MainComponent::perform(const InvocationInfo& info)
         int newTick = sequence.barStartToTick(targetBar);
         playbackEngine.setPositionInTicks(newTick);
         pianoRoll.setPlayheadTick(newTick);
+        eventList.setPlayheadTick(newTick);
         updateTransportDisplay();
         scrollToPlayhead(newTick);
         return true;
@@ -382,6 +388,7 @@ bool MainComponent::perform(const InvocationInfo& info)
         int newTick = sequence.barStartToTick(bbt.bar + 1);
         playbackEngine.setPositionInTicks(newTick);
         pianoRoll.setPlayheadTick(newTick);
+        eventList.setPlayheadTick(newTick);
         updateTransportDisplay();
         scrollToPlayhead(newTick);
         return true;
@@ -525,6 +532,7 @@ void MainComponent::onVBlank()
 {
     double tick = playbackEngine.getCurrentTick();
     pianoRoll.setPlayheadTick(tick);
+    eventList.setPlayheadTick(tick);
     updateTransportDisplay();
     scrollToPlayhead(static_cast<int>(tick));
 }

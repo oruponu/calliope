@@ -108,6 +108,44 @@ void EventListComponent::rebuildList()
     listBox.repaint();
 }
 
+void EventListComponent::setPlayheadTick(double tick)
+{
+    if (items.empty())
+        return;
+
+    auto it = std::upper_bound(items.begin(), items.end(), static_cast<int>(tick),
+                               [](int t, const EventListItem& item) { return t < item.tick; });
+
+    int row;
+    if (it == items.begin())
+    {
+        row = 0;
+    }
+    else
+    {
+        --it;
+        if (tick == static_cast<double>(it->tick))
+        {
+            auto first = std::lower_bound(items.begin(), it, it->tick,
+                                          [](const EventListItem& item, int t) { return item.tick < t; });
+            row = static_cast<int>(std::distance(items.begin(), first));
+        }
+        else
+        {
+            row = static_cast<int>(std::distance(items.begin(), it));
+        }
+    }
+
+    if (row != lastPlayheadRow)
+    {
+        lastPlayheadRow = row;
+        listBox.selectRow(row);
+        int visibleRows = listBox.getHeight() / rowHeight;
+        int lookAhead = juce::jmin(row + visibleRows / 2, getNumRows() - 1);
+        listBox.scrollToEnsureRowIsOnscreen(lookAhead);
+    }
+}
+
 void EventListComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(30, 30, 38));
