@@ -149,6 +149,13 @@ MainComponent::MainComponent()
 
     eventList.setSequence(&sequence);
     eventList.setSelectedTracks({0});
+    eventList.onEventSelected = [this](int tick)
+    {
+        playbackEngine.setPositionInTicks(tick);
+        pianoRoll.setPlayheadTick(tick);
+        updateTransportDisplay();
+        scrollToPlayhead(tick);
+    };
     addAndMakeVisible(eventList);
 
     menuBar.setModel(this);

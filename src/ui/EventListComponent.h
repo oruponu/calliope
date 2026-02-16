@@ -39,6 +39,8 @@ public:
     void refresh();
     void setPlayheadTick(double tick);
 
+    std::function<void(int tick)> onEventSelected;
+
     void paint(juce::Graphics& g) override;
     void resized() override;
 
@@ -49,6 +51,7 @@ public:
 private:
     int getNumRows() override;
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
+    void selectedRowsChanged(int lastRowSelected) override;
 
     void rebuildList();
 
@@ -64,6 +67,7 @@ private:
 
     juce::ListBox listBox;
     int lastPlayheadRow = -1;
+    bool updatingFromPlayhead = false;
 
     static constexpr int colPosition = 90;
     static constexpr int colEvent = 80;
