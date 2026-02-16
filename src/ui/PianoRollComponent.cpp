@@ -38,6 +38,13 @@ void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>&
     repaint();
 }
 
+void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
+{
+    selectedNotes = notes;
+    selectedNote = {};
+    repaint();
+}
+
 void PianoRollComponent::setEditMode(EditMode mode)
 {
     editMode = mode;

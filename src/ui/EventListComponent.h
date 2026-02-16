@@ -41,6 +41,7 @@ public:
     void setSelectedNotes(const std::set<std::pair<int, int>>& selected);
 
     std::function<void(int tick)> onEventSelected;
+    std::function<void(const std::set<std::pair<int, int>>& noteRefs)> onNoteSelectionFromList;
 
     void paint(juce::Graphics& g) override;
     void resized() override;

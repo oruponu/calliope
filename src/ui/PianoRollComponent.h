@@ -42,6 +42,7 @@ public:
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
 
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
+    void setSelectedNotes(const std::set<NoteRef>& notes);
     int getActiveTrackIndex() const;
 
     void mouseDown(const juce::MouseEvent& e) override;
