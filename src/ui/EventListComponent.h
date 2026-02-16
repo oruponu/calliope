@@ -38,6 +38,7 @@ public:
     void setSelectedTracks(const std::set<int>& selected);
     void refresh();
     void setPlayheadTick(double tick);
+    void setSelectedNotes(const std::set<std::pair<int, int>>& selected);
 
     std::function<void(int tick)> onEventSelected;
 
@@ -68,6 +69,7 @@ private:
     juce::ListBox listBox;
     int lastPlayheadRow = -1;
     bool updatingFromPlayhead = false;
+    bool updatingFromNoteSelection = false;
 
     static constexpr int colPosition = 90;
     static constexpr int colEvent = 80;
