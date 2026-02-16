@@ -130,6 +130,13 @@ MainComponent::MainComponent()
         trackList.refresh();
         eventList.refresh();
     };
+    pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
+    {
+        std::set<std::pair<int, int>> noteRefs;
+        for (const auto& ref : selected)
+            noteRefs.insert({ref.trackIndex, ref.noteIndex});
+        eventList.setSelectedNotes(noteRefs);
+    };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, true);
     viewport.onReachedEnd = [this]() { pianoRoll.extendContent(); };

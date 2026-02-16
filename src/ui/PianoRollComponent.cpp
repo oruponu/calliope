@@ -239,6 +239,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             }
             dragMode = DragMode::None;
             repaint();
+            if (onNoteSelectionChanged)
+                onNoteSelectionChanged(selectedNotes);
         }
         else
         {
@@ -312,6 +314,8 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         rubberBandRect = {};
         dragMode = DragMode::None;
         repaint();
+        if (onNoteSelectionChanged)
+            onNoteSelectionChanged(selectedNotes);
         return;
     }
 
