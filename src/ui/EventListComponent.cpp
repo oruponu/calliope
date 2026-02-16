@@ -139,10 +139,25 @@ void EventListComponent::setPlayheadTick(double tick)
     if (row != lastPlayheadRow)
     {
         lastPlayheadRow = row;
+        updatingFromPlayhead = true;
         listBox.selectRow(row);
+        updatingFromPlayhead = false;
         int visibleRows = listBox.getHeight() / rowHeight;
         int lookAhead = juce::jmin(row + visibleRows / 2, getNumRows() - 1);
         listBox.scrollToEnsureRowIsOnscreen(lookAhead);
+    }
+}
+
+void EventListComponent::selectedRowsChanged(int lastRowSelected)
+{
+    if (updatingFromPlayhead)
+        return;
+
+    if (lastRowSelected >= 0 && lastRowSelected < static_cast<int>(items.size()))
+    {
+        lastPlayheadRow = lastRowSelected;
+        if (onEventSelected)
+            onEventSelected(items[static_cast<size_t>(lastRowSelected)].tick);
     }
 }
 
