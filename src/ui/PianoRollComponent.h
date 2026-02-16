@@ -14,6 +14,23 @@ public:
         Select
     };
 
+    struct NoteRef
+    {
+        int trackIndex = -1;
+        int noteIndex = -1;
+        bool isValid() const { return trackIndex >= 0 && noteIndex >= 0; }
+        bool operator<(const NoteRef& other) const
+        {
+            if (trackIndex != other.trackIndex)
+                return trackIndex < other.trackIndex;
+            return noteIndex < other.noteIndex;
+        }
+        bool operator==(const NoteRef& other) const
+        {
+            return trackIndex == other.trackIndex && noteIndex == other.noteIndex;
+        }
+    };
+
     void setSequence(MidiSequence* seq);
     void setPlayheadTick(double tick);
     void setEditMode(EditMode mode);
@@ -22,6 +39,7 @@ public:
 
     std::function<void(int tick)> onPlayheadMoved;
     std::function<void()> onNotesChanged;
+    std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
 
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
     int getActiveTrackIndex() const;
@@ -55,23 +73,6 @@ private:
         Moving,
         Resizing,
         RubberBand
-    };
-
-    struct NoteRef
-    {
-        int trackIndex = -1;
-        int noteIndex = -1;
-        bool isValid() const { return trackIndex >= 0 && noteIndex >= 0; }
-        bool operator<(const NoteRef& other) const
-        {
-            if (trackIndex != other.trackIndex)
-                return trackIndex < other.trackIndex;
-            return noteIndex < other.noteIndex;
-        }
-        bool operator==(const NoteRef& other) const
-        {
-            return trackIndex == other.trackIndex && noteIndex == other.noteIndex;
-        }
     };
 
     void drawKeyboard(juce::Graphics& g);

@@ -148,9 +148,36 @@ void EventListComponent::setPlayheadTick(double tick)
     }
 }
 
+void EventListComponent::setSelectedNotes(const std::set<std::pair<int, int>>& selected)
+{
+    updatingFromNoteSelection = true;
+    listBox.deselectAllRows();
+
+    int firstRow = -1;
+    for (int i = 0; i < static_cast<int>(items.size()); ++i)
+    {
+        const auto& item = items[static_cast<size_t>(i)];
+        if (item.kind == EventListItem::Note && selected.count({item.trackIndex, item.sourceIndex}) > 0)
+        {
+            listBox.selectRow(i, true, false);
+            if (firstRow < 0)
+                firstRow = i;
+        }
+    }
+
+    if (firstRow >= 0)
+    {
+        int visibleRows = listBox.getHeight() / rowHeight;
+        int lookAhead = juce::jmin(firstRow + visibleRows / 2, getNumRows() - 1);
+        listBox.scrollToEnsureRowIsOnscreen(lookAhead);
+    }
+
+    updatingFromNoteSelection = false;
+}
+
 void EventListComponent::selectedRowsChanged(int lastRowSelected)
 {
-    if (updatingFromPlayhead)
+    if (updatingFromPlayhead || updatingFromNoteSelection)
         return;
 
     if (lastRowSelected >= 0 && lastRowSelected < static_cast<int>(items.size()))
