@@ -141,11 +141,15 @@ void EventListComponent::setPlayheadTick(double tick)
     {
         lastPlayheadRow = row;
         updatingFromPlayhead = true;
-        listBox.selectRow(row);
+        listBox.selectRow(row, true);
         updatingFromPlayhead = false;
-        int visibleRows = listBox.getHeight() / rowHeight;
-        int lookAhead = juce::jmin(row + visibleRows / 2, getNumRows() - 1);
-        listBox.scrollToEnsureRowIsOnscreen(lookAhead);
+        auto* vp = listBox.getViewport();
+        int rowTop = row * rowHeight;
+        int viewTop = vp->getViewPositionY();
+        int viewBottom = viewTop + vp->getViewHeight();
+
+        if (rowTop < viewTop || rowTop + rowHeight > viewBottom)
+            vp->setViewPosition(0, rowTop);
     }
 }
 
@@ -168,9 +172,13 @@ void EventListComponent::setSelectedNotes(const std::set<std::pair<int, int>>& s
 
     if (firstRow >= 0)
     {
-        int visibleRows = listBox.getHeight() / rowHeight;
-        int lookAhead = juce::jmin(firstRow + visibleRows / 2, getNumRows() - 1);
-        listBox.scrollToEnsureRowIsOnscreen(lookAhead);
+        auto* vp = listBox.getViewport();
+        int rowTop = firstRow * rowHeight;
+        int viewTop = vp->getViewPositionY();
+        int viewBottom = viewTop + vp->getViewHeight();
+
+        if (rowTop < viewTop || rowTop + rowHeight > viewBottom)
+            vp->setViewPosition(0, rowTop);
     }
 
     updatingFromNoteSelection = false;
