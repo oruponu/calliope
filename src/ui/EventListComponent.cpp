@@ -6,6 +6,7 @@ EventListComponent::EventListComponent()
 {
     listBox.setModel(this);
     listBox.setRowHeight(rowHeight);
+    listBox.setMultipleSelectionEnabled(true);
     listBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(30, 30, 38));
     addAndMakeVisible(listBox);
 }
