@@ -93,6 +93,7 @@ private:
     void updateTransportDisplay();
     void saveFile();
     void loadFile();
+    void stopPlayback();
     void onSequenceLoaded();
 
     MidiSequence sequence;

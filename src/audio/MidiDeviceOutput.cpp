@@ -19,10 +19,31 @@ void MidiDeviceOutput::close()
 {
     if (midiOutput)
     {
-        for (int ch = 1; ch <= 16; ++ch)
-            midiOutput->sendMessageNow(juce::MidiMessage::allNotesOff(ch));
-
+        reset();
         midiOutput.reset();
+    }
+}
+
+void MidiDeviceOutput::reset()
+{
+    if (!midiOutput)
+        return;
+
+    for (int ch = 1; ch <= 16; ++ch)
+    {
+        midiOutput->sendMessageNow(juce::MidiMessage::allNotesOff(ch));
+        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 121, 0));
+        midiOutput->sendMessageNow(juce::MidiMessage::pitchWheel(ch, 8192));
+        midiOutput->sendMessageNow(juce::MidiMessage::programChange(ch, 0));
+
+        // RPN: Pitch Bend Sensitivity = 2 semitones, 0 cents
+        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 101, 0));
+        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 100, 0));
+        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 6, 2));
+        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 38, 0));
+        // RPN Null
+        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 101, 127));
+        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 100, 127));
     }
 }
 
