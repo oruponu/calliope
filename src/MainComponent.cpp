@@ -132,6 +132,8 @@ MainComponent::MainComponent()
     };
     pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
     {
+        if (updatingFromEventList)
+            return;
         std::set<std::pair<int, int>> noteRefs;
         for (const auto& ref : selected)
             noteRefs.insert({ref.trackIndex, ref.noteIndex});
@@ -162,6 +164,15 @@ MainComponent::MainComponent()
         pianoRoll.setPlayheadTick(tick);
         updateTransportDisplay();
         scrollToPlayhead(tick);
+    };
+    eventList.onNoteSelectionFromList = [this](const auto& noteRefs)
+    {
+        updatingFromEventList = true;
+        std::set<PianoRollComponent::NoteRef> notes;
+        for (const auto& [trackIdx, noteIdx] : noteRefs)
+            notes.insert({trackIdx, noteIdx});
+        pianoRoll.setSelectedNotes(notes);
+        updatingFromEventList = false;
     };
     addAndMakeVisible(eventList);
 

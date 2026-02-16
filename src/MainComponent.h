@@ -195,6 +195,7 @@ private:
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
+    bool updatingFromEventList = false;
 
     static constexpr int menuBarHeight = 24;
     static constexpr int transportBarHeight = 64;

@@ -186,6 +186,23 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
         if (onEventSelected)
             onEventSelected(items[static_cast<size_t>(lastRowSelected)].tick);
     }
+
+    if (onNoteSelectionFromList)
+    {
+        std::set<std::pair<int, int>> noteRefs;
+        auto selectedRows = listBox.getSelectedRows();
+        for (int i = 0; i < selectedRows.size(); ++i)
+        {
+            int row = selectedRows[i];
+            if (row >= 0 && row < static_cast<int>(items.size()))
+            {
+                const auto& item = items[static_cast<size_t>(row)];
+                if (item.kind == EventListItem::Note)
+                    noteRefs.insert({item.trackIndex, item.sourceIndex});
+            }
+        }
+        onNoteSelectionFromList(noteRefs);
+    }
 }
 
 void EventListComponent::paint(juce::Graphics& g)
