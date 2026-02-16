@@ -326,7 +326,7 @@ juce::String EventListComponent::formatValue(const EventListItem& item)
     case EventListItem::ProgramChange:
         return juce::String(item.data1);
     case EventListItem::PitchBend:
-        return juce::String((item.data2 << 7) | item.data1);
+        return juce::String(item.data1 - 8192);
     case EventListItem::ChannelPressure:
         return juce::String(item.data1);
     case EventListItem::KeyPressure:
