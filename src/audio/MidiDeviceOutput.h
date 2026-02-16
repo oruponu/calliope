@@ -11,6 +11,7 @@ public:
 
     bool open();
     void close();
+    void reset();
 
     void onNoteOn(int trackIndex, const MidiNote& note) override;
     void onNoteOff(int trackIndex, const MidiNote& note) override;
