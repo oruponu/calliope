@@ -481,6 +481,7 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
         if (path.endsWithIgnoreCase(".mid") || path.endsWithIgnoreCase(".midi"))
         {
             juce::File file(path);
+            stopPlayback();
             if (MidiFileIO::load(sequence, file))
                 onSequenceLoaded();
             break;
@@ -623,17 +624,25 @@ void MainComponent::loadFile()
                              [this](const juce::FileChooser& fc)
                              {
                                  auto file = fc.getResult();
-                                 if (file != juce::File{} && MidiFileIO::load(sequence, file))
+                                 if (file == juce::File{})
+                                     return;
+                                 stopPlayback();
+                                 if (MidiFileIO::load(sequence, file))
                                      onSequenceLoaded();
                              });
 }
 
-void MainComponent::onSequenceLoaded()
+void MainComponent::stopPlayback()
 {
     playbackEngine.stop();
-    playbackEngine.setPositionInTicks(0);
+    midiOutput.reset();
     playButton.setActive(false);
     vblankAttachment.reset();
+}
+
+void MainComponent::onSequenceLoaded()
+{
+    playbackEngine.setPositionInTicks(0);
 
     pianoRoll.setSequence(&sequence);
     {
