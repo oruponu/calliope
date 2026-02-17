@@ -91,6 +91,7 @@ private:
     void onVBlank();
     void scrollToPlayhead(int tick);
     void updateTransportDisplay();
+    void newFile();
     void saveFile();
     void loadFile();
     void stopPlayback();
@@ -159,7 +160,8 @@ private:
 
     enum CommandID
     {
-        openFile = 1,
+        newFile_ = 1,
+        openFile,
         saveFile_,
         quitApp,
         togglePlay,
