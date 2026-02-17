@@ -287,6 +287,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     juce::PopupMenu menu;
     if (menuIndex == 0)
     {
+        juce::PopupMenu::Item newItem;
+        newItem.itemID = CommandID::newFile_;
+        newItem.text = "New";
+        newItem.shortcutKeyDescription = "Ctrl+N";
+        newItem.action = [this]() { commandManager.invokeDirectly(CommandID::newFile_, true); };
+        menu.addItem(newItem);
+
         juce::PopupMenu::Item open;
         open.itemID = CommandID::openFile;
         open.text = "Open...";
@@ -321,15 +328,19 @@ juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 
 void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
-    commands.addArray({CommandID::openFile, CommandID::saveFile_, CommandID::quitApp, CommandID::togglePlay,
-                       CommandID::returnToStart, CommandID::prevBar, CommandID::nextBar, CommandID::switchToEditTool,
-                       CommandID::switchToSelectTool});
+    commands.addArray({CommandID::newFile_, CommandID::openFile, CommandID::saveFile_, CommandID::quitApp,
+                       CommandID::togglePlay, CommandID::returnToStart, CommandID::prevBar, CommandID::nextBar,
+                       CommandID::switchToEditTool, CommandID::switchToSelectTool});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
 {
     switch (commandID)
     {
+    case CommandID::newFile_:
+        result.setInfo("New", "", "File", 0);
+        result.addDefaultKeypress('N', juce::ModifierKeys::ctrlModifier);
+        break;
     case CommandID::openFile:
         result.setInfo("Open...", "", "File", 0);
         result.addDefaultKeypress('O', juce::ModifierKeys::ctrlModifier);
@@ -374,6 +385,9 @@ bool MainComponent::perform(const InvocationInfo& info)
 {
     switch (info.commandID)
     {
+    case CommandID::newFile_:
+        newFile();
+        return true;
     case CommandID::openFile:
         loadFile();
         return true;
@@ -603,6 +617,14 @@ void MainComponent::updateTransportDisplay()
 
     double tempo = sequence.getTempoAt(tick);
     tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
+}
+
+void MainComponent::newFile()
+{
+    stopPlayback();
+    sequence.clear();
+    sequence.addTrack();
+    onSequenceLoaded();
 }
 
 void MainComponent::saveFile()
