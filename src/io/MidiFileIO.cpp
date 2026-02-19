@@ -216,7 +216,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
     auto* data = static_cast<const uint8_t*>(fileData.getData());
     size_t size = fileData.getSize();
 
-    // MThdやMTrk以外の非標準チャンクをフィルタリング（YAMAHA XGファイルのXFIH等）
+    // MThd や MTrk 以外の非標準チャンクをフィルタリング（YAMAHA XG ファイルの XFIH 等）
     juce::MemoryBlock filteredData;
     {
         size_t pos = 0;
@@ -398,7 +398,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
     }
     else
     {
-        // Format 1以降: MIDIファイルのトラックをそのまま使用
+        // Format 1 以降: MIDI ファイルのトラックをそのまま使用
         for (int t = 0; t < midiFile.getNumTracks(); ++t)
         {
             const auto* msgSeq = midiFile.getTrack(t);
