@@ -11,8 +11,25 @@ bool MidiDeviceOutput::open()
     if (devices.isEmpty())
         return false;
 
-    midiOutput = juce::MidiOutput::openDevice(devices[0].identifier);
-    return midiOutput != nullptr;
+    return open(devices[0].identifier);
+}
+
+bool MidiDeviceOutput::open(const juce::String& deviceIdentifier)
+{
+    close();
+    midiOutput = juce::MidiOutput::openDevice(deviceIdentifier);
+    if (midiOutput != nullptr)
+    {
+        currentDeviceIdentifier = deviceIdentifier;
+        return true;
+    }
+    currentDeviceIdentifier.clear();
+    return false;
+}
+
+juce::String MidiDeviceOutput::getCurrentDeviceIdentifier() const
+{
+    return currentDeviceIdentifier;
 }
 
 void MidiDeviceOutput::close()
