@@ -610,7 +610,11 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
             juce::File file(path);
             stopPlayback();
             if (MidiFileIO::load(sequence, file))
+            {
+                currentFile = file;
                 onSequenceLoaded();
+                updateTitleBar();
+            }
             break;
         }
     }
@@ -749,7 +753,9 @@ void MainComponent::newFile()
     stopPlayback();
     sequence.clear();
     sequence.addTrack();
+    currentFile = juce::File{};
     onSequenceLoaded();
+    updateTitleBar();
 }
 
 void MainComponent::saveFile()
@@ -760,7 +766,11 @@ void MainComponent::saveFile()
                              {
                                  auto file = fc.getResult();
                                  if (file != juce::File{})
+                                 {
                                      MidiFileIO::save(sequence, file);
+                                     currentFile = file;
+                                     updateTitleBar();
+                                 }
                              });
 }
 
@@ -775,7 +785,11 @@ void MainComponent::loadFile()
                                      return;
                                  stopPlayback();
                                  if (MidiFileIO::load(sequence, file))
+                                 {
+                                     currentFile = file;
                                      onSequenceLoaded();
+                                     updateTitleBar();
+                                 }
                              });
 }
 
@@ -811,4 +825,16 @@ void MainComponent::onSequenceLoaded()
 
     int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
+}
+
+void MainComponent::updateTitleBar()
+{
+    if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
+    {
+        auto appName = juce::JUCEApplication::getInstance()->getApplicationName();
+        if (currentFile != juce::File{})
+            window->setName(currentFile.getFileName() + " - " + appName);
+        else
+            window->setName(appName);
+    }
 }
