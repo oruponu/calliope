@@ -1,6 +1,29 @@
 #include "MainComponent.h"
 #include "io/MidiFileIO.h"
 
+void MainComponent::Divider::paint(juce::Graphics& g)
+{
+    g.setColour(juce::Colour(50, 50, 65));
+    g.fillRect(getLocalBounds());
+    g.setColour(juce::Colour(80, 80, 95));
+    auto cy = getHeight() / 2.0f;
+    auto cx = getWidth() / 2.0f;
+    for (float dx : {-12.0f, -4.0f, 4.0f, 12.0f})
+        g.fillEllipse(cx + dx - 1.0f, cy - 1.0f, 2.0f, 2.0f);
+}
+
+void MainComponent::Divider::mouseDown(const juce::MouseEvent&)
+{
+    if (onDragStart)
+        onDragStart();
+}
+
+void MainComponent::Divider::mouseDrag(const juce::MouseEvent& e)
+{
+    if (onDrag)
+        onDrag(e.getDistanceFromDragStartY());
+}
+
 void MainComponent::TransportButton::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
@@ -122,12 +145,14 @@ MainComponent::MainComponent()
     pianoRoll.onPlayheadMoved = [this](int tick)
     {
         playbackEngine.setPositionInTicks(tick);
+        controllerLane.setPlayheadTick(tick);
         eventList.setPlayheadTick(tick);
         updateTransportDisplay();
     };
     pianoRoll.onNotesChanged = [this]()
     {
         trackList.refresh();
+        controllerLane.repaint();
         eventList.refresh();
     };
     pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
@@ -141,8 +166,22 @@ MainComponent::MainComponent()
     };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, true);
-    viewport.onReachedEnd = [this]() { pianoRoll.extendContent(); };
-    viewport.onVisibleAreaChanged = [this]() { pianoRoll.updateSize(); };
+    viewport.onReachedEnd = [this]()
+    {
+        pianoRoll.extendContent();
+        controllerLane.setContentBeats(pianoRoll.getContentBeats());
+    };
+    viewport.onVisibleAreaChanged = [this]()
+    {
+        pianoRoll.updateSize();
+        controllerLane.updateSize();
+        if (!syncingScroll)
+        {
+            syncingScroll = true;
+            controllerLaneViewport.setViewPosition(viewport.getViewPositionX(), 0);
+            syncingScroll = false;
+        }
+    };
     addAndMakeVisible(viewport);
 
     trackList.setSequence(&sequence);
@@ -152,9 +191,49 @@ MainComponent::MainComponent()
     trackList.onTrackSelected = [this](int activeIdx, const std::set<int>& selected)
     {
         pianoRoll.setSelectedTracks(activeIdx, selected);
+        controllerLane.setSelectedTracks(activeIdx, selected);
         eventList.setSelectedTracks(selected);
     };
     trackList.onMuteSoloChanged = []() {};
+
+    controllerLane.setSequence(&sequence);
+    controllerLane.setSelectedTracks(0, {0});
+    controllerLane.onDataChanged = [this]()
+    {
+        pianoRoll.repaint();
+        eventList.refresh();
+    };
+    controllerLane.onMouseWheel = [this](const juce::MouseEvent&, const juce::MouseWheelDetails& w)
+    {
+        int scrollSpeed = 600;
+        int newX = viewport.getViewPositionX() - juce::roundToInt(w.deltaX * scrollSpeed);
+        int newY = viewport.getViewPositionY() - juce::roundToInt(w.deltaY * scrollSpeed);
+        newX = juce::jlimit(0, juce::jmax(0, pianoRoll.getWidth() - viewport.getViewWidth()), newX);
+        newY = juce::jlimit(0, juce::jmax(0, pianoRoll.getHeight() - viewport.getViewHeight()), newY);
+        viewport.setViewPosition(newX, newY);
+    };
+    controllerLaneViewport.setViewedComponent(&controllerLane, false);
+    controllerLaneViewport.setScrollBarsShown(false, false);
+    controllerLaneViewport.onVisibleAreaChanged = [this]()
+    {
+        if (!syncingScroll)
+        {
+            syncingScroll = true;
+            viewport.setViewPosition(controllerLaneViewport.getViewPositionX(), viewport.getViewPositionY());
+            syncingScroll = false;
+        }
+    };
+    addAndMakeVisible(controllerLaneViewport);
+
+    addAndMakeVisible(controllerLaneDivider);
+    controllerLaneDivider.onDragStart = [this]() { controllerLaneHeightOnDragStart = controllerLaneHeight; };
+    controllerLaneDivider.onDrag = [this](int deltaY)
+    {
+        int minH = 60;
+        int maxH = getHeight() - menuBarHeight - transportBarHeight - toolBarHeight - 150;
+        controllerLaneHeight = juce::jlimit(minH, maxH, controllerLaneHeightOnDragStart - deltaY);
+        resized();
+    };
 
     eventList.setSequence(&sequence);
     eventList.setSelectedTracks({0});
@@ -184,6 +263,7 @@ MainComponent::MainComponent()
     {
         playbackEngine.setPositionInTicks(0);
         pianoRoll.setPlayheadTick(0);
+        controllerLane.setPlayheadTick(0);
         eventList.setPlayheadTick(0);
         updateTransportDisplay();
         viewport.setViewPosition(0, viewport.getViewPositionY());
@@ -198,6 +278,7 @@ MainComponent::MainComponent()
             playButton.setActive(false);
             vblankAttachment.reset();
             pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
+            controllerLane.setPlayheadTick(playbackEngine.getCurrentTick());
             eventList.setPlayheadTick(playbackEngine.getCurrentTick());
             updateTransportDisplay();
         }
@@ -216,6 +297,7 @@ MainComponent::MainComponent()
         playButton.setActive(false);
         vblankAttachment.reset();
         pianoRoll.setPlayheadTick(playbackEngine.getCurrentTick());
+        controllerLane.setPlayheadTick(playbackEngine.getCurrentTick());
         eventList.setPlayheadTick(playbackEngine.getCurrentTick());
         updateTransportDisplay();
     };
@@ -403,6 +485,7 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::returnToStart:
         playbackEngine.setPositionInTicks(0);
         pianoRoll.setPlayheadTick(0);
+        controllerLane.setPlayheadTick(0);
         eventList.setPlayheadTick(0);
         updateTransportDisplay();
         viewport.setViewPosition(0, viewport.getViewPositionY());
@@ -415,6 +498,7 @@ bool MainComponent::perform(const InvocationInfo& info)
         int newTick = sequence.barStartToTick(targetBar);
         playbackEngine.setPositionInTicks(newTick);
         pianoRoll.setPlayheadTick(newTick);
+        controllerLane.setPlayheadTick(newTick);
         eventList.setPlayheadTick(newTick);
         updateTransportDisplay();
         scrollToPlayhead(newTick);
@@ -427,6 +511,7 @@ bool MainComponent::perform(const InvocationInfo& info)
         int newTick = sequence.barStartToTick(bbt.bar + 1);
         playbackEngine.setPositionInTicks(newTick);
         pianoRoll.setPlayheadTick(newTick);
+        controllerLane.setPlayheadTick(newTick);
         eventList.setPlayheadTick(newTick);
         updateTransportDisplay();
         scrollToPlayhead(newTick);
@@ -565,13 +650,25 @@ void MainComponent::resized()
     trackListViewport.setBounds(area.removeFromLeft(trackListWidth));
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
     eventList.setBounds(area.removeFromRight(eventListWidth));
+
+    int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
+    auto editorArea = area.removeFromBottom(clampedEditorH);
+    auto divArea = area.removeFromBottom(dividerHeight);
+
     viewport.setBounds(area);
+    pianoRoll.updateSize();
+    controllerLaneDivider.setBounds(divArea);
+    controllerLaneViewport.setBounds(editorArea);
+    controllerLane.setSize(std::max(controllerLane.getWidth(), editorArea.getWidth()),
+                           controllerLaneViewport.getHeight());
+    controllerLane.updateSize();
 }
 
 void MainComponent::onVBlank()
 {
     double tick = playbackEngine.getCurrentTick();
     pianoRoll.setPlayheadTick(tick);
+    controllerLane.setPlayheadTick(tick);
     eventList.setPlayheadTick(tick);
     updateTransportDisplay();
     scrollToPlayhead(static_cast<int>(tick));
@@ -666,25 +763,23 @@ void MainComponent::onSequenceLoaded()
 {
     playbackEngine.setPositionInTicks(0);
 
+    std::set<int> allTracks;
+    for (int i = 0; i < sequence.getNumTracks(); ++i)
+        allTracks.insert(i);
+
     pianoRoll.setSequence(&sequence);
-    {
-        std::set<int> allTracks;
-        for (int i = 0; i < sequence.getNumTracks(); ++i)
-            allTracks.insert(i);
-        pianoRoll.setSelectedTracks(0, allTracks);
-    }
+    pianoRoll.setSelectedTracks(0, allTracks);
     pianoRoll.setPlayheadTick(0);
     updateTransportDisplay();
 
     trackList.setSequence(&sequence);
 
+    controllerLane.setSequence(&sequence);
+    controllerLane.setContentBeats(pianoRoll.getContentBeats());
+    controllerLane.setSelectedTracks(0, allTracks);
+
     eventList.setSequence(&sequence);
-    {
-        std::set<int> allTracks;
-        for (int i = 0; i < sequence.getNumTracks(); ++i)
-            allTracks.insert(i);
-        eventList.setSelectedTracks(allTracks);
-    }
+    eventList.setSelectedTracks(allTracks);
 
     int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
