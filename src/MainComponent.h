@@ -97,6 +97,7 @@ private:
     void loadFile();
     void stopPlayback();
     void onSequenceLoaded();
+    void updateTitleBar();
 
     MidiSequence sequence;
     PlaybackEngine playbackEngine;
@@ -245,6 +246,7 @@ private:
     juce::Label tempoHeaderLabel{"", "Tempo"};
     juce::Label tempoValueLabel;
 
+    juce::File currentFile;
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
