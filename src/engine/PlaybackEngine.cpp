@@ -45,6 +45,7 @@ double PlaybackEngine::getCurrentTick() const
 
 void PlaybackEngine::setPositionInTicks(int tick)
 {
+    sendAllNoteOffs();
     tickPosition = static_cast<double>(tick);
 }
 
