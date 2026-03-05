@@ -165,7 +165,7 @@ MainComponent::MainComponent()
         eventList.setSelectedNotes(noteRefs);
     };
     viewport.setViewedComponent(&pianoRoll, false);
-    viewport.setScrollBarsShown(true, true);
+    viewport.setScrollBarsShown(true, false);
     viewport.onReachedEnd = [this]()
     {
         pianoRoll.extendContent();
@@ -213,7 +213,7 @@ MainComponent::MainComponent()
         viewport.setViewPosition(newX, newY);
     };
     controllerLaneViewport.setViewedComponent(&controllerLane, false);
-    controllerLaneViewport.setScrollBarsShown(false, false);
+    controllerLaneViewport.setScrollBarsShown(false, true);
     controllerLaneViewport.onVisibleAreaChanged = [this]()
     {
         if (!syncingScroll)
@@ -222,6 +222,11 @@ MainComponent::MainComponent()
             viewport.setViewPosition(controllerLaneViewport.getViewPositionX(), viewport.getViewPositionY());
             syncingScroll = false;
         }
+    };
+    controllerLaneViewport.onReachedEnd = [this]()
+    {
+        pianoRoll.extendContent();
+        controllerLane.setContentBeats(pianoRoll.getContentBeats());
     };
     addAndMakeVisible(controllerLaneViewport);
 
@@ -660,7 +665,7 @@ void MainComponent::resized()
     controllerLaneDivider.setBounds(divArea);
     controllerLaneViewport.setBounds(editorArea);
     controllerLane.setSize(std::max(controllerLane.getWidth(), editorArea.getWidth()),
-                           controllerLaneViewport.getHeight());
+                           controllerLaneViewport.getMaximumVisibleHeight());
     controllerLane.updateSize();
 }
 
