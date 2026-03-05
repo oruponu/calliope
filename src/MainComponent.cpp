@@ -366,7 +366,7 @@ void MainComponent::parentHierarchyChanged()
 
 juce::StringArray MainComponent::getMenuBarNames()
 {
-    return {"File"};
+    return {"File", "Settings"};
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String&)
@@ -402,6 +402,29 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
         quit.text = "Exit";
         quit.action = [this]() { commandManager.invokeDirectly(CommandID::quitApp, true); };
         menu.addItem(quit);
+    }
+    else if (menuIndex == 1)
+    {
+        juce::PopupMenu midiOutputMenu;
+        auto devices = juce::MidiOutput::getAvailableDevices();
+        auto currentId = midiOutput.getCurrentDeviceIdentifier();
+
+        if (devices.isEmpty())
+        {
+            midiOutputMenu.addItem(juce::PopupMenu::Item("(No devices available)").setEnabled(false));
+        }
+        else
+        {
+            for (const auto& device : devices)
+            {
+                bool isCurrent = (device.identifier == currentId);
+                midiOutputMenu.addItem(juce::PopupMenu::Item(device.name)
+                                           .setTicked(isCurrent)
+                                           .setAction([this, id = device.identifier]() { midiOutput.open(id); }));
+            }
+        }
+
+        menu.addSubMenu("MIDI Output", midiOutputMenu);
     }
     return menu;
 }

@@ -10,8 +10,11 @@ public:
     ~MidiDeviceOutput() override;
 
     bool open();
+    bool open(const juce::String& deviceIdentifier);
     void close();
     void reset();
+
+    juce::String getCurrentDeviceIdentifier() const;
 
     void onNoteOn(int trackIndex, const MidiNote& note) override;
     void onNoteOff(int trackIndex, const MidiNote& note) override;
@@ -19,4 +22,5 @@ public:
 
 private:
     std::unique_ptr<juce::MidiOutput> midiOutput;
+    juce::String currentDeviceIdentifier;
 };
