@@ -4,6 +4,7 @@
 #include "engine/PlaybackEngine.h"
 #include "model/MidiSequence.h"
 #include "ui/PianoRollComponent.h"
+#include "ui/ControllerLaneComponent.h"
 #include "ui/EventListComponent.h"
 #include "ui/TrackListComponent.h"
 #include <juce_gui_extra/juce_gui_extra.h>
@@ -156,6 +157,38 @@ private:
     TrackListComponent trackList;
     juce::Viewport trackListViewport;
 
+    ControllerLaneComponent controllerLane;
+
+    class ControllerLaneViewport : public juce::Viewport
+    {
+    public:
+        void visibleAreaChanged(const juce::Rectangle<int>&) override
+        {
+            if (onVisibleAreaChanged)
+                onVisibleAreaChanged();
+        }
+
+        std::function<void()> onVisibleAreaChanged;
+    };
+
+    ControllerLaneViewport controllerLaneViewport;
+
+    class Divider : public juce::Component
+    {
+    public:
+        Divider() { setMouseCursor(juce::MouseCursor::UpDownResizeCursor); }
+        void paint(juce::Graphics& g) override;
+        void mouseDown(const juce::MouseEvent&) override;
+        void mouseDrag(const juce::MouseEvent& e) override;
+        std::function<void()> onDragStart;
+        std::function<void(int deltaY)> onDrag;
+    };
+
+    Divider controllerLaneDivider;
+    int controllerLaneHeight = 120;
+    int controllerLaneHeightOnDragStart = 120;
+    bool syncingScroll = false;
+
     EventListComponent eventList;
 
     enum CommandID
@@ -205,6 +238,7 @@ private:
     static constexpr int toolBarHeight = 32;
     static constexpr int trackListWidth = 180;
     static constexpr int eventListWidth = 280;
+    static constexpr int dividerHeight = 5;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

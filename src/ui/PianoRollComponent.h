@@ -64,6 +64,7 @@ public:
     static constexpr int resizeEdgeWidth = 6;
 
     int tickToX(int tick) const;
+    int getContentBeats() const { return contentBeats; }
     void updateSize();
     void extendContent();
 
