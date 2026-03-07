@@ -2,6 +2,46 @@
 #include "TrackColours.h"
 #include <algorithm>
 
+namespace
+{
+// clang-format off
+const char* const gmProgramNames[] = {
+    "Acoustic Grand Piano", "Bright Acoustic Piano", "Electric Grand Piano", "Honky-tonk Piano",
+    "Electric Piano 1", "Electric Piano 2", "Harpsichord", "Clavinet",
+    "Celesta", "Glockenspiel", "Music Box", "Vibraphone",
+    "Marimba", "Xylophone", "Tubular Bells", "Dulcimer",
+    "Drawbar Organ", "Percussive Organ", "Rock Organ", "Church Organ",
+    "Reed Organ", "Accordion", "Harmonica", "Tango Accordion",
+    "Acoustic Guitar (nylon)", "Acoustic Guitar (steel)", "Electric Guitar (jazz)", "Electric Guitar (clean)",
+    "Electric Guitar (muted)", "Overdriven Guitar", "Distortion Guitar", "Guitar Harmonics",
+    "Acoustic Bass", "Electric Bass (finger)", "Electric Bass (pick)", "Fretless Bass",
+    "Slap Bass 1", "Slap Bass 2", "Synth Bass 1", "Synth Bass 2",
+    "Violin", "Viola", "Cello", "Contrabass",
+    "Tremolo Strings", "Pizzicato Strings", "Orchestral Harp", "Timpani",
+    "String Ensemble 1", "String Ensemble 2", "Synth Strings 1", "Synth Strings 2",
+    "Choir Aahs", "Voice Oohs", "Synth Choir", "Orchestra Hit",
+    "Trumpet", "Trombone", "Tuba", "Muted Trumpet",
+    "French Horn", "Brass Section", "Synth Brass 1", "Synth Brass 2",
+    "Soprano Sax", "Alto Sax", "Tenor Sax", "Baritone Sax",
+    "Oboe", "English Horn", "Bassoon", "Clarinet",
+    "Piccolo", "Flute", "Recorder", "Pan Flute",
+    "Blown Bottle", "Shakuhachi", "Whistle", "Ocarina",
+    "Lead 1 (square)", "Lead 2 (sawtooth)", "Lead 3 (calliope)", "Lead 4 (chiff)",
+    "Lead 5 (charang)", "Lead 6 (voice)", "Lead 7 (fifths)", "Lead 8 (bass + lead)",
+    "Pad 1 (new age)", "Pad 2 (warm)", "Pad 3 (polysynth)", "Pad 4 (choir)",
+    "Pad 5 (bowed)", "Pad 6 (metallic)", "Pad 7 (halo)", "Pad 8 (sweep)",
+    "FX 1 (rain)", "FX 2 (soundtrack)", "FX 3 (crystal)", "FX 4 (atmosphere)",
+    "FX 5 (brightness)", "FX 6 (goblins)", "FX 7 (echoes)", "FX 8 (sci-fi)",
+    "Sitar", "Banjo", "Shamisen", "Koto",
+    "Kalimba", "Bagpipe", "Fiddle", "Shanai",
+    "Tinkle Bell", "Agogo", "Steel Drums", "Woodblock",
+    "Taiko Drum", "Melodic Tom", "Synth Drum", "Reverse Cymbal",
+    "Guitar Fret Noise", "Breath Noise", "Seashore", "Bird Tweet",
+    "Telephone Ring", "Helicopter", "Applause", "Gunshot",
+};
+// clang-format on
+} // namespace
+
 void ControllerLaneComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;
@@ -141,6 +181,9 @@ void ControllerLaneComponent::paint(juce::Graphics& g)
     case DisplayMode::PitchBend:
         drawPitchBend(g);
         break;
+    case DisplayMode::ProgramChange:
+        drawProgramChange(g);
+        break;
     }
 
     drawPlayhead(g);
@@ -173,6 +216,9 @@ void ControllerLaneComponent::drawLeftPanel(juce::Graphics& g)
     case DisplayMode::PitchBend:
         label = "PitchBend";
         break;
+    case DisplayMode::ProgramChange:
+        label = "PC";
+        break;
     }
 
     g.setColour(juce::Colours::white.withAlpha(0.7f));
@@ -191,7 +237,7 @@ void ControllerLaneComponent::drawLeftPanel(juce::Graphics& g)
         g.drawText("0", lx, (getDrawAreaTop() + getDrawAreaBottom()) / 2 - 5, lw, 10, juce::Justification::right);
         g.drawText("-8192", lx, getDrawAreaBottom() - 5, lw, 10, juce::Justification::right);
     }
-    else
+    else if (displayMode != DisplayMode::ProgramChange)
     {
         g.drawText("127", lx, getDrawAreaTop() - 5, lw, 10, juce::Justification::right);
         g.drawText("0", lx, getDrawAreaBottom() - 5, lw, 10, juce::Justification::right);
@@ -213,7 +259,7 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
         g.setColour(juce::Colours::white.withAlpha(0.15f));
         g.drawHorizontalLine(centerY, static_cast<float>(leftPanelWidth), static_cast<float>(getWidth()));
     }
-    else
+    else if (displayMode != DisplayMode::ProgramChange)
     {
         for (int v : {32, 64, 96})
         {
@@ -358,6 +404,69 @@ void ControllerLaneComponent::drawPitchBend(juce::Graphics& g)
     }
 }
 
+void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
+{
+    if (!sequence)
+        return;
+
+    auto* vp = findParentComponentOfClass<juce::Viewport>();
+    int visibleLeft = vp ? vp->getViewPositionX() : 0;
+    int visibleRight = vp ? visibleLeft + vp->getViewWidth() : getWidth();
+
+    auto blockArea = juce::Rectangle<int>(0, getDrawAreaTop(), getWidth(), getDrawAreaHeight()).reduced(0, 2);
+
+    for (int trackIdx : selectedTrackIndices)
+    {
+        if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
+            continue;
+
+        const auto& track = sequence->getTrack(trackIdx);
+        bool isActive = (trackIdx == activeTrackIndex);
+        float alpha = isActive ? 0.85f : 0.3f;
+
+        std::vector<std::pair<int, int>> events;
+        for (int i = 0; i < track.getNumEvents(); ++i)
+        {
+            const auto& event = track.getEvent(i);
+            if (event.type == MidiEvent::Type::ProgramChange)
+                events.push_back({event.tick, event.data1});
+        }
+
+        if (events.empty())
+            continue;
+
+        auto colour = TrackColours::getColour(trackIdx);
+        g.setFont(juce::Font(juce::FontOptions(11.0f)));
+
+        for (size_t i = 0; i < events.size(); ++i)
+        {
+            int x1 = tickToX(events[i].first);
+            int x2 = (i + 1 < events.size()) ? tickToX(events[i + 1].first) : getWidth();
+
+            if (x2 < visibleLeft || x1 > visibleRight)
+                continue;
+
+            auto rect = blockArea.withLeft(x1).withRight(x2).toFloat();
+
+            g.setColour(colour.withAlpha(alpha * 0.25f));
+            g.fillRoundedRectangle(rect, 3.0f);
+
+            g.setColour(colour.withAlpha(alpha * 0.7f));
+            g.drawRoundedRectangle(rect, 3.0f, 1.0f);
+
+            int pgm = events[i].second;
+            juce::String text = juce::String(pgm);
+            if (pgm >= 0 && pgm < 128)
+                text += " " + juce::String(gmProgramNames[pgm]);
+
+            g.setColour(juce::Colours::white.withAlpha(alpha));
+            auto textRect = rect.reduced(5.0f, 0.0f);
+            if (textRect.getWidth() > 10.0f)
+                g.drawText(text, textRect, juce::Justification::centredLeft, true);
+        }
+    }
+}
+
 void ControllerLaneComponent::drawStepGraph(juce::Graphics& g, const std::vector<std::pair<int, int>>& events,
                                             juce::Colour colour, float alpha, std::function<int(int)> toY)
 {
@@ -433,6 +542,7 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
         menu.addSubMenu("Control Change", ccMenu);
 
         menu.addItem(2, "Pitch Bend", true, displayMode == DisplayMode::PitchBend);
+        menu.addItem(3, "Program Change", true, displayMode == DisplayMode::ProgramChange);
 
         auto screenPos = e.getScreenPosition();
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({screenPos.x, screenPos.y, 1, 1}),
@@ -442,6 +552,8 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
                                    setDisplayMode(DisplayMode::Velocity);
                                else if (result == 2)
                                    setDisplayMode(DisplayMode::PitchBend);
+                               else if (result == 3)
+                                   setDisplayMode(DisplayMode::ProgramChange);
                                else if (result >= 100)
                                {
                                    setCCNumber(result - 100);
