@@ -14,7 +14,8 @@ public:
     {
         Velocity,
         ControlChange,
-        PitchBend
+        PitchBend,
+        ProgramChange
     };
 
     void setSequence(MidiSequence* seq);
@@ -48,6 +49,7 @@ private:
     void drawVelocity(juce::Graphics& g);
     void drawControlChange(juce::Graphics& g);
     void drawPitchBend(juce::Graphics& g);
+    void drawProgramChange(juce::Graphics& g);
     void drawStepGraph(juce::Graphics& g, const std::vector<std::pair<int, int>>& events, juce::Colour colour,
                        float alpha, std::function<int(int)> toY);
     void drawPlayhead(juce::Graphics& g);
