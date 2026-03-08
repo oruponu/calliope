@@ -144,7 +144,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
     {
         if (e.x >= getKeyboardLeft() + keyboardWidth)
         {
-            int tick = snapTick(xToTick(e.x));
+            int tick = roundTickToGrid(xToTick(e.x));
             playheadTick = std::max(0, tick);
             repaint();
             if (onPlayheadMoved)
@@ -190,7 +190,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         }
         else
         {
-            int tick = snapTick(xToTick(e.x));
+            int tick = floorTickToGrid(xToTick(e.x));
             int noteNum = yToNote(e.y);
             if (noteNum < 0 || noteNum > 127)
                 return;
@@ -291,7 +291,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         int deltaTick = currentTick - dragStartTick;
         int deltaNote = currentNote - dragStartNote;
 
-        int newStart = snapTick(originalStartTick + deltaTick);
+        int newStart = roundTickToGrid(originalStartTick + deltaTick);
         int newNote = std::clamp(originalNoteNumber + deltaNote, 0, 127);
 
         note.startTick = std::max(0, newStart);
@@ -300,7 +300,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     else if (dragMode == DragMode::Resizing)
     {
         int currentTick = xToTick(e.x);
-        int newDuration = snapTick(currentTick - originalStartTick);
+        int newDuration = roundTickToGrid(currentTick - originalStartTick);
         int minDuration = sequence ? sequence->getTicksPerQuarterNote() : snapTicks;
         note.duration = std::max(minDuration, newDuration);
     }
@@ -1168,7 +1168,7 @@ int PianoRollComponent::yToNote(int y) const
     return totalNotes - 1 - ((y - gridTopOffset) / noteHeight);
 }
 
-int PianoRollComponent::snapTick(int tick) const
+int PianoRollComponent::roundTickToGrid(int tick) const
 {
     if (!sequence)
         return ((tick + snapTicks / 2) / snapTicks) * snapTicks;
@@ -1177,6 +1177,17 @@ int PianoRollComponent::snapTick(int tick) const
     auto ts = sequence->getTimeSignatureAt(tick);
     int grid = ppq * 4 / ts.denominator;
     return ((tick + grid / 2) / grid) * grid;
+}
+
+int PianoRollComponent::floorTickToGrid(int tick) const
+{
+    if (!sequence)
+        return (tick / snapTicks) * snapTicks;
+
+    int ppq = sequence->getTicksPerQuarterNote();
+    auto ts = sequence->getTimeSignatureAt(tick);
+    int grid = ppq * 4 / ts.denominator;
+    return (tick / grid) * grid;
 }
 
 void PianoRollComponent::extendContent()
