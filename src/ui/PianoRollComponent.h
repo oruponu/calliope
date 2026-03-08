@@ -90,7 +90,8 @@ private:
     int tickToWidth(int durationTicks) const;
     int xToTick(int x) const;
     int yToNote(int y) const;
-    int snapTick(int tick) const;
+    int roundTickToGrid(int tick) const;
+    int floorTickToGrid(int tick) const;
 
     NoteRef hitTestNote(int x, int y) const;
     bool isOnRightEdge(int x, const MidiNote& note) const;
