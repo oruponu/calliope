@@ -47,6 +47,12 @@ public:
     void setSelectedNotes(const std::set<NoteRef>& notes);
     int getActiveTrackIndex() const;
 
+    void copySelectedNotes();
+    void cutSelectedNotes();
+    void pasteNotes(int atTick);
+    bool hasClipboardNotes() const { return !clipboard.empty(); }
+    bool hasSelectedNotes() const { return !selectedNotes.empty(); }
+
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
@@ -126,4 +132,6 @@ private:
     int contentBeats = 0;
     juce::Point<int> rubberBandStart;
     juce::Rectangle<int> rubberBandRect;
+
+    std::vector<MidiNote> clipboard;
 };
