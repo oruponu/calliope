@@ -108,6 +108,104 @@ int PianoRollComponent::getActiveTrackIndex() const
     return activeTrackIndex;
 }
 
+void PianoRollComponent::copySelectedNotes()
+{
+    if (!sequence || selectedNotes.empty())
+        return;
+
+    clipboard.clear();
+
+    int minTick = std::numeric_limits<int>::max();
+    for (const auto& ref : selectedNotes)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        if (note.startTick < minTick)
+            minTick = note.startTick;
+    }
+
+    for (const auto& ref : selectedNotes)
+    {
+        MidiNote note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        note.startTick -= minTick;
+        clipboard.push_back(note);
+    }
+}
+
+void PianoRollComponent::cutSelectedNotes()
+{
+    if (!sequence || selectedNotes.empty())
+        return;
+
+    copySelectedNotes();
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction("Cut Notes");
+        undoManager->perform(new MultiNoteDeleteAction(sequence, selectedNotes));
+    }
+    else
+    {
+        std::map<int, std::vector<int>> toRemove;
+        for (const auto& ref : selectedNotes)
+            toRemove[ref.trackIndex].push_back(ref.noteIndex);
+
+        for (auto& [trackIdx, indices] : toRemove)
+        {
+            std::sort(indices.begin(), indices.end(), std::greater<int>());
+            for (int idx : indices)
+                sequence->getTrack(trackIdx).removeNote(idx);
+        }
+    }
+
+    selectedNotes.clear();
+    repaint();
+    if (onNotesChanged)
+        onNotesChanged();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::pasteNotes(int atTick)
+{
+    if (!sequence || clipboard.empty() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return;
+
+    std::vector<MidiNote> notesToAdd;
+    for (const auto& note : clipboard)
+    {
+        MidiNote n = note;
+        n.startTick += atTick;
+        notesToAdd.push_back(n);
+    }
+
+    selectedNotes.clear();
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction("Paste Notes");
+        auto* action = new MultiNoteAddAction(sequence, activeTrackIndex, notesToAdd);
+        undoManager->perform(action);
+        int start = action->getAddedStartIndex();
+        for (int i = 0; i < action->getAddedCount(); ++i)
+            selectedNotes.insert({activeTrackIndex, start + i});
+    }
+    else
+    {
+        auto& track = sequence->getTrack(activeTrackIndex);
+        int start = track.getNumNotes();
+        for (const auto& n : notesToAdd)
+            track.addNote(n);
+        for (int i = 0; i < static_cast<int>(notesToAdd.size()); ++i)
+            selectedNotes.insert({activeTrackIndex, start + i});
+    }
+
+    repaint();
+    if (onNotesChanged)
+        onNotesChanged();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
 void PianoRollComponent::setPlayheadTick(double tick)
 {
     auto toX = [this](double t) -> int
