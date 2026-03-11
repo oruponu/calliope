@@ -6,6 +6,11 @@ void MidiTrack::addNote(const MidiNote& note)
     notes.push_back(note);
 }
 
+void MidiTrack::insertNote(int index, const MidiNote& note)
+{
+    notes.insert(notes.begin() + index, note);
+}
+
 void MidiTrack::removeNote(int index)
 {
     notes.erase(notes.begin() + index);
