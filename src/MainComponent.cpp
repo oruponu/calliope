@@ -409,6 +409,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     {
         menu.addCommandItem(&commandManager, CommandID::undoAction);
         menu.addCommandItem(&commandManager, CommandID::redoAction);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager, CommandID::cutAction);
+        menu.addCommandItem(&commandManager, CommandID::copyAction);
+        menu.addCommandItem(&commandManager, CommandID::pasteAction);
     }
     else if (menuIndex == 2)
     {
@@ -448,7 +452,7 @@ void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
     commands.addArray({CommandID::newFile_, CommandID::openFile, CommandID::saveFile_, CommandID::quitApp,
                        CommandID::togglePlay, CommandID::returnToStart, CommandID::prevBar, CommandID::nextBar,
                        CommandID::switchToEditTool, CommandID::switchToSelectTool, CommandID::undoAction,
-                       CommandID::redoAction});
+                       CommandID::redoAction, CommandID::cutAction, CommandID::copyAction, CommandID::pasteAction});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -503,6 +507,21 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         result.setInfo("Redo", "", "Edit", 0);
         result.addDefaultKeypress('Y', juce::ModifierKeys::ctrlModifier);
         result.setActive(undoManager.canRedo());
+        break;
+    case CommandID::cutAction:
+        result.setInfo("Cut", "", "Edit", 0);
+        result.addDefaultKeypress('X', juce::ModifierKeys::ctrlModifier);
+        result.setActive(pianoRoll.hasSelectedNotes());
+        break;
+    case CommandID::copyAction:
+        result.setInfo("Copy", "", "Edit", 0);
+        result.addDefaultKeypress('C', juce::ModifierKeys::ctrlModifier);
+        result.setActive(pianoRoll.hasSelectedNotes());
+        break;
+    case CommandID::pasteAction:
+        result.setInfo("Paste", "", "Edit", 0);
+        result.addDefaultKeypress('V', juce::ModifierKeys::ctrlModifier);
+        result.setActive(pianoRoll.hasClipboardNotes());
         break;
     default:
         break;
@@ -576,6 +595,15 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::redoAction:
         undoManager.redo();
         refreshAllViews();
+        return true;
+    case CommandID::cutAction:
+        pianoRoll.cutSelectedNotes();
+        return true;
+    case CommandID::copyAction:
+        pianoRoll.copySelectedNotes();
+        return true;
+    case CommandID::pasteAction:
+        pianoRoll.pasteNotes(static_cast<int>(playbackEngine.getCurrentTick()));
         return true;
     default:
         return false;
