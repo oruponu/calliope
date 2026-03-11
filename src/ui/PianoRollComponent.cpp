@@ -1,4 +1,5 @@
 #include "PianoRollComponent.h"
+#include "../model/UndoActions.h"
 #include "TrackColours.h"
 #include <algorithm>
 #include <vector>
@@ -26,6 +27,11 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
 
     updateSize();
     repaint();
+}
+
+void PianoRollComponent::setUndoManager(juce::UndoManager* um)
+{
+    undoManager = um;
 }
 
 void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices)
@@ -167,7 +173,15 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         {
             if (hit.isValid())
             {
-                sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
+                if (undoManager)
+                {
+                    undoManager->beginNewTransaction("Delete Note");
+                    undoManager->perform(new NoteDeleteAction(sequence, hit.trackIndex, hit.noteIndex));
+                }
+                else
+                {
+                    sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
+                }
                 selectedNote = {};
                 repaint();
                 if (onNotesChanged)
@@ -195,10 +209,22 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             if (noteNum < 0 || noteNum > 127)
                 return;
 
-            auto& track = sequence->getTrack(activeTrackIndex);
             int defaultDuration = sequence ? sequence->getTicksPerQuarterNote() : snapTicks;
-            track.addNote({noteNum, 100, tick, defaultDuration});
-            selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
+            MidiNote newNote{noteNum, 100, tick, defaultDuration};
+
+            if (undoManager)
+            {
+                undoManager->beginNewTransaction("Add Note");
+                auto* action = new NoteAddAction(sequence, activeTrackIndex, newNote);
+                undoManager->perform(action);
+                selectedNote = {activeTrackIndex, action->getAddedIndex()};
+            }
+            else
+            {
+                auto& track = sequence->getTrack(activeTrackIndex);
+                track.addNote(newNote);
+                selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
+            }
             dragMode = DragMode::None;
             repaint();
             if (onNotesChanged)
@@ -211,15 +237,23 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         {
             if (!selectedNotes.empty())
             {
-                std::map<int, std::vector<int>> toRemove;
-                for (const auto& ref : selectedNotes)
-                    toRemove[ref.trackIndex].push_back(ref.noteIndex);
-
-                for (auto& [trackIdx, indices] : toRemove)
+                if (undoManager)
                 {
-                    std::sort(indices.begin(), indices.end(), std::greater<int>());
-                    for (int idx : indices)
-                        sequence->getTrack(trackIdx).removeNote(idx);
+                    undoManager->beginNewTransaction("Delete Notes");
+                    undoManager->perform(new MultiNoteDeleteAction(sequence, selectedNotes));
+                }
+                else
+                {
+                    std::map<int, std::vector<int>> toRemove;
+                    for (const auto& ref : selectedNotes)
+                        toRemove[ref.trackIndex].push_back(ref.noteIndex);
+
+                    for (auto& [trackIdx, indices] : toRemove)
+                    {
+                        std::sort(indices.begin(), indices.end(), std::greater<int>());
+                        for (int idx : indices)
+                            sequence->getTrack(trackIdx).removeNote(idx);
+                    }
                 }
 
                 selectedNotes.clear();
@@ -326,8 +360,22 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         return;
     }
 
-    if (dragMode != DragMode::None)
+    if (dragMode == DragMode::Moving || dragMode == DragMode::Resizing)
     {
+        if (undoManager && selectedNote.isValid())
+        {
+            auto& note = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
+            MidiNote beforeNote{originalNoteNumber, note.velocity, originalStartTick, originalDuration, note.channel};
+            MidiNote afterNote = note;
+
+            if (beforeNote.startTick != afterNote.startTick || beforeNote.noteNumber != afterNote.noteNumber ||
+                beforeNote.duration != afterNote.duration)
+            {
+                undoManager->beginNewTransaction(dragMode == DragMode::Moving ? "Move Note" : "Resize Note");
+                undoManager->perform(new NoteModifyAction(sequence, selectedNote.trackIndex, selectedNote.noteIndex,
+                                                          beforeNote, afterNote));
+            }
+        }
         if (onNotesChanged)
             onNotesChanged();
     }

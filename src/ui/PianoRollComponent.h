@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../model/MidiSequence.h"
+#include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 #include <set>
@@ -32,6 +33,7 @@ public:
     };
 
     void setSequence(MidiSequence* seq);
+    void setUndoManager(juce::UndoManager* um);
     void setPlayheadTick(double tick);
     void setEditMode(EditMode mode);
     EditMode getEditMode() const;
@@ -103,6 +105,7 @@ private:
     static juce::String getNoteName(int noteNumber);
 
     MidiSequence* sequence = nullptr;
+    juce::UndoManager* undoManager = nullptr;
     double playheadTick = 0.0;
     std::set<int> selectedTrackIndices = {0};
     int activeTrackIndex = 0;
