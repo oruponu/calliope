@@ -148,6 +148,43 @@ private:
     std::vector<DeletedNoteInfo> deletedNotes;
 };
 
+class MultiNoteAddAction : public juce::UndoableAction
+{
+public:
+    MultiNoteAddAction(MidiSequence* seq, int trackIndex, const std::vector<MidiNote>& notesToAdd)
+        : sequence(seq), trackIdx(trackIndex), notes(notesToAdd)
+    {
+    }
+
+    bool perform() override
+    {
+        auto& track = sequence->getTrack(trackIdx);
+        addedStartIndex = track.getNumNotes();
+        for (const auto& note : notes)
+            track.addNote(note);
+        return true;
+    }
+
+    bool undo() override
+    {
+        auto& track = sequence->getTrack(trackIdx);
+        for (int i = static_cast<int>(notes.size()) - 1; i >= 0; --i)
+            track.removeNote(addedStartIndex + i);
+        return true;
+    }
+
+    int getSizeInUnits() override { return static_cast<int>(notes.size()); }
+
+    int getAddedStartIndex() const { return addedStartIndex; }
+    int getAddedCount() const { return static_cast<int>(notes.size()); }
+
+private:
+    MidiSequence* sequence;
+    int trackIdx;
+    std::vector<MidiNote> notes;
+    int addedStartIndex = 0;
+};
+
 struct VelocityChange
 {
     int noteIndex;
