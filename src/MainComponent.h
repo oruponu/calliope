@@ -225,7 +225,10 @@ private:
         switchToEditTool,
         switchToSelectTool,
         undoAction,
-        redoAction
+        redoAction,
+        cutAction,
+        copyAction,
+        pasteAction
     };
 
     juce::ApplicationCommandManager commandManager;
