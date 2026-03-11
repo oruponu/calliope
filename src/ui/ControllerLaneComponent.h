@@ -1,9 +1,11 @@
 #pragma once
 
 #include "../model/MidiSequence.h"
+#include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 #include <set>
+#include <vector>
 
 class ControllerLaneComponent : public juce::Component
 {
@@ -19,6 +21,7 @@ public:
     };
 
     void setSequence(MidiSequence* seq);
+    void setUndoManager(juce::UndoManager* um);
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
     void setDisplayMode(DisplayMode mode);
     void setCCNumber(int cc);
@@ -70,8 +73,10 @@ private:
     double playheadTick = 0.0;
     int contentBeats = 16;
 
+    juce::UndoManager* undoManager = nullptr;
     bool isDragging = false;
     int lastDragX = -1;
+    std::vector<int> velocitySnapshot;
 
     static constexpr int topPadding = 6;
     static constexpr int bottomPadding = 6;
