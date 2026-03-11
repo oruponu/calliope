@@ -9,6 +9,7 @@ class MidiTrack
 {
 public:
     void addNote(const MidiNote& note);
+    void insertNote(int index, const MidiNote& note);
     void removeNote(int index);
     void clear();
     void sortByStartTime();
