@@ -100,6 +100,7 @@ private:
     void updateTitleBar();
 
     MidiSequence sequence;
+    juce::UndoManager undoManager;
     PlaybackEngine playbackEngine;
     MidiDeviceOutput midiOutput;
 
@@ -209,6 +210,8 @@ private:
 
     EventListComponent eventList;
 
+    void refreshAllViews();
+
     enum CommandID
     {
         newFile_ = 1,
@@ -220,7 +223,9 @@ private:
         prevBar,
         nextBar,
         switchToEditTool,
-        switchToSelectTool
+        switchToSelectTool,
+        undoAction,
+        redoAction
     };
 
     juce::ApplicationCommandManager commandManager;
