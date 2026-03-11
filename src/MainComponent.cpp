@@ -142,6 +142,7 @@ MainComponent::MainComponent()
     playbackEngine.addListener(&midiOutput);
 
     pianoRoll.setSequence(&sequence);
+    pianoRoll.setUndoManager(&undoManager);
     pianoRoll.onPlayheadMoved = [this](int tick)
     {
         playbackEngine.setPositionInTicks(tick);
@@ -197,6 +198,7 @@ MainComponent::MainComponent()
     trackList.onMuteSoloChanged = []() {};
 
     controllerLane.setSequence(&sequence);
+    controllerLane.setUndoManager(&undoManager);
     controllerLane.setSelectedTracks(0, {0});
     controllerLane.onDataChanged = [this]()
     {
@@ -636,6 +638,7 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
             if (MidiFileIO::load(sequence, file))
             {
                 currentFile = file;
+                undoManager.clearUndoHistory();
                 onSequenceLoaded();
                 updateTitleBar();
             }
@@ -787,6 +790,7 @@ void MainComponent::newFile()
     sequence.clear();
     sequence.addTrack();
     currentFile = juce::File{};
+    undoManager.clearUndoHistory();
     onSequenceLoaded();
     updateTitleBar();
 }
@@ -820,6 +824,7 @@ void MainComponent::loadFile()
                                  if (MidiFileIO::load(sequence, file))
                                  {
                                      currentFile = file;
+                                     undoManager.clearUndoHistory();
                                      onSequenceLoaded();
                                      updateTitleBar();
                                  }
