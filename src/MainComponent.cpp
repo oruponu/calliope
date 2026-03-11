@@ -366,7 +366,7 @@ void MainComponent::parentHierarchyChanged()
 
 juce::StringArray MainComponent::getMenuBarNames()
 {
-    return {"File", "Settings"};
+    return {"File", "Edit", "Settings"};
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String&)
@@ -405,6 +405,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     }
     else if (menuIndex == 1)
     {
+        menu.addCommandItem(&commandManager, CommandID::undoAction);
+        menu.addCommandItem(&commandManager, CommandID::redoAction);
+    }
+    else if (menuIndex == 2)
+    {
         juce::PopupMenu midiOutputMenu;
         auto devices = juce::MidiOutput::getAvailableDevices();
         auto currentId = midiOutput.getCurrentDeviceIdentifier();
@@ -440,7 +445,8 @@ void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
     commands.addArray({CommandID::newFile_, CommandID::openFile, CommandID::saveFile_, CommandID::quitApp,
                        CommandID::togglePlay, CommandID::returnToStart, CommandID::prevBar, CommandID::nextBar,
-                       CommandID::switchToEditTool, CommandID::switchToSelectTool});
+                       CommandID::switchToEditTool, CommandID::switchToSelectTool, CommandID::undoAction,
+                       CommandID::redoAction});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -485,6 +491,16 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case CommandID::switchToEditTool:
         result.setInfo("Edit Tool", "", "Tools", 0);
         result.addDefaultKeypress('2', 0);
+        break;
+    case CommandID::undoAction:
+        result.setInfo("Undo", "", "Edit", 0);
+        result.addDefaultKeypress('Z', juce::ModifierKeys::ctrlModifier);
+        result.setActive(undoManager.canUndo());
+        break;
+    case CommandID::redoAction:
+        result.setInfo("Redo", "", "Edit", 0);
+        result.addDefaultKeypress('Y', juce::ModifierKeys::ctrlModifier);
+        result.setActive(undoManager.canRedo());
         break;
     default:
         break;
@@ -550,6 +566,14 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case CommandID::switchToSelectTool:
         setActiveTool(PianoRollComponent::EditMode::Select);
+        return true;
+    case CommandID::undoAction:
+        undoManager.undo();
+        refreshAllViews();
+        return true;
+    case CommandID::redoAction:
+        undoManager.redo();
+        refreshAllViews();
         return true;
     default:
         return false;
@@ -746,6 +770,15 @@ void MainComponent::updateTransportDisplay()
 
     double tempo = sequence.getTempoAt(tick);
     tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
+}
+
+void MainComponent::refreshAllViews()
+{
+    pianoRoll.setSelectedNotes({});
+    pianoRoll.repaint();
+    controllerLane.repaint();
+    trackList.refresh();
+    eventList.refresh();
 }
 
 void MainComponent::newFile()
