@@ -383,7 +383,7 @@ void MainComponent::parentHierarchyChanged()
 
 juce::StringArray MainComponent::getMenuBarNames()
 {
-    return {"File", "Edit", "Settings"};
+    return {"File", "Edit", "View", "Settings"};
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String&)
@@ -431,6 +431,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     }
     else if (menuIndex == 2)
     {
+        menu.addCommandItem(&commandManager, CommandID::zoomInHorizontal);
+        menu.addCommandItem(&commandManager, CommandID::zoomOutHorizontal);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager, CommandID::zoomInVertical);
+        menu.addCommandItem(&commandManager, CommandID::zoomOutVertical);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager, CommandID::zoomReset);
+    }
+    else if (menuIndex == 3)
+    {
         juce::PopupMenu midiOutputMenu;
         auto devices = juce::MidiOutput::getAvailableDevices();
         auto currentId = midiOutput.getCurrentDeviceIdentifier();
@@ -464,10 +474,16 @@ juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 
 void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
-    commands.addArray({CommandID::newFile_, CommandID::openFile, CommandID::saveFile_, CommandID::quitApp,
-                       CommandID::togglePlay, CommandID::returnToStart, CommandID::prevBar, CommandID::nextBar,
-                       CommandID::switchToEditTool, CommandID::switchToSelectTool, CommandID::undoAction,
-                       CommandID::redoAction, CommandID::cutAction, CommandID::copyAction, CommandID::pasteAction});
+    commands.addArray({CommandID::newFile_,          CommandID::openFile,
+                       CommandID::saveFile_,         CommandID::quitApp,
+                       CommandID::togglePlay,        CommandID::returnToStart,
+                       CommandID::prevBar,           CommandID::nextBar,
+                       CommandID::switchToEditTool,  CommandID::switchToSelectTool,
+                       CommandID::undoAction,        CommandID::redoAction,
+                       CommandID::cutAction,         CommandID::copyAction,
+                       CommandID::pasteAction,       CommandID::zoomInHorizontal,
+                       CommandID::zoomOutHorizontal, CommandID::zoomInVertical,
+                       CommandID::zoomOutVertical,   CommandID::zoomReset});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -537,6 +553,26 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         result.setInfo("Paste", "", "Edit", 0);
         result.addDefaultKeypress('V', juce::ModifierKeys::ctrlModifier);
         result.setActive(pianoRoll.hasClipboardNotes());
+        break;
+    case CommandID::zoomInHorizontal:
+        result.setInfo("Zoom In (Horizontal)", "", "View", 0);
+        result.addDefaultKeypress('=', juce::ModifierKeys::ctrlModifier);
+        break;
+    case CommandID::zoomOutHorizontal:
+        result.setInfo("Zoom Out (Horizontal)", "", "View", 0);
+        result.addDefaultKeypress('-', juce::ModifierKeys::ctrlModifier);
+        break;
+    case CommandID::zoomInVertical:
+        result.setInfo("Zoom In (Vertical)", "", "View", 0);
+        result.addDefaultKeypress('=', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::shiftModifier);
+        break;
+    case CommandID::zoomOutVertical:
+        result.setInfo("Zoom Out (Vertical)", "", "View", 0);
+        result.addDefaultKeypress('-', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::shiftModifier);
+        break;
+    case CommandID::zoomReset:
+        result.setInfo("Reset Zoom", "", "View", 0);
+        result.addDefaultKeypress('0', juce::ModifierKeys::ctrlModifier);
         break;
     default:
         break;
@@ -620,6 +656,31 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::pasteAction:
         pianoRoll.pasteNotes(static_cast<int>(playbackEngine.getCurrentTick()));
         return true;
+    case CommandID::zoomInHorizontal:
+        zoomHorizontal(1.15f, viewport.getViewWidth() / 2);
+        return true;
+    case CommandID::zoomOutHorizontal:
+        zoomHorizontal(1.0f / 1.15f, viewport.getViewWidth() / 2);
+        return true;
+    case CommandID::zoomInVertical:
+        zoomVertical(1.15f, viewport.getViewHeight() / 2);
+        return true;
+    case CommandID::zoomOutVertical:
+        zoomVertical(1.0f / 1.15f, viewport.getViewHeight() / 2);
+        return true;
+    case CommandID::zoomReset:
+    {
+        int centerTick = pianoRoll.xToTick(viewport.getViewPositionX() + viewport.getViewWidth() / 2);
+        int centerNote = pianoRoll.yToNote(viewport.getViewPositionY() + viewport.getViewHeight() / 2);
+        pianoRoll.setBeatWidth(PianoRollComponent::defaultBeatWidth);
+        pianoRoll.setNoteHeight(PianoRollComponent::defaultNoteHeight);
+        controllerLane.setBeatWidth(PianoRollComponent::defaultBeatWidth);
+        int newCenterX = pianoRoll.tickToX(centerTick);
+        int newCenterY = pianoRoll.noteToY(centerNote);
+        viewport.setViewPosition(juce::jmax(0, newCenterX - viewport.getViewWidth() / 2),
+                                 juce::jmax(0, newCenterY - viewport.getViewHeight() / 2));
+        return true;
+    }
     default:
         return false;
     }
