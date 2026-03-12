@@ -183,6 +183,14 @@ MainComponent::MainComponent()
             syncingScroll = false;
         }
     };
+    viewport.onZoom = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
+    {
+        float factor = wheel.deltaY > 0 ? 1.15f : (1.0f / 1.15f);
+        if (e.mods.isShiftDown())
+            zoomVertical(factor, e.getPosition().y);
+        else
+            zoomHorizontal(factor, e.getPosition().x);
+    };
     addAndMakeVisible(viewport);
 
     trackList.setSequence(&sequence);
@@ -205,8 +213,15 @@ MainComponent::MainComponent()
         pianoRoll.repaint();
         eventList.refresh();
     };
-    controllerLane.onMouseWheel = [this](const juce::MouseEvent&, const juce::MouseWheelDetails& w)
+    controllerLane.onMouseWheel = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
     {
+        if (e.mods.isCtrlDown())
+        {
+            float factor = w.deltaY > 0 ? 1.15f : (1.0f / 1.15f);
+            auto relEvent = e.getEventRelativeTo(&controllerLaneViewport);
+            zoomHorizontal(factor, relEvent.getPosition().x);
+            return;
+        }
         int scrollSpeed = 600;
         int newX = viewport.getViewPositionX() - juce::roundToInt(w.deltaX * scrollSpeed);
         int newY = viewport.getViewPositionY() - juce::roundToInt(w.deltaY * scrollSpeed);
@@ -347,7 +362,7 @@ MainComponent::MainComponent()
     setWantsKeyboardFocus(true);
     setSize(1280, 800);
 
-    int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
+    int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * pianoRoll.noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
 }
 
@@ -812,6 +827,41 @@ void MainComponent::refreshAllViews()
     eventList.refresh();
 }
 
+void MainComponent::zoomHorizontal(float factor, int anchorXInViewport)
+{
+    int contentX = viewport.getViewPositionX() + anchorXInViewport;
+    int tickAtAnchor = pianoRoll.xToTick(contentX);
+
+    int newBeatWidth = juce::jlimit(PianoRollComponent::minBeatWidth, PianoRollComponent::maxBeatWidth,
+                                    juce::roundToInt(pianoRoll.getBeatWidth() * factor));
+
+    if (newBeatWidth == pianoRoll.getBeatWidth())
+        return;
+
+    pianoRoll.setBeatWidth(newBeatWidth);
+    controllerLane.setBeatWidth(newBeatWidth);
+
+    int newContentX = pianoRoll.tickToX(tickAtAnchor);
+    viewport.setViewPosition(juce::jmax(0, newContentX - anchorXInViewport), viewport.getViewPositionY());
+}
+
+void MainComponent::zoomVertical(float factor, int anchorYInViewport)
+{
+    int contentY = viewport.getViewPositionY() + anchorYInViewport;
+    int noteAtAnchor = pianoRoll.yToNote(contentY);
+
+    int newNoteHeight = juce::jlimit(PianoRollComponent::minNoteHeight, PianoRollComponent::maxNoteHeight,
+                                     juce::roundToInt(pianoRoll.getNoteHeight() * factor));
+
+    if (newNoteHeight == pianoRoll.getNoteHeight())
+        return;
+
+    pianoRoll.setNoteHeight(newNoteHeight);
+
+    int newContentY = pianoRoll.noteToY(noteAtAnchor);
+    viewport.setViewPosition(viewport.getViewPositionX(), juce::jmax(0, newContentY - anchorYInViewport));
+}
+
 void MainComponent::newFile()
 {
     stopPlayback();
@@ -889,7 +939,7 @@ void MainComponent::onSequenceLoaded()
     eventList.setSequence(&sequence);
     eventList.setSelectedTracks(allTracks);
 
-    int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * PianoRollComponent::noteHeight - getHeight() / 2;
+    int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * pianoRoll.noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
 }
 
