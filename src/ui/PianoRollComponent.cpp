@@ -1336,6 +1336,24 @@ int PianoRollComponent::floorTickToGrid(int tick) const
     return (tick / grid) * grid;
 }
 
+void PianoRollComponent::setBeatWidth(int w)
+{
+    beatWidth = juce::jlimit(minBeatWidth, maxBeatWidth, w);
+    updateSize();
+    repaint();
+    if (onZoomChanged)
+        onZoomChanged();
+}
+
+void PianoRollComponent::setNoteHeight(int h)
+{
+    noteHeight = juce::jlimit(minNoteHeight, maxNoteHeight, h);
+    updateSize();
+    repaint();
+    if (onZoomChanged)
+        onZoomChanged();
+}
+
 void PianoRollComponent::extendContent()
 {
     contentBeats += 32;
