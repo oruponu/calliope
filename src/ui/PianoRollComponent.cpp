@@ -514,6 +514,16 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
     }
 }
 
+void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
+{
+    if (e.y >= getHeaderTop() && e.y < getHeaderTop() + headerHeight && onHeaderWheel)
+    {
+        onHeaderWheel(e, w);
+        return;
+    }
+    Component::mouseWheelMove(e, w);
+}
+
 void PianoRollComponent::drawKeyboard(juce::Graphics& g)
 {
     int kbLeft = getKeyboardLeft();

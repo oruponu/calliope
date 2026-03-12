@@ -43,6 +43,7 @@ public:
     std::function<void()> onNotesChanged;
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
     std::function<void()> onZoomChanged;
+    std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onHeaderWheel;
 
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
     void setSelectedNotes(const std::set<NoteRef>& notes);
@@ -58,6 +59,7 @@ public:
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseMove(const juce::MouseEvent& e) override;
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override;
 
     static constexpr int keyboardWidth = 72;
     static constexpr int defaultNoteHeight = 14;
