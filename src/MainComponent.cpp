@@ -191,6 +191,12 @@ MainComponent::MainComponent()
         else
             zoomHorizontal(factor, e.getPosition().x);
     };
+    pianoRoll.onHeaderWheel = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
+    {
+        float factor = wheel.deltaY > 0 ? 1.15f : (1.0f / 1.15f);
+        auto relEvent = e.getEventRelativeTo(&viewport);
+        zoomHorizontal(factor, relEvent.getPosition().x);
+    };
     addAndMakeVisible(viewport);
 
     trackList.setSequence(&sequence);
