@@ -27,6 +27,7 @@ public:
     void setCCNumber(int cc);
     void setPlayheadTick(double tick);
     void setContentBeats(int beats);
+    void setBeatWidth(int w);
     void updateSize();
 
     DisplayMode getDisplayMode() const { return displayMode; }
@@ -44,7 +45,8 @@ public:
     int tickToX(int tick) const;
 
     static constexpr int leftPanelWidth = 72;
-    static constexpr int beatWidth = 80;
+    static constexpr int defaultBeatWidth = 80;
+    int beatWidth = defaultBeatWidth;
 
 private:
     void drawLeftPanel(juce::Graphics& g);
