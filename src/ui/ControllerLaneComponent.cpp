@@ -109,6 +109,13 @@ void ControllerLaneComponent::setContentBeats(int beats)
     updateSize();
 }
 
+void ControllerLaneComponent::setBeatWidth(int w)
+{
+    beatWidth = w;
+    updateSize();
+    repaint();
+}
+
 void ControllerLaneComponent::updateSize()
 {
     if (!sequence)
