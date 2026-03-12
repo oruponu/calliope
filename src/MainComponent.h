@@ -109,6 +109,7 @@ private:
     public:
         std::function<void()> onReachedEnd;
         std::function<void()> onVisibleAreaChanged;
+        std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onZoom;
 
         void visibleAreaChanged(const juce::Rectangle<int>&) override
         {
@@ -116,8 +117,13 @@ private:
                 onVisibleAreaChanged();
         }
 
-        void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails& wheel) override
+        void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
         {
+            if (e.mods.isCtrlDown() && onZoom)
+            {
+                onZoom(e, wheel);
+                return;
+            }
             if (auto* content = getViewedComponent())
             {
                 int speed = 600;
@@ -210,6 +216,8 @@ private:
 
     EventListComponent eventList;
 
+    void zoomHorizontal(float factor, int anchorXInViewport);
+    void zoomVertical(float factor, int anchorYInViewport);
     void refreshAllViews();
 
     enum CommandID
