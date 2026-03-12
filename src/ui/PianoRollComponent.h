@@ -42,6 +42,7 @@ public:
     std::function<void(int tick)> onPlayheadMoved;
     std::function<void()> onNotesChanged;
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
+    std::function<void()> onZoomChanged;
 
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
     void setSelectedNotes(const std::set<NoteRef>& notes);
@@ -59,8 +60,8 @@ public:
     void mouseMove(const juce::MouseEvent& e) override;
 
     static constexpr int keyboardWidth = 72;
-    static constexpr int noteHeight = 14;
-    static constexpr int beatWidth = 80;
+    static constexpr int defaultNoteHeight = 14;
+    static constexpr int defaultBeatWidth = 80;
     static constexpr int totalNotes = 128;
     static constexpr int snapTicks = 480;
     static constexpr int headerHeight = 24;
@@ -71,7 +72,23 @@ public:
         headerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
     static constexpr int resizeEdgeWidth = 6;
 
+    static constexpr int minBeatWidth = 20;
+    static constexpr int maxBeatWidth = 400;
+    static constexpr int minNoteHeight = 4;
+    static constexpr int maxNoteHeight = 40;
+
+    int noteHeight = defaultNoteHeight;
+    int beatWidth = defaultBeatWidth;
+
+    void setBeatWidth(int w);
+    void setNoteHeight(int h);
+    int getBeatWidth() const { return beatWidth; }
+    int getNoteHeight() const { return noteHeight; }
+
     int tickToX(int tick) const;
+    int noteToY(int noteNumber) const;
+    int xToTick(int x) const;
+    int yToNote(int y) const;
     int getContentBeats() const { return contentBeats; }
     void updateSize();
     void extendContent();
@@ -94,10 +111,7 @@ private:
     void drawNotes(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
 
-    int noteToY(int noteNumber) const;
     int tickToWidth(int durationTicks) const;
-    int xToTick(int x) const;
-    int yToNote(int y) const;
     int roundTickToGrid(int tick) const;
     int floorTickToGrid(int tick) const;
 
