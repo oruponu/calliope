@@ -236,7 +236,12 @@ private:
         redoAction,
         cutAction,
         copyAction,
-        pasteAction
+        pasteAction,
+        zoomInHorizontal,
+        zoomOutHorizontal,
+        zoomInVertical,
+        zoomOutVertical,
+        zoomReset
     };
 
     juce::ApplicationCommandManager commandManager;
