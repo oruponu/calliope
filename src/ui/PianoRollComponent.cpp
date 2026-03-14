@@ -237,7 +237,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawTempoTrack(g);
     drawTimeSignatureTrack(g);
     drawKeySignatureTrack(g);
-    drawHeader(g);
+    drawRuler(g);
     drawLoopBar(g);
 }
 
@@ -246,7 +246,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
     if (!sequence || sequence->getNumTracks() == 0)
         return;
 
-    if (e.y < getHeaderTop() + loopBarHeight)
+    if (e.y < getRulerTop() + loopBarHeight)
     {
         if (e.x >= getKeyboardLeft() + keyboardWidth)
         {
@@ -257,7 +257,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
-    if (e.y < getHeaderTop() + loopBarHeight + headerHeight)
+    if (e.y < getRulerTop() + loopBarHeight + rulerHeight)
     {
         if (e.x >= getKeyboardLeft() + keyboardWidth)
         {
@@ -266,14 +266,14 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             repaint();
             if (onPlayheadMoved)
                 onPlayheadMoved(static_cast<int>(playheadTick));
-            isHeaderDragging = true;
-            headerDragStartY = e.y;
-            lastHeaderDragY = e.y;
+            isRulerDragging = true;
+            rulerDragStartY = e.y;
+            lastRulerDragY = e.y;
         }
         return;
     }
 
-    if (e.y < getHeaderTop() + gridTopOffset)
+    if (e.y < getRulerTop() + gridTopOffset)
         return;
 
     if (e.x < getKeyboardLeft() + keyboardWidth)
@@ -432,17 +432,17 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
-    if (isHeaderDragging)
+    if (isRulerDragging)
     {
-        if (std::abs(e.y - headerDragStartY) < 5)
+        if (std::abs(e.y - rulerDragStartY) < 5)
         {
-            lastHeaderDragY = e.y;
+            lastRulerDragY = e.y;
             return;
         }
-        int deltaY = e.y - lastHeaderDragY;
-        lastHeaderDragY = e.y;
-        if (deltaY != 0 && onHeaderDrag)
-            onHeaderDrag(e, deltaY);
+        int deltaY = e.y - lastRulerDragY;
+        lastRulerDragY = e.y;
+        if (deltaY != 0 && onRulerDrag)
+            onRulerDrag(e, deltaY);
         return;
     }
 
@@ -494,7 +494,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         isLoopDragging = false;
         return;
     }
-    isHeaderDragging = false;
+    isRulerDragging = false;
 
     if (dragMode == DragMode::RubberBand)
     {
@@ -537,7 +537,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
 void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 {
-    if (!sequence || e.x < getKeyboardLeft() + keyboardWidth || e.y < getHeaderTop() + gridTopOffset)
+    if (!sequence || e.x < getKeyboardLeft() + keyboardWidth || e.y < getRulerTop() + gridTopOffset)
     {
         setMouseCursor(juce::MouseCursor::NormalCursor);
         return;
@@ -570,9 +570,9 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 
 void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
 {
-    if (e.y >= getHeaderTop() + loopBarHeight && e.y < getHeaderTop() + loopBarHeight + headerHeight && onHeaderWheel)
+    if (e.y >= getRulerTop() + loopBarHeight && e.y < getRulerTop() + loopBarHeight + rulerHeight && onRulerWheel)
     {
-        onHeaderWheel(e, w);
+        onRulerWheel(e, w);
         return;
     }
     Component::mouseWheelMove(e, w);
@@ -643,7 +643,7 @@ void PianoRollComponent::drawLoopBar(juce::Graphics& g)
     if (!sequence)
         return;
 
-    int lbTop = getHeaderTop();
+    int lbTop = getRulerTop();
     int kbLeft = getKeyboardLeft();
 
     g.setColour(juce::Colour(35, 35, 42));
@@ -684,12 +684,12 @@ void PianoRollComponent::drawLoopBar(juce::Graphics& g)
     g.drawHorizontalLine(lbTop + loopBarHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
-void PianoRollComponent::drawHeader(juce::Graphics& g)
+void PianoRollComponent::drawRuler(juce::Graphics& g)
 {
     if (!sequence)
         return;
 
-    int hTop = getHeaderTop() + loopBarHeight;
+    int hTop = getRulerTop() + loopBarHeight;
     int kbLeft = getKeyboardLeft();
 
     auto clip = g.getClipBounds();
@@ -697,7 +697,7 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
     int visibleRight = clip.getRight();
 
     g.setColour(juce::Colour(50, 50, 55));
-    g.fillRect(kbLeft, hTop, getWidth() - kbLeft, headerHeight);
+    g.fillRect(kbLeft, hTop, getWidth() - kbLeft, rulerHeight);
 
     g.saveState();
     g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
@@ -735,13 +735,13 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
             bool isBar = (beat == 0);
 
             g.setColour(isBar ? juce::Colour(90, 90, 100) : juce::Colour(60, 60, 65));
-            g.drawVerticalLine(x, static_cast<float>(hTop), static_cast<float>(hTop + headerHeight));
+            g.drawVerticalLine(x, static_cast<float>(hTop), static_cast<float>(hTop + rulerHeight));
 
             if (isBar)
             {
                 g.setColour(juce::Colour(180, 180, 190));
                 g.setFont(11.0f);
-                g.drawText(juce::String(barNumber), x + 4, hTop + 2, 30, headerHeight - 4,
+                g.drawText(juce::String(barNumber), x + 4, hTop + 2, 30, rulerHeight - 4,
                            juce::Justification::centredLeft);
             }
         }
@@ -756,18 +756,18 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
     if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
     {
         g.setColour(juce::Colours::white);
-        g.drawLine(phX, static_cast<float>(hTop), phX, static_cast<float>(hTop + headerHeight), 1.0f);
+        g.drawLine(phX, static_cast<float>(hTop), phX, static_cast<float>(hTop + rulerHeight), 1.0f);
     }
 
-    drawLoopOverlay(g, hTop, headerHeight, 0.35f);
+    drawLoopOverlay(g, hTop, rulerHeight, 0.35f);
 
     g.restoreState();
 
     g.setColour(juce::Colour(60, 60, 60));
-    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(hTop), static_cast<float>(hTop + headerHeight));
+    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(hTop), static_cast<float>(hTop + rulerHeight));
 
     g.setColour(juce::Colour(70, 70, 80));
-    g.drawHorizontalLine(hTop + headerHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
+    g.drawHorizontalLine(hTop + rulerHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
@@ -775,8 +775,8 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
     if (!sequence)
         return;
 
-    int hTop = getHeaderTop();
-    int tTop = hTop + loopBarHeight + headerHeight;
+    int hTop = getRulerTop();
+    int tTop = hTop + loopBarHeight + rulerHeight;
     int kbLeft = getKeyboardLeft();
 
     auto clip = g.getClipBounds();
@@ -940,8 +940,8 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
     if (!sequence)
         return;
 
-    int hTop = getHeaderTop();
-    int tsTop = hTop + loopBarHeight + headerHeight + tempoTrackHeight;
+    int hTop = getRulerTop();
+    int tsTop = hTop + loopBarHeight + rulerHeight + tempoTrackHeight;
     int kbLeft = getKeyboardLeft();
 
     auto clip = g.getClipBounds();
@@ -1066,8 +1066,8 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
     if (!sequence)
         return;
 
-    int hTop = getHeaderTop();
-    int ksTop = hTop + loopBarHeight + headerHeight + tempoTrackHeight + timeSignatureTrackHeight;
+    int hTop = getRulerTop();
+    int ksTop = hTop + loopBarHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight;
     int kbLeft = getKeyboardLeft();
 
     auto clip = g.getClipBounds();
@@ -1401,7 +1401,7 @@ void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
     if (x2 < static_cast<float>(clip.getX()) || x1 > static_cast<float>(clip.getRight()))
         return;
 
-    int gridTopY = getHeaderTop() + gridTopOffset;
+    int gridTopY = getRulerTop() + gridTopOffset;
     float gridTop = static_cast<float>(gridTopY);
     float bottom = static_cast<float>(clip.getBottom());
 
@@ -1587,7 +1587,7 @@ int PianoRollComponent::getKeyboardLeft() const
     return 0;
 }
 
-int PianoRollComponent::getHeaderTop() const
+int PianoRollComponent::getRulerTop() const
 {
     if (auto* vp = findParentComponentOfClass<juce::Viewport>())
         return vp->getViewPositionY();
