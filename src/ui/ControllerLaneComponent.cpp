@@ -103,6 +103,14 @@ void ControllerLaneComponent::setPlayheadTick(double tick)
     repaint(newX - margin, 0, margin * 2 + 2, getHeight());
 }
 
+void ControllerLaneComponent::setLoopRegion(bool enabled, int startTick, int endTick)
+{
+    loopEnabled = enabled;
+    loopStartTick = startTick;
+    loopEndTick = endTick;
+    repaint();
+}
+
 void ControllerLaneComponent::setContentBeats(int beats)
 {
     contentBeats = beats;
@@ -199,6 +207,7 @@ void ControllerLaneComponent::paint(juce::Graphics& g)
         break;
     }
 
+    drawLoopRegion(g);
     drawPlayhead(g);
     drawLeftPanel(g);
 }
@@ -526,6 +535,27 @@ void ControllerLaneComponent::drawPlayhead(juce::Graphics& g)
 
     g.setColour(juce::Colours::white.withAlpha(0.8f));
     g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
+}
+
+void ControllerLaneComponent::drawLoopRegion(juce::Graphics& g)
+{
+    if (!sequence || loopEndTick <= loopStartTick)
+        return;
+
+    int x1 = tickToX(loopStartTick);
+    int x2 = tickToX(loopEndTick);
+    auto clip = g.getClipBounds();
+
+    if (x2 < clip.getX() || x1 > clip.getRight())
+        return;
+
+    g.setColour(loopEnabled ? juce::Colour(60, 120, 200).withAlpha(0.08f)
+                            : juce::Colour(130, 130, 140).withAlpha(0.04f));
+    g.fillRect(x1, 0, x2 - x1, getHeight());
+
+    g.setColour(loopEnabled ? juce::Colour(80, 160, 255).withAlpha(0.7f) : juce::Colour(150, 150, 160).withAlpha(0.5f));
+    g.drawVerticalLine(x1, 0.0f, static_cast<float>(getHeight()));
+    g.drawVerticalLine(x2, 0.0f, static_cast<float>(getHeight()));
 }
 
 void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
