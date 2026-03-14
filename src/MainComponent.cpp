@@ -109,11 +109,47 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
         path.addTriangle(cx - w * 0.38f, cy - h / 2, cx - w * 0.38f, cy + h / 2, cx + w * 0.62f, cy);
         g.fillPath(path);
     }
+    else if (type == Loop)
+    {
+        auto colour = active ? juce::Colour(80, 160, 255) : juce::Colours::white;
+        g.setColour(colour.withAlpha(active ? 1.0f : alpha * 0.7f));
+        auto cx = bounds.getCentreX();
+        auto cy = bounds.getCentreY();
+        float s = bounds.getHeight() * 0.2f;
+        float hw = s * 0.6f;
+        float hh = s * 0.75f;
+        float gap = hw * 0.8f;
+        float a = hh * 0.8f;
+
+        juce::Path rp;
+        rp.startNewSubPath(cx + gap, cy - hh);
+        rp.lineTo(cx + hw, cy - hh);
+        rp.quadraticTo(cx + hw + hh, cy - hh, cx + hw + hh, cy);
+        rp.quadraticTo(cx + hw + hh, cy + hh, cx + hw, cy + hh);
+        rp.lineTo(cx + gap, cy + hh);
+        g.strokePath(rp, juce::PathStrokeType(1.5f));
+
+        juce::Path lp;
+        lp.startNewSubPath(cx - gap, cy + hh);
+        lp.lineTo(cx - hw, cy + hh);
+        lp.quadraticTo(cx - hw - hh, cy + hh, cx - hw - hh, cy);
+        lp.quadraticTo(cx - hw - hh, cy - hh, cx - hw, cy - hh);
+        lp.lineTo(cx - gap, cy - hh);
+        g.strokePath(lp, juce::PathStrokeType(1.5f));
+
+        juce::Path la;
+        la.addTriangle(cx + gap - a, cy + hh, cx + gap, cy + hh - a, cx + gap, cy + hh + a);
+        g.fillPath(la);
+
+        juce::Path ra;
+        ra.addTriangle(cx - gap + a, cy - hh, cx - gap, cy - hh - a, cx - gap, cy - hh + a);
+        g.fillPath(ra);
+    }
 }
 
 void MainComponent::TransportButton::mouseUp(const juce::MouseEvent& e)
 {
-    if (active)
+    if (active && type != Loop)
         return;
     if (getLocalBounds().contains(e.getPosition()) && onClick)
         onClick();
@@ -402,6 +438,23 @@ MainComponent::MainComponent()
         controllerLane.setPlayheadTick(playbackEngine.getCurrentTick());
         eventList.setPlayheadTick(playbackEngine.getCurrentTick());
         updateTransportDisplay();
+    };
+
+    addAndMakeVisible(loopButton);
+    loopButton.onClick = [this]()
+    {
+        bool newState = !playbackEngine.isLoopEnabled();
+        playbackEngine.setLoopEnabled(newState);
+        loopButton.setActive(newState);
+        pianoRoll.setLoopRegion(newState, playbackEngine.getLoopStartTick(), playbackEngine.getLoopEndTick());
+        controllerLane.setLoopRegion(newState, playbackEngine.getLoopStartTick(), playbackEngine.getLoopEndTick());
+    };
+
+    pianoRoll.onLoopRegionChanged = [this](int startTick, int endTick)
+    {
+        playbackEngine.setLoopRange(startTick, endTick);
+        bool enabled = playbackEngine.isLoopEnabled();
+        controllerLane.setLoopRegion(enabled, startTick, endTick);
     };
 
     auto headerColour = juce::Colour(0xff8888aa);
@@ -830,7 +883,7 @@ void MainComponent::resized()
     auto toolbar = transportArea;
 
     const int posW = 190;
-    const int btnW = 128;
+    const int btnW = 172;
     const int tsW = 55;
     const int keyW = 55;
     const int tempoW = 90;
@@ -854,12 +907,14 @@ void MainComponent::resized()
     content.removeFromLeft(g1);
 
     auto btnSection = content.removeFromLeft(btnW);
-    auto btnArea = btnSection.withSizeKeepingCentre(128, 40);
+    auto btnArea = btnSection.withSizeKeepingCentre(btnW, 40);
     returnToStartButton.setBounds(btnArea.removeFromLeft(40));
     btnArea.removeFromLeft(4);
     stopButton.setBounds(btnArea.removeFromLeft(40));
     btnArea.removeFromLeft(4);
     playButton.setBounds(btnArea.removeFromLeft(40));
+    btnArea.removeFromLeft(4);
+    loopButton.setBounds(btnArea.removeFromLeft(40));
     content.removeFromLeft(g2);
 
     layoutSection(tsW, timeSigHeaderLabel, timeSigValueLabel);

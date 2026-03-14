@@ -44,7 +44,8 @@ private:
         {
             ReturnToStart,
             Stop,
-            Play
+            Play,
+            Loop
         };
         TransportButton(Type t) : type(t) { setRepaintsOnMouseActivity(true); }
         Type getType() const { return type; }
@@ -285,6 +286,7 @@ private:
     TransportButton returnToStartButton{TransportButton::ReturnToStart};
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
+    TransportButton loopButton{TransportButton::Loop};
 
     ToolButton editToolButton{ToolButton::EditTool};
     ToolButton selectToolButton{ToolButton::SelectTool};
