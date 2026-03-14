@@ -46,8 +46,8 @@ public:
     std::function<void()> onNotesChanged;
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
     std::function<void()> onZoomChanged;
-    std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onHeaderWheel;
-    std::function<void(const juce::MouseEvent&, int deltaY)> onHeaderDrag;
+    std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onRulerWheel;
+    std::function<void(const juce::MouseEvent&, int deltaY)> onRulerDrag;
 
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
     void setSelectedNotes(const std::set<NoteRef>& notes);
@@ -71,12 +71,12 @@ public:
     static constexpr int totalNotes = 128;
     static constexpr int snapTicks = 480;
     static constexpr int loopBarHeight = 14;
-    static constexpr int headerHeight = 24;
+    static constexpr int rulerHeight = 24;
     static constexpr int tempoTrackHeight = 48;
     static constexpr int timeSignatureTrackHeight = 24;
     static constexpr int keySignatureTrackHeight = 24;
     static constexpr int gridTopOffset =
-        loopBarHeight + headerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
+        loopBarHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
     static constexpr int resizeEdgeWidth = 6;
 
     static constexpr int minBeatWidth = 4;
@@ -111,7 +111,7 @@ private:
 
     void drawKeyboard(juce::Graphics& g);
     void drawLoopBar(juce::Graphics& g);
-    void drawHeader(juce::Graphics& g);
+    void drawRuler(juce::Graphics& g);
     void drawTempoTrack(juce::Graphics& g);
     void drawTimeSignatureTrack(juce::Graphics& g);
     void drawKeySignatureTrack(juce::Graphics& g);
@@ -129,7 +129,7 @@ private:
     bool isOnRightEdge(int x, const MidiNote& note) const;
 
     int getKeyboardLeft() const;
-    int getHeaderTop() const;
+    int getRulerTop() const;
 
     static bool isBlackKey(int noteNumber);
     static juce::String getNoteName(int noteNumber);
@@ -159,9 +159,9 @@ private:
 
     std::vector<MidiNote> clipboard;
 
-    bool isHeaderDragging = false;
-    int headerDragStartY = 0;
-    int lastHeaderDragY = 0;
+    bool isRulerDragging = false;
+    int rulerDragStartY = 0;
+    int lastRulerDragY = 0;
 
     bool loopEnabled = false;
     int loopStartTick = 0;
