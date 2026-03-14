@@ -253,6 +253,9 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             repaint();
             if (onPlayheadMoved)
                 onPlayheadMoved(static_cast<int>(playheadTick));
+            isHeaderDragging = true;
+            headerDragStartY = e.y;
+            lastHeaderDragY = e.y;
         }
         return;
     }
@@ -399,6 +402,20 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     if (!sequence)
         return;
 
+    if (isHeaderDragging)
+    {
+        if (std::abs(e.y - headerDragStartY) < 5)
+        {
+            lastHeaderDragY = e.y;
+            return;
+        }
+        int deltaY = e.y - lastHeaderDragY;
+        lastHeaderDragY = e.y;
+        if (deltaY != 0 && onHeaderDrag)
+            onHeaderDrag(e, deltaY);
+        return;
+    }
+
     if (dragMode == DragMode::RubberBand)
     {
         auto current = e.getPosition();
@@ -442,6 +459,8 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
 void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
+    isHeaderDragging = false;
+
     if (dragMode == DragMode::RubberBand)
     {
         if (!rubberBandRect.isEmpty())
