@@ -28,6 +28,12 @@ public:
     double getCurrentTick() const;
     void setPositionInTicks(int tick);
 
+    void setLoopEnabled(bool enabled);
+    bool isLoopEnabled() const;
+    void setLoopRange(int startTick, int endTick);
+    int getLoopStartTick() const;
+    int getLoopEndTick() const;
+
     void addListener(Listener* listener);
     void removeListener(Listener* listener);
 
@@ -42,6 +48,10 @@ private:
     std::atomic<bool> playing{false};
     double tickPosition = 0.0;
     double lastCallbackTimeMs = 0.0;
+
+    bool loopEnabled = false;
+    int loopStartTick = 0;
+    int loopEndTick = 0;
 
     struct ActiveNote
     {
