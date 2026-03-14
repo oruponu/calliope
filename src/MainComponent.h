@@ -209,13 +209,47 @@ private:
         std::function<void(int deltaY)> onDrag;
     };
 
+    class ZoomStrip : public juce::Component
+    {
+    public:
+        enum Orientation
+        {
+            Horizontal,
+            Vertical
+        };
+
+        explicit ZoomStrip(Orientation o) : orientation(o)
+        {
+            setRepaintsOnMouseActivity(true);
+            addAndMakeVisible(slider);
+            slider.setSliderStyle(o == Horizontal ? juce::Slider::LinearHorizontal : juce::Slider::LinearVertical);
+            slider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+        }
+
+        void paint(juce::Graphics& g) override;
+        void resized() override;
+        void mouseUp(const juce::MouseEvent& e) override;
+
+        juce::Slider slider;
+        std::function<void()> onZoomIn;
+        std::function<void()> onZoomOut;
+
+    private:
+        Orientation orientation;
+        juce::Rectangle<int> minusBounds, plusBounds;
+    };
+
     Divider controllerLaneDivider;
+    ZoomStrip horizontalZoomStrip{ZoomStrip::Horizontal};
+    ZoomStrip verticalZoomStrip{ZoomStrip::Vertical};
     int controllerLaneHeight = 120;
     int controllerLaneHeightOnDragStart = 120;
     bool syncingScroll = false;
 
     EventListComponent eventList;
 
+    void setHorizontalZoom(int newBeatWidth, int anchorXInViewport);
+    void setVerticalZoom(int newNoteHeight, int anchorYInViewport);
     void zoomHorizontal(float factor, int anchorXInViewport);
     void zoomVertical(float factor, int anchorYInViewport);
     void refreshAllViews();
@@ -279,6 +313,7 @@ private:
     static constexpr int trackListWidth = 180;
     static constexpr int eventListWidth = 280;
     static constexpr int dividerHeight = 5;
+    static constexpr int zoomStripLength = 100;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

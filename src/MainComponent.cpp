@@ -24,6 +24,54 @@ void MainComponent::Divider::mouseDrag(const juce::MouseEvent& e)
         onDrag(e.getDistanceFromDragStartY());
 }
 
+void MainComponent::ZoomStrip::paint(juce::Graphics& g)
+{
+    g.setColour(juce::Colour(30, 30, 42));
+    g.fillRect(getLocalBounds());
+
+    auto drawSymbol = [&](const juce::Rectangle<int>& bounds, bool isMinus)
+    {
+        bool hover = bounds.contains(getMouseXYRelative());
+        float alpha = hover ? 0.9f : 0.5f;
+        g.setColour(juce::Colours::white.withAlpha(alpha));
+        auto cx = bounds.getCentreX();
+        auto cy = bounds.getCentreY();
+        int halfLen = 4;
+        g.drawHorizontalLine(cy, static_cast<float>(cx - halfLen), static_cast<float>(cx + halfLen + 1));
+        if (!isMinus)
+            g.drawVerticalLine(cx, static_cast<float>(cy - halfLen), static_cast<float>(cy + halfLen + 1));
+    };
+    drawSymbol(minusBounds, true);
+    drawSymbol(plusBounds, false);
+}
+
+void MainComponent::ZoomStrip::resized()
+{
+    auto area = getLocalBounds();
+    if (orientation == Horizontal)
+    {
+        int btnSize = area.getHeight();
+        minusBounds = area.removeFromLeft(btnSize);
+        plusBounds = area.removeFromRight(btnSize);
+    }
+    else
+    {
+        int btnSize = area.getWidth();
+        minusBounds = area.removeFromTop(btnSize);
+        plusBounds = area.removeFromBottom(btnSize);
+    }
+    slider.setBounds(area);
+}
+
+void MainComponent::ZoomStrip::mouseUp(const juce::MouseEvent& e)
+{
+    auto pos = e.getPosition();
+    if (minusBounds.contains(pos) && onZoomOut)
+        onZoomOut();
+    else if (plusBounds.contains(pos) && onZoomIn)
+        onZoomIn();
+}
+
 void MainComponent::TransportButton::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
@@ -252,6 +300,26 @@ MainComponent::MainComponent()
         controllerLane.setContentBeats(pianoRoll.getContentBeats());
     };
     addAndMakeVisible(controllerLaneViewport);
+
+    horizontalZoomStrip.slider.setRange(PianoRollComponent::minBeatWidth, PianoRollComponent::maxBeatWidth, 1);
+    horizontalZoomStrip.slider.setSkewFactorFromMidPoint(PianoRollComponent::defaultBeatWidth);
+    horizontalZoomStrip.slider.setValue(pianoRoll.getBeatWidth(), juce::dontSendNotification);
+    horizontalZoomStrip.slider.setDoubleClickReturnValue(true, PianoRollComponent::defaultBeatWidth);
+    horizontalZoomStrip.slider.onValueChange = [this]()
+    { setHorizontalZoom(static_cast<int>(horizontalZoomStrip.slider.getValue()), viewport.getViewWidth() / 2); };
+    horizontalZoomStrip.onZoomIn = [this]() { zoomHorizontal(1.15f, viewport.getViewWidth() / 2); };
+    horizontalZoomStrip.onZoomOut = [this]() { zoomHorizontal(1.0f / 1.15f, viewport.getViewWidth() / 2); };
+    addAndMakeVisible(horizontalZoomStrip);
+
+    verticalZoomStrip.slider.setRange(PianoRollComponent::minNoteHeight, PianoRollComponent::maxNoteHeight, 1);
+    verticalZoomStrip.slider.setSkewFactorFromMidPoint(PianoRollComponent::defaultNoteHeight);
+    verticalZoomStrip.slider.setValue(pianoRoll.getNoteHeight(), juce::dontSendNotification);
+    verticalZoomStrip.slider.setDoubleClickReturnValue(true, PianoRollComponent::defaultNoteHeight);
+    verticalZoomStrip.slider.onValueChange = [this]()
+    { setVerticalZoom(static_cast<int>(verticalZoomStrip.slider.getValue()), viewport.getViewHeight() / 2); };
+    verticalZoomStrip.onZoomIn = [this]() { zoomVertical(1.15f, viewport.getViewHeight() / 2); };
+    verticalZoomStrip.onZoomOut = [this]() { zoomVertical(1.0f / 1.15f, viewport.getViewHeight() / 2); };
+    addAndMakeVisible(verticalZoomStrip);
 
     addAndMakeVisible(controllerLaneDivider);
     controllerLaneDivider.onDragStart = [this]() { controllerLaneHeightOnDragStart = controllerLaneHeight; };
@@ -675,18 +743,9 @@ bool MainComponent::perform(const InvocationInfo& info)
         zoomVertical(1.0f / 1.15f, viewport.getViewHeight() / 2);
         return true;
     case CommandID::zoomReset:
-    {
-        int centerTick = pianoRoll.xToTick(viewport.getViewPositionX() + viewport.getViewWidth() / 2);
-        int centerNote = pianoRoll.yToNote(viewport.getViewPositionY() + viewport.getViewHeight() / 2);
-        pianoRoll.setBeatWidth(PianoRollComponent::defaultBeatWidth);
-        pianoRoll.setNoteHeight(PianoRollComponent::defaultNoteHeight);
-        controllerLane.setBeatWidth(PianoRollComponent::defaultBeatWidth);
-        int newCenterX = pianoRoll.tickToX(centerTick);
-        int newCenterY = pianoRoll.noteToY(centerNote);
-        viewport.setViewPosition(juce::jmax(0, newCenterX - viewport.getViewWidth() / 2),
-                                 juce::jmax(0, newCenterY - viewport.getViewHeight() / 2));
+        setHorizontalZoom(PianoRollComponent::defaultBeatWidth, viewport.getViewWidth() / 2);
+        setVerticalZoom(PianoRollComponent::defaultNoteHeight, viewport.getViewHeight() / 2);
         return true;
-    }
     default:
         return false;
     }
@@ -831,6 +890,12 @@ void MainComponent::resized()
     controllerLane.setSize(std::max(controllerLane.getWidth(), editorArea.getWidth()),
                            controllerLaneViewport.getMaximumVisibleHeight());
     controllerLane.updateSize();
+
+    int sbThickness = viewport.getScrollBarThickness();
+    verticalZoomStrip.setBounds(viewport.getRight() - sbThickness, viewport.getBottom() - zoomStripLength, sbThickness,
+                                zoomStripLength);
+    horizontalZoomStrip.setBounds(controllerLaneViewport.getRight() - zoomStripLength,
+                                  controllerLaneViewport.getBottom() - sbThickness, zoomStripLength, sbThickness);
 }
 
 void MainComponent::onVBlank()
@@ -894,39 +959,43 @@ void MainComponent::refreshAllViews()
     eventList.refresh();
 }
 
-void MainComponent::zoomHorizontal(float factor, int anchorXInViewport)
+void MainComponent::setHorizontalZoom(int newBeatWidth, int anchorXInViewport)
 {
-    int contentX = viewport.getViewPositionX() + anchorXInViewport;
-    int tickAtAnchor = pianoRoll.xToTick(contentX);
-
-    int newBeatWidth = juce::jlimit(PianoRollComponent::minBeatWidth, PianoRollComponent::maxBeatWidth,
-                                    juce::roundToInt(pianoRoll.getBeatWidth() * factor));
-
+    newBeatWidth = juce::jlimit(PianoRollComponent::minBeatWidth, PianoRollComponent::maxBeatWidth, newBeatWidth);
     if (newBeatWidth == pianoRoll.getBeatWidth())
         return;
 
+    int tickAtAnchor = pianoRoll.xToTick(viewport.getViewPositionX() + anchorXInViewport);
     pianoRoll.setBeatWidth(newBeatWidth);
     controllerLane.setBeatWidth(newBeatWidth);
+    horizontalZoomStrip.slider.setValue(newBeatWidth, juce::dontSendNotification);
 
     int newContentX = pianoRoll.tickToX(tickAtAnchor);
     viewport.setViewPosition(juce::jmax(0, newContentX - anchorXInViewport), viewport.getViewPositionY());
 }
 
-void MainComponent::zoomVertical(float factor, int anchorYInViewport)
+void MainComponent::setVerticalZoom(int newNoteHeight, int anchorYInViewport)
 {
-    int contentY = viewport.getViewPositionY() + anchorYInViewport;
-    int noteAtAnchor = pianoRoll.yToNote(contentY);
-
-    int newNoteHeight = juce::jlimit(PianoRollComponent::minNoteHeight, PianoRollComponent::maxNoteHeight,
-                                     juce::roundToInt(pianoRoll.getNoteHeight() * factor));
-
+    newNoteHeight = juce::jlimit(PianoRollComponent::minNoteHeight, PianoRollComponent::maxNoteHeight, newNoteHeight);
     if (newNoteHeight == pianoRoll.getNoteHeight())
         return;
 
+    int noteAtAnchor = pianoRoll.yToNote(viewport.getViewPositionY() + anchorYInViewport);
     pianoRoll.setNoteHeight(newNoteHeight);
+    verticalZoomStrip.slider.setValue(newNoteHeight, juce::dontSendNotification);
 
     int newContentY = pianoRoll.noteToY(noteAtAnchor);
     viewport.setViewPosition(viewport.getViewPositionX(), juce::jmax(0, newContentY - anchorYInViewport));
+}
+
+void MainComponent::zoomHorizontal(float factor, int anchorXInViewport)
+{
+    setHorizontalZoom(juce::roundToInt(pianoRoll.getBeatWidth() * factor), anchorXInViewport);
+}
+
+void MainComponent::zoomVertical(float factor, int anchorYInViewport)
+{
+    setVerticalZoom(juce::roundToInt(pianoRoll.getNoteHeight() * factor), anchorYInViewport);
 }
 
 void MainComponent::newFile()
