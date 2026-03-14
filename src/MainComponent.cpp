@@ -1125,6 +1125,11 @@ void MainComponent::stopPlayback()
 void MainComponent::onSequenceLoaded()
 {
     playbackEngine.setPositionInTicks(0);
+    playbackEngine.setLoopEnabled(false);
+    playbackEngine.setLoopRange(0, 0);
+    loopButton.setActive(false);
+    pianoRoll.setLoopRegion(false, 0, 0);
+    controllerLane.setLoopRegion(false, 0, 0);
 
     std::set<int> allTracks;
     for (int i = 0; i < sequence.getNumTracks(); ++i)
