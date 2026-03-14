@@ -245,6 +245,12 @@ MainComponent::MainComponent()
         auto relEvent = e.getEventRelativeTo(&viewport);
         zoomHorizontal(factor, relEvent.getPosition().x);
     };
+    pianoRoll.onHeaderDrag = [this](const juce::MouseEvent& e, int deltaY)
+    {
+        float factor = std::pow(1.01f, static_cast<float>(deltaY));
+        auto relEvent = e.getEventRelativeTo(&viewport);
+        zoomHorizontal(factor, relEvent.getPosition().x);
+    };
     addAndMakeVisible(viewport);
 
     trackList.setSequence(&sequence);
