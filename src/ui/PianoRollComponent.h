@@ -44,6 +44,7 @@ public:
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
     std::function<void()> onZoomChanged;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onHeaderWheel;
+    std::function<void(const juce::MouseEvent&, int deltaY)> onHeaderDrag;
 
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
     void setSelectedNotes(const std::set<NoteRef>& notes);
@@ -150,4 +151,8 @@ private:
     juce::Rectangle<int> rubberBandRect;
 
     std::vector<MidiNote> clipboard;
+
+    bool isHeaderDragging = false;
+    int headerDragStartY = 0;
+    int lastHeaderDragY = 0;
 };
