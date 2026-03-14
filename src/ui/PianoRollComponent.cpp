@@ -229,6 +229,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(30, 30, 30));
     drawGrid(g);
+    drawLoopRegion(g);
     drawNotes(g);
     drawRubberBand(g);
     drawPlayhead(g);
@@ -237,6 +238,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawTimeSignatureTrack(g);
     drawKeySignatureTrack(g);
     drawHeader(g);
+    drawLoopBar(g);
 }
 
 void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
@@ -603,12 +605,58 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
                        static_cast<float>(clip.getBottom()));
 }
 
+void PianoRollComponent::drawLoopBar(juce::Graphics& g)
+{
+    if (!sequence)
+        return;
+
+    int lbTop = getHeaderTop();
+    int kbLeft = getKeyboardLeft();
+
+    g.setColour(juce::Colour(35, 35, 42));
+    g.fillRect(kbLeft, lbTop, getWidth() - kbLeft, loopBarHeight);
+
+    g.saveState();
+    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
+
+    if (loopEndTick > loopStartTick)
+    {
+        float lx1 = static_cast<float>(tickToX(loopStartTick));
+        float lx2 = static_cast<float>(tickToX(loopEndTick));
+
+        auto fillColour =
+            loopEnabled ? juce::Colour(60, 130, 220).withAlpha(0.6f) : juce::Colour(130, 130, 140).withAlpha(0.4f);
+        auto edgeColour =
+            loopEnabled ? juce::Colour(100, 170, 255).withAlpha(0.9f) : juce::Colour(160, 160, 170).withAlpha(0.7f);
+
+        g.setColour(fillColour);
+        g.fillRoundedRectangle(lx1, static_cast<float>(lbTop + 2), lx2 - lx1 + 1.0f,
+                               static_cast<float>(loopBarHeight - 4), 2.0f);
+
+        g.setColour(edgeColour);
+        g.fillRect(lx1, static_cast<float>(lbTop + 2), 2.0f, static_cast<float>(loopBarHeight - 4));
+        g.fillRect(lx2 - 1.0f, static_cast<float>(lbTop + 2), 2.0f, static_cast<float>(loopBarHeight - 4));
+    }
+
+    float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
+    if (phX >= static_cast<float>(kbLeft + keyboardWidth) && phX <= static_cast<float>(getWidth()))
+    {
+        g.setColour(juce::Colours::white);
+        g.drawLine(phX, static_cast<float>(lbTop), phX, static_cast<float>(lbTop + loopBarHeight), 1.0f);
+    }
+
+    g.restoreState();
+
+    g.setColour(juce::Colour(50, 50, 58));
+    g.drawHorizontalLine(lbTop + loopBarHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
+}
+
 void PianoRollComponent::drawHeader(juce::Graphics& g)
 {
     if (!sequence)
         return;
 
-    int hTop = getHeaderTop();
+    int hTop = getHeaderTop() + loopBarHeight;
     int kbLeft = getKeyboardLeft();
 
     auto clip = g.getClipBounds();
@@ -678,6 +726,8 @@ void PianoRollComponent::drawHeader(juce::Graphics& g)
         g.drawLine(phX, static_cast<float>(hTop), phX, static_cast<float>(hTop + headerHeight), 1.0f);
     }
 
+    drawLoopOverlay(g, hTop, headerHeight, 0.35f);
+
     g.restoreState();
 
     g.setColour(juce::Colour(60, 60, 60));
@@ -693,7 +743,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
         return;
 
     int hTop = getHeaderTop();
-    int tTop = hTop + headerHeight;
+    int tTop = hTop + loopBarHeight + headerHeight;
     int kbLeft = getKeyboardLeft();
 
     auto clip = g.getClipBounds();
@@ -836,6 +886,8 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
         g.drawLine(phX, static_cast<float>(tTop), phX, static_cast<float>(tTop + tempoTrackHeight), 1.0f);
     }
 
+    drawLoopOverlay(g, tTop, tempoTrackHeight, 0.12f);
+
     g.restoreState();
 
     g.setColour(juce::Colour(160, 160, 170));
@@ -856,7 +908,7 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
         return;
 
     int hTop = getHeaderTop();
-    int tsTop = hTop + headerHeight + tempoTrackHeight;
+    int tsTop = hTop + loopBarHeight + headerHeight + tempoTrackHeight;
     int kbLeft = getKeyboardLeft();
 
     auto clip = g.getClipBounds();
@@ -958,6 +1010,8 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
         g.drawLine(phX, static_cast<float>(tsTop), phX, static_cast<float>(tsTop + timeSignatureTrackHeight), 1.0f);
     }
 
+    drawLoopOverlay(g, tsTop, timeSignatureTrackHeight, 0.12f);
+
     g.restoreState();
 
     g.setColour(juce::Colour(160, 160, 170));
@@ -980,7 +1034,7 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
         return;
 
     int hTop = getHeaderTop();
-    int ksTop = hTop + headerHeight + tempoTrackHeight + timeSignatureTrackHeight;
+    int ksTop = hTop + loopBarHeight + headerHeight + tempoTrackHeight + timeSignatureTrackHeight;
     int kbLeft = getKeyboardLeft();
 
     auto clip = g.getClipBounds();
@@ -1081,6 +1135,8 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
         g.setColour(juce::Colours::white);
         g.drawLine(phX, static_cast<float>(ksTop), phX, static_cast<float>(ksTop + keySignatureTrackHeight), 1.0f);
     }
+
+    drawLoopOverlay(g, ksTop, keySignatureTrackHeight, 0.12f);
 
     g.restoreState();
 
@@ -1290,6 +1346,58 @@ void PianoRollComponent::drawPlayhead(juce::Graphics& g)
         return;
     g.setColour(juce::Colours::white);
     g.drawLine(x, static_cast<float>(clip.getY()), x, static_cast<float>(clip.getBottom()), 1.0f);
+}
+
+void PianoRollComponent::setLoopRegion(bool enabled, int startTick, int endTick)
+{
+    loopEnabled = enabled;
+    loopStartTick = startTick;
+    loopEndTick = endTick;
+    repaint();
+}
+
+void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
+{
+    if (!sequence || loopEndTick <= loopStartTick)
+        return;
+
+    auto clip = g.getClipBounds();
+    float x1 = static_cast<float>(tickToX(loopStartTick));
+    float x2 = static_cast<float>(tickToX(loopEndTick));
+
+    if (x2 < static_cast<float>(clip.getX()) || x1 > static_cast<float>(clip.getRight()))
+        return;
+
+    int gridTopY = getHeaderTop() + gridTopOffset;
+    float gridTop = static_cast<float>(gridTopY);
+    float bottom = static_cast<float>(clip.getBottom());
+
+    g.setColour(loopEnabled ? juce::Colour(60, 120, 200).withAlpha(0.08f)
+                            : juce::Colour(130, 130, 140).withAlpha(0.08f));
+    g.fillRect(x1, gridTop, x2 - x1, bottom - gridTop);
+
+    g.setColour(loopEnabled ? juce::Colour(80, 160, 255).withAlpha(0.7f) : juce::Colour(150, 150, 160).withAlpha(0.5f));
+    g.drawVerticalLine(static_cast<int>(x1), gridTop, bottom);
+    g.drawVerticalLine(static_cast<int>(x2), gridTop, bottom);
+}
+
+void PianoRollComponent::drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha)
+{
+    if (loopEndTick <= loopStartTick)
+        return;
+
+    float lx1 = static_cast<float>(tickToX(loopStartTick));
+    float lx2 = static_cast<float>(tickToX(loopEndTick));
+    float fTop = static_cast<float>(top);
+    float fBottom = static_cast<float>(top + height);
+
+    g.setColour(loopEnabled ? juce::Colour(60, 120, 200).withAlpha(fillAlpha)
+                            : juce::Colour(130, 130, 140).withAlpha(fillAlpha * 0.5f));
+    g.fillRect(lx1, fTop, lx2 - lx1, static_cast<float>(height));
+
+    g.setColour(loopEnabled ? juce::Colour(80, 160, 255).withAlpha(0.7f) : juce::Colour(150, 150, 160).withAlpha(0.5f));
+    g.drawVerticalLine(static_cast<int>(lx1), fTop, fBottom);
+    g.drawVerticalLine(static_cast<int>(lx2), fTop, fBottom);
 }
 
 void PianoRollComponent::updateSize()

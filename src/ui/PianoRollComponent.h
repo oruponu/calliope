@@ -37,6 +37,8 @@ public:
     void setPlayheadTick(double tick);
     void setEditMode(EditMode mode);
     EditMode getEditMode() const;
+    void setLoopRegion(bool enabled, int startTick, int endTick);
+
     void paint(juce::Graphics& g) override;
 
     std::function<void(int tick)> onPlayheadMoved;
@@ -67,12 +69,13 @@ public:
     static constexpr int defaultBeatWidth = 80;
     static constexpr int totalNotes = 128;
     static constexpr int snapTicks = 480;
+    static constexpr int loopBarHeight = 14;
     static constexpr int headerHeight = 24;
     static constexpr int tempoTrackHeight = 48;
     static constexpr int timeSignatureTrackHeight = 24;
     static constexpr int keySignatureTrackHeight = 24;
     static constexpr int gridTopOffset =
-        headerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
+        loopBarHeight + headerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
     static constexpr int resizeEdgeWidth = 6;
 
     static constexpr int minBeatWidth = 4;
@@ -106,6 +109,7 @@ private:
     };
 
     void drawKeyboard(juce::Graphics& g);
+    void drawLoopBar(juce::Graphics& g);
     void drawHeader(juce::Graphics& g);
     void drawTempoTrack(juce::Graphics& g);
     void drawTimeSignatureTrack(juce::Graphics& g);
@@ -113,6 +117,8 @@ private:
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
+    void drawLoopRegion(juce::Graphics& g);
+    void drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha);
 
     int tickToWidth(int durationTicks) const;
     int roundTickToGrid(int tick) const;
@@ -155,4 +161,8 @@ private:
     bool isHeaderDragging = false;
     int headerDragStartY = 0;
     int lastHeaderDragY = 0;
+
+    bool loopEnabled = false;
+    int loopStartTick = 0;
+    int loopEndTick = 0;
 };
