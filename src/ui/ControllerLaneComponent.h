@@ -26,6 +26,7 @@ public:
     void setDisplayMode(DisplayMode mode);
     void setCCNumber(int cc);
     void setPlayheadTick(double tick);
+    void setLoopRegion(bool enabled, int startTick, int endTick);
     void setContentBeats(int beats);
     void setBeatWidth(int w);
     void updateSize();
@@ -58,6 +59,7 @@ private:
     void drawStepGraph(juce::Graphics& g, const std::vector<std::pair<int, int>>& events, juce::Colour colour,
                        float alpha, std::function<int(int)> toY);
     void drawPlayhead(juce::Graphics& g);
+    void drawLoopRegion(juce::Graphics& g);
 
     int xToTick(int x) const;
     int valueToY(int value) const;
@@ -73,6 +75,9 @@ private:
     DisplayMode displayMode = DisplayMode::Velocity;
     int ccNumber = 1;
     double playheadTick = 0.0;
+    bool loopEnabled = false;
+    int loopStartTick = 0;
+    int loopEndTick = 0;
     int contentBeats = 16;
 
     juce::UndoManager* undoManager = nullptr;
