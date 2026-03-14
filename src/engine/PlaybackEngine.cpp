@@ -49,6 +49,32 @@ void PlaybackEngine::setPositionInTicks(int tick)
     tickPosition = static_cast<double>(tick);
 }
 
+void PlaybackEngine::setLoopEnabled(bool enabled)
+{
+    loopEnabled = enabled;
+}
+
+bool PlaybackEngine::isLoopEnabled() const
+{
+    return loopEnabled;
+}
+
+void PlaybackEngine::setLoopRange(int startTick, int endTick)
+{
+    loopStartTick = startTick;
+    loopEndTick = endTick;
+}
+
+int PlaybackEngine::getLoopStartTick() const
+{
+    return loopStartTick;
+}
+
+int PlaybackEngine::getLoopEndTick() const
+{
+    return loopEndTick;
+}
+
 void PlaybackEngine::addListener(Listener* listener)
 {
     listeners.push_back(listener);
@@ -75,6 +101,16 @@ void PlaybackEngine::hiResTimerCallback()
     int previousTick = static_cast<int>(tickPosition);
     tickPosition += elapsedTicks;
     int currentTick = static_cast<int>(tickPosition);
+
+    if (loopEnabled && loopEndTick > loopStartTick && tickPosition >= loopEndTick)
+    {
+        processEvents(previousTick, loopEndTick);
+        processNoteOns(previousTick, loopEndTick);
+        processNoteOffs(loopEndTick);
+        sendAllNoteOffs();
+        tickPosition = static_cast<double>(loopStartTick) + (tickPosition - loopEndTick);
+        return;
+    }
 
     if (currentTick > previousTick)
     {
