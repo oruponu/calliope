@@ -275,13 +275,13 @@ MainComponent::MainComponent()
         else
             zoomHorizontal(factor, e.getPosition().x);
     };
-    pianoRoll.onHeaderWheel = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
+    pianoRoll.onRulerWheel = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
     {
         float factor = wheel.deltaY > 0 ? 1.15f : (1.0f / 1.15f);
         auto relEvent = e.getEventRelativeTo(&viewport);
         zoomHorizontal(factor, relEvent.getPosition().x);
     };
-    pianoRoll.onHeaderDrag = [this](const juce::MouseEvent& e, int deltaY)
+    pianoRoll.onRulerDrag = [this](const juce::MouseEvent& e, int deltaY)
     {
         float factor = std::pow(1.01f, static_cast<float>(deltaY));
         auto relEvent = e.getEventRelativeTo(&viewport);
