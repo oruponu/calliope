@@ -75,7 +75,7 @@ public:
         headerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
     static constexpr int resizeEdgeWidth = 6;
 
-    static constexpr int minBeatWidth = 20;
+    static constexpr int minBeatWidth = 4;
     static constexpr int maxBeatWidth = 400;
     static constexpr int minNoteHeight = 4;
     static constexpr int maxNoteHeight = 40;
