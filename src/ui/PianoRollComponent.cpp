@@ -246,7 +246,18 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
     if (!sequence || sequence->getNumTracks() == 0)
         return;
 
-    if (e.y < getHeaderTop() + headerHeight)
+    if (e.y < getHeaderTop() + loopBarHeight)
+    {
+        if (e.x >= getKeyboardLeft() + keyboardWidth)
+        {
+            int tick = roundTickToGrid(xToTick(e.x));
+            loopDragStartTick = std::max(0, tick);
+            isLoopDragging = true;
+        }
+        return;
+    }
+
+    if (e.y < getHeaderTop() + loopBarHeight + headerHeight)
     {
         if (e.x >= getKeyboardLeft() + keyboardWidth)
         {
@@ -404,6 +415,23 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     if (!sequence)
         return;
 
+    if (isLoopDragging)
+    {
+        int tick = roundTickToGrid(xToTick(e.x));
+        tick = std::max(0, tick);
+        int start = std::min(loopDragStartTick, tick);
+        int end = std::max(loopDragStartTick, tick);
+        if (end > start)
+        {
+            loopStartTick = start;
+            loopEndTick = end;
+            repaint();
+            if (onLoopRegionChanged)
+                onLoopRegionChanged(loopStartTick, loopEndTick);
+        }
+        return;
+    }
+
     if (isHeaderDragging)
     {
         if (std::abs(e.y - headerDragStartY) < 5)
@@ -461,6 +489,11 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
 void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
+    if (isLoopDragging)
+    {
+        isLoopDragging = false;
+        return;
+    }
     isHeaderDragging = false;
 
     if (dragMode == DragMode::RubberBand)
@@ -537,7 +570,7 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 
 void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
 {
-    if (e.y >= getHeaderTop() && e.y < getHeaderTop() + headerHeight && onHeaderWheel)
+    if (e.y >= getHeaderTop() + loopBarHeight && e.y < getHeaderTop() + loopBarHeight + headerHeight && onHeaderWheel)
     {
         onHeaderWheel(e, w);
         return;

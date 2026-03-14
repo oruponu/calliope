@@ -39,6 +39,7 @@ public:
     EditMode getEditMode() const;
     void setLoopRegion(bool enabled, int startTick, int endTick);
 
+    std::function<void(int startTick, int endTick)> onLoopRegionChanged;
     void paint(juce::Graphics& g) override;
 
     std::function<void(int tick)> onPlayheadMoved;
@@ -165,4 +166,6 @@ private:
     bool loopEnabled = false;
     int loopStartTick = 0;
     int loopEndTick = 0;
+    bool isLoopDragging = false;
+    int loopDragStartTick = 0;
 };
