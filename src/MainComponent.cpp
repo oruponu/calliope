@@ -616,7 +616,8 @@ void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
                        CommandID::cutAction,         CommandID::copyAction,
                        CommandID::pasteAction,       CommandID::zoomInHorizontal,
                        CommandID::zoomOutHorizontal, CommandID::zoomInVertical,
-                       CommandID::zoomOutVertical,   CommandID::zoomReset});
+                       CommandID::zoomOutVertical,   CommandID::zoomReset,
+                       CommandID::toggleLoop});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -706,6 +707,10 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case CommandID::zoomReset:
         result.setInfo("Reset Zoom", "", "View", 0);
         result.addDefaultKeypress('0', juce::ModifierKeys::ctrlModifier);
+        break;
+    case CommandID::toggleLoop:
+        result.setInfo("Toggle Loop", "", "Transport", 0);
+        result.addDefaultKeypress('/', 0);
         break;
     default:
         break;
@@ -804,6 +809,9 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::zoomReset:
         setHorizontalZoom(PianoRollComponent::defaultBeatWidth, viewport.getViewWidth() / 2);
         setVerticalZoom(PianoRollComponent::defaultNoteHeight, viewport.getViewHeight() / 2);
+        return true;
+    case CommandID::toggleLoop:
+        loopButton.onClick();
         return true;
     default:
         return false;

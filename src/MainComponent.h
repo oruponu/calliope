@@ -276,7 +276,8 @@ private:
         zoomOutHorizontal,
         zoomInVertical,
         zoomOutVertical,
-        zoomReset
+        zoomReset,
+        toggleLoop
     };
 
     juce::ApplicationCommandManager commandManager;
