@@ -488,6 +488,21 @@ MainComponent::MainComponent()
     selectToolButton.setActive(true);
     selectToolButton.onClick = [this]() { setActiveTool(PianoRollComponent::EditMode::Select); };
 
+    addAndMakeVisible(quantizeComboBox);
+    quantizeComboBox.addItem("1/1", 1);
+    quantizeComboBox.addItem("1/2", 2);
+    quantizeComboBox.addItem("1/4", 4);
+    quantizeComboBox.addItem("1/8", 8);
+    quantizeComboBox.addItem("1/16", 16);
+    quantizeComboBox.addItem("1/32", 32);
+    quantizeComboBox.setSelectedId(4, juce::dontSendNotification);
+    quantizeComboBox.onChange = [this]()
+    {
+        int denom = quantizeComboBox.getSelectedId();
+        pianoRoll.setQuantizeDenominator(denom);
+        controllerLane.setQuantizeDenominator(denom);
+    };
+
     updateTransportDisplay();
 
     commandManager.registerAllCommandsForTarget(this);
@@ -942,6 +957,8 @@ void MainComponent::resized()
         left.removeFromLeft(pad);
         selectToolButton.setBounds(left.removeFromLeft(btnSize));
         editToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
+        toolBtnArea.removeFromLeft(pad * 2);
+        quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70));
     }
 
     trackListViewport.setBounds(area.removeFromLeft(trackListWidth));
