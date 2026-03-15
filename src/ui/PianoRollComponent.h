@@ -92,6 +92,9 @@ public:
     int getBeatWidth() const { return beatWidth; }
     int getNoteHeight() const { return noteHeight; }
 
+    void setQuantizeDenominator(int denom);
+    int getQuantizeDenominator() const { return quantizeDenominator; }
+
     int tickToX(int tick) const;
     int noteToY(int noteNumber) const;
     int xToTick(int x) const;
@@ -120,6 +123,7 @@ private:
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
     void drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha);
+    void drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top, float bottom);
 
     int tickToWidth(int durationTicks) const;
     int roundTickToGrid(int tick) const;
@@ -162,6 +166,8 @@ private:
     bool isRulerDragging = false;
     int rulerDragStartY = 0;
     int lastRulerDragY = 0;
+
+    int quantizeDenominator = 4;
 
     bool loopEnabled = false;
     int loopStartTick = 0;
