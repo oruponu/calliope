@@ -292,6 +292,8 @@ private:
     ToolButton editToolButton{ToolButton::EditTool};
     ToolButton selectToolButton{ToolButton::SelectTool};
 
+    juce::ComboBox quantizeComboBox;
+
     juce::Label positionHeaderLabel{"", "Bar"};
     juce::Label positionLabel;
 
