@@ -124,6 +124,12 @@ void ControllerLaneComponent::setBeatWidth(int w)
     repaint();
 }
 
+void ControllerLaneComponent::setQuantizeDenominator(int denom)
+{
+    quantizeDenominator = denom;
+    repaint();
+}
+
 void ControllerLaneComponent::updateSize()
 {
     if (!sequence)
@@ -293,12 +299,13 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
     }
 
     int ppq = sequence->getTicksPerQuarterNote();
+    int quantizeGrid = std::min(ppq, ppq * 4 / quantizeDenominator);
     int startTick = xToTick(std::max(visibleLeft, leftPanelWidth));
-    int firstBeat = std::max(0, startTick / ppq);
+    int firstSub = std::max(0, startTick / quantizeGrid);
 
-    for (int beat = firstBeat;; ++beat)
+    for (int sub = firstSub;; ++sub)
     {
-        int tick = beat * ppq;
+        int tick = sub * quantizeGrid;
         int x = tickToX(tick);
         if (x > visibleRight)
             break;
@@ -309,8 +316,10 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
 
         if (bbt.beat == 1 && bbt.tick == 0)
             g.setColour(juce::Colours::white.withAlpha(0.18f));
-        else
+        else if (tick % ppq == 0)
             g.setColour(juce::Colours::white.withAlpha(0.06f));
+        else
+            g.setColour(juce::Colours::white.withAlpha(0.04f));
 
         g.drawVerticalLine(x, static_cast<float>(getDrawAreaTop()), static_cast<float>(getDrawAreaBottom()));
     }

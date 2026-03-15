@@ -29,6 +29,7 @@ public:
     void setLoopRegion(bool enabled, int startTick, int endTick);
     void setContentBeats(int beats);
     void setBeatWidth(int w);
+    void setQuantizeDenominator(int denom);
     void updateSize();
 
     DisplayMode getDisplayMode() const { return displayMode; }
@@ -79,6 +80,8 @@ private:
     int loopStartTick = 0;
     int loopEndTick = 0;
     int contentBeats = 16;
+
+    int quantizeDenominator = 4;
 
     juce::UndoManager* undoManager = nullptr;
     bool isDragging = false;
