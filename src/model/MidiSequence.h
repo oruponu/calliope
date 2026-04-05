@@ -24,6 +24,15 @@ struct KeySignatureChange
     bool isMinor;
 };
 
+struct ChordChange
+{
+    int tick;
+    int chordRoot; // XF format: upper nibble=accidental(0-6), lower nibble=note(0-7)
+    int chordType; // XF format: 0-34
+    int bassRoot;  // same as chordRoot, 0x7F=none
+    int bassType;  // same as chordType, 0x7F=none
+};
+
 struct BarBeatTick
 {
     int bar;  // 1-based
@@ -61,12 +70,15 @@ public:
     const std::vector<TempoChange>& getTempoChanges() const;
     const std::vector<TimeSignatureChange>& getTimeSignatureChanges() const;
     const std::vector<KeySignatureChange>& getKeySignatureChanges() const;
+    const std::vector<ChordChange>& getChordChanges() const;
 
     void addTempoChange(int tick, double bpm);
     void addTimeSignatureChange(int tick, int num, int den);
     void addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor);
+    void addChordChange(int tick, int chordRoot, int chordType, int bassRoot, int bassType);
 
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
+    static std::string chordToString(const ChordChange& chord);
 
     double ticksToSeconds(int ticks) const;
     int secondsToTicks(double seconds) const;
@@ -79,5 +91,6 @@ private:
     std::vector<TempoChange> tempoChanges;
     std::vector<TimeSignatureChange> timeSignatureChanges;
     std::vector<KeySignatureChange> keySignatureChanges;
+    std::vector<ChordChange> chordChanges;
     int ticksPerQuarterNote = defaultTicksPerQuarterNote;
 };

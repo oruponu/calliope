@@ -15,6 +15,7 @@ void MidiSequence::clear()
     timeSignatureChanges.clear();
     timeSignatureChanges.push_back({0, 4, 4});
     keySignatureChanges.clear();
+    chordChanges.clear();
     ticksPerQuarterNote = defaultTicksPerQuarterNote;
 }
 
@@ -167,6 +168,11 @@ const std::vector<KeySignatureChange>& MidiSequence::getKeySignatureChanges() co
     return keySignatureChanges;
 }
 
+const std::vector<ChordChange>& MidiSequence::getChordChanges() const
+{
+    return chordChanges;
+}
+
 void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor)
 {
     for (auto& ks : keySignatureChanges)
@@ -181,6 +187,62 @@ void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMin
     keySignatureChanges.push_back({tick, sharpsOrFlats, isMinor});
     std::sort(keySignatureChanges.begin(), keySignatureChanges.end(),
               [](const KeySignatureChange& a, const KeySignatureChange& b) { return a.tick < b.tick; });
+}
+
+void MidiSequence::addChordChange(int tick, int chordRoot, int chordType, int bassRoot, int bassType)
+{
+    for (auto& cc : chordChanges)
+    {
+        if (cc.tick == tick)
+        {
+            cc.chordRoot = chordRoot;
+            cc.chordType = chordType;
+            cc.bassRoot = bassRoot;
+            cc.bassType = bassType;
+            return;
+        }
+    }
+    chordChanges.push_back({tick, chordRoot, chordType, bassRoot, bassType});
+    std::sort(chordChanges.begin(), chordChanges.end(),
+              [](const ChordChange& a, const ChordChange& b) { return a.tick < b.tick; });
+}
+
+std::string MidiSequence::chordToString(const ChordChange& chord)
+{
+    static const char* noteNames[] = {"", "C", "D", "E", "F", "G", "A", "B"};
+    static const char* accidentals[] = {"bbb", "bb", "b", "", "#", "##", "###"};
+    static const char* chordTypes[] = {
+        "",      "6",     "M7",     "M7(#11)", "add9",   "M7(9)", "6(9)", "aug", "m",     "m6",   "m7",   "m7b5",
+        "madd9", "m7(9)", "m7(11)", "mM7",     "mM7(9)", "dim",   "dim7", "7",   "7sus4", "7b5",  "7(9)", "7(#11)",
+        "7(13)", "7(b9)", "7(b13)", "7(#9)",   "M7aug",  "7aug",  "1+8",  "5",   "sus4",  "sus2", ""};
+
+    int noteIndex = chord.chordRoot & 0x0F;
+    int accIndex = (chord.chordRoot >> 4) & 0x07;
+
+    // No Chord: root=0x7F or noteIndex=0 or chordType=34(cc)
+    if (chord.chordRoot == 0x7F || noteIndex == 0 || chord.chordType == 34)
+        return {};
+
+    if (noteIndex > 7 || accIndex > 6)
+        return "--";
+
+    std::string result = noteNames[noteIndex];
+    result += accidentals[accIndex];
+
+    int ct = chord.chordType;
+    if (ct >= 0 && ct < 34)
+        result += chordTypes[ct];
+
+    int bassNote = chord.bassRoot & 0x0F;
+    int bassAcc = (chord.bassRoot >> 4) & 0x07;
+    if (chord.bassRoot != 0x7F && bassNote >= 1 && bassNote <= 7 && bassAcc <= 6)
+    {
+        result += "/";
+        result += noteNames[bassNote];
+        result += accidentals[bassAcc];
+    }
+
+    return result;
 }
 
 std::string MidiSequence::keySignatureToString(int sharpsOrFlats, bool isMinor)
