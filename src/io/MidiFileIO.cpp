@@ -122,6 +122,24 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         tempoTrack.addEvent(ksEvent);
     }
 
+    for (const auto& cc : sequence.getChordChanges())
+    {
+        // XF Chord: FF 7F 07 43 7B 01 cr ct bn bt
+        uint8_t raw[] = {0xFF,
+                         0x7F,
+                         0x07,
+                         0x43,
+                         0x7B,
+                         0x01,
+                         static_cast<uint8_t>(cc.chordRoot),
+                         static_cast<uint8_t>(cc.chordType),
+                         static_cast<uint8_t>(cc.bassRoot),
+                         static_cast<uint8_t>(cc.bassType)};
+        auto msg = juce::MidiMessage(raw, static_cast<int>(sizeof(raw)));
+        msg.setTimeStamp(cc.tick);
+        tempoTrack.addEvent(msg);
+    }
+
     tempoTrack.sort();
 
     auto endOfTempoTrack = juce::MidiMessage::endOfTrack();
@@ -279,6 +297,18 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 int sf = msg.getKeySignatureNumberOfSharpsOrFlats();
                 bool isMinor = !msg.isKeySignatureMajorKey();
                 sequence.addKeySignatureChange(tick, sf, isMinor);
+            }
+            else if (msg.getMetaEventType() == 0x7F)
+            {
+                auto* metaData = msg.getMetaEventData();
+                int len = msg.getMetaEventLength();
+                // XF Chord: 43 7B 01 cr ct bn bt
+                if (metaData != nullptr && len >= 7 && metaData[0] == 0x43 && metaData[1] == 0x7B &&
+                    metaData[2] == 0x01)
+                {
+                    int tick = static_cast<int>(msg.getTimeStamp());
+                    sequence.addChordChange(tick, metaData[3], metaData[4], metaData[5], metaData[6]);
+                }
             }
         }
     }
