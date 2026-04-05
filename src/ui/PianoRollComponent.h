@@ -75,8 +75,9 @@ public:
     static constexpr int tempoTrackHeight = 48;
     static constexpr int timeSignatureTrackHeight = 24;
     static constexpr int keySignatureTrackHeight = 24;
-    static constexpr int gridTopOffset =
-        loopBarHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
+    static constexpr int chordTrackHeight = 24;
+    static constexpr int gridTopOffset = loopBarHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight +
+                                         keySignatureTrackHeight + chordTrackHeight;
     static constexpr int resizeEdgeWidth = 6;
 
     static constexpr int minBeatWidth = 4;
@@ -118,6 +119,7 @@ private:
     void drawTempoTrack(juce::Graphics& g);
     void drawTimeSignatureTrack(juce::Graphics& g);
     void drawKeySignatureTrack(juce::Graphics& g);
+    void drawChordTrack(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
