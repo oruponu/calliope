@@ -237,6 +237,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawTempoTrack(g);
     drawTimeSignatureTrack(g);
     drawKeySignatureTrack(g);
+    drawChordTrack(g);
     drawRuler(g);
     drawLoopBar(g);
 }
@@ -1091,6 +1092,89 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
     g.setColour(juce::Colour(60, 62, 70));
     g.drawHorizontalLine(ksTop + keySignatureTrackHeight - 1, static_cast<float>(kbLeft),
                          static_cast<float>(getWidth()));
+}
+
+void PianoRollComponent::drawChordTrack(juce::Graphics& g)
+{
+    if (!sequence)
+        return;
+
+    int hTop = getRulerTop();
+    int ctTop =
+        hTop + loopBarHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
+    int kbLeft = getKeyboardLeft();
+
+    auto clip = g.getClipBounds();
+    int visibleLeft = clip.getX();
+    int visibleRight = clip.getRight();
+
+    g.setColour(juce::Colour(40, 42, 48));
+    g.fillRect(kbLeft, ctTop, getWidth() - kbLeft, chordTrackHeight);
+
+    g.saveState();
+    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
+
+    drawTrackGridLines(g, visibleLeft, visibleRight, static_cast<float>(ctTop),
+                       static_cast<float>(ctTop + chordTrackHeight));
+
+    const auto& chordChanges = sequence->getChordChanges();
+    if (!chordChanges.empty())
+    {
+        juce::Colour chordColour(200, 140, 180);
+        int barY = ctTop + 3;
+        int barH = chordTrackHeight - 6;
+
+        for (size_t i = 0; i < chordChanges.size(); ++i)
+        {
+            auto label = MidiSequence::chordToString(chordChanges[i]);
+            if (label.empty())
+                continue;
+
+            int x = tickToX(chordChanges[i].tick);
+            int nextX =
+                (i + 1 < chordChanges.size()) ? tickToX(chordChanges[i + 1].tick) : tickToX(xToTick(getWidth()));
+
+            if (x > visibleRight || nextX < visibleLeft)
+                continue;
+
+            g.setColour(chordColour.withAlpha(0.15f));
+            g.fillRect(x, barY, nextX - x, barH);
+            g.setColour(chordColour.withAlpha(0.5f));
+            g.drawRect(x, barY, nextX - x, barH, 1);
+
+            int textX = x + 4;
+            int textWidth = nextX - textX - 2;
+            if (textWidth > 8)
+            {
+                g.setColour(chordColour);
+                g.setFont(11.0f);
+                g.drawText(juce::String(label), textX, ctTop, textWidth, chordTrackHeight,
+                           juce::Justification::centredLeft);
+            }
+        }
+    }
+
+    float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
+    if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
+    {
+        g.setColour(juce::Colours::white);
+        g.drawLine(phX, static_cast<float>(ctTop), phX, static_cast<float>(ctTop + chordTrackHeight), 1.0f);
+    }
+
+    drawLoopOverlay(g, ctTop, chordTrackHeight, 0.12f);
+
+    g.restoreState();
+
+    g.setColour(juce::Colour(160, 160, 170));
+    g.setFont(10.0f);
+    g.drawText("Chord", kbLeft + 4, ctTop, keyboardWidth - 8, chordTrackHeight, juce::Justification::centredLeft);
+
+    g.setColour(juce::Colour(60, 60, 60));
+    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(ctTop),
+                       static_cast<float>(ctTop + chordTrackHeight));
+
+    g.setColour(juce::Colour(60, 62, 70));
+    g.drawHorizontalLine(ctTop + chordTrackHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawGrid(juce::Graphics& g)
