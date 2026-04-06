@@ -249,6 +249,8 @@ MainComponent::MainComponent()
             noteRefs.insert({ref.trackIndex, ref.noteIndex});
         eventList.setSelectedNotes(noteRefs);
     };
+    pianoRoll.onNotePreview = [this](const MidiNote& note) { midiOutput.onNoteOn(0, note); };
+    pianoRoll.onNotePreviewEnd = [this](const MidiNote& note) { midiOutput.onNoteOff(0, note); };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, false);
     viewport.onReachedEnd = [this]()
