@@ -4,6 +4,22 @@
 #include <algorithm>
 #include <vector>
 
+void PianoRollComponent::startNotePreview(const MidiNote& note)
+{
+    stopNotePreview();
+    previewNote = note;
+    isPreviewing = true;
+    if (onNotePreview)
+        onNotePreview(previewNote);
+}
+
+void PianoRollComponent::stopNotePreview()
+{
+    if (isPreviewing && onNotePreviewEnd)
+        onNotePreviewEnd(previewNote);
+    isPreviewing = false;
+}
+
 void PianoRollComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;
@@ -316,6 +332,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             dragStartNote = yToNote(e.y);
 
             dragMode = isOnRightEdge(e.x, note) ? DragMode::Resizing : DragMode::Moving;
+            startNotePreview(note);
         }
         else
         {
@@ -340,6 +357,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                 track.addNote(newNote);
                 selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
             }
+            startNotePreview(newNote);
             dragMode = DragMode::None;
             repaint();
             if (onNotesChanged)
@@ -393,6 +411,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                 selectedNotes.clear();
                 selectedNotes.insert(hit);
             }
+            const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
+            startNotePreview(note);
             dragMode = DragMode::None;
             repaint();
             if (onNoteSelectionChanged)
@@ -476,6 +496,9 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
         note.startTick = std::max(0, newStart);
         note.noteNumber = newNote;
+
+        if (newNote != previewNote.noteNumber)
+            startNotePreview(note);
     }
     else if (dragMode == DragMode::Resizing)
     {
@@ -490,6 +513,8 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
 void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
+    stopNotePreview();
+
     if (isLoopDragging)
     {
         isLoopDragging = false;
