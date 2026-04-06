@@ -45,6 +45,8 @@ public:
     std::function<void(int tick)> onPlayheadMoved;
     std::function<void()> onNotesChanged;
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
+    std::function<void(const MidiNote&)> onNotePreview;
+    std::function<void(const MidiNote&)> onNotePreviewEnd;
     std::function<void()> onZoomChanged;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onRulerWheel;
     std::function<void(const juce::MouseEvent&, int deltaY)> onRulerDrag;
@@ -164,6 +166,11 @@ private:
     juce::Rectangle<int> rubberBandRect;
 
     std::vector<MidiNote> clipboard;
+
+    MidiNote previewNote;
+    bool isPreviewing = false;
+    void startNotePreview(const MidiNote& note);
+    void stopNotePreview();
 
     bool isRulerDragging = false;
     int rulerDragStartY = 0;
