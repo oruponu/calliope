@@ -134,6 +134,7 @@ private:
     int floorTickToGrid(int tick) const;
 
     NoteRef hitTestNote(int x, int y) const;
+    int keyboardNoteAtPosition(int x, int y) const;
     bool isOnRightEdge(int x, const MidiNote& note) const;
 
     int getKeyboardLeft() const;
@@ -171,6 +172,8 @@ private:
     bool isPreviewing = false;
     void startNotePreview(const MidiNote& note);
     void stopNotePreview();
+
+    bool isKeyboardDragging = false;
 
     bool isRulerDragging = false;
     int rulerDragStartY = 0;
