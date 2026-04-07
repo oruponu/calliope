@@ -11,13 +11,17 @@ void PianoRollComponent::startNotePreview(const MidiNote& note)
     isPreviewing = true;
     if (onNotePreview)
         onNotePreview(previewNote);
+    repaint();
 }
 
 void PianoRollComponent::stopNotePreview()
 {
-    if (isPreviewing && onNotePreviewEnd)
+    if (!isPreviewing)
+        return;
+    if (onNotePreviewEnd)
         onNotePreviewEnd(previewNote);
     isPreviewing = false;
+    repaint();
 }
 
 void PianoRollComponent::setSequence(MidiSequence* seq)
@@ -294,7 +298,17 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         return;
 
     if (e.x < getKeyboardLeft() + keyboardWidth)
+    {
+        int noteNum = keyboardNoteAtPosition(e.x, e.y);
+        if (noteNum >= 0)
+        {
+            const auto& track = sequence->getTrack(activeTrackIndex);
+            int ch = track.getNumNotes() > 0 ? track.getNote(0).channel : 1;
+            startNotePreview(MidiNote{noteNum, 100, 0, 480, ch});
+            isKeyboardDragging = true;
+        }
         return;
+    }
 
     auto hit = hitTestNote(e.x, e.y);
 
@@ -436,6 +450,14 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     if (!sequence)
         return;
 
+    if (isKeyboardDragging)
+    {
+        int noteNum = keyboardNoteAtPosition(e.x, e.y);
+        if (noteNum >= 0 && noteNum != previewNote.noteNumber)
+            startNotePreview(MidiNote{noteNum, 100, 0, 480, previewNote.channel});
+        return;
+    }
+
     if (isLoopDragging)
     {
         int tick = roundTickToGrid(xToTick(e.x));
@@ -514,6 +536,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
     stopNotePreview();
+    isKeyboardDragging = false;
 
     if (isLoopDragging)
     {
@@ -657,6 +680,32 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
         int cH = static_cast<int>(whiteKeyH);
         if (cTop + cH >= clip.getY() && cTop <= clip.getBottom())
             g.drawText(getNoteName(base), kbLeft, cTop, keyboardWidth - 4, cH, juce::Justification::centredRight);
+    }
+
+    if (isPreviewing)
+    {
+        int pn = previewNote.noteNumber;
+        if (isBlackKey(pn))
+        {
+            double centerY = noteToY(pn) + noteHeight / 2.0;
+            int bkTop = static_cast<int>(centerY - bkH / 2.0);
+            g.setColour(juce::Colour(100, 160, 255).withAlpha(0.5f));
+            g.fillRect(kbLeft, bkTop, blackKeyW, bkH);
+        }
+        else
+        {
+            static const int whiteKeyIndex[] = {0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6};
+            int oct = pn / 12;
+            int wk = whiteKeyIndex[pn % 12];
+            if (wk >= 0)
+            {
+                double octBottom = static_cast<double>(noteToY(oct * 12) + noteHeight);
+                int wkTop = static_cast<int>(octBottom - (wk + 1) * whiteKeyH + 0.5);
+                int wkBottom = static_cast<int>(octBottom - wk * whiteKeyH + 0.5);
+                g.setColour(juce::Colour(100, 160, 255).withAlpha(0.3f));
+                g.fillRect(kbLeft, wkTop, keyboardWidth, wkBottom - wkTop);
+            }
+        }
     }
 
     g.setColour(juce::Colour(60, 60, 60));
@@ -1513,6 +1562,52 @@ int PianoRollComponent::xToTick(int x) const
 int PianoRollComponent::yToNote(int y) const
 {
     return totalNotes - 1 - ((y - gridTopOffset) / noteHeight);
+}
+
+int PianoRollComponent::keyboardNoteAtPosition(int x, int y) const
+{
+    int kbLeft = getKeyboardLeft();
+    int blackKeyW = keyboardWidth * 55 / 100;
+    double whiteKeyH = 12.0 * noteHeight / 7.0;
+    int bkH = static_cast<int>(whiteKeyH * 0.65);
+
+    int roughNote = std::clamp(yToNote(y), 0, totalNotes - 1);
+    int oct = roughNote / 12;
+    int minOct = std::max(0, oct - 1);
+    int maxOct = std::min((totalNotes - 1) / 12, oct + 1);
+
+    if (x - kbLeft < blackKeyW)
+    {
+        static const int bkSemitones[] = {1, 3, 6, 8, 10};
+        for (int o = minOct; o <= maxOct; ++o)
+        {
+            for (int i = 0; i < 5; ++i)
+            {
+                int noteNum = o * 12 + bkSemitones[i];
+                if (noteNum > 127)
+                    continue;
+                double centerY = noteToY(noteNum) + noteHeight / 2.0;
+                int bkTop = static_cast<int>(centerY - bkH / 2.0);
+                if (y >= bkTop && y < bkTop + bkH)
+                    return noteNum;
+            }
+        }
+    }
+
+    static const int whiteKeySemitones[] = {0, 2, 4, 5, 7, 9, 11};
+    for (int o = minOct; o <= maxOct; ++o)
+    {
+        double octBottom = static_cast<double>(noteToY(o * 12) + noteHeight);
+        for (int wk = 0; wk < 7; ++wk)
+        {
+            int wkTop = static_cast<int>(octBottom - (wk + 1) * whiteKeyH + 0.5);
+            int wkBottom = static_cast<int>(octBottom - wk * whiteKeyH + 0.5);
+            if (y >= wkTop && y < wkBottom)
+                return std::clamp(o * 12 + whiteKeySemitones[wk], 0, 127);
+        }
+    }
+
+    return -1;
 }
 
 int PianoRollComponent::roundTickToGrid(int tick) const
