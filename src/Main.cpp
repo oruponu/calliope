@@ -1,3 +1,4 @@
+#include "AppProperties.h"
 #include "MainComponent.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
@@ -23,10 +24,7 @@ public:
 
     void shutdown() override { mainWindow.reset(); }
 
-    static juce::ApplicationProperties& getAppProperties()
-    {
-        return static_cast<CalliopeApplication*>(JUCEApplication::getInstance())->appProperties;
-    }
+    friend juce::ApplicationProperties& getAppProperties();
 
 private:
     class MainWindow : public juce::DocumentWindow
@@ -73,5 +71,10 @@ private:
     std::unique_ptr<MainWindow> mainWindow;
     juce::ApplicationProperties appProperties;
 };
+
+juce::ApplicationProperties& getAppProperties()
+{
+    return static_cast<CalliopeApplication*>(juce::JUCEApplication::getInstance())->appProperties;
+}
 
 START_JUCE_APPLICATION(CalliopeApplication)
