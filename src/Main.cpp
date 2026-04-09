@@ -41,9 +41,15 @@ private:
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(), true);
             setResizable(true, true);
-            centreWithSize(getWidth(), getHeight());
+
+            restoreWindowStateFromString(getAppProperties().getUserSettings()->getValue("mainWindowState"));
+
             setVisible(true);
-            setFullScreen(true);
+        }
+
+        ~MainWindow() override
+        {
+            getAppProperties().getUserSettings()->setValue("mainWindowState", getWindowStateAsString());
         }
 
         void closeButtonPressed() override { JUCEApplication::getInstance()->systemRequestedQuit(); }
