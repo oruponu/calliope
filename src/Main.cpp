@@ -8,9 +8,25 @@ public:
     const juce::String getApplicationVersion() override { return "0.1.0"; }
     bool moreThanOneInstanceAllowed() override { return false; }
 
-    void initialise(const juce::String&) override { mainWindow = std::make_unique<MainWindow>(getApplicationName()); }
+    void initialise(const juce::String&) override
+    {
+        juce::PropertiesFile::Options options;
+        options.applicationName = getApplicationName();
+        options.filenameSuffix = ".settings";
+        options.osxLibrarySubFolder = "Application Support";
+        options.folderName = getApplicationName();
+        options.storageFormat = juce::PropertiesFile::storeAsXML;
+        appProperties.setStorageParameters(options);
+
+        mainWindow = std::make_unique<MainWindow>(getApplicationName());
+    }
 
     void shutdown() override { mainWindow.reset(); }
+
+    static juce::ApplicationProperties& getAppProperties()
+    {
+        return static_cast<CalliopeApplication*>(JUCEApplication::getInstance())->appProperties;
+    }
 
 private:
     class MainWindow : public juce::DocumentWindow
@@ -49,6 +65,7 @@ private:
     };
 
     std::unique_ptr<MainWindow> mainWindow;
+    juce::ApplicationProperties appProperties;
 };
 
 START_JUCE_APPLICATION(CalliopeApplication)
