@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "AppProperties.h"
 #include "io/MidiFileIO.h"
 
 void MainComponent::Divider::paint(juce::Graphics& g)
@@ -218,7 +219,8 @@ void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
 
 MainComponent::MainComponent()
 {
-    midiOutput.open();
+    if (!midiOutput.open(getAppProperties().getUserSettings()->getValue("midiOutputDeviceId")))
+        midiOutput.open();
 
     sequence.addTrack();
 
@@ -606,7 +608,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
                 bool isCurrent = (device.identifier == currentId);
                 midiOutputMenu.addItem(juce::PopupMenu::Item(device.name)
                                            .setTicked(isCurrent)
-                                           .setAction([this, id = device.identifier]() { midiOutput.open(id); }));
+                                           .setAction(
+                                               [this, id = device.identifier]()
+                                               {
+                                                   if (midiOutput.open(id))
+                                                       getAppProperties().getUserSettings()->setValue(
+                                                           "midiOutputDeviceId", id);
+                                               }));
             }
         }
 
