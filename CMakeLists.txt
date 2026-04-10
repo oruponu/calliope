@@ -24,11 +24,13 @@ target_sources(Calliope PRIVATE
 target_compile_definitions(Calliope PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
+    JUCE_PLUGINHOST_VST3=1
 )
 
 target_link_libraries(Calliope PRIVATE
     juce::juce_audio_basics
     juce::juce_audio_devices
+    juce::juce_audio_processors
     juce::juce_audio_utils
     juce::juce_gui_extra
     juce::juce_recommended_config_flags
