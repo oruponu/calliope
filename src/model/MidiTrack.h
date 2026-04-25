@@ -34,10 +34,14 @@ public:
     const std::string& getName() const;
     void setName(const std::string& name);
 
+    int getChannel() const;
+    void setChannel(int channel);
+
 private:
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
     std::string name;
     bool muted = false;
     bool solo = false;
+    int channel = 1;
 };
