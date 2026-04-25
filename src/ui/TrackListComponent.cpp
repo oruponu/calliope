@@ -104,12 +104,7 @@ void TrackListComponent::paint(juce::Graphics& g)
             track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
         g.drawText(trackLabel, 10, y + 4, getWidth() - 62, 20, juce::Justification::centredLeft);
 
-        int channel = -1;
-        if (track.getNumNotes() > 0)
-            channel = track.getNote(0).channel;
-
-        juce::String info = "Ch:" + (channel > 0 ? juce::String(channel) : juce::String("--")) +
-                            "  Notes:" + juce::String(track.getNumNotes());
+        juce::String info = "Ch:" + juce::String(track.getChannel()) + "  Notes:" + juce::String(track.getNumNotes());
         g.setColour(juce::Colour(140, 140, 160));
         g.setFont(juce::Font(juce::FontOptions(11.0f)));
         g.drawText(info, 10, y + 24, getWidth() - 62, 16, juce::Justification::centredLeft);
