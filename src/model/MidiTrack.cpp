@@ -101,3 +101,13 @@ void MidiTrack::setName(const std::string& n)
 {
     name = n;
 }
+
+int MidiTrack::getChannel() const
+{
+    return channel;
+}
+
+void MidiTrack::setChannel(int c)
+{
+    channel = c;
+}
