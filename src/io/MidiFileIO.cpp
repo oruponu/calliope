@@ -337,6 +337,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
             int index = sequence.getNumTracks();
             auto& track = sequence.addTrack();
             track.setName("Ch." + std::to_string(ch));
+            track.setChannel(ch);
             channelTrackIndex[ch] = index;
         }
 
@@ -450,7 +451,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 else if (msg.isNoteOn())
                 {
                     if (!track)
+                    {
                         track = &sequence.addTrack();
+                        track->setChannel(msg.getChannel());
+                    }
 
                     int noteNumber = msg.getNoteNumber();
                     int velocity = msg.getVelocity();
@@ -466,7 +470,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 else if (msg.isController())
                 {
                     if (!track)
+                    {
                         track = &sequence.addTrack();
+                        track->setChannel(msg.getChannel());
+                    }
 
                     MidiEvent ev;
                     ev.type = MidiEvent::Type::ControlChange;
@@ -479,7 +486,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 else if (msg.isProgramChange())
                 {
                     if (!track)
+                    {
                         track = &sequence.addTrack();
+                        track->setChannel(msg.getChannel());
+                    }
 
                     MidiEvent ev;
                     ev.type = MidiEvent::Type::ProgramChange;
@@ -491,7 +501,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 else if (msg.isPitchWheel())
                 {
                     if (!track)
+                    {
                         track = &sequence.addTrack();
+                        track->setChannel(msg.getChannel());
+                    }
 
                     MidiEvent ev;
                     ev.type = MidiEvent::Type::PitchBend;
@@ -503,7 +516,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 else if (msg.isChannelPressure())
                 {
                     if (!track)
+                    {
                         track = &sequence.addTrack();
+                        track->setChannel(msg.getChannel());
+                    }
 
                     MidiEvent ev;
                     ev.type = MidiEvent::Type::ChannelPressure;
@@ -515,7 +531,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 else if (msg.isAftertouch())
                 {
                     if (!track)
+                    {
                         track = &sequence.addTrack();
+                        track->setChannel(msg.getChannel());
+                    }
 
                     MidiEvent ev;
                     ev.type = MidiEvent::Type::KeyPressure;
