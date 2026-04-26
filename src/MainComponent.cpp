@@ -224,8 +224,7 @@ MainComponent::MainComponent()
 
     audioDeviceManager.initialiseWithDefaultDevices(0, 2);
 
-    audioGraph.addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
-        juce::AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode));
+    pluginHost.prepare(audioGraph);
 
     audioDeviceManager.addAudioCallback(&audioPlayer);
     audioPlayer.setProcessor(&audioGraph);
