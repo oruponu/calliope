@@ -1185,7 +1185,8 @@ void MainComponent::loadPlugin()
                                  auto file = fc.getResult();
                                  if (file == juce::File{})
                                      return;
-                                 pluginHost.loadPlugin(file);
+                                 if (pluginHost.loadPlugin(file))
+                                     midiOutput.setEnabled(false);
                              });
 }
 

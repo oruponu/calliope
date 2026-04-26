@@ -32,6 +32,20 @@ juce::String MidiDeviceOutput::getCurrentDeviceIdentifier() const
     return currentDeviceIdentifier;
 }
 
+void MidiDeviceOutput::setEnabled(bool e)
+{
+    if (enabled == e)
+        return;
+    enabled = e;
+    if (!e)
+        reset();
+}
+
+bool MidiDeviceOutput::isEnabled() const
+{
+    return enabled;
+}
+
 void MidiDeviceOutput::close()
 {
     if (midiOutput)
@@ -66,20 +80,24 @@ void MidiDeviceOutput::reset()
 
 void MidiDeviceOutput::onNoteOn(int, const MidiNote& note)
 {
-    if (midiOutput)
-        midiOutput->sendMessageNow(
-            juce::MidiMessage::noteOn(note.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
+    if (!enabled || !midiOutput)
+        return;
+
+    midiOutput->sendMessageNow(
+        juce::MidiMessage::noteOn(note.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
 }
 
 void MidiDeviceOutput::onNoteOff(int, const MidiNote& note)
 {
-    if (midiOutput)
-        midiOutput->sendMessageNow(juce::MidiMessage::noteOff(note.channel, note.noteNumber));
+    if (!enabled || !midiOutput)
+        return;
+
+    midiOutput->sendMessageNow(juce::MidiMessage::noteOff(note.channel, note.noteNumber));
 }
 
 void MidiDeviceOutput::onMidiEvent(int, const MidiEvent& event)
 {
-    if (!midiOutput)
+    if (!enabled || !midiOutput)
         return;
 
     juce::MidiMessage msg;
