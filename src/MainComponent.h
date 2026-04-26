@@ -7,6 +7,8 @@
 #include "ui/ControllerLaneComponent.h"
 #include "ui/EventListComponent.h"
 #include "ui/TrackListComponent.h"
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
 class MainComponent : public juce::Component,
@@ -105,6 +107,8 @@ private:
     PlaybackEngine playbackEngine;
     MidiDeviceOutput midiOutput;
     juce::AudioDeviceManager audioDeviceManager;
+    juce::AudioProcessorGraph audioGraph;
+    juce::AudioProcessorPlayer audioPlayer;
 
     class PianoRollViewport : public juce::Viewport
     {
