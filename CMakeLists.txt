@@ -14,6 +14,7 @@ target_sources(Calliope PRIVATE
     src/model/MidiSequence.cpp
     src/engine/PlaybackEngine.cpp
     src/audio/MidiDeviceOutput.cpp
+    src/audio/VstPluginHost.cpp
     src/ui/PianoRollComponent.cpp
     src/ui/TrackListComponent.cpp
     src/ui/ControllerLaneComponent.cpp
