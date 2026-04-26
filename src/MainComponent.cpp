@@ -234,6 +234,7 @@ MainComponent::MainComponent()
 
     playbackEngine.setSequence(&sequence);
     playbackEngine.addListener(&midiOutput);
+    playbackEngine.addListener(&pluginHost);
 
     pianoRoll.setSequence(&sequence);
     pianoRoll.setUndoManager(&undoManager);
@@ -531,6 +532,7 @@ MainComponent::~MainComponent()
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();
+    playbackEngine.removeListener(&pluginHost);
     playbackEngine.removeListener(&midiOutput);
     midiOutput.close();
     audioPlayer.setProcessor(nullptr);
