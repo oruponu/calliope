@@ -1,5 +1,31 @@
 #include "VstPluginHost.h"
 
+namespace
+{
+class EditorWindow : public juce::DocumentWindow
+{
+public:
+    EditorWindow(const juce::String& title, juce::AudioProcessorEditor* editor, std::function<void()> onClose)
+        : DocumentWindow(title, juce::Colours::black, DocumentWindow::closeButton), closeCallback(std::move(onClose))
+    {
+        setUsingNativeTitleBar(true);
+        setContentOwned(editor, true);
+        setResizable(editor->isResizable(), false);
+        centreWithSize(getWidth(), getHeight());
+        setVisible(true);
+    }
+
+    void closeButtonPressed() override
+    {
+        if (closeCallback)
+            juce::MessageManager::callAsync(closeCallback);
+    }
+
+private:
+    std::function<void()> closeCallback;
+};
+} // namespace
+
 VstPluginHost::VstPluginHost()
 {
     juce::addDefaultFormatsToManager(formatManager);
@@ -39,6 +65,7 @@ bool VstPluginHost::loadPlugin(const juce::File& file)
 
     if (pluginNodeId != juce::AudioProcessorGraph::NodeID{})
     {
+        editorWindow.reset();
         graph->removeNode(pluginNodeId);
         pluginNodeId = {};
     }
@@ -55,6 +82,32 @@ bool VstPluginHost::loadPlugin(const juce::File& file)
         graph->addConnection({{pluginNodeId, ch}, {audioOutNodeId, ch}});
 
     return true;
+}
+
+void VstPluginHost::showEditor()
+{
+    if (editorWindow != nullptr)
+    {
+        editorWindow->toFront(true);
+        return;
+    }
+
+    if (graph == nullptr || pluginNodeId == juce::AudioProcessorGraph::NodeID{})
+        return;
+
+    auto* node = graph->getNodeForId(pluginNodeId);
+    if (node == nullptr)
+        return;
+
+    auto* processor = node->getProcessor();
+    if (processor == nullptr)
+        return;
+
+    auto* editor = processor->createEditorIfNeeded();
+    if (editor == nullptr)
+        return;
+
+    editorWindow = std::make_unique<EditorWindow>(processor->getName(), editor, [this]() { editorWindow.reset(); });
 }
 
 void VstPluginHost::onNoteOn(int, const MidiNote& note)
