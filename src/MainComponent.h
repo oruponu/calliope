@@ -99,6 +99,7 @@ private:
     void newFile();
     void saveFile();
     void loadFile();
+    void loadPlugin();
     void stopPlayback();
     void onSequenceLoaded();
     void updateTitleBar();
@@ -284,7 +285,8 @@ private:
         zoomInVertical,
         zoomOutVertical,
         zoomReset,
-        toggleLoop
+        toggleLoop,
+        loadPlugin_
     };
 
     juce::ApplicationCommandManager commandManager;

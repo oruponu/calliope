@@ -547,7 +547,7 @@ void MainComponent::parentHierarchyChanged()
 
 juce::StringArray MainComponent::getMenuBarNames()
 {
-    return {"File", "Edit", "View", "Settings"};
+    return {"File", "Edit", "View", "Plugins", "Settings"};
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String&)
@@ -604,6 +604,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
         menu.addCommandItem(&commandManager, CommandID::zoomReset);
     }
     else if (menuIndex == 3)
+    {
+        juce::PopupMenu::Item loadPluginItem;
+        loadPluginItem.itemID = CommandID::loadPlugin_;
+        loadPluginItem.text = "Load Plugin...";
+        loadPluginItem.action = [this]() { loadPlugin(); };
+        menu.addItem(loadPluginItem);
+    }
+    else if (menuIndex == 4)
     {
         juce::PopupMenu midiOutputMenu;
         auto devices = juce::MidiOutput::getAvailableDevices();
@@ -1150,6 +1158,19 @@ void MainComponent::loadFile()
                                      onSequenceLoaded();
                                      updateTitleBar();
                                  }
+                             });
+}
+
+void MainComponent::loadPlugin()
+{
+    fileChooser = std::make_unique<juce::FileChooser>("Load Plugin", juce::File{}, "*.vst3");
+    fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                             [this](const juce::FileChooser& fc)
+                             {
+                                 auto file = fc.getResult();
+                                 if (file == juce::File{})
+                                     return;
+                                 pluginHost.loadPlugin(file);
                              });
 }
 
