@@ -11,6 +11,7 @@ public:
 
     void prepare(juce::AudioProcessorGraph& graph, juce::AudioProcessorPlayer& player);
     bool loadPlugin(const juce::File& file);
+    void showEditor();
 
     void onNoteOn(int trackIndex, const MidiNote& note) override;
     void onNoteOff(int trackIndex, const MidiNote& note) override;
@@ -23,4 +24,5 @@ private:
     juce::AudioProcessorGraph::NodeID midiInNodeId;
     juce::AudioProcessorGraph::NodeID audioOutNodeId;
     juce::AudioProcessorGraph::NodeID pluginNodeId;
+    std::unique_ptr<juce::DocumentWindow> editorWindow;
 };

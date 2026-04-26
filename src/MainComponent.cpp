@@ -237,6 +237,7 @@ MainComponent::MainComponent()
 
     pianoRoll.setSequence(&sequence);
     pianoRoll.setUndoManager(&undoManager);
+
     pianoRoll.onPlayheadMoved = [this](int tick)
     {
         playbackEngine.setPositionInTicks(tick);
@@ -618,6 +619,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
         loadPluginItem.text = "Load Plugin...";
         loadPluginItem.action = [this]() { loadPlugin(); };
         menu.addItem(loadPluginItem);
+
+        juce::PopupMenu::Item editorItem;
+        editorItem.itemID = CommandID::showPluginEditor;
+        editorItem.text = "Show Editor";
+        editorItem.action = [this]() { pluginHost.showEditor(); };
+        menu.addItem(editorItem);
     }
     else if (menuIndex == 4)
     {
