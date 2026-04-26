@@ -1,6 +1,7 @@
 #pragma once
 
 #include "audio/MidiDeviceOutput.h"
+#include "audio/VstPluginHost.h"
 #include "engine/PlaybackEngine.h"
 #include "model/MidiSequence.h"
 #include "ui/PianoRollComponent.h"
@@ -109,6 +110,7 @@ private:
     juce::AudioDeviceManager audioDeviceManager;
     juce::AudioProcessorGraph audioGraph;
     juce::AudioProcessorPlayer audioPlayer;
+    VstPluginHost pluginHost;
 
     class PianoRollViewport : public juce::Viewport
     {
