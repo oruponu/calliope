@@ -224,6 +224,12 @@ MainComponent::MainComponent()
 
     audioDeviceManager.initialiseWithDefaultDevices(0, 2);
 
+    audioGraph.addNode(std::make_unique<juce::AudioProcessorGraph::AudioGraphIOProcessor>(
+        juce::AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode));
+
+    audioDeviceManager.addAudioCallback(&audioPlayer);
+    audioPlayer.setProcessor(&audioGraph);
+
     sequence.addTrack();
 
     playbackEngine.setSequence(&sequence);
@@ -527,6 +533,8 @@ MainComponent::~MainComponent()
     playbackEngine.stop();
     playbackEngine.removeListener(&midiOutput);
     midiOutput.close();
+    audioPlayer.setProcessor(nullptr);
+    audioDeviceManager.removeAudioCallback(&audioPlayer);
     audioDeviceManager.closeAudioDevice();
 }
 
