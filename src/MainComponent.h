@@ -286,7 +286,8 @@ private:
         zoomOutVertical,
         zoomReset,
         toggleLoop,
-        loadPlugin_
+        loadPlugin_,
+        showPluginEditor
     };
 
     juce::ApplicationCommandManager commandManager;
