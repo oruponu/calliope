@@ -222,6 +222,8 @@ MainComponent::MainComponent()
     if (!midiOutput.open(getAppProperties().getUserSettings()->getValue("midiOutputDeviceId")))
         midiOutput.open();
 
+    audioDeviceManager.initialiseWithDefaultDevices(0, 2);
+
     sequence.addTrack();
 
     playbackEngine.setSequence(&sequence);
@@ -525,6 +527,7 @@ MainComponent::~MainComponent()
     playbackEngine.stop();
     playbackEngine.removeListener(&midiOutput);
     midiOutput.close();
+    audioDeviceManager.closeAudioDevice();
 }
 
 void MainComponent::parentHierarchyChanged()
