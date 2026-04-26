@@ -104,6 +104,7 @@ private:
     juce::UndoManager undoManager;
     PlaybackEngine playbackEngine;
     MidiDeviceOutput midiOutput;
+    juce::AudioDeviceManager audioDeviceManager;
 
     class PianoRollViewport : public juce::Viewport
     {
