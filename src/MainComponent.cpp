@@ -224,7 +224,7 @@ MainComponent::MainComponent()
 
     audioDeviceManager.initialiseWithDefaultDevices(0, 2);
 
-    pluginHost.prepare(audioGraph);
+    pluginHost.prepare(audioGraph, audioPlayer);
 
     audioDeviceManager.addAudioCallback(&audioPlayer);
     audioPlayer.setProcessor(&audioGraph);
@@ -259,8 +259,16 @@ MainComponent::MainComponent()
             noteRefs.insert({ref.trackIndex, ref.noteIndex});
         eventList.setSelectedNotes(noteRefs);
     };
-    pianoRoll.onNotePreview = [this](const MidiNote& note) { midiOutput.onNoteOn(0, note); };
-    pianoRoll.onNotePreviewEnd = [this](const MidiNote& note) { midiOutput.onNoteOff(0, note); };
+    pianoRoll.onNotePreview = [this](const MidiNote& note)
+    {
+        midiOutput.onNoteOn(0, note);
+        pluginHost.onNoteOn(0, note);
+    };
+    pianoRoll.onNotePreviewEnd = [this](const MidiNote& note)
+    {
+        midiOutput.onNoteOff(0, note);
+        pluginHost.onNoteOff(0, note);
+    };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, false);
     viewport.onReachedEnd = [this]()
