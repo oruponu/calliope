@@ -13,6 +13,8 @@ public:
     bool loadPlugin(const juce::File& file);
     void showEditor();
 
+    juce::AudioPluginFormatManager& getFormatManager() { return formatManager; }
+
     void onNoteOn(int trackIndex, const MidiNote& note) override;
     void onNoteOff(int trackIndex, const MidiNote& note) override;
     void onMidiEvent(int trackIndex, const MidiEvent& event) override;
