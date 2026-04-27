@@ -100,6 +100,7 @@ private:
     void saveFile();
     void loadFile();
     void loadPlugin();
+    void managePlugins();
     void stopPlayback();
     void onSequenceLoaded();
     void updateTitleBar();
@@ -112,6 +113,7 @@ private:
     juce::AudioProcessorGraph audioGraph;
     juce::AudioProcessorPlayer audioPlayer;
     VstPluginHost pluginHost;
+    juce::KnownPluginList knownPluginList;
 
     class PianoRollViewport : public juce::Viewport
     {
@@ -287,7 +289,8 @@ private:
         zoomReset,
         toggleLoop,
         loadPlugin_,
-        showPluginEditor
+        showPluginEditor,
+        managePlugins_
     };
 
     juce::ApplicationCommandManager commandManager;
