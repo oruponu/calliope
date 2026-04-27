@@ -625,6 +625,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
         editorItem.text = "Show Editor";
         editorItem.action = [this]() { pluginHost.showEditor(); };
         menu.addItem(editorItem);
+
+        menu.addSeparator();
+
+        juce::PopupMenu::Item manageItem;
+        manageItem.itemID = CommandID::managePlugins_;
+        manageItem.text = "Manage Plugins...";
+        manageItem.action = [this]() { managePlugins(); };
+        menu.addItem(manageItem);
     }
     else if (menuIndex == 4)
     {
@@ -1188,6 +1196,22 @@ void MainComponent::loadPlugin()
                                  if (pluginHost.loadPlugin(file))
                                      midiOutput.setEnabled(false);
                              });
+}
+
+void MainComponent::managePlugins()
+{
+    auto* listComp =
+        new juce::PluginListComponent(pluginHost.getFormatManager(), knownPluginList, juce::File{}, nullptr);
+    listComp->setSize(800, 600);
+
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(listComp);
+    options.dialogTitle = "Manage Plugins";
+    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = true;
+    options.launchAsync();
 }
 
 void MainComponent::stopPlayback()
