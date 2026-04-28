@@ -222,6 +222,10 @@ MainComponent::MainComponent()
     if (!midiOutput.open(getAppProperties().getUserSettings()->getValue("midiOutputDeviceId")))
         midiOutput.open();
 
+    if (auto xml = getAppProperties().getUserSettings()->getXmlValue("knownPluginList"))
+        knownPluginList.recreateFromXml(*xml);
+    knownPluginList.addChangeListener(this);
+
     audioDeviceManager.initialiseWithDefaultDevices(0, 2);
 
     pluginHost.prepare(audioGraph, audioPlayer);
@@ -537,6 +541,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    knownPluginList.removeChangeListener(this);
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();
@@ -546,6 +551,15 @@ MainComponent::~MainComponent()
     audioPlayer.setProcessor(nullptr);
     audioDeviceManager.removeAudioCallback(&audioPlayer);
     audioDeviceManager.closeAudioDevice();
+}
+
+void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
+{
+    if (source == &knownPluginList)
+    {
+        if (auto xml = knownPluginList.createXml())
+            getAppProperties().getUserSettings()->setValue("knownPluginList", xml.get());
+    }
 }
 
 void MainComponent::parentHierarchyChanged()
