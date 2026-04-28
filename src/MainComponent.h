@@ -15,7 +15,8 @@
 class MainComponent : public juce::Component,
                       public juce::MenuBarModel,
                       public juce::ApplicationCommandTarget,
-                      public juce::FileDragAndDropTarget
+                      public juce::FileDragAndDropTarget,
+                      public juce::ChangeListener
 {
 public:
     MainComponent();
@@ -24,6 +25,8 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void parentHierarchyChanged() override;
+
+    void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int menuIndex, const juce::String& menuName) override;
