@@ -226,7 +226,9 @@ MainComponent::MainComponent()
         knownPluginList.recreateFromXml(*xml);
     knownPluginList.addChangeListener(this);
 
-    audioDeviceManager.initialiseWithDefaultDevices(0, 2);
+    auto savedAudioState = getAppProperties().getUserSettings()->getXmlValue("audioDeviceState");
+    audioDeviceManager.initialise(0, 2, savedAudioState.get(), true);
+    audioDeviceManager.addChangeListener(this);
 
     pluginHost.prepare(audioGraph, audioPlayer);
 
@@ -542,6 +544,7 @@ MainComponent::MainComponent()
 MainComponent::~MainComponent()
 {
     knownPluginList.removeChangeListener(this);
+    audioDeviceManager.removeChangeListener(this);
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();
@@ -559,6 +562,11 @@ void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
     {
         if (auto xml = knownPluginList.createXml())
             getAppProperties().getUserSettings()->setValue("knownPluginList", xml.get());
+    }
+    else if (source == &audioDeviceManager)
+    {
+        if (auto xml = audioDeviceManager.createStateXml())
+            getAppProperties().getUserSettings()->setValue("audioDeviceState", xml.get());
     }
 }
 
