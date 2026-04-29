@@ -117,6 +117,7 @@ private:
     juce::AudioProcessorPlayer audioPlayer;
     VstPluginHost pluginHost;
     juce::KnownPluginList knownPluginList;
+    juce::Array<juce::PluginDescription> pluginMenuSnapshot;
 
     class PianoRollViewport : public juce::Viewport
     {
