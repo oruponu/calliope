@@ -655,6 +655,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     }
     else if (menuIndex == 4)
     {
+        juce::PopupMenu::Item audioSettingsItem;
+        audioSettingsItem.itemID = CommandID::audioSettings_;
+        audioSettingsItem.text = "Audio Settings...";
+        audioSettingsItem.action = [this]() { showAudioSettings(); };
+        menu.addItem(audioSettingsItem);
+
+        menu.addSeparator();
+
         juce::PopupMenu midiOutputMenu;
         auto devices = juce::MidiOutput::getAvailableDevices();
         auto currentId = midiOutput.getCurrentDeviceIdentifier();
@@ -1234,6 +1242,21 @@ void MainComponent::managePlugins()
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(listComp);
     options.dialogTitle = "Manage Plugins";
+    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = true;
+    options.launchAsync();
+}
+
+void MainComponent::showAudioSettings()
+{
+    auto* selector = new juce::AudioDeviceSelectorComponent(audioDeviceManager, 0, 0, 2, 2, false, false, true, false);
+    selector->setSize(500, 450);
+
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(selector);
+    options.dialogTitle = "Audio Settings";
     options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
