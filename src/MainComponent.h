@@ -104,6 +104,7 @@ private:
     void loadFile();
     void loadPlugin();
     void managePlugins();
+    void showAudioSettings();
     void stopPlayback();
     void onSequenceLoaded();
     void updateTitleBar();
@@ -294,7 +295,8 @@ private:
         toggleLoop,
         loadPlugin_,
         showPluginEditor,
-        managePlugins_
+        managePlugins_,
+        audioSettings_
     };
 
     juce::ApplicationCommandManager commandManager;
