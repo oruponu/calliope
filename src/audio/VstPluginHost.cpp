@@ -56,9 +56,17 @@ bool VstPluginHost::loadPlugin(const juce::File& file)
     if (descriptions.isEmpty())
         return false;
 
+    return loadPlugin(*descriptions[0]);
+}
+
+bool VstPluginHost::loadPlugin(const juce::PluginDescription& description)
+{
+    if (graph == nullptr)
+        return false;
+
     juce::String errorMessage;
-    auto pluginInstance = formatManager.createPluginInstance(*descriptions[0], graph->getSampleRate(),
-                                                             graph->getBlockSize(), errorMessage);
+    auto pluginInstance =
+        formatManager.createPluginInstance(description, graph->getSampleRate(), graph->getBlockSize(), errorMessage);
 
     if (pluginInstance == nullptr)
         return false;
