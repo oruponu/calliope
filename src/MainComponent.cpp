@@ -634,6 +634,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
         loadPluginItem.action = [this]() { loadPlugin(); };
         menu.addItem(loadPluginItem);
 
+        pluginMenuSnapshot = knownPluginList.getTypes();
+        juce::PopupMenu scannedSubmenu;
+        juce::KnownPluginList::addToMenu(scannedSubmenu, pluginMenuSnapshot, juce::KnownPluginList::sortByManufacturer);
+        menu.addSubMenu("Load Scanned Plugin", scannedSubmenu, !pluginMenuSnapshot.isEmpty());
+
         juce::PopupMenu::Item editorItem;
         editorItem.itemID = CommandID::showPluginEditor;
         editorItem.text = "Show Editor";
@@ -680,7 +685,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     return menu;
 }
 
-void MainComponent::menuItemSelected(int, int) {}
+void MainComponent::menuItemSelected(int menuItemID, int)
+{
+    int index = juce::KnownPluginList::getIndexChosenByMenu(pluginMenuSnapshot, menuItemID);
+    if (index < 0)
+        return;
+
+    if (pluginHost.loadPlugin(pluginMenuSnapshot.getReference(index)))
+        midiOutput.setEnabled(false);
+}
 
 juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 {

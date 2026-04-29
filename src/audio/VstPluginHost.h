@@ -11,6 +11,7 @@ public:
 
     void prepare(juce::AudioProcessorGraph& graph, juce::AudioProcessorPlayer& player);
     bool loadPlugin(const juce::File& file);
+    bool loadPlugin(const juce::PluginDescription& description);
     void showEditor();
 
     juce::AudioPluginFormatManager& getFormatManager() { return formatManager; }
