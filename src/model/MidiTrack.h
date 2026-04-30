@@ -44,4 +44,5 @@ private:
     bool muted = false;
     bool solo = false;
     int channel = 1;
+    int pluginNodeId = -1;
 };
