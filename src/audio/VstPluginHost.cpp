@@ -61,6 +61,11 @@ bool VstPluginHost::loadPlugin(const juce::File& file)
 
 bool VstPluginHost::loadPlugin(const juce::PluginDescription& description)
 {
+    return attachPlugin(0, description);
+}
+
+bool VstPluginHost::attachPlugin(int trackIndex, const juce::PluginDescription& description)
+{
     if (graph == nullptr)
         return false;
 
@@ -71,39 +76,51 @@ bool VstPluginHost::loadPlugin(const juce::PluginDescription& description)
     if (pluginInstance == nullptr)
         return false;
 
-    if (pluginNodeId != juce::AudioProcessorGraph::NodeID{})
-    {
-        editorWindow.reset();
-        graph->removeNode(pluginNodeId);
-        pluginNodeId = {};
-    }
+    detachPlugin(trackIndex);
 
     auto pluginNode = graph->addNode(std::move(pluginInstance));
-    pluginNodeId = pluginNode->nodeID;
+    pluginNodes[trackIndex] = pluginNode->nodeID;
 
     graph->addConnection({{midiInNodeId, juce::AudioProcessorGraph::midiChannelIndex},
-                          {pluginNodeId, juce::AudioProcessorGraph::midiChannelIndex}});
+                          {pluginNode->nodeID, juce::AudioProcessorGraph::midiChannelIndex}});
 
     const int numOutputChannels = pluginNode->getProcessor()->getMainBusNumOutputChannels();
     const int channelsToConnect = juce::jmin(numOutputChannels, 2);
     for (int ch = 0; ch < channelsToConnect; ++ch)
-        graph->addConnection({{pluginNodeId, ch}, {audioOutNodeId, ch}});
+        graph->addConnection({{pluginNode->nodeID, ch}, {audioOutNodeId, ch}});
 
     return true;
 }
 
+void VstPluginHost::detachPlugin(int trackIndex)
+{
+    auto it = pluginNodes.find(trackIndex);
+    if (it == pluginNodes.end())
+        return;
+
+    editorWindows.erase(trackIndex);
+    graph->removeNode(it->second);
+    pluginNodes.erase(it);
+}
+
 void VstPluginHost::showEditor()
 {
-    if (editorWindow != nullptr)
+    constexpr int trackIndex = 0;
+
+    if (auto it = editorWindows.find(trackIndex); it != editorWindows.end())
     {
-        editorWindow->toFront(true);
+        it->second->toFront(true);
         return;
     }
 
-    if (graph == nullptr || pluginNodeId == juce::AudioProcessorGraph::NodeID{})
+    if (graph == nullptr)
         return;
 
-    auto* node = graph->getNodeForId(pluginNodeId);
+    auto it = pluginNodes.find(trackIndex);
+    if (it == pluginNodes.end())
+        return;
+
+    auto* node = graph->getNodeForId(it->second);
     if (node == nullptr)
         return;
 
@@ -115,7 +132,8 @@ void VstPluginHost::showEditor()
     if (editor == nullptr)
         return;
 
-    editorWindow = std::make_unique<EditorWindow>(processor->getName(), editor, [this]() { editorWindow.reset(); });
+    editorWindows[trackIndex] = std::make_unique<EditorWindow>(processor->getName(), editor, [this, trackIndex]()
+                                                               { editorWindows.erase(trackIndex); });
 }
 
 void VstPluginHost::onNoteOn(int, const MidiNote& note)

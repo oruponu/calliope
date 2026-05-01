@@ -3,6 +3,7 @@
 #include "../engine/PlaybackEngine.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <unordered_map>
 
 class VstPluginHost : public PlaybackEngine::Listener
 {
@@ -12,6 +13,8 @@ public:
     void prepare(juce::AudioProcessorGraph& graph, juce::AudioProcessorPlayer& player);
     bool loadPlugin(const juce::File& file);
     bool loadPlugin(const juce::PluginDescription& description);
+    bool attachPlugin(int trackIndex, const juce::PluginDescription& description);
+    void detachPlugin(int trackIndex);
     void showEditor();
 
     juce::AudioPluginFormatManager& getFormatManager() { return formatManager; }
@@ -26,6 +29,6 @@ private:
     juce::AudioProcessorPlayer* audioPlayer = nullptr;
     juce::AudioProcessorGraph::NodeID midiInNodeId;
     juce::AudioProcessorGraph::NodeID audioOutNodeId;
-    juce::AudioProcessorGraph::NodeID pluginNodeId;
-    std::unique_ptr<juce::DocumentWindow> editorWindow;
+    std::unordered_map<int, juce::AudioProcessorGraph::NodeID> pluginNodes;
+    std::unordered_map<int, std::unique_ptr<juce::DocumentWindow>> editorWindows;
 };
