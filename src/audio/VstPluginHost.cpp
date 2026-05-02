@@ -24,6 +24,38 @@ public:
 private:
     std::function<void()> closeCallback;
 };
+
+class MidiSourceProcessor : public juce::AudioProcessor
+{
+public:
+    MidiSourceProcessor() : AudioProcessor(BusesProperties()) {}
+
+    const juce::String getName() const override { return "MIDI Source"; }
+
+    void prepareToPlay(double sampleRate, int) override { collector.reset(sampleRate); }
+    void releaseResources() override {}
+
+    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) override
+    {
+        midi.clear();
+        collector.removeNextBlockOfMessages(midi, buffer.getNumSamples());
+    }
+
+    bool acceptsMidi() const override { return false; }
+    bool producesMidi() const override { return true; }
+    double getTailLengthSeconds() const override { return 0.0; }
+    bool hasEditor() const override { return false; }
+    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram(int) override {}
+    const juce::String getProgramName(int) override { return {}; }
+    void changeProgramName(int, const juce::String&) override {}
+    void getStateInformation(juce::MemoryBlock&) override {}
+    void setStateInformation(const void*, int) override {}
+
+    juce::MidiMessageCollector collector;
+};
 } // namespace
 
 VstPluginHost::VstPluginHost()
@@ -31,16 +63,13 @@ VstPluginHost::VstPluginHost()
     juce::addDefaultFormatsToManager(formatManager);
 }
 
-void VstPluginHost::prepare(juce::AudioProcessorGraph& g, juce::AudioProcessorPlayer& player)
+void VstPluginHost::prepare(juce::AudioProcessorGraph& g)
 {
     graph = &g;
-    audioPlayer = &player;
 
     using IOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
-    auto midiIn = graph->addNode(std::make_unique<IOProcessor>(IOProcessor::midiInputNode));
     auto audioOut = graph->addNode(std::make_unique<IOProcessor>(IOProcessor::audioOutputNode));
 
-    midiInNodeId = midiIn->nodeID;
     audioOutNodeId = audioOut->nodeID;
 }
 
@@ -78,10 +107,16 @@ bool VstPluginHost::attachPlugin(int trackIndex, const juce::PluginDescription& 
 
     detachPlugin(trackIndex);
 
+    auto midiSourceProcessor = std::make_unique<MidiSourceProcessor>();
+    auto* collectorPtr = &midiSourceProcessor->collector;
+    auto midiSourceNode = graph->addNode(std::move(midiSourceProcessor));
+    midiSourceNodes[trackIndex] = midiSourceNode->nodeID;
+    midiCollectors[trackIndex] = collectorPtr;
+
     auto pluginNode = graph->addNode(std::move(pluginInstance));
     pluginNodes[trackIndex] = pluginNode->nodeID;
 
-    graph->addConnection({{midiInNodeId, juce::AudioProcessorGraph::midiChannelIndex},
+    graph->addConnection({{midiSourceNode->nodeID, juce::AudioProcessorGraph::midiChannelIndex},
                           {pluginNode->nodeID, juce::AudioProcessorGraph::midiChannelIndex}});
 
     const int numOutputChannels = pluginNode->getProcessor()->getMainBusNumOutputChannels();
@@ -99,6 +134,14 @@ void VstPluginHost::detachPlugin(int trackIndex)
         return;
 
     editorWindows.erase(trackIndex);
+    midiCollectors.erase(trackIndex);
+
+    if (auto sourceIt = midiSourceNodes.find(trackIndex); sourceIt != midiSourceNodes.end())
+    {
+        graph->removeNode(sourceIt->second);
+        midiSourceNodes.erase(sourceIt);
+    }
+
     graph->removeNode(it->second);
     pluginNodes.erase(it);
 }
@@ -136,26 +179,29 @@ void VstPluginHost::showEditor()
                                                                { editorWindows.erase(trackIndex); });
 }
 
-void VstPluginHost::onNoteOn(int, const MidiNote& note)
+void VstPluginHost::onNoteOn(int trackIndex, const MidiNote& note)
 {
-    if (audioPlayer == nullptr)
+    auto it = midiCollectors.find(trackIndex);
+    if (it == midiCollectors.end())
         return;
 
-    audioPlayer->getMidiMessageCollector().addMessageToQueue(
+    it->second->addMessageToQueue(
         juce::MidiMessage::noteOn(note.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
 }
 
-void VstPluginHost::onNoteOff(int, const MidiNote& note)
+void VstPluginHost::onNoteOff(int trackIndex, const MidiNote& note)
 {
-    if (audioPlayer == nullptr)
+    auto it = midiCollectors.find(trackIndex);
+    if (it == midiCollectors.end())
         return;
 
-    audioPlayer->getMidiMessageCollector().addMessageToQueue(juce::MidiMessage::noteOff(note.channel, note.noteNumber));
+    it->second->addMessageToQueue(juce::MidiMessage::noteOff(note.channel, note.noteNumber));
 }
 
-void VstPluginHost::onMidiEvent(int, const MidiEvent& event)
+void VstPluginHost::onMidiEvent(int trackIndex, const MidiEvent& event)
 {
-    if (audioPlayer == nullptr)
+    auto it = midiCollectors.find(trackIndex);
+    if (it == midiCollectors.end())
         return;
 
     juce::MidiMessage msg;
@@ -178,5 +224,5 @@ void VstPluginHost::onMidiEvent(int, const MidiEvent& event)
         break;
     }
 
-    audioPlayer->getMidiMessageCollector().addMessageToQueue(msg);
+    it->second->addMessageToQueue(msg);
 }

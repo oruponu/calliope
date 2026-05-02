@@ -10,7 +10,7 @@ class VstPluginHost : public PlaybackEngine::Listener
 public:
     VstPluginHost();
 
-    void prepare(juce::AudioProcessorGraph& graph, juce::AudioProcessorPlayer& player);
+    void prepare(juce::AudioProcessorGraph& graph);
     bool loadPlugin(const juce::File& file);
     bool loadPlugin(const juce::PluginDescription& description);
     bool attachPlugin(int trackIndex, const juce::PluginDescription& description);
@@ -26,9 +26,9 @@ public:
 private:
     juce::AudioPluginFormatManager formatManager;
     juce::AudioProcessorGraph* graph = nullptr;
-    juce::AudioProcessorPlayer* audioPlayer = nullptr;
-    juce::AudioProcessorGraph::NodeID midiInNodeId;
     juce::AudioProcessorGraph::NodeID audioOutNodeId;
     std::unordered_map<int, juce::AudioProcessorGraph::NodeID> pluginNodes;
+    std::unordered_map<int, juce::AudioProcessorGraph::NodeID> midiSourceNodes;
+    std::unordered_map<int, juce::MidiMessageCollector*> midiCollectors;
     std::unordered_map<int, std::unique_ptr<juce::DocumentWindow>> editorWindows;
 };
