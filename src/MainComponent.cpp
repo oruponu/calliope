@@ -230,7 +230,7 @@ MainComponent::MainComponent()
     audioDeviceManager.initialise(0, 2, savedAudioState.get(), true);
     audioDeviceManager.addChangeListener(this);
 
-    pluginHost.prepare(audioGraph, audioPlayer);
+    pluginHost.prepare(audioGraph);
 
     audioDeviceManager.addAudioCallback(&audioPlayer);
     audioPlayer.setProcessor(&audioGraph);
