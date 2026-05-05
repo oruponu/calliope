@@ -19,6 +19,7 @@ public:
 
     std::function<void(int activeIndex, const std::set<int>& selectedIndices)> onTrackSelected;
     std::function<void()> onMuteSoloChanged;
+    std::function<juce::String(int trackIndex)> pluginNameForTrack;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
