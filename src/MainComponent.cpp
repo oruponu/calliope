@@ -327,6 +327,7 @@ MainComponent::MainComponent()
         eventList.setSelectedTracks(selected);
     };
     trackList.onMuteSoloChanged = []() {};
+    trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
 
     controllerLane.setSequence(&sequence);
     controllerLane.setUndoManager(&undoManager);

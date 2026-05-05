@@ -105,6 +105,12 @@ void TrackListComponent::paint(juce::Graphics& g)
         g.drawText(trackLabel, 10, y + 4, getWidth() - 62, 20, juce::Justification::centredLeft);
 
         juce::String info = "Ch:" + juce::String(track.getChannel()) + "  Notes:" + juce::String(track.getNumNotes());
+        if (pluginNameForTrack)
+        {
+            juce::String pluginName = pluginNameForTrack(i);
+            if (pluginName.isNotEmpty())
+                info += "  | " + pluginName;
+        }
         g.setColour(juce::Colour(140, 140, 160));
         g.setFont(juce::Font(juce::FontOptions(11.0f)));
         g.drawText(info, 10, y + 24, getWidth() - 62, 16, juce::Justification::centredLeft);

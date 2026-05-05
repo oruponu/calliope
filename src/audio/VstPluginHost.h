@@ -17,6 +17,8 @@ public:
     void detachPlugin(int trackIndex);
     void showEditor();
 
+    juce::String getPluginName(int trackIndex) const;
+
     juce::AudioPluginFormatManager& getFormatManager() { return formatManager; }
 
     void onNoteOn(int trackIndex, const MidiNote& note) override;
