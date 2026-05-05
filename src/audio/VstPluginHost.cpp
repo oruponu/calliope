@@ -179,6 +179,15 @@ void VstPluginHost::showEditor()
                                                                { editorWindows.erase(trackIndex); });
 }
 
+juce::String VstPluginHost::getPluginName(int trackIndex) const
+{
+    auto it = pluginNodes.find(trackIndex);
+    if (it == pluginNodes.end())
+        return {};
+
+    return graph->getNodeForId(it->second)->getProcessor()->getName();
+}
+
 void VstPluginHost::onNoteOn(int trackIndex, const MidiNote& note)
 {
     auto it = midiCollectors.find(trackIndex);
