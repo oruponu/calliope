@@ -328,6 +328,24 @@ MainComponent::MainComponent()
     };
     trackList.onMuteSoloChanged = []() {};
     trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
+    trackList.onPluginLabelClicked = [this](int trackIndex)
+    {
+        auto types = knownPluginList.getTypes();
+        if (types.isEmpty())
+            return;
+
+        juce::PopupMenu menu;
+        juce::KnownPluginList::addToMenu(menu, types, juce::KnownPluginList::sortByManufacturer);
+        menu.showMenuAsync(juce::PopupMenu::Options{},
+                           [this, trackIndex, types](int result)
+                           {
+                               int index = juce::KnownPluginList::getIndexChosenByMenu(types, result);
+                               if (index < 0)
+                                   return;
+                               pluginHost.attachPlugin(trackIndex, types.getReference(index));
+                               trackList.repaint();
+                           });
+    };
 
     controllerLane.setSequence(&sequence);
     controllerLane.setUndoManager(&undoManager);
