@@ -104,16 +104,19 @@ void TrackListComponent::paint(juce::Graphics& g)
             track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
         g.drawText(trackLabel, 10, y + 4, getWidth() - 62, 20, juce::Justification::centredLeft);
 
+        auto pluginBounds = getPluginLabelBounds(i);
+
         juce::String info = "Ch:" + juce::String(track.getChannel()) + "  Notes:" + juce::String(track.getNumNotes());
-        if (pluginNameForTrack)
-        {
-            juce::String pluginName = pluginNameForTrack(i);
-            if (pluginName.isNotEmpty())
-                info += "  | " + pluginName;
-        }
         g.setColour(juce::Colour(140, 140, 160));
         g.setFont(juce::Font(juce::FontOptions(11.0f)));
-        g.drawText(info, 10, y + 24, getWidth() - 62, 16, juce::Justification::centredLeft);
+        g.drawText(info, 10, y + 24, pluginBounds.getX() - 14, 16, juce::Justification::centredLeft);
+
+        juce::String pluginName = pluginNameForTrack ? pluginNameForTrack(i) : juce::String{};
+        g.setColour(juce::Colour(50, 50, 60));
+        g.fillRoundedRectangle(pluginBounds.toFloat(), 3.0f);
+        g.setColour(pluginName.isEmpty() ? juce::Colour(120, 120, 140) : juce::Colour(200, 200, 230));
+        g.drawText(pluginName.isEmpty() ? juce::String("(no plugin)") : pluginName, pluginBounds.reduced(4, 0),
+                   juce::Justification::centredLeft);
 
         auto muteBounds = getMuteButtonBounds(i);
         if (track.isMuted())
@@ -187,6 +190,13 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
+    if (getPluginLabelBounds(row).contains(e.x, e.y))
+    {
+        if (onPluginLabelClicked)
+            onPluginLabelClicked(row);
+        return;
+    }
+
     if (e.mods.isCtrlDown())
     {
         if (selectedTrackIndices.count(row) > 0)
@@ -239,4 +249,12 @@ juce::Rectangle<int> TrackListComponent::getSoloButtonBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
     return {getWidth() - 26, y + (trackRowHeight - 20) / 2, 24, 20};
+}
+
+juce::Rectangle<int> TrackListComponent::getPluginLabelBounds(int rowIndex) const
+{
+    int y = rowIndex * trackRowHeight;
+    int totalInfoWidth = getWidth() - 62;
+    int labelWidth = totalInfoWidth / 2;
+    return {10 + totalInfoWidth - labelWidth, y + 24, labelWidth, 16};
 }
