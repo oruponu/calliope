@@ -146,10 +146,8 @@ void VstPluginHost::detachPlugin(int trackIndex)
     pluginNodes.erase(it);
 }
 
-void VstPluginHost::showEditor()
+void VstPluginHost::showEditor(int trackIndex)
 {
-    constexpr int trackIndex = 0;
-
     if (auto it = editorWindows.find(trackIndex); it != editorWindows.end())
     {
         it->second->toFront(true);
