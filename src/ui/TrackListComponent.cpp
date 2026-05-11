@@ -102,7 +102,7 @@ void TrackListComponent::paint(juce::Graphics& g)
         g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
         juce::String trackLabel =
             track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
-        g.drawText(trackLabel, 10, y + 4, getWidth() - 62, 20, juce::Justification::centredLeft);
+        g.drawText(trackLabel, 10, y + 4, getWidth() - 88, 20, juce::Justification::centredLeft);
 
         auto pluginBounds = getPluginLabelBounds(i);
 
@@ -137,6 +137,13 @@ void TrackListComponent::paint(juce::Graphics& g)
         g.setColour(track.isSolo() ? juce::Colour(30, 30, 30) : juce::Colour(140, 140, 160));
         g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
         g.drawText("S", soloBounds, juce::Justification::centred);
+
+        auto editorBounds = getEditorButtonBounds(i);
+        g.setColour(juce::Colour(60, 60, 70));
+        g.fillRoundedRectangle(editorBounds.toFloat(), 3.0f);
+        g.setColour(pluginName.isEmpty() ? juce::Colour(140, 140, 160) : juce::Colours::white);
+        g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
+        g.drawText("e", editorBounds, juce::Justification::centred);
 
         g.setColour(juce::Colour(60, 60, 70));
         g.drawHorizontalLine(y + trackRowHeight - 1, 0.0f, static_cast<float>(getWidth()));
@@ -187,6 +194,13 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         repaint();
         if (onMuteSoloChanged)
             onMuteSoloChanged();
+        return;
+    }
+
+    if (getEditorButtonBounds(row).contains(e.x, e.y))
+    {
+        if (onEditorButtonClicked)
+            onEditorButtonClicked(row);
         return;
     }
 
@@ -254,7 +268,13 @@ juce::Rectangle<int> TrackListComponent::getSoloButtonBounds(int rowIndex) const
 juce::Rectangle<int> TrackListComponent::getPluginLabelBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
-    int totalInfoWidth = getWidth() - 62;
+    int totalInfoWidth = getWidth() - 88;
     int labelWidth = totalInfoWidth / 2;
     return {10 + totalInfoWidth - labelWidth, y + 24, labelWidth, 16};
+}
+
+juce::Rectangle<int> TrackListComponent::getEditorButtonBounds(int rowIndex) const
+{
+    int y = rowIndex * trackRowHeight;
+    return {getWidth() - 78, y + (trackRowHeight - 20) / 2, 24, 20};
 }
