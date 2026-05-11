@@ -21,6 +21,7 @@ public:
     std::function<void()> onMuteSoloChanged;
     std::function<juce::String(int trackIndex)> pluginNameForTrack;
     std::function<void(int trackIndex)> onPluginLabelClicked;
+    std::function<void(int trackIndex)> onEditorButtonClicked;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
@@ -33,6 +34,7 @@ private:
     juce::Rectangle<int> getMuteButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getSoloButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getPluginLabelBounds(int rowIndex) const;
+    juce::Rectangle<int> getEditorButtonBounds(int rowIndex) const;
     void updateSize();
     void notifySelectionChanged();
 
