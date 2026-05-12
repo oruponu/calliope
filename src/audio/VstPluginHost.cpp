@@ -148,6 +148,16 @@ void VstPluginHost::detachPlugin(int trackIndex)
     pluginNodes.erase(it);
 }
 
+void VstPluginHost::detachAllPlugins()
+{
+    std::vector<int> trackIndices;
+    trackIndices.reserve(pluginNodes.size());
+    for (const auto& [idx, _] : pluginNodes)
+        trackIndices.push_back(idx);
+    for (int idx : trackIndices)
+        detachPlugin(idx);
+}
+
 void VstPluginHost::showEditor(int trackIndex)
 {
     if (auto it = editorWindows.find(trackIndex); it != editorWindows.end())
