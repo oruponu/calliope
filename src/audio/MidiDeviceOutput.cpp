@@ -1,4 +1,6 @@
 #include "MidiDeviceOutput.h"
+#include "../model/MidiSequence.h"
+#include "../model/MidiTrack.h"
 
 MidiDeviceOutput::~MidiDeviceOutput()
 {
@@ -46,6 +48,11 @@ bool MidiDeviceOutput::isEnabled() const
     return enabled;
 }
 
+void MidiDeviceOutput::setSequence(const MidiSequence* seq)
+{
+    sequence = seq;
+}
+
 void MidiDeviceOutput::close()
 {
     if (midiOutput)
@@ -78,27 +85,51 @@ void MidiDeviceOutput::reset()
     }
 }
 
-void MidiDeviceOutput::onNoteOn(int, const MidiNote& note)
+void MidiDeviceOutput::onNoteOn(int trackIndex, const MidiNote& note)
 {
     if (!enabled || !midiOutput)
         return;
+
+    if (sequence != nullptr)
+    {
+        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+            return;
+        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
+            return;
+    }
 
     midiOutput->sendMessageNow(
         juce::MidiMessage::noteOn(note.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
 }
 
-void MidiDeviceOutput::onNoteOff(int, const MidiNote& note)
+void MidiDeviceOutput::onNoteOff(int trackIndex, const MidiNote& note)
 {
     if (!enabled || !midiOutput)
         return;
+
+    if (sequence != nullptr)
+    {
+        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+            return;
+        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
+            return;
+    }
 
     midiOutput->sendMessageNow(juce::MidiMessage::noteOff(note.channel, note.noteNumber));
 }
 
-void MidiDeviceOutput::onMidiEvent(int, const MidiEvent& event)
+void MidiDeviceOutput::onMidiEvent(int trackIndex, const MidiEvent& event)
 {
     if (!enabled || !midiOutput)
         return;
+
+    if (sequence != nullptr)
+    {
+        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+            return;
+        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
+            return;
+    }
 
     juce::MidiMessage msg;
 
