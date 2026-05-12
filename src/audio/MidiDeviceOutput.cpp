@@ -34,20 +34,6 @@ juce::String MidiDeviceOutput::getCurrentDeviceIdentifier() const
     return currentDeviceIdentifier;
 }
 
-void MidiDeviceOutput::setEnabled(bool e)
-{
-    if (enabled == e)
-        return;
-    enabled = e;
-    if (!e)
-        reset();
-}
-
-bool MidiDeviceOutput::isEnabled() const
-{
-    return enabled;
-}
-
 void MidiDeviceOutput::setSequence(const MidiSequence* seq)
 {
     sequence = seq;
@@ -87,7 +73,7 @@ void MidiDeviceOutput::reset()
 
 void MidiDeviceOutput::onNoteOn(int trackIndex, const MidiNote& note)
 {
-    if (!enabled || !midiOutput)
+    if (!midiOutput)
         return;
 
     if (sequence != nullptr)
@@ -104,7 +90,7 @@ void MidiDeviceOutput::onNoteOn(int trackIndex, const MidiNote& note)
 
 void MidiDeviceOutput::onNoteOff(int trackIndex, const MidiNote& note)
 {
-    if (!enabled || !midiOutput)
+    if (!midiOutput)
         return;
 
     if (sequence != nullptr)
@@ -120,7 +106,7 @@ void MidiDeviceOutput::onNoteOff(int trackIndex, const MidiNote& note)
 
 void MidiDeviceOutput::onMidiEvent(int trackIndex, const MidiEvent& event)
 {
-    if (!enabled || !midiOutput)
+    if (!midiOutput)
         return;
 
     if (sequence != nullptr)
