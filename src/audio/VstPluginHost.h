@@ -17,6 +17,7 @@ public:
     bool loadPlugin(const juce::PluginDescription& description);
     bool attachPlugin(int trackIndex, const juce::PluginDescription& description);
     void detachPlugin(int trackIndex);
+    void detachAllPlugins();
     void showEditor(int trackIndex);
 
     juce::String getPluginName(int trackIndex) const;
