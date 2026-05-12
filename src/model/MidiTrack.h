@@ -8,6 +8,13 @@
 class MidiTrack
 {
 public:
+    enum class OutputDestination
+    {
+        MidiDevice,
+        Plugin,
+        None
+    };
+
     void addNote(const MidiNote& note);
     void insertNote(int index, const MidiNote& note);
     void removeNote(int index);
@@ -37,6 +44,9 @@ public:
     int getChannel() const;
     void setChannel(int channel);
 
+    OutputDestination getOutputDestination() const;
+    void setOutputDestination(OutputDestination dest);
+
 private:
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
@@ -44,5 +54,5 @@ private:
     bool muted = false;
     bool solo = false;
     int channel = 1;
-    int pluginNodeId = -1;
+    OutputDestination outputDestination = OutputDestination::MidiDevice;
 };

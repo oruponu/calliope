@@ -111,3 +111,13 @@ void MidiTrack::setChannel(int c)
 {
     channel = c;
 }
+
+MidiTrack::OutputDestination MidiTrack::getOutputDestination() const
+{
+    return outputDestination;
+}
+
+void MidiTrack::setOutputDestination(OutputDestination dest)
+{
+    outputDestination = dest;
+}
