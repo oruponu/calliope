@@ -112,11 +112,29 @@ void TrackListComponent::paint(juce::Graphics& g)
         g.drawText(info, 10, y + 24, pluginBounds.getX() - 14, 16, juce::Justification::centredLeft);
 
         juce::String pluginName = pluginNameForTrack ? pluginNameForTrack(i) : juce::String{};
+        auto destination = track.getOutputDestination();
+        juce::String labelText;
+        bool labelActive = false;
+        switch (destination)
+        {
+        case MidiTrack::OutputDestination::Plugin:
+            labelText = juce::String::fromUTF8("\xe2\x96\xb6 ") +
+                        (pluginName.isEmpty() ? juce::String("(no plugin)") : pluginName);
+            labelActive = !pluginName.isEmpty();
+            break;
+        case MidiTrack::OutputDestination::MidiDevice:
+            labelText = juce::String::fromUTF8("\xe3\x80\xb0 MIDI");
+            labelActive = true;
+            break;
+        case MidiTrack::OutputDestination::None:
+            labelText = juce::String::fromUTF8("\xe2\x8a\x98 Off");
+            labelActive = false;
+            break;
+        }
         g.setColour(juce::Colour(50, 50, 60));
         g.fillRoundedRectangle(pluginBounds.toFloat(), 3.0f);
-        g.setColour(pluginName.isEmpty() ? juce::Colour(120, 120, 140) : juce::Colour(200, 200, 230));
-        g.drawText(pluginName.isEmpty() ? juce::String("(no plugin)") : pluginName, pluginBounds.reduced(4, 0),
-                   juce::Justification::centredLeft);
+        g.setColour(labelActive ? juce::Colour(200, 200, 230) : juce::Colour(120, 120, 140));
+        g.drawText(labelText, pluginBounds.reduced(4, 0), juce::Justification::centredLeft);
 
         auto muteBounds = getMuteButtonBounds(i);
         if (track.isMuted())
