@@ -5,6 +5,8 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <unordered_map>
 
+class MidiSequence;
+
 class VstPluginHost : public PlaybackEngine::Listener
 {
 public:
@@ -18,6 +20,8 @@ public:
     void showEditor(int trackIndex);
 
     juce::String getPluginName(int trackIndex) const;
+
+    void setSequence(const MidiSequence* seq);
 
     juce::AudioPluginFormatManager& getFormatManager() { return formatManager; }
 
@@ -33,4 +37,5 @@ private:
     std::unordered_map<int, juce::AudioProcessorGraph::NodeID> midiSourceNodes;
     std::unordered_map<int, juce::MidiMessageCollector*> midiCollectors;
     std::unordered_map<int, std::unique_ptr<juce::DocumentWindow>> editorWindows;
+    const MidiSequence* sequence = nullptr;
 };
