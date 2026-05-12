@@ -1,4 +1,6 @@
 #include "VstPluginHost.h"
+#include "../model/MidiSequence.h"
+#include "../model/MidiTrack.h"
 
 namespace
 {
@@ -186,8 +188,21 @@ juce::String VstPluginHost::getPluginName(int trackIndex) const
     return graph->getNodeForId(it->second)->getProcessor()->getName();
 }
 
+void VstPluginHost::setSequence(const MidiSequence* seq)
+{
+    sequence = seq;
+}
+
 void VstPluginHost::onNoteOn(int trackIndex, const MidiNote& note)
 {
+    if (sequence != nullptr)
+    {
+        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+            return;
+        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::Plugin)
+            return;
+    }
+
     auto it = midiCollectors.find(trackIndex);
     if (it == midiCollectors.end())
         return;
@@ -198,6 +213,14 @@ void VstPluginHost::onNoteOn(int trackIndex, const MidiNote& note)
 
 void VstPluginHost::onNoteOff(int trackIndex, const MidiNote& note)
 {
+    if (sequence != nullptr)
+    {
+        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+            return;
+        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::Plugin)
+            return;
+    }
+
     auto it = midiCollectors.find(trackIndex);
     if (it == midiCollectors.end())
         return;
@@ -207,6 +230,14 @@ void VstPluginHost::onNoteOff(int trackIndex, const MidiNote& note)
 
 void VstPluginHost::onMidiEvent(int trackIndex, const MidiEvent& event)
 {
+    if (sequence != nullptr)
+    {
+        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+            return;
+        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::Plugin)
+            return;
+    }
+
     auto it = midiCollectors.find(trackIndex);
     if (it == midiCollectors.end())
         return;
