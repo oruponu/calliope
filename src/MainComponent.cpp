@@ -704,12 +704,6 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
         juce::KnownPluginList::addToMenu(scannedSubmenu, pluginMenuSnapshot, juce::KnownPluginList::sortByManufacturer);
         menu.addSubMenu("Load Scanned Plugin", scannedSubmenu, !pluginMenuSnapshot.isEmpty());
 
-        juce::PopupMenu::Item editorItem;
-        editorItem.itemID = CommandID::showPluginEditor;
-        editorItem.text = "Show Editor";
-        editorItem.action = [this]() { pluginHost.showEditor(trackList.getActiveTrackIndex()); };
-        menu.addItem(editorItem);
-
         menu.addSeparator();
 
         juce::PopupMenu::Item manageItem;

@@ -294,7 +294,6 @@ private:
         zoomReset,
         toggleLoop,
         loadPlugin_,
-        showPluginEditor,
         managePlugins_,
         audioSettings_
     };
