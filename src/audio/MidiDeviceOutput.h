@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../engine/PlaybackEngine.h"
-#include <atomic>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
 
@@ -19,9 +18,6 @@ public:
 
     juce::String getCurrentDeviceIdentifier() const;
 
-    void setEnabled(bool enabled);
-    bool isEnabled() const;
-
     void setSequence(const MidiSequence* seq);
 
     void onNoteOn(int trackIndex, const MidiNote& note) override;
@@ -31,6 +27,5 @@ public:
 private:
     std::unique_ptr<juce::MidiOutput> midiOutput;
     juce::String currentDeviceIdentifier;
-    std::atomic<bool> enabled{true};
     const MidiSequence* sequence = nullptr;
 };
