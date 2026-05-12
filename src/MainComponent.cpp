@@ -1038,6 +1038,7 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
         {
             juce::File file(path);
             stopPlayback();
+            pluginHost.detachAllPlugins();
             if (MidiFileIO::load(sequence, file))
             {
                 currentFile = file;
@@ -1239,6 +1240,7 @@ void MainComponent::zoomVertical(float factor, int anchorYInViewport)
 void MainComponent::newFile()
 {
     stopPlayback();
+    pluginHost.detachAllPlugins();
     sequence.clear();
     sequence.addTrack();
     currentFile = juce::File{};
@@ -1273,6 +1275,7 @@ void MainComponent::loadFile()
                                  if (file == juce::File{})
                                      return;
                                  stopPlayback();
+                                 pluginHost.detachAllPlugins();
                                  if (MidiFileIO::load(sequence, file))
                                  {
                                      currentFile = file;
