@@ -231,6 +231,8 @@ MainComponent::MainComponent()
     audioDeviceManager.addChangeListener(this);
 
     pluginHost.prepare(audioGraph);
+    midiOutput.setSequence(&sequence);
+    pluginHost.setSequence(&sequence);
 
     audioDeviceManager.addAudioCallback(&audioPlayer);
     audioPlayer.setProcessor(&audioGraph);
@@ -336,15 +338,17 @@ MainComponent::MainComponent()
 
         juce::PopupMenu menu;
         juce::KnownPluginList::addToMenu(menu, types, juce::KnownPluginList::sortByManufacturer);
-        menu.showMenuAsync(juce::PopupMenu::Options{},
-                           [this, trackIndex, types](int result)
-                           {
-                               int index = juce::KnownPluginList::getIndexChosenByMenu(types, result);
-                               if (index < 0)
-                                   return;
-                               pluginHost.attachPlugin(trackIndex, types.getReference(index));
-                               trackList.repaint();
-                           });
+        menu.showMenuAsync(
+            juce::PopupMenu::Options{},
+            [this, trackIndex, types](int result)
+            {
+                int index = juce::KnownPluginList::getIndexChosenByMenu(types, result);
+                if (index < 0)
+                    return;
+                if (pluginHost.attachPlugin(trackIndex, types.getReference(index)))
+                    sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                trackList.repaint();
+            });
     };
 
     controllerLane.setSequence(&sequence);
@@ -727,7 +731,7 @@ void MainComponent::menuItemSelected(int menuItemID, int)
         return;
 
     if (pluginHost.loadPlugin(pluginMenuSnapshot.getReference(index)))
-        midiOutput.setEnabled(false);
+        sequence.getTrack(0).setOutputDestination(MidiTrack::OutputDestination::Plugin);
 }
 
 juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
@@ -1256,7 +1260,7 @@ void MainComponent::loadPlugin()
                                  if (file == juce::File{})
                                      return;
                                  if (pluginHost.loadPlugin(file))
-                                     midiOutput.setEnabled(false);
+                                     sequence.getTrack(0).setOutputDestination(MidiTrack::OutputDestination::Plugin);
                              });
 }
 
