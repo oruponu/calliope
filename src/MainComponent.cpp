@@ -330,6 +330,7 @@ MainComponent::MainComponent()
     };
     trackList.onMuteSoloChanged = []() {};
     trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
+    trackList.onEditorButtonClicked = [this](int trackIndex) { pluginHost.showEditor(trackIndex); };
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
         auto types = knownPluginList.getTypes();
