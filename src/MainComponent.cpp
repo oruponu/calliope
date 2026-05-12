@@ -333,11 +333,35 @@ MainComponent::MainComponent()
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
         auto types = knownPluginList.getTypes();
-        if (types.isEmpty())
-            return;
 
         juce::PopupMenu menu;
-        juce::KnownPluginList::addToMenu(menu, types, juce::KnownPluginList::sortByManufacturer);
+        auto currentDest = sequence.getTrack(trackIndex).getOutputDestination();
+
+        menu.addSectionHeader("Output");
+        menu.addItem("Plugin", true, currentDest == MidiTrack::OutputDestination::Plugin,
+                     [this, trackIndex]()
+                     {
+                         sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                         trackList.repaint();
+                     });
+        menu.addItem("MIDI Device", true, currentDest == MidiTrack::OutputDestination::MidiDevice,
+                     [this, trackIndex]()
+                     {
+                         sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         trackList.repaint();
+                     });
+        menu.addItem("None", true, currentDest == MidiTrack::OutputDestination::None,
+                     [this, trackIndex]()
+                     {
+                         sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::None);
+                         trackList.repaint();
+                     });
+        menu.addSeparator();
+
+        juce::PopupMenu chooseSubmenu;
+        juce::KnownPluginList::addToMenu(chooseSubmenu, types, juce::KnownPluginList::sortByManufacturer);
+        menu.addSubMenu("Choose Plugin", chooseSubmenu, !types.isEmpty());
+
         menu.showMenuAsync(
             juce::PopupMenu::Options{},
             [this, trackIndex, types](int result)
