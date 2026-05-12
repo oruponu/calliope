@@ -362,6 +362,15 @@ MainComponent::MainComponent()
         juce::KnownPluginList::addToMenu(chooseSubmenu, types, juce::KnownPluginList::sortByManufacturer);
         menu.addSubMenu("Choose Plugin", chooseSubmenu, !types.isEmpty());
 
+        bool hasPlugin = !pluginHost.getPluginName(trackIndex).isEmpty();
+        menu.addItem("Detach Plugin", hasPlugin, false,
+                     [this, trackIndex]()
+                     {
+                         pluginHost.detachPlugin(trackIndex);
+                         sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         trackList.repaint();
+                     });
+
         menu.showMenuAsync(
             juce::PopupMenu::Options{},
             [this, trackIndex, types](int result)
