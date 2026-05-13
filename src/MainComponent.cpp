@@ -359,6 +359,24 @@ MainComponent::MainComponent()
                      });
         menu.addSeparator();
 
+        menu.addItem(
+            "Load Plugin...", true, false,
+            [this, trackIndex]()
+            {
+                fileChooser = std::make_unique<juce::FileChooser>("Load Plugin", juce::File{}, "*.vst3");
+                fileChooser->launchAsync(
+                    juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                    [this, trackIndex](const juce::FileChooser& fc)
+                    {
+                        auto file = fc.getResult();
+                        if (file == juce::File{})
+                            return;
+                        if (pluginHost.attachPlugin(trackIndex, file))
+                            sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                        trackList.repaint();
+                    });
+            });
+
         juce::PopupMenu chooseSubmenu;
         juce::KnownPluginList::addToMenu(chooseSubmenu, types, juce::KnownPluginList::sortByManufacturer);
         menu.addSubMenu("Choose Plugin", chooseSubmenu, !types.isEmpty());

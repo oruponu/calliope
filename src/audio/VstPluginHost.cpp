@@ -77,6 +77,16 @@ void VstPluginHost::prepare(juce::AudioProcessorGraph& g)
 
 bool VstPluginHost::loadPlugin(const juce::File& file)
 {
+    return attachPlugin(0, file);
+}
+
+bool VstPluginHost::loadPlugin(const juce::PluginDescription& description)
+{
+    return attachPlugin(0, description);
+}
+
+bool VstPluginHost::attachPlugin(int trackIndex, const juce::File& file)
+{
     if (graph == nullptr)
         return false;
 
@@ -87,12 +97,7 @@ bool VstPluginHost::loadPlugin(const juce::File& file)
     if (descriptions.isEmpty())
         return false;
 
-    return loadPlugin(*descriptions[0]);
-}
-
-bool VstPluginHost::loadPlugin(const juce::PluginDescription& description)
-{
-    return attachPlugin(0, description);
+    return attachPlugin(trackIndex, *descriptions[0]);
 }
 
 bool VstPluginHost::attachPlugin(int trackIndex, const juce::PluginDescription& description)
