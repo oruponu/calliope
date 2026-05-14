@@ -270,13 +270,15 @@ MainComponent::MainComponent()
     };
     pianoRoll.onNotePreview = [this](const MidiNote& note)
     {
-        midiOutput.onNoteOn(0, note);
-        pluginHost.onNoteOn(0, note);
+        int trackIdx = pianoRoll.getActiveTrackIndex();
+        midiOutput.onNoteOn(trackIdx, note);
+        pluginHost.onNoteOn(trackIdx, note);
     };
     pianoRoll.onNotePreviewEnd = [this](const MidiNote& note)
     {
-        midiOutput.onNoteOff(0, note);
-        pluginHost.onNoteOff(0, note);
+        int trackIdx = pianoRoll.getActiveTrackIndex();
+        midiOutput.onNoteOff(trackIdx, note);
+        pluginHost.onNoteOff(trackIdx, note);
     };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, false);

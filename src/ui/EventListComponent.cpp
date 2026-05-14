@@ -57,7 +57,6 @@ void EventListComponent::rebuildList()
             item.noteNumber = note.noteNumber;
             item.duration = note.duration;
             item.velocity = note.velocity;
-            item.channel = note.channel;
             items.push_back(item);
         }
 
@@ -68,7 +67,6 @@ void EventListComponent::rebuildList()
             item.tick = ev.tick;
             item.trackIndex = trackIdx;
             item.sourceIndex = i;
-            item.channel = ev.channel;
             item.data1 = ev.data1;
             item.data2 = ev.data2;
 

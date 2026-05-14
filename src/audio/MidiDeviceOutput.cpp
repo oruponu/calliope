@@ -73,68 +73,60 @@ void MidiDeviceOutput::reset()
 
 void MidiDeviceOutput::onNoteOn(int trackIndex, const MidiNote& note)
 {
-    if (!midiOutput)
+    if (!midiOutput || sequence == nullptr)
+        return;
+    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+        return;
+    const auto& track = sequence->getTrack(trackIndex);
+    if (track.getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
         return;
 
-    if (sequence != nullptr)
-    {
-        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
-            return;
-        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
-            return;
-    }
-
     midiOutput->sendMessageNow(
-        juce::MidiMessage::noteOn(note.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
+        juce::MidiMessage::noteOn(track.getChannel(), note.noteNumber, static_cast<juce::uint8>(note.velocity)));
 }
 
 void MidiDeviceOutput::onNoteOff(int trackIndex, const MidiNote& note)
 {
-    if (!midiOutput)
+    if (!midiOutput || sequence == nullptr)
+        return;
+    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+        return;
+    const auto& track = sequence->getTrack(trackIndex);
+    if (track.getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
         return;
 
-    if (sequence != nullptr)
-    {
-        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
-            return;
-        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
-            return;
-    }
-
-    midiOutput->sendMessageNow(juce::MidiMessage::noteOff(note.channel, note.noteNumber));
+    midiOutput->sendMessageNow(juce::MidiMessage::noteOff(track.getChannel(), note.noteNumber));
 }
 
 void MidiDeviceOutput::onMidiEvent(int trackIndex, const MidiEvent& event)
 {
-    if (!midiOutput)
+    if (!midiOutput || sequence == nullptr)
+        return;
+    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+        return;
+    const auto& track = sequence->getTrack(trackIndex);
+    if (track.getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
         return;
 
-    if (sequence != nullptr)
-    {
-        if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
-            return;
-        if (sequence->getTrack(trackIndex).getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
-            return;
-    }
-
+    const int ch = track.getChannel();
     juce::MidiMessage msg;
 
     switch (event.type)
     {
     case MidiEvent::Type::ControlChange:
-        msg = juce::MidiMessage::controllerEvent(event.channel, event.data1, event.data2);
+        msg = juce::MidiMessage::controllerEvent(ch, event.data1, event.data2);
         break;
     case MidiEvent::Type::ProgramChange:
-        msg = juce::MidiMessage::programChange(event.channel, event.data1);
+        msg = juce::MidiMessage::programChange(ch, event.data1);
         break;
     case MidiEvent::Type::PitchBend:
-        msg = juce::MidiMessage::pitchWheel(event.channel, event.data1);
+        msg = juce::MidiMessage::pitchWheel(ch, event.data1);
         break;
     case MidiEvent::Type::ChannelPressure:
-        msg = juce::MidiMessage::channelPressureChange(event.channel, event.data1);
+        msg = juce::MidiMessage::channelPressureChange(ch, event.data1);
         break;
     case MidiEvent::Type::KeyPressure:
-        msg = juce::MidiMessage::aftertouchChange(event.channel, event.data1, event.data2);
+        msg = juce::MidiMessage::aftertouchChange(ch, event.data1, event.data2);
         break;
     }
 
