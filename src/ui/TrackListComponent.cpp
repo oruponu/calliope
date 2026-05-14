@@ -106,10 +106,12 @@ void TrackListComponent::paint(juce::Graphics& g)
 
         auto pluginBounds = getPluginLabelBounds(i);
 
-        juce::String info = "Ch:" + juce::String(track.getChannel()) + "  Notes:" + juce::String(track.getNumNotes());
-        g.setColour(juce::Colour(140, 140, 160));
+        auto channelBounds = getChannelLabelBounds(i);
+        g.setColour(juce::Colour(50, 50, 60));
+        g.fillRoundedRectangle(channelBounds.toFloat(), 3.0f);
+        g.setColour(juce::Colour(200, 200, 230));
         g.setFont(juce::Font(juce::FontOptions(11.0f)));
-        g.drawText(info, 10, y + 24, pluginBounds.getX() - 14, 16, juce::Justification::centredLeft);
+        g.drawText("Ch:" + juce::String(track.getChannel()), channelBounds, juce::Justification::centred);
 
         juce::String pluginName = pluginNameForTrack ? pluginNameForTrack(i) : juce::String{};
         auto destination = track.getOutputDestination();
@@ -229,6 +231,13 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
+    if (getChannelLabelBounds(row).contains(e.x, e.y))
+    {
+        if (onChannelLabelClicked)
+            onChannelLabelClicked(row);
+        return;
+    }
+
     if (e.mods.isCtrlDown())
     {
         if (selectedTrackIndices.count(row) > 0)
@@ -286,13 +295,19 @@ juce::Rectangle<int> TrackListComponent::getSoloButtonBounds(int rowIndex) const
 juce::Rectangle<int> TrackListComponent::getPluginLabelBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
-    int totalInfoWidth = getWidth() - 88;
-    int labelWidth = totalInfoWidth / 2;
-    return {10 + totalInfoWidth - labelWidth, y + 24, labelWidth, 16};
+    auto channelBounds = getChannelLabelBounds(rowIndex);
+    int width = juce::jmax(0, channelBounds.getX() - 14);
+    return {10, y + 24, width, 16};
 }
 
 juce::Rectangle<int> TrackListComponent::getEditorButtonBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
     return {getWidth() - 78, y + (trackRowHeight - 20) / 2, 24, 20};
+}
+
+juce::Rectangle<int> TrackListComponent::getChannelLabelBounds(int rowIndex) const
+{
+    int y = rowIndex * trackRowHeight;
+    return {getWidth() - 114, y + 24, 32, 16};
 }

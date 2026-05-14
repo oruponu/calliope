@@ -333,6 +333,24 @@ MainComponent::MainComponent()
     trackList.onMuteSoloChanged = []() {};
     trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
     trackList.onEditorButtonClicked = [this](int trackIndex) { pluginHost.showEditor(trackIndex); };
+    trackList.onChannelLabelClicked = [this](int trackIndex)
+    {
+        int currentCh = sequence.getTrack(trackIndex).getChannel();
+        juce::PopupMenu menu;
+        menu.addSectionHeader("Channel");
+        for (int ch = 1; ch <= 16; ++ch)
+        {
+            menu.addItem(juce::String(ch), true, ch == currentCh,
+                         [this, trackIndex, ch]()
+                         {
+                             sequence.getTrack(trackIndex).setChannel(ch);
+                             trackList.repaint();
+                             pianoRoll.repaint();
+                             eventList.refresh();
+                         });
+        }
+        menu.showMenuAsync(juce::PopupMenu::Options{});
+    };
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
         auto types = knownPluginList.getTypes();
