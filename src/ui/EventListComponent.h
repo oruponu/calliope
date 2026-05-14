@@ -24,7 +24,6 @@ struct EventListItem
     int noteNumber = 0;
     int duration = 0;
     int velocity = 0;
-    int channel = 1;
     int data1 = 0;
     int data2 = 0;
 };
