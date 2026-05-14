@@ -302,9 +302,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         int noteNum = keyboardNoteAtPosition(e.x, e.y);
         if (noteNum >= 0)
         {
-            const auto& track = sequence->getTrack(activeTrackIndex);
-            int ch = track.getNumNotes() > 0 ? track.getNote(0).channel : 1;
-            startNotePreview(MidiNote{noteNum, 100, 0, 480, ch});
+            startNotePreview(MidiNote{noteNum, 100, 0, 480});
             isKeyboardDragging = true;
         }
         return;
@@ -454,7 +452,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     {
         int noteNum = keyboardNoteAtPosition(e.x, e.y);
         if (noteNum >= 0 && noteNum != previewNote.noteNumber)
-            startNotePreview(MidiNote{noteNum, 100, 0, 480, previewNote.channel});
+            startNotePreview(MidiNote{noteNum, 100, 0, 480});
         return;
     }
 
@@ -566,7 +564,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         if (undoManager && selectedNote.isValid())
         {
             auto& note = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
-            MidiNote beforeNote{originalNoteNumber, note.velocity, originalStartTick, originalDuration, note.channel};
+            MidiNote beforeNote{originalNoteNumber, note.velocity, originalStartTick, originalDuration};
             MidiNote afterNote = note;
 
             if (beforeNote.startTick != afterNote.startTick || beforeNote.noteNumber != afterNote.noteNumber ||
@@ -1366,7 +1364,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
 
             bool isSelected = isNoteSelected({trackIdx, i});
 
-            if (note.channel == 10)
+            if (track.getChannel() == 10)
             {
                 float diameter = static_cast<float>(noteHeight - 2);
                 float cx = static_cast<float>(x);
@@ -1416,7 +1414,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
 
             bool isSelected = isNoteSelected({activeTrackIndex, i});
 
-            if (note.channel == 10)
+            if (track.getChannel() == 10)
             {
                 float diameter = static_cast<float>(noteHeight - 2);
                 float cx = static_cast<float>(x);
