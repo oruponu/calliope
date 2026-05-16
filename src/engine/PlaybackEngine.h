@@ -37,6 +37,8 @@ public:
     void addListener(Listener* listener);
     void removeListener(Listener* listener);
 
+    void releaseActiveNotesForTrack(int trackIndex);
+
 private:
     void hiResTimerCallback() override;
     void processNoteOns(int fromTick, int toTick);
