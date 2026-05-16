@@ -343,6 +343,9 @@ MainComponent::MainComponent()
             menu.addItem(juce::String(ch), true, ch == currentCh,
                          [this, trackIndex, ch]()
                          {
+                             if (sequence.getTrack(trackIndex).getChannel() == ch)
+                                 return;
+                             playbackEngine.releaseActiveNotesForTrack(trackIndex);
                              sequence.getTrack(trackIndex).setChannel(ch);
                              trackList.repaint();
                              pianoRoll.repaint();
