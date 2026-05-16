@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "AppProperties.h"
 #include "io/MidiFileIO.h"
+#include "model/UndoActions.h"
 
 void MainComponent::Divider::paint(juce::Graphics& g)
 {
@@ -343,10 +344,13 @@ MainComponent::MainComponent()
             menu.addItem(juce::String(ch), true, ch == currentCh,
                          [this, trackIndex, ch]()
                          {
-                             if (sequence.getTrack(trackIndex).getChannel() == ch)
+                             int currentChannel = sequence.getTrack(trackIndex).getChannel();
+                             if (currentChannel == ch)
                                  return;
-                             playbackEngine.releaseActiveNotesForTrack(trackIndex);
-                             sequence.getTrack(trackIndex).setChannel(ch);
+                             undoManager.beginNewTransaction();
+                             undoManager.perform(
+                                 new ChannelChangeAction(&sequence, trackIndex, currentChannel, ch, [this](int idx)
+                                                         { playbackEngine.releaseActiveNotesForTrack(idx); }));
                              trackList.repaint();
                              pianoRoll.repaint();
                              eventList.refresh();
