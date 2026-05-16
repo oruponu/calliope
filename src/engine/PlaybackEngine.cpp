@@ -191,3 +191,20 @@ void PlaybackEngine::sendAllNoteOffs()
     }
     activeNotes.clear();
 }
+
+void PlaybackEngine::releaseActiveNotesForTrack(int trackIndex)
+{
+    for (auto it = activeNotes.begin(); it != activeNotes.end();)
+    {
+        if (it->trackIndex == trackIndex)
+        {
+            for (auto* listener : listeners)
+                listener->onNoteOff(it->trackIndex, *(it->note));
+            it = activeNotes.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
