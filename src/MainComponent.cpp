@@ -10,8 +10,13 @@ void MainComponent::Divider::paint(juce::Graphics& g)
     g.setColour(juce::Colour(80, 80, 95));
     auto cy = getHeight() / 2.0f;
     auto cx = getWidth() / 2.0f;
-    for (float dx : {-12.0f, -4.0f, 4.0f, 12.0f})
-        g.fillEllipse(cx + dx - 1.0f, cy - 1.0f, 2.0f, 2.0f);
+    for (float d : {-12.0f, -4.0f, 4.0f, 12.0f})
+    {
+        if (orientation == Horizontal)
+            g.fillEllipse(cx + d - 1.0f, cy - 1.0f, 2.0f, 2.0f);
+        else
+            g.fillEllipse(cx - 1.0f, cy + d - 1.0f, 2.0f, 2.0f);
+    }
 }
 
 void MainComponent::Divider::mouseDown(const juce::MouseEvent&)
@@ -22,8 +27,9 @@ void MainComponent::Divider::mouseDown(const juce::MouseEvent&)
 
 void MainComponent::Divider::mouseDrag(const juce::MouseEvent& e)
 {
-    if (onDrag)
-        onDrag(e.getDistanceFromDragStartY());
+    if (!onDrag)
+        return;
+    onDrag(orientation == Horizontal ? e.getDistanceFromDragStartY() : e.getDistanceFromDragStartX());
 }
 
 void MainComponent::ZoomStrip::paint(juce::Graphics& g)
@@ -499,6 +505,16 @@ MainComponent::MainComponent()
         int minH = 60;
         int maxH = getHeight() - menuBarHeight - transportBarHeight - toolBarHeight - 150;
         controllerLaneHeight = juce::jlimit(minH, maxH, controllerLaneHeightOnDragStart - deltaY);
+        resized();
+    };
+
+    addAndMakeVisible(trackListDivider);
+    trackListDivider.onDragStart = [this]() { trackListWidthOnDragStart = trackListWidth; };
+    trackListDivider.onDrag = [this](int deltaX)
+    {
+        int minW = 80;
+        int maxW = juce::jmax(minW, getWidth() - eventListWidth - 200);
+        trackListWidth = juce::jlimit(minW, maxW, trackListWidthOnDragStart + deltaX);
         resized();
     };
 
@@ -1154,13 +1170,15 @@ void MainComponent::resized()
         quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70));
     }
 
-    trackListViewport.setBounds(area.removeFromLeft(trackListWidth));
+    int clampedTrackListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - eventListWidth - 200), trackListWidth);
+    trackListViewport.setBounds(area.removeFromLeft(clampedTrackListW));
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
+    trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
     eventList.setBounds(area.removeFromRight(eventListWidth));
 
     int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
     auto editorArea = area.removeFromBottom(clampedEditorH);
-    auto divArea = area.removeFromBottom(dividerHeight);
+    auto divArea = area.removeFromBottom(dividerThickness);
 
     viewport.setBounds(area);
     pianoRoll.updateSize();
