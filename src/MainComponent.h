@@ -270,12 +270,15 @@ private:
 
     Divider controllerLaneDivider{Divider::Horizontal};
     Divider trackListDivider{Divider::Vertical};
+    Divider eventListDivider{Divider::Vertical};
     ZoomStrip horizontalZoomStrip{ZoomStrip::Horizontal};
     ZoomStrip verticalZoomStrip{ZoomStrip::Vertical};
     int controllerLaneHeight = 120;
     int controllerLaneHeightOnDragStart = 120;
     int trackListWidth = 180;
     int trackListWidthOnDragStart = 180;
+    int eventListWidth = 280;
+    int eventListWidthOnDragStart = 280;
     bool syncingScroll = false;
 
     EventListComponent eventList;
@@ -349,7 +352,6 @@ private:
     static constexpr int menuBarHeight = 24;
     static constexpr int transportBarHeight = 64;
     static constexpr int toolBarHeight = 32;
-    static constexpr int eventListWidth = 280;
     static constexpr int dividerThickness = 5;
     static constexpr int zoomStripLength = 100;
 
