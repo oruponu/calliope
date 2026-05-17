@@ -217,12 +217,25 @@ private:
     class Divider : public juce::Component
     {
     public:
-        Divider() { setMouseCursor(juce::MouseCursor::UpDownResizeCursor); }
+        enum Orientation
+        {
+            Horizontal,
+            Vertical
+        };
+
+        explicit Divider(Orientation o = Horizontal) : orientation(o)
+        {
+            setMouseCursor(o == Horizontal ? juce::MouseCursor::UpDownResizeCursor
+                                           : juce::MouseCursor::LeftRightResizeCursor);
+        }
         void paint(juce::Graphics& g) override;
         void mouseDown(const juce::MouseEvent&) override;
         void mouseDrag(const juce::MouseEvent& e) override;
         std::function<void()> onDragStart;
-        std::function<void(int deltaY)> onDrag;
+        std::function<void(int delta)> onDrag;
+
+    private:
+        Orientation orientation;
     };
 
     class ZoomStrip : public juce::Component
@@ -255,11 +268,14 @@ private:
         juce::Rectangle<int> minusBounds, plusBounds;
     };
 
-    Divider controllerLaneDivider;
+    Divider controllerLaneDivider{Divider::Horizontal};
+    Divider trackListDivider{Divider::Vertical};
     ZoomStrip horizontalZoomStrip{ZoomStrip::Horizontal};
     ZoomStrip verticalZoomStrip{ZoomStrip::Vertical};
     int controllerLaneHeight = 120;
     int controllerLaneHeightOnDragStart = 120;
+    int trackListWidth = 180;
+    int trackListWidthOnDragStart = 180;
     bool syncingScroll = false;
 
     EventListComponent eventList;
@@ -333,9 +349,8 @@ private:
     static constexpr int menuBarHeight = 24;
     static constexpr int transportBarHeight = 64;
     static constexpr int toolBarHeight = 32;
-    static constexpr int trackListWidth = 180;
     static constexpr int eventListWidth = 280;
-    static constexpr int dividerHeight = 5;
+    static constexpr int dividerThickness = 5;
     static constexpr int zoomStripLength = 100;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
