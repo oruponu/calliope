@@ -518,6 +518,16 @@ MainComponent::MainComponent()
         resized();
     };
 
+    addAndMakeVisible(eventListDivider);
+    eventListDivider.onDragStart = [this]() { eventListWidthOnDragStart = eventListWidth; };
+    eventListDivider.onDrag = [this](int deltaX)
+    {
+        int minW = 80;
+        int maxW = juce::jmax(minW, getWidth() - trackListWidth - 200);
+        eventListWidth = juce::jlimit(minW, maxW, eventListWidthOnDragStart - deltaX);
+        resized();
+    };
+
     eventList.setSequence(&sequence);
     eventList.setSelectedTracks({0});
     eventList.onEventSelected = [this](int tick)
@@ -1174,7 +1184,9 @@ void MainComponent::resized()
     trackListViewport.setBounds(area.removeFromLeft(clampedTrackListW));
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
     trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
-    eventList.setBounds(area.removeFromRight(eventListWidth));
+    int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
+    eventList.setBounds(area.removeFromRight(clampedEventListW));
+    eventListDivider.setBounds(area.removeFromRight(dividerThickness));
 
     int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
     auto editorArea = area.removeFromBottom(clampedEditorH);
