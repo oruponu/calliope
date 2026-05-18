@@ -47,6 +47,9 @@ public:
     OutputDestination getOutputDestination() const;
     void setOutputDestination(OutputDestination dest);
 
+    int getRouteTargetTrackIndex() const;
+    void setRouteTargetTrackIndex(int index);
+
 private:
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
@@ -55,4 +58,5 @@ private:
     bool solo = false;
     int channel = 1;
     OutputDestination outputDestination = OutputDestination::MidiDevice;
+    int routeTargetTrackIndex = -1;
 };
