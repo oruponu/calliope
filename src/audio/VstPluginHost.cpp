@@ -208,55 +208,53 @@ void VstPluginHost::setSequence(const MidiSequence* seq)
     sequence = seq;
 }
 
-void VstPluginHost::onNoteOn(int trackIndex, const MidiNote& note)
+juce::MidiMessageCollector* VstPluginHost::resolveCollector(int trackIndex) const
 {
     if (sequence == nullptr)
-        return;
+        return nullptr;
     if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
-        return;
+        return nullptr;
+
     const auto& track = sequence->getTrack(trackIndex);
     if (track.getOutputDestination() != MidiTrack::OutputDestination::Plugin)
-        return;
+        return nullptr;
 
-    auto it = midiCollectors.find(trackIndex);
+    int targetIndex = track.getRouteTargetTrackIndex();
+    if (targetIndex < 0 || targetIndex >= sequence->getNumTracks())
+        targetIndex = trackIndex;
+
+    auto it = midiCollectors.find(targetIndex);
     if (it == midiCollectors.end())
-        return;
+        return nullptr;
+    return it->second;
+}
 
-    it->second->addMessageToQueue(
+void VstPluginHost::onNoteOn(int trackIndex, const MidiNote& note)
+{
+    auto* collector = resolveCollector(trackIndex);
+    if (collector == nullptr)
+        return;
+    const auto& track = sequence->getTrack(trackIndex);
+    collector->addMessageToQueue(
         juce::MidiMessage::noteOn(track.getChannel(), note.noteNumber, static_cast<juce::uint8>(note.velocity)));
 }
 
 void VstPluginHost::onNoteOff(int trackIndex, const MidiNote& note)
 {
-    if (sequence == nullptr)
-        return;
-    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+    auto* collector = resolveCollector(trackIndex);
+    if (collector == nullptr)
         return;
     const auto& track = sequence->getTrack(trackIndex);
-    if (track.getOutputDestination() != MidiTrack::OutputDestination::Plugin)
-        return;
-
-    auto it = midiCollectors.find(trackIndex);
-    if (it == midiCollectors.end())
-        return;
-
-    it->second->addMessageToQueue(juce::MidiMessage::noteOff(track.getChannel(), note.noteNumber));
+    collector->addMessageToQueue(juce::MidiMessage::noteOff(track.getChannel(), note.noteNumber));
 }
 
 void VstPluginHost::onMidiEvent(int trackIndex, const MidiEvent& event)
 {
-    if (sequence == nullptr)
+    auto* collector = resolveCollector(trackIndex);
+    if (collector == nullptr)
         return;
-    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
-        return;
+
     const auto& track = sequence->getTrack(trackIndex);
-    if (track.getOutputDestination() != MidiTrack::OutputDestination::Plugin)
-        return;
-
-    auto it = midiCollectors.find(trackIndex);
-    if (it == midiCollectors.end())
-        return;
-
     const int ch = track.getChannel();
     juce::MidiMessage msg;
     switch (event.type)
@@ -278,5 +276,5 @@ void VstPluginHost::onMidiEvent(int trackIndex, const MidiEvent& event)
         break;
     }
 
-    it->second->addMessageToQueue(msg);
+    collector->addMessageToQueue(msg);
 }

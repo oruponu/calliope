@@ -369,46 +369,68 @@ MainComponent::MainComponent()
         auto types = knownPluginList.getTypes();
 
         juce::PopupMenu menu;
-        auto currentDest = sequence.getTrack(trackIndex).getOutputDestination();
+        const auto& currentTrack = sequence.getTrack(trackIndex);
+        auto currentDest = currentTrack.getOutputDestination();
+        int currentRouteTarget = currentTrack.getRouteTargetTrackIndex();
 
         menu.addSectionHeader("Output");
-        menu.addItem("Plugin", true, currentDest == MidiTrack::OutputDestination::Plugin,
-                     [this, trackIndex]()
-                     {
-                         sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                         trackList.repaint();
-                     });
+        for (int i = 0; i < sequence.getNumTracks(); ++i)
+        {
+            juce::String pluginName = pluginHost.getPluginName(i);
+            if (pluginName.isEmpty())
+                continue;
+            bool isOwn = (i == trackIndex);
+            bool ticked =
+                currentDest == MidiTrack::OutputDestination::Plugin &&
+                (isOwn ? (currentRouteTarget < 0 || currentRouteTarget == trackIndex) : currentRouteTarget == i);
+            menu.addItem(pluginName, true, ticked,
+                         [this, trackIndex, i, isOwn]()
+                         {
+                             playbackEngine.releaseActiveNotesForTrack(trackIndex);
+                             auto& track = sequence.getTrack(trackIndex);
+                             track.setRouteTargetTrackIndex(isOwn ? -1 : i);
+                             track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                             trackList.repaint();
+                         });
+        }
+
         menu.addItem("MIDI Device", true, currentDest == MidiTrack::OutputDestination::MidiDevice,
                      [this, trackIndex]()
                      {
+                         playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
                          trackList.repaint();
                      });
+
         menu.addItem("None", true, currentDest == MidiTrack::OutputDestination::None,
                      [this, trackIndex]()
                      {
+                         playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::None);
                          trackList.repaint();
                      });
         menu.addSeparator();
 
-        menu.addItem(
-            "Load Plugin...", true, false,
-            [this, trackIndex]()
-            {
-                fileChooser = std::make_unique<juce::FileChooser>("Load Plugin", juce::File{}, "*.vst3");
-                fileChooser->launchAsync(
-                    juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-                    [this, trackIndex](const juce::FileChooser& fc)
-                    {
-                        auto file = fc.getResult();
-                        if (file == juce::File{})
-                            return;
-                        if (pluginHost.attachPlugin(trackIndex, file))
-                            sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                        trackList.repaint();
-                    });
-            });
+        menu.addItem("Load Plugin...", true, false,
+                     [this, trackIndex]()
+                     {
+                         fileChooser = std::make_unique<juce::FileChooser>("Load Plugin", juce::File{}, "*.vst3");
+                         fileChooser->launchAsync(
+                             juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                             [this, trackIndex](const juce::FileChooser& fc)
+                             {
+                                 auto file = fc.getResult();
+                                 if (file == juce::File{})
+                                     return;
+                                 if (pluginHost.attachPlugin(trackIndex, file))
+                                 {
+                                     auto& track = sequence.getTrack(trackIndex);
+                                     track.setRouteTargetTrackIndex(-1);
+                                     track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                 }
+                                 trackList.repaint();
+                             });
+                     });
 
         juce::PopupMenu chooseSubmenu;
         juce::KnownPluginList::addToMenu(chooseSubmenu, types, juce::KnownPluginList::sortByManufacturer);
@@ -423,17 +445,20 @@ MainComponent::MainComponent()
                          trackList.repaint();
                      });
 
-        menu.showMenuAsync(
-            juce::PopupMenu::Options{},
-            [this, trackIndex, types](int result)
-            {
-                int index = juce::KnownPluginList::getIndexChosenByMenu(types, result);
-                if (index < 0)
-                    return;
-                if (pluginHost.attachPlugin(trackIndex, types.getReference(index)))
-                    sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                trackList.repaint();
-            });
+        menu.showMenuAsync(juce::PopupMenu::Options{},
+                           [this, trackIndex, types](int result)
+                           {
+                               int index = juce::KnownPluginList::getIndexChosenByMenu(types, result);
+                               if (index < 0)
+                                   return;
+                               if (pluginHost.attachPlugin(trackIndex, types.getReference(index)))
+                               {
+                                   auto& track = sequence.getTrack(trackIndex);
+                                   track.setRouteTargetTrackIndex(-1);
+                                   track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                               }
+                               trackList.repaint();
+                           });
     };
 
     controllerLane.setSequence(&sequence);
@@ -830,7 +855,11 @@ void MainComponent::menuItemSelected(int menuItemID, int)
         return;
 
     if (pluginHost.loadPlugin(pluginMenuSnapshot.getReference(index)))
-        sequence.getTrack(0).setOutputDestination(MidiTrack::OutputDestination::Plugin);
+    {
+        auto& track = sequence.getTrack(0);
+        track.setRouteTargetTrackIndex(-1);
+        track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+    }
 }
 
 juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
@@ -1366,7 +1395,11 @@ void MainComponent::loadPlugin()
                                  if (file == juce::File{})
                                      return;
                                  if (pluginHost.loadPlugin(file))
-                                     sequence.getTrack(0).setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                 {
+                                     auto& track = sequence.getTrack(0);
+                                     track.setRouteTargetTrackIndex(-1);
+                                     track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                 }
                              });
 }
 

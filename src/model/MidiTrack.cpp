@@ -121,3 +121,13 @@ void MidiTrack::setOutputDestination(OutputDestination dest)
 {
     outputDestination = dest;
 }
+
+int MidiTrack::getRouteTargetTrackIndex() const
+{
+    return routeTargetTrackIndex;
+}
+
+void MidiTrack::setRouteTargetTrackIndex(int index)
+{
+    routeTargetTrackIndex = index;
+}
