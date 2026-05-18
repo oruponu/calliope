@@ -32,6 +32,8 @@ public:
     void onMidiEvent(int trackIndex, const MidiEvent& event) override;
 
 private:
+    juce::MidiMessageCollector* resolveCollector(int trackIndex) const;
+
     juce::AudioPluginFormatManager formatManager;
     juce::AudioProcessorGraph* graph = nullptr;
     juce::AudioProcessorGraph::NodeID audioOutNodeId;

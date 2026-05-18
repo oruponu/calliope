@@ -120,10 +120,33 @@ void TrackListComponent::paint(juce::Graphics& g)
         switch (destination)
         {
         case MidiTrack::OutputDestination::Plugin:
-            labelText = juce::String::fromUTF8("\xe2\x96\xb6 ") +
-                        (pluginName.isEmpty() ? juce::String("(no plugin)") : pluginName);
-            labelActive = !pluginName.isEmpty();
+        {
+            int targetIdx = track.getRouteTargetTrackIndex();
+            if (targetIdx < 0 || targetIdx >= sequence->getNumTracks() || targetIdx == i)
+            {
+                labelText = juce::String::fromUTF8("\xe2\x96\xb6 ") +
+                            (pluginName.isEmpty() ? juce::String("(no plugin)") : pluginName);
+                labelActive = !pluginName.isEmpty();
+            }
+            else
+            {
+                const auto& targetTrack = sequence->getTrack(targetIdx);
+                juce::String targetPluginName = pluginNameForTrack ? pluginNameForTrack(targetIdx) : juce::String{};
+                if (!targetPluginName.isEmpty())
+                {
+                    juce::String targetLabel = targetTrack.getName().empty() ? "Track " + juce::String(targetIdx + 1)
+                                                                             : juce::String(targetTrack.getName());
+                    labelText = juce::String::fromUTF8("\xe2\x86\x92 ") + targetLabel;
+                    labelActive = true;
+                }
+                else
+                {
+                    labelText = juce::String::fromUTF8("\xe2\x86\x92 (invalid)");
+                    labelActive = false;
+                }
+            }
             break;
+        }
         case MidiTrack::OutputDestination::MidiDevice:
             labelText = juce::String::fromUTF8("\xe3\x80\xb0 MIDI");
             labelActive = true;
