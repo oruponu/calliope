@@ -229,6 +229,39 @@ private:
     std::function<void(int)> beforeChange;
 };
 
+class TrackAddAction : public juce::UndoableAction
+{
+public:
+    TrackAddAction(MidiSequence* seq, std::function<void(int)> beforeRemove)
+        : sequence(seq), beforeRemove(std::move(beforeRemove))
+    {
+    }
+
+    bool perform() override
+    {
+        sequence->addTrack();
+        addedIndex = sequence->getNumTracks() - 1;
+        return true;
+    }
+
+    bool undo() override
+    {
+        if (beforeRemove)
+            beforeRemove(addedIndex);
+        sequence->removeTrack(addedIndex);
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+    int getAddedIndex() const { return addedIndex; }
+
+private:
+    MidiSequence* sequence;
+    std::function<void(int)> beforeRemove;
+    int addedIndex = -1;
+};
+
 class VelocityEditAction : public juce::UndoableAction
 {
 public:
