@@ -23,11 +23,13 @@ public:
     std::function<void(int trackIndex)> onPluginLabelClicked;
     std::function<void(int trackIndex)> onEditorButtonClicked;
     std::function<void(int trackIndex)> onChannelLabelClicked;
+    std::function<void()> onAddTrackRequested;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
 
     static constexpr int trackRowHeight = 48;
+    static constexpr int addButtonRowHeight = 28;
     static constexpr int preferredWidth = 180;
 
 private:
@@ -37,6 +39,7 @@ private:
     juce::Rectangle<int> getPluginLabelBounds(int rowIndex) const;
     juce::Rectangle<int> getEditorButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getChannelLabelBounds(int rowIndex) const;
+    juce::Rectangle<int> getAddButtonBounds() const;
     void updateSize();
     void notifySelectionChanged();
 

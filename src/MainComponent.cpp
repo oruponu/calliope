@@ -364,6 +364,20 @@ MainComponent::MainComponent()
         }
         menu.showMenuAsync(juce::PopupMenu::Options{});
     };
+    trackList.onAddTrackRequested = [this]()
+    {
+        undoManager.beginNewTransaction();
+        undoManager.perform(new TrackAddAction(&sequence,
+                                               [this](int idx)
+                                               {
+                                                   playbackEngine.releaseActiveNotesForTrack(idx);
+                                                   pluginHost.detachPlugin(idx);
+                                               }));
+        trackList.refresh();
+        pianoRoll.repaint();
+        controllerLane.repaint();
+        eventList.refresh();
+    };
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
         auto types = knownPluginList.getTypes();
