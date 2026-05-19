@@ -31,7 +31,7 @@ void TrackListComponent::refresh()
 void TrackListComponent::updateSize()
 {
     int numTracks = sequence ? sequence->getNumTracks() : 0;
-    int requiredHeight = numTracks * trackRowHeight;
+    int requiredHeight = numTracks * trackRowHeight + addButtonRowHeight;
     setSize(getWidth(), juce::jmax(requiredHeight, getParentHeight()));
 }
 
@@ -191,12 +191,28 @@ void TrackListComponent::paint(juce::Graphics& g)
         g.setColour(juce::Colour(60, 60, 70));
         g.drawHorizontalLine(y + trackRowHeight - 1, 0.0f, static_cast<float>(getWidth()));
     }
+
+    auto addBounds = getAddButtonBounds();
+    g.setColour(juce::Colour(34, 34, 42));
+    g.fillRect(addBounds);
+    g.setColour(juce::Colour(160, 160, 180));
+    g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
+    g.drawText("+ Add Track", addBounds, juce::Justification::centred);
+    g.setColour(juce::Colour(60, 60, 70));
+    g.drawHorizontalLine(addBounds.getY(), 0.0f, static_cast<float>(getWidth()));
 }
 
 void TrackListComponent::mouseDown(const juce::MouseEvent& e)
 {
     if (!sequence)
         return;
+
+    if (getAddButtonBounds().contains(e.x, e.y))
+    {
+        if (onAddTrackRequested)
+            onAddTrackRequested();
+        return;
+    }
 
     int row = getRowIndexAt(e.y);
     if (row < 0 || row >= sequence->getNumTracks())
@@ -333,4 +349,11 @@ juce::Rectangle<int> TrackListComponent::getChannelLabelBounds(int rowIndex) con
 {
     int y = rowIndex * trackRowHeight;
     return {getWidth() - 114, y + 24, 32, 16};
+}
+
+juce::Rectangle<int> TrackListComponent::getAddButtonBounds() const
+{
+    int numTracks = sequence ? sequence->getNumTracks() : 0;
+    int y = numTracks * trackRowHeight;
+    return {0, y, getWidth(), addButtonRowHeight};
 }
