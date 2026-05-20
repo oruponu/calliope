@@ -351,13 +351,13 @@ int TrackListComponent::getRowIndexAt(int y) const
 juce::Rectangle<int> TrackListComponent::getMuteButtonBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
-    return {getWidth() - 52, y + (trackRowHeight - 20) / 2, 24, 20};
+    return {getWidth() - 52, y + 4, 24, 20};
 }
 
 juce::Rectangle<int> TrackListComponent::getSoloButtonBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
-    return {getWidth() - 26, y + (trackRowHeight - 20) / 2, 24, 20};
+    return {getWidth() - 26, y + 4, 24, 20};
 }
 
 juce::Rectangle<int> TrackListComponent::getPluginLabelBounds(int rowIndex) const
@@ -371,7 +371,7 @@ juce::Rectangle<int> TrackListComponent::getPluginLabelBounds(int rowIndex) cons
 juce::Rectangle<int> TrackListComponent::getEditorButtonBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
-    return {getWidth() - 78, y + (trackRowHeight - 20) / 2, 24, 20};
+    return {getWidth() - 78, y + 4, 24, 20};
 }
 
 juce::Rectangle<int> TrackListComponent::getChannelLabelBounds(int rowIndex) const
