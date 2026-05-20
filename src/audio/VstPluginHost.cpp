@@ -163,6 +163,32 @@ void VstPluginHost::detachAllPlugins()
         detachPlugin(idx);
 }
 
+void VstPluginHost::renumberTrackIndices(int from, int delta)
+{
+    for (auto it = editorWindows.begin(); it != editorWindows.end();)
+    {
+        if (it->first >= from)
+            it = editorWindows.erase(it);
+        else
+            ++it;
+    }
+
+    auto shiftMap = [from, delta](auto& map)
+    {
+        using MapT = std::decay_t<decltype(map)>;
+        MapT newMap;
+        for (auto& entry : map)
+        {
+            int newIdx = (entry.first >= from) ? entry.first + delta : entry.first;
+            newMap.emplace(newIdx, std::move(entry.second));
+        }
+        map = std::move(newMap);
+    };
+    shiftMap(pluginNodes);
+    shiftMap(midiSourceNodes);
+    shiftMap(midiCollectors);
+}
+
 void VstPluginHost::showEditor(int trackIndex)
 {
     if (auto it = editorWindows.find(trackIndex); it != editorWindows.end())

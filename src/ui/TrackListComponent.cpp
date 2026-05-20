@@ -210,18 +210,29 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
     if (e.mods.isPopupMenu())
     {
         int row = getRowIndexAt(e.y);
-        if (row < 0 || row >= sequence->getNumTracks())
+        bool onTrack = row >= 0 && row < sequence->getNumTracks();
+        auto screenPos = e.getScreenPosition();
+        juce::PopupMenu menu;
+        if (onTrack)
         {
-            auto screenPos = e.getScreenPosition();
-            juce::PopupMenu menu;
+            bool canRemove = sequence->getNumTracks() > 1;
+            menu.addItem("Delete Track", canRemove, false,
+                         [this, row]()
+                         {
+                             if (onRemoveTrackRequested)
+                                 onRemoveTrackRequested(row);
+                         });
+        }
+        else
+        {
             menu.addItem("Add Track", true, false,
                          [this]()
                          {
                              if (onAddTrackRequested)
                                  onAddTrackRequested();
                          });
-            menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({screenPos.x, screenPos.y, 1, 1}));
         }
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({screenPos.x, screenPos.y, 1, 1}));
         return;
     }
 
