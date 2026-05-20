@@ -50,6 +50,7 @@ public:
     void clear();
 
     MidiTrack& addTrack();
+    void insertTrack(int index, const MidiTrack& track);
     void removeTrack(int index);
 
     MidiTrack& getTrack(int index);

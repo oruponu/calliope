@@ -25,6 +25,11 @@ MidiTrack& MidiSequence::addTrack()
     return tracks.back();
 }
 
+void MidiSequence::insertTrack(int index, const MidiTrack& track)
+{
+    tracks.insert(tracks.begin() + index, track);
+}
+
 void MidiSequence::removeTrack(int index)
 {
     tracks.erase(tracks.begin() + index);
