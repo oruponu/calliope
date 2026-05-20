@@ -19,6 +19,7 @@ public:
     bool attachPlugin(int trackIndex, const juce::File& file);
     void detachPlugin(int trackIndex);
     void detachAllPlugins();
+    void renumberTrackIndices(int from, int delta);
     void showEditor(int trackIndex);
 
     juce::String getPluginName(int trackIndex) const;

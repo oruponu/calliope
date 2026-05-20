@@ -24,6 +24,7 @@ public:
     std::function<void(int trackIndex)> onEditorButtonClicked;
     std::function<void(int trackIndex)> onChannelLabelClicked;
     std::function<void()> onAddTrackRequested;
+    std::function<void(int trackIndex)> onRemoveTrackRequested;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;

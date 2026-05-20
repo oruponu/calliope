@@ -378,6 +378,25 @@ MainComponent::MainComponent()
         controllerLane.repaint();
         eventList.refresh();
     };
+    trackList.onRemoveTrackRequested = [this](int trackIndex)
+    {
+        if (sequence.getNumTracks() <= 1)
+            return;
+
+        undoManager.beginNewTransaction();
+        undoManager.perform(new TrackRemoveAction(
+            &sequence, trackIndex,
+            [this](int idx)
+            {
+                playbackEngine.releaseActiveNotesForTrack(idx);
+                pluginHost.detachPlugin(idx);
+            },
+            [this](int from, int delta) { pluginHost.renumberTrackIndices(from, delta); }));
+
+        int newActive = juce::jlimit(0, sequence.getNumTracks() - 1, trackIndex);
+        trackList.refresh();
+        trackList.setActiveTrackIndex(newActive);
+    };
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
         auto types = knownPluginList.getTypes();

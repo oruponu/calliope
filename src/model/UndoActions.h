@@ -262,6 +262,63 @@ private:
     int addedIndex = -1;
 };
 
+class TrackRemoveAction : public juce::UndoableAction
+{
+public:
+    TrackRemoveAction(MidiSequence* seq, int trackIndex, std::function<void(int)> onDetach,
+                      std::function<void(int from, int delta)> onRenumber)
+        : sequence(seq), trackIdx(trackIndex), onDetach(std::move(onDetach)), onRenumber(std::move(onRenumber))
+    {
+    }
+
+    bool perform() override
+    {
+        savedTrack = sequence->getTrack(trackIdx);
+        savedRouteTargets.clear();
+        for (int i = 0; i < sequence->getNumTracks(); ++i)
+            savedRouteTargets.push_back(sequence->getTrack(i).getRouteTargetTrackIndex());
+
+        if (onDetach)
+            onDetach(trackIdx);
+
+        sequence->removeTrack(trackIdx);
+
+        if (onRenumber)
+            onRenumber(trackIdx + 1, -1);
+
+        for (int i = 0; i < sequence->getNumTracks(); ++i)
+        {
+            auto& t = sequence->getTrack(i);
+            int rt = t.getRouteTargetTrackIndex();
+            if (rt == trackIdx)
+                t.setRouteTargetTrackIndex(-1);
+            else if (rt > trackIdx)
+                t.setRouteTargetTrackIndex(rt - 1);
+        }
+        return true;
+    }
+
+    bool undo() override
+    {
+        if (onRenumber)
+            onRenumber(trackIdx, +1);
+        sequence->insertTrack(trackIdx, savedTrack);
+        for (int i = 0; i < static_cast<int>(savedRouteTargets.size()); ++i)
+            sequence->getTrack(i).setRouteTargetTrackIndex(savedRouteTargets[i]);
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    int trackIdx;
+    std::function<void(int)> onDetach;
+    std::function<void(int, int)> onRenumber;
+    MidiTrack savedTrack;
+    std::vector<int> savedRouteTargets;
+};
+
 class VelocityEditAction : public juce::UndoableAction
 {
 public:
