@@ -229,6 +229,35 @@ private:
     std::function<void(int)> beforeChange;
 };
 
+class TrackRenameAction : public juce::UndoableAction
+{
+public:
+    TrackRenameAction(MidiSequence* seq, int trackIndex, std::string oldName, std::string newName)
+        : sequence(seq), trackIdx(trackIndex), oldName(std::move(oldName)), newName(std::move(newName))
+    {
+    }
+
+    bool perform() override
+    {
+        sequence->getTrack(trackIdx).setName(newName);
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->getTrack(trackIdx).setName(oldName);
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    int trackIdx;
+    std::string oldName;
+    std::string newName;
+};
+
 class TrackAddAction : public juce::UndoableAction
 {
 public:
