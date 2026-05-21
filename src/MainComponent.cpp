@@ -397,6 +397,18 @@ MainComponent::MainComponent()
         trackList.refresh();
         trackList.setActiveTrackIndex(newActive);
     };
+    trackList.onTrackRenamed = [this](int trackIndex, juce::String newName)
+    {
+        if (trackIndex < 0 || trackIndex >= sequence.getNumTracks())
+            return;
+        std::string oldName = sequence.getTrack(trackIndex).getName();
+        std::string requested = newName.toStdString();
+        if (oldName == requested)
+            return;
+        undoManager.beginNewTransaction();
+        undoManager.perform(new TrackRenameAction(&sequence, trackIndex, oldName, requested));
+        trackList.repaint();
+    };
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
         auto types = knownPluginList.getTypes();

@@ -3,6 +3,7 @@
 
 void TrackListComponent::setSequence(MidiSequence* seq)
 {
+    cancelNameEdit();
     sequence = seq;
     if (seq && seq->getNumTracks() > 0)
     {
@@ -24,6 +25,7 @@ void TrackListComponent::setSequence(MidiSequence* seq)
 
 void TrackListComponent::refresh()
 {
+    cancelNameEdit();
     updateSize();
     repaint();
 }
@@ -98,11 +100,14 @@ void TrackListComponent::paint(juce::Graphics& g)
         g.setColour(TrackColours::getColour(i));
         g.fillRect(0, y, 4, trackRowHeight);
 
-        g.setColour(juce::Colours::white);
-        g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
-        juce::String trackLabel =
-            track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
-        g.drawText(trackLabel, 10, y + 4, getWidth() - 88, 20, juce::Justification::centredLeft);
+        if (i != editingRow)
+        {
+            g.setColour(juce::Colours::white);
+            g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
+            juce::String trackLabel =
+                track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
+            g.drawText(trackLabel, getNameLabelBounds(i), juce::Justification::centredLeft);
+        }
 
         auto pluginBounds = getPluginLabelBounds(i);
 
@@ -206,6 +211,9 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
 {
     if (!sequence)
         return;
+
+    if (nameEditor != nullptr)
+        commitNameEdit();
 
     if (e.mods.isPopupMenu())
     {
@@ -343,6 +351,76 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
     notifySelectionChanged();
 }
 
+void TrackListComponent::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    if (!sequence || e.mods.isPopupMenu())
+        return;
+
+    int row = getRowIndexAt(e.y);
+    if (row < 0 || row >= sequence->getNumTracks())
+        return;
+
+    if (getNameLabelBounds(row).contains(e.x, e.y))
+        beginEditingName(row);
+}
+
+void TrackListComponent::beginEditingName(int rowIndex)
+{
+    if (!sequence || rowIndex < 0 || rowIndex >= sequence->getNumTracks())
+        return;
+
+    cancelNameEdit();
+
+    const auto& track = sequence->getTrack(rowIndex);
+    juce::String initialText =
+        track.getName().empty() ? "Track " + juce::String(rowIndex + 1) : juce::String(track.getName());
+
+    editingRow = rowIndex;
+    nameEditor = std::make_unique<juce::TextEditor>();
+    nameEditor->setBounds(getNameLabelBounds(rowIndex));
+    nameEditor->setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
+    nameEditor->setText(initialText, juce::dontSendNotification);
+    nameEditor->setSelectAllWhenFocused(true);
+    nameEditor->onReturnKey = [this]() { commitNameEdit(); };
+    nameEditor->onFocusLost = [this]() { commitNameEdit(); };
+    nameEditor->onEscapeKey = [this]() { cancelNameEdit(); };
+    addAndMakeVisible(*nameEditor);
+    nameEditor->grabKeyboardFocus();
+    nameEditor->selectAll();
+    repaint();
+}
+
+void TrackListComponent::commitNameEdit()
+{
+    if (!nameEditor || editingRow < 0)
+        return;
+
+    int row = editingRow;
+    juce::String newName = nameEditor->getText().trim();
+
+    editingRow = -1;
+    auto editor = std::move(nameEditor);
+    editor.reset();
+
+    if (sequence && row < sequence->getNumTracks())
+    {
+        juce::String currentName = juce::String(sequence->getTrack(row).getName());
+        if (newName != currentName && onTrackRenamed)
+            onTrackRenamed(row, newName);
+    }
+    repaint();
+}
+
+void TrackListComponent::cancelNameEdit()
+{
+    if (!nameEditor)
+        return;
+    editingRow = -1;
+    auto editor = std::move(nameEditor);
+    editor.reset();
+    repaint();
+}
+
 int TrackListComponent::getRowIndexAt(int y) const
 {
     return y / trackRowHeight;
@@ -378,6 +456,12 @@ juce::Rectangle<int> TrackListComponent::getChannelLabelBounds(int rowIndex) con
 {
     int y = rowIndex * trackRowHeight;
     return {getWidth() - 114, y + 24, 32, 16};
+}
+
+juce::Rectangle<int> TrackListComponent::getNameLabelBounds(int rowIndex) const
+{
+    int y = rowIndex * trackRowHeight;
+    return {10, y + 4, getWidth() - 88, 20};
 }
 
 juce::Rectangle<int> TrackListComponent::getAddButtonBounds() const
