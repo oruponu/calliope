@@ -25,9 +25,11 @@ public:
     std::function<void(int trackIndex)> onChannelLabelClicked;
     std::function<void()> onAddTrackRequested;
     std::function<void(int trackIndex)> onRemoveTrackRequested;
+    std::function<void(int trackIndex, juce::String newName)> onTrackRenamed;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDoubleClick(const juce::MouseEvent& e) override;
 
     static constexpr int trackRowHeight = 48;
     static constexpr int addButtonRowHeight = 28;
@@ -40,12 +42,19 @@ private:
     juce::Rectangle<int> getPluginLabelBounds(int rowIndex) const;
     juce::Rectangle<int> getEditorButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getChannelLabelBounds(int rowIndex) const;
+    juce::Rectangle<int> getNameLabelBounds(int rowIndex) const;
     juce::Rectangle<int> getAddButtonBounds() const;
     void updateSize();
     void notifySelectionChanged();
+
+    void beginEditingName(int rowIndex);
+    void commitNameEdit();
+    void cancelNameEdit();
 
     MidiSequence* sequence = nullptr;
     std::set<int> selectedTrackIndices = {0};
     int activeTrackIndex = 0;
     int anchorTrackIndex = 0;
+    std::unique_ptr<juce::TextEditor> nameEditor;
+    int editingRow = -1;
 };
