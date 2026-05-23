@@ -1,5 +1,6 @@
 #include "AppProperties.h"
 #include "MainComponent.h"
+#include "ui/LookAndFeel.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
 class CalliopeApplication : public juce::JUCEApplication
@@ -19,10 +20,15 @@ public:
         options.storageFormat = juce::PropertiesFile::storeAsXML;
         appProperties.setStorageParameters(options);
 
+        juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel);
         mainWindow = std::make_unique<MainWindow>(getApplicationName());
     }
 
-    void shutdown() override { mainWindow.reset(); }
+    void shutdown() override
+    {
+        mainWindow.reset();
+        juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
+    }
 
     friend juce::ApplicationProperties& getAppProperties();
 
@@ -68,6 +74,7 @@ private:
         }
     };
 
+    calliope::LookAndFeel lookAndFeel;
     std::unique_ptr<MainWindow> mainWindow;
     juce::ApplicationProperties appProperties;
 };

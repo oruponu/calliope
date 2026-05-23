@@ -190,7 +190,8 @@ int ControllerLaneComponent::yToValue(int y) const
 
 void ControllerLaneComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(25, 25, 35));
+    using namespace calliope::theme;
+    g.fillAll(surface::bg);
 
     if (getDrawAreaHeight() <= 0)
         return;
@@ -220,16 +221,17 @@ void ControllerLaneComponent::paint(juce::Graphics& g)
 
 void ControllerLaneComponent::drawLeftPanel(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     auto leftRect = juce::Rectangle<int>(0, 0, leftPanelWidth, getHeight());
 
     auto* vp = findParentComponentOfClass<juce::Viewport>();
     if (vp)
         leftRect.setX(vp->getViewPositionX());
 
-    g.setColour(juce::Colour(35, 35, 48));
+    g.setColour(surface::surface);
     g.fillRect(leftRect);
 
-    g.setColour(juce::Colour(55, 55, 65));
+    g.setColour(border::strong);
     g.drawVerticalLine(leftRect.getRight() - 1, 0.0f, static_cast<float>(getHeight()));
 
     juce::String label;
@@ -249,12 +251,12 @@ void ControllerLaneComponent::drawLeftPanel(juce::Graphics& g)
         break;
     }
 
-    g.setColour(juce::Colours::white.withAlpha(0.7f));
+    g.setColour(text::t2);
     g.setFont(juce::Font(juce::FontOptions(11.0f)));
     g.drawText(label, leftRect.reduced(4, 0), juce::Justification::centred, true);
 
     g.setFont(juce::Font(juce::FontOptions(9.0f)));
-    g.setColour(juce::Colours::white.withAlpha(0.4f));
+    g.setColour(text::t3);
 
     int lx = leftRect.getX() + 2;
     int lw = leftPanelWidth - 6;
@@ -274,6 +276,7 @@ void ControllerLaneComponent::drawLeftPanel(juce::Graphics& g)
 
 void ControllerLaneComponent::drawGrid(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
@@ -284,7 +287,7 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
     if (displayMode == DisplayMode::PitchBend)
     {
         int centerY = (getDrawAreaTop() + getDrawAreaBottom()) / 2;
-        g.setColour(juce::Colours::white.withAlpha(0.15f));
+        g.setColour(border::strong);
         g.drawHorizontalLine(centerY, static_cast<float>(leftPanelWidth), static_cast<float>(getWidth()));
     }
     else if (displayMode != DisplayMode::ProgramChange)
@@ -293,7 +296,7 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
         {
             int y = valueToY(v);
             float alpha = (v == 64) ? 0.12f : 0.06f;
-            g.setColour(juce::Colours::white.withAlpha(alpha));
+            g.setColour(text::t3.withAlpha(alpha));
             g.drawHorizontalLine(y, static_cast<float>(leftPanelWidth), static_cast<float>(getWidth()));
         }
     }
@@ -315,11 +318,11 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
         auto bbt = sequence->tickToBarBeatTick(tick);
 
         if (bbt.beat == 1 && bbt.tick == 0)
-            g.setColour(juce::Colours::white.withAlpha(0.18f));
+            g.setColour(border::strong);
         else if (tick % ppq == 0)
-            g.setColour(juce::Colours::white.withAlpha(0.06f));
+            g.setColour(border::soft);
         else
-            g.setColour(juce::Colours::white.withAlpha(0.04f));
+            g.setColour(surface::hover);
 
         g.drawVerticalLine(x, static_cast<float>(getDrawAreaTop()), static_cast<float>(getDrawAreaBottom()));
     }
@@ -437,6 +440,7 @@ void ControllerLaneComponent::drawPitchBend(juce::Graphics& g)
 
 void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
@@ -490,7 +494,7 @@ void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
             if (pgm >= 0 && pgm < 128)
                 text += " " + juce::String(gmProgramNames[pgm]);
 
-            g.setColour(juce::Colours::white.withAlpha(alpha));
+            g.setColour(text::t1.withAlpha(alpha));
             auto textRect = rect.reduced(5.0f, 0.0f);
             if (textRect.getWidth() > 10.0f)
                 g.drawText(text, textRect, juce::Justification::centredLeft, true);
@@ -535,6 +539,7 @@ void ControllerLaneComponent::drawStepGraph(juce::Graphics& g, const std::vector
 
 void ControllerLaneComponent::drawPlayhead(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
@@ -542,12 +547,13 @@ void ControllerLaneComponent::drawPlayhead(juce::Graphics& g)
     if (x < leftPanelWidth)
         return;
 
-    g.setColour(juce::Colours::white.withAlpha(0.8f));
+    g.setColour(text::t1);
     g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
 }
 
 void ControllerLaneComponent::drawLoopRegion(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence || loopEndTick <= loopStartTick)
         return;
 
@@ -558,11 +564,10 @@ void ControllerLaneComponent::drawLoopRegion(juce::Graphics& g)
     if (x2 < clip.getX() || x1 > clip.getRight())
         return;
 
-    g.setColour(loopEnabled ? juce::Colour(60, 120, 200).withAlpha(0.08f)
-                            : juce::Colour(130, 130, 140).withAlpha(0.04f));
+    g.setColour(loopEnabled ? accent::soft : surface::hover);
     g.fillRect(x1, 0, x2 - x1, getHeight());
 
-    g.setColour(loopEnabled ? juce::Colour(80, 160, 255).withAlpha(0.7f) : juce::Colour(150, 150, 160).withAlpha(0.5f));
+    g.setColour(loopEnabled ? accent::base.withAlpha(0.7f) : text::t4);
     g.drawVerticalLine(x1, 0.0f, static_cast<float>(getHeight()));
     g.drawVerticalLine(x2, 0.0f, static_cast<float>(getHeight()));
 }

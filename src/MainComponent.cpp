@@ -2,12 +2,14 @@
 #include "AppProperties.h"
 #include "io/MidiFileIO.h"
 #include "model/UndoActions.h"
+#include "ui/Theme.h"
 
 void MainComponent::Divider::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colour(50, 50, 65));
+    using namespace calliope::theme;
+    g.setColour(border::strong);
     g.fillRect(getLocalBounds());
-    g.setColour(juce::Colour(80, 80, 95));
+    g.setColour(text::t4);
     auto cy = getHeight() / 2.0f;
     auto cx = getWidth() / 2.0f;
     for (float d : {-12.0f, -4.0f, 4.0f, 12.0f})
@@ -34,14 +36,15 @@ void MainComponent::Divider::mouseDrag(const juce::MouseEvent& e)
 
 void MainComponent::ZoomStrip::paint(juce::Graphics& g)
 {
-    g.setColour(juce::Colour(30, 30, 42));
+    using namespace calliope::theme;
+    g.setColour(surface::bg2);
     g.fillRect(getLocalBounds());
 
     auto drawSymbol = [&](const juce::Rectangle<int>& bounds, bool isMinus)
     {
         bool hover = bounds.contains(getMouseXYRelative());
         float alpha = hover ? 0.9f : 0.5f;
-        g.setColour(juce::Colours::white.withAlpha(alpha));
+        g.setColour(text::t1.withAlpha(alpha));
         auto cx = bounds.getCentreX();
         auto cy = bounds.getCentreY();
         int halfLen = 4;
@@ -82,13 +85,14 @@ void MainComponent::ZoomStrip::mouseUp(const juce::MouseEvent& e)
 
 void MainComponent::TransportButton::paint(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     auto bounds = getLocalBounds().toFloat();
     bool hover = isMouseOver();
     float alpha = hover ? 1.0f : 0.65f;
 
     if (type == ReturnToStart)
     {
-        g.setColour(juce::Colours::white.withAlpha(alpha * 0.7f));
+        g.setColour(text::t2.withAlpha(alpha));
         auto h = bounds.getHeight() * 0.45f;
         auto w = h * 0.55f;
         auto cx = bounds.getCentreX();
@@ -101,13 +105,13 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
     }
     else if (type == Stop)
     {
-        g.setColour(juce::Colours::white.withAlpha(alpha * 0.7f));
+        g.setColour(text::t2.withAlpha(alpha));
         auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) * 0.42f;
         g.fillRoundedRectangle(bounds.withSizeKeepingCentre(size, size), 2.0f);
     }
     else if (type == Play)
     {
-        auto colour = active ? juce::Colour(0xff00c853) : juce::Colours::white;
+        auto colour = active ? accent::base : text::t1;
         g.setColour(colour.withAlpha(active ? 1.0f : alpha));
         auto h = bounds.getHeight() * 0.5f;
         auto w = h * 0.85f;
@@ -119,7 +123,7 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
     }
     else if (type == Loop)
     {
-        auto colour = active ? juce::Colour(80, 160, 255) : juce::Colours::white;
+        auto colour = active ? accent::base : text::t1;
         g.setColour(colour.withAlpha(active ? 1.0f : alpha * 0.7f));
         auto cx = bounds.getCentreX();
         auto cy = bounds.getCentreY();
@@ -165,21 +169,22 @@ void MainComponent::TransportButton::mouseUp(const juce::MouseEvent& e)
 
 void MainComponent::ToolButton::paint(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     auto bounds = getLocalBounds().toFloat();
     bool hover = isMouseOver();
 
     if (active)
     {
-        g.setColour(juce::Colour(60, 100, 200).withAlpha(0.4f));
+        g.setColour(accent::soft);
         g.fillRoundedRectangle(bounds.reduced(1.0f), 4.0f);
     }
     else if (hover)
     {
-        g.setColour(juce::Colours::white.withAlpha(0.08f));
+        g.setColour(surface::hover);
         g.fillRoundedRectangle(bounds.reduced(1.0f), 4.0f);
     }
 
-    auto iconColour = active ? juce::Colour(130, 170, 255) : juce::Colours::white.withAlpha(hover ? 0.85f : 0.55f);
+    auto iconColour = active ? accent::base : text::t2.withAlpha(hover ? 0.85f : 0.55f);
     g.setColour(iconColour);
 
     float cx = bounds.getCentreX();
@@ -682,7 +687,8 @@ MainComponent::MainComponent()
         controllerLane.setLoopRegion(enabled, startTick, endTick);
     };
 
-    auto headerColour = juce::Colour(0xff8888aa);
+    using namespace calliope::theme;
+    auto headerColour = text::t3;
     auto headerFont = juce::Font(juce::FontOptions(12.0f));
 
     for (auto* label : {&positionHeaderLabel, &timeSigHeaderLabel, &keyHeaderLabel, &tempoHeaderLabel})
@@ -695,14 +701,14 @@ MainComponent::MainComponent()
 
     addAndMakeVisible(positionLabel);
     positionLabel.setFont(juce::Font(juce::FontOptions(28.0f)));
-    positionLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+    positionLabel.setColour(juce::Label::textColourId, text::t1);
     positionLabel.setJustificationType(juce::Justification::centred);
 
     for (auto* label : {&timeSigValueLabel, &keyValueLabel, &tempoValueLabel})
     {
         addAndMakeVisible(label);
         label->setFont(juce::Font(juce::FontOptions(24.0f)));
-        label->setColour(juce::Label::textColourId, juce::Colours::white);
+        label->setColour(juce::Label::textColourId, text::t1);
         label->setJustificationType(juce::Justification::centred);
     }
 
@@ -1127,22 +1133,23 @@ bool MainComponent::perform(const InvocationInfo& info)
 
 void MainComponent::paint(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
-    g.setColour(juce::Colour(0xff1c1c2c));
+    g.setColour(surface::surface);
     g.fillRect(0, menuBarHeight, getWidth(), transportBarHeight);
 
     int toolBarTop = menuBarHeight + transportBarHeight;
-    g.setColour(juce::Colour(38, 38, 48));
+    g.setColour(surface::surface2);
     g.fillRect(0, toolBarTop, getWidth(), toolBarHeight);
-    g.setColour(juce::Colour(55, 55, 65));
+    g.setColour(border::strong);
     g.drawHorizontalLine(toolBarTop + toolBarHeight - 1, 0.0f, static_cast<float>(getWidth()));
 
     if (fileDragOver)
     {
-        g.setColour(juce::Colours::white.withAlpha(0.1f));
+        g.setColour(surface::press);
         g.fillRect(getLocalBounds());
-        g.setColour(juce::Colours::dodgerblue);
+        g.setColour(accent::base);
         g.drawRect(getLocalBounds(), 2);
     }
 }
