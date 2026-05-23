@@ -252,10 +252,10 @@ void ControllerLaneComponent::drawLeftPanel(juce::Graphics& g)
     }
 
     g.setColour(text::t2);
-    g.setFont(juce::Font(juce::FontOptions(11.0f)));
+    g.setFont(font::sans(font::sizeSM));
     g.drawText(label, leftRect.reduced(4, 0), juce::Justification::centred, true);
 
-    g.setFont(juce::Font(juce::FontOptions(9.0f)));
+    g.setFont(font::sans(font::size2XS));
     g.setColour(text::t3);
 
     int lx = leftRect.getX() + 2;
@@ -471,7 +471,7 @@ void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
             continue;
 
         auto colour = TrackColours::getColour(trackIdx);
-        g.setFont(juce::Font(juce::FontOptions(11.0f)));
+        g.setFont(font::sans(font::sizeSM));
 
         for (size_t i = 0; i < events.size(); ++i)
         {

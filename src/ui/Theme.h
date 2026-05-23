@@ -70,11 +70,13 @@ const juce::Colour danger{0xfff14d4c};
 
 namespace font
 {
+constexpr float size2XS = 9.0f;
 constexpr float sizeXS = 10.0f;
 constexpr float sizeSM = 11.0f;
 constexpr float sizeMD = 12.0f;
 constexpr float sizeLG = 12.5f;
 constexpr float sizeXL = 14.0f;
+constexpr float sizeDisplay = 24.0f;
 
 inline juce::Font sans(float pt = sizeMD)
 {
