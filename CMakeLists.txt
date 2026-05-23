@@ -11,6 +11,14 @@ juce_add_gui_app(Calliope
     PRODUCT_NAME "Calliope"
 )
 
+juce_add_binary_data(CalliopeData
+    SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/NotoSans-Regular.ttf
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/NotoSans-Bold.ttf
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/Inconsolata-Regular.ttf
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/Inconsolata-Bold.ttf
+)
+
 target_sources(Calliope PRIVATE
     src/Main.cpp
     src/MainComponent.cpp
@@ -34,6 +42,7 @@ target_compile_definitions(Calliope PRIVATE
 )
 
 target_link_libraries(Calliope PRIVATE
+    CalliopeData
     juce::juce_audio_basics
     juce::juce_audio_devices
     juce::juce_audio_processors
