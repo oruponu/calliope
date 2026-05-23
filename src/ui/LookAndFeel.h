@@ -1,7 +1,6 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "Theme.h"
 
 namespace calliope
 {
@@ -11,12 +10,11 @@ public:
     LookAndFeel();
     ~LookAndFeel() override = default;
 
+    juce::Typeface::Ptr getTypefaceForFont(const juce::Font&) override;
+
     juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override;
     juce::Font getLabelFont(juce::Label&) override;
     juce::Font getPopupMenuFont() override;
-
-    static juce::Font monoFont(float pt = theme::font::sizeMD);
-    static juce::Font sansFont(float pt = theme::font::sizeMD, int styleFlags = juce::Font::plain);
 
     void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
                               bool isMouseOverButton, bool isButtonDown) override;
@@ -35,5 +33,10 @@ public:
 
 private:
     void applyColourPalette();
+
+    juce::Typeface::Ptr sansRegular;
+    juce::Typeface::Ptr sansBold;
+    juce::Typeface::Ptr mono;
+    juce::Typeface::Ptr monoBold;
 };
 } // namespace calliope
