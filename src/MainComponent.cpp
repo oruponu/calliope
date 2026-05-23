@@ -689,7 +689,7 @@ MainComponent::MainComponent()
 
     using namespace calliope::theme;
     auto headerColour = text::t3;
-    auto headerFont = juce::Font(juce::FontOptions(12.0f));
+    auto headerFont = font::sans(font::sizeXS);
 
     for (auto* label : {&positionHeaderLabel, &timeSigHeaderLabel, &keyHeaderLabel, &tempoHeaderLabel})
     {
@@ -700,14 +700,14 @@ MainComponent::MainComponent()
     }
 
     addAndMakeVisible(positionLabel);
-    positionLabel.setFont(juce::Font(juce::FontOptions(28.0f)));
+    positionLabel.setFont(font::mono(font::sizeDisplay).boldened());
     positionLabel.setColour(juce::Label::textColourId, text::t1);
     positionLabel.setJustificationType(juce::Justification::centred);
 
     for (auto* label : {&timeSigValueLabel, &keyValueLabel, &tempoValueLabel})
     {
         addAndMakeVisible(label);
-        label->setFont(juce::Font(juce::FontOptions(24.0f)));
+        label->setFont(font::mono(font::sizeDisplay).boldened());
         label->setColour(juce::Label::textColourId, text::t1);
         label->setJustificationType(juce::Justification::centred);
     }

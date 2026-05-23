@@ -672,7 +672,7 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
     }
 
     g.setColour(border::strong);
-    g.setFont(10.0f);
+    g.setFont(font::sans(font::sizeXS));
     for (int oct = minOctave; oct <= maxOctave; ++oct)
     {
         int base = oct * 12;
@@ -825,7 +825,7 @@ void PianoRollComponent::drawRuler(juce::Graphics& g)
                     if (isBar)
                     {
                         g.setColour(text::t2);
-                        g.setFont(11.0f);
+                        g.setFont(font::sans(font::sizeSM));
                         g.drawText(juce::String(barNumber), x + 4, hTop + 2, 30, rulerHeight - 4,
                                    juce::Justification::centredLeft);
                     }
@@ -891,7 +891,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
     if (tempoChanges.empty())
     {
         g.setColour(accent::base);
-        g.setFont(9.0f);
+        g.setFont(font::sans(font::size2XS));
         g.drawText("120.00", kbLeft + keyboardWidth + 4, tTop, 60, tempoTrackHeight, juce::Justification::centredLeft);
     }
     else
@@ -956,7 +956,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 
             if (startX + 4 >= visibleLeft - 60 && startX <= visibleRight)
             {
-                g.setFont(9.0f);
+                g.setFont(font::sans(font::size2XS));
                 int textH = 12;
                 float midY = static_cast<float>(tTop) + tempoTrackHeight * 0.5f;
                 int textY;
@@ -982,7 +982,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
     g.restoreState();
 
     g.setColour(text::t3);
-    g.setFont(10.0f);
+    g.setFont(font::sans(font::sizeXS));
     g.drawText("Tempo", kbLeft + 4, tTop, keyboardWidth - 8, tempoTrackHeight, juce::Justification::centredLeft);
 
     g.setColour(border::normal);
@@ -1020,7 +1020,7 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
     if (tsChanges.empty())
     {
         g.setColour(track::teal);
-        g.setFont(11.0f);
+        g.setFont(font::sans(font::sizeSM));
         g.drawText("4/4", kbLeft + keyboardWidth + 4, tsTop, 40, timeSignatureTrackHeight,
                    juce::Justification::centredLeft);
     }
@@ -1049,7 +1049,7 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
             if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
             {
                 g.setColour(tsColour);
-                g.setFont(11.0f);
+                g.setFont(font::sans(font::sizeSM));
                 juce::String label =
                     juce::String(tsChanges[i].numerator) + "/" + juce::String(tsChanges[i].denominator);
                 int textX = (i == 0 && tsChanges[i].tick == 0) ? kbLeft + keyboardWidth + 4 : x + 4;
@@ -1070,7 +1070,7 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
     g.restoreState();
 
     g.setColour(text::t3);
-    g.setFont(10.0f);
+    g.setFont(font::sans(font::sizeXS));
     g.drawText("Time Sig", kbLeft + 4, tsTop, keyboardWidth - 8, timeSignatureTrackHeight,
                juce::Justification::centredLeft);
 
@@ -1110,7 +1110,7 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
     if (ksChanges.empty())
     {
         g.setColour(track::sand);
-        g.setFont(11.0f);
+        g.setFont(font::sans(font::sizeSM));
         g.drawText("C", kbLeft + keyboardWidth + 4, ksTop, 40, keySignatureTrackHeight,
                    juce::Justification::centredLeft);
     }
@@ -1139,7 +1139,7 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
             if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
             {
                 g.setColour(ksColour);
-                g.setFont(11.0f);
+                g.setFont(font::sans(font::sizeSM));
                 juce::String label =
                     juce::String(MidiSequence::keySignatureToString(ksChanges[i].sharpsOrFlats, ksChanges[i].isMinor));
                 int textX = (i == 0 && ksChanges[i].tick == 0) ? kbLeft + keyboardWidth + 4 : x + 4;
@@ -1160,7 +1160,7 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
     g.restoreState();
 
     g.setColour(text::t3);
-    g.setFont(10.0f);
+    g.setFont(font::sans(font::sizeXS));
     g.drawText("Key", kbLeft + 4, ksTop, keyboardWidth - 8, keySignatureTrackHeight, juce::Justification::centredLeft);
 
     g.setColour(border::normal);
@@ -1226,7 +1226,7 @@ void PianoRollComponent::drawChordTrack(juce::Graphics& g)
             if (textWidth > 8)
             {
                 g.setColour(chordColour);
-                g.setFont(11.0f);
+                g.setFont(font::sans(font::sizeSM));
                 g.drawText(juce::String(label), textX, ctTop, textWidth, chordTrackHeight,
                            juce::Justification::centredLeft);
             }
@@ -1245,7 +1245,7 @@ void PianoRollComponent::drawChordTrack(juce::Graphics& g)
     g.restoreState();
 
     g.setColour(text::t3);
-    g.setFont(10.0f);
+    g.setFont(font::sans(font::sizeXS));
     g.drawText("Chord", kbLeft + 4, ctTop, keyboardWidth - 8, chordTrackHeight, juce::Justification::centredLeft);
 
     g.setColour(border::normal);
