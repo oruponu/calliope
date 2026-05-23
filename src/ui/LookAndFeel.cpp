@@ -1,4 +1,6 @@
 #include "LookAndFeel.h"
+#include "Theme.h"
+#include "BinaryData.h"
 
 namespace calliope
 {
@@ -7,6 +9,13 @@ namespace t = theme;
 
 LookAndFeel::LookAndFeel()
 {
+    sansRegular =
+        Typeface::createSystemTypefaceFor(BinaryData::NotoSansRegular_ttf, BinaryData::NotoSansRegular_ttfSize);
+    sansBold = Typeface::createSystemTypefaceFor(BinaryData::NotoSansBold_ttf, BinaryData::NotoSansBold_ttfSize);
+    mono =
+        Typeface::createSystemTypefaceFor(BinaryData::InconsolataRegular_ttf, BinaryData::InconsolataRegular_ttfSize);
+    monoBold = Typeface::createSystemTypefaceFor(BinaryData::InconsolataBold_ttf, BinaryData::InconsolataBold_ttfSize);
+
     applyColourPalette();
 }
 
@@ -69,19 +78,22 @@ void LookAndFeel::applyColourPalette()
     setColour(TooltipWindow::outlineColourId, t::border::normal);
 }
 
-Font LookAndFeel::sansFont(float pt, int styleFlags)
+Typeface::Ptr LookAndFeel::getTypefaceForFont(const Font& font)
 {
-    return Font(FontOptions(Font::getDefaultSansSerifFontName(), pt, styleFlags));
-}
+    const auto name = font.getTypefaceName();
 
-Font LookAndFeel::monoFont(float pt)
-{
-    return Font(FontOptions(Font::getDefaultMonospacedFontName(), pt, Font::plain));
+    if (name == Font::getDefaultMonospacedFontName())
+        return font.isBold() ? monoBold : mono;
+
+    if (name == Font::getDefaultSansSerifFontName())
+        return font.isBold() ? sansBold : sansRegular;
+
+    return LookAndFeel_V4::getTypefaceForFont(font);
 }
 
 Font LookAndFeel::getTextButtonFont(TextButton&, int)
 {
-    return sansFont(t::font::sizeMD);
+    return t::font::sans(t::font::sizeMD);
 }
 
 Font LookAndFeel::getLabelFont(Label& label)
@@ -91,7 +103,7 @@ Font LookAndFeel::getLabelFont(Label& label)
 
 Font LookAndFeel::getPopupMenuFont()
 {
-    return sansFont(16.0f);
+    return t::font::sans(t::font::sizeMD);
 }
 
 void LookAndFeel::drawButtonBackground(Graphics& g, Button& b, const Colour& backgroundColour, bool isMouseOver,
@@ -175,7 +187,7 @@ void LookAndFeel::drawPopupMenuItem(Graphics& g, const Rectangle<int>& area, boo
     else if (shortcutKeyText.isNotEmpty())
     {
         g.setColour(t::text::t3);
-        g.setFont(monoFont(t::font::sizeXS));
+        g.setFont(t::font::mono(t::font::sizeXS));
         g.drawFittedText(shortcutKeyText, textArea, Justification::centredRight, 1);
     }
 

@@ -75,6 +75,16 @@ constexpr float sizeSM = 11.0f;
 constexpr float sizeMD = 12.0f;
 constexpr float sizeLG = 12.5f;
 constexpr float sizeXL = 14.0f;
+
+inline juce::Font sans(float pt = sizeMD)
+{
+    return juce::Font(juce::FontOptions().withPointHeight(pt));
+}
+
+inline juce::Font mono(float pt = sizeMD)
+{
+    return juce::Font(juce::FontOptions().withName(juce::Font::getDefaultMonospacedFontName()).withPointHeight(pt));
+}
 } // namespace font
 
 namespace radius
