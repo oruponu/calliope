@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
 project(Calliope VERSION 0.1.0)
 
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 add_subdirectory(JUCE)
 
 juce_add_gui_app(Calliope
