@@ -77,7 +77,8 @@ void TrackListComponent::notifySelectionChanged()
 
 void TrackListComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(30, 30, 38));
+    using namespace calliope::theme;
+    g.fillAll(surface::bg2);
 
     if (!sequence)
         return;
@@ -89,20 +90,21 @@ void TrackListComponent::paint(juce::Graphics& g)
 
         auto rowBounds = juce::Rectangle<int>(0, y, getWidth(), trackRowHeight);
 
-        if (i == activeTrackIndex)
-            g.setColour(juce::Colour(55, 55, 70));
-        else if (selectedTrackIndices.count(i) > 0)
-            g.setColour(juce::Colour(48, 48, 60));
-        else
-            g.setColour(juce::Colour(40, 40, 48));
+        bool isSelected = selectedTrackIndices.count(i) > 0;
+        g.setColour(isSelected ? surface::surface2 : surface::surface);
         g.fillRect(rowBounds);
+        if (i == activeTrackIndex)
+        {
+            g.setColour(accent::soft);
+            g.fillRect(rowBounds);
+        }
 
         g.setColour(TrackColours::getColour(i));
         g.fillRect(0, y, 4, trackRowHeight);
 
         if (i != editingRow)
         {
-            g.setColour(juce::Colours::white);
+            g.setColour(text::t1);
             g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
             juce::String trackLabel =
                 track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
@@ -112,9 +114,9 @@ void TrackListComponent::paint(juce::Graphics& g)
         auto pluginBounds = getPluginLabelBounds(i);
 
         auto channelBounds = getChannelLabelBounds(i);
-        g.setColour(juce::Colour(50, 50, 60));
+        g.setColour(border::normal);
         g.fillRoundedRectangle(channelBounds.toFloat(), 3.0f);
-        g.setColour(juce::Colour(200, 200, 230));
+        g.setColour(text::t1);
         g.setFont(juce::Font(juce::FontOptions(11.0f)));
         g.drawText("Ch:" + juce::String(track.getChannel()), channelBounds, juce::Justification::centred);
 
@@ -161,49 +163,49 @@ void TrackListComponent::paint(juce::Graphics& g)
             labelActive = false;
             break;
         }
-        g.setColour(juce::Colour(50, 50, 60));
+        g.setColour(border::normal);
         g.fillRoundedRectangle(pluginBounds.toFloat(), 3.0f);
-        g.setColour(labelActive ? juce::Colour(200, 200, 230) : juce::Colour(120, 120, 140));
+        g.setColour(labelActive ? text::t1 : text::t3);
         g.drawText(labelText, pluginBounds.reduced(4, 0), juce::Justification::centredLeft);
 
         auto muteBounds = getMuteButtonBounds(i);
         if (track.isMuted())
-            g.setColour(juce::Colour(180, 60, 60));
+            g.setColour(status::danger);
         else
-            g.setColour(juce::Colour(60, 60, 70));
+            g.setColour(border::strong);
         g.fillRoundedRectangle(muteBounds.toFloat(), 3.0f);
-        g.setColour(track.isMuted() ? juce::Colours::white : juce::Colour(140, 140, 160));
+        g.setColour(track.isMuted() ? text::t1 : text::t3);
         g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
         g.drawText("M", muteBounds, juce::Justification::centred);
 
         auto soloBounds = getSoloButtonBounds(i);
         if (track.isSolo())
-            g.setColour(juce::Colour(200, 180, 60));
+            g.setColour(status::warn);
         else
-            g.setColour(juce::Colour(60, 60, 70));
+            g.setColour(border::strong);
         g.fillRoundedRectangle(soloBounds.toFloat(), 3.0f);
-        g.setColour(track.isSolo() ? juce::Colour(30, 30, 30) : juce::Colour(140, 140, 160));
+        g.setColour(track.isSolo() ? surface::bg : text::t3);
         g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
         g.drawText("S", soloBounds, juce::Justification::centred);
 
         auto editorBounds = getEditorButtonBounds(i);
-        g.setColour(juce::Colour(60, 60, 70));
+        g.setColour(border::strong);
         g.fillRoundedRectangle(editorBounds.toFloat(), 3.0f);
-        g.setColour(pluginName.isEmpty() ? juce::Colour(140, 140, 160) : juce::Colours::white);
+        g.setColour(pluginName.isEmpty() ? text::t3 : text::t1);
         g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
         g.drawText("e", editorBounds, juce::Justification::centred);
 
-        g.setColour(juce::Colour(60, 60, 70));
+        g.setColour(border::strong);
         g.drawHorizontalLine(y + trackRowHeight - 1, 0.0f, static_cast<float>(getWidth()));
     }
 
     auto addBounds = getAddButtonBounds();
-    g.setColour(juce::Colour(34, 34, 42));
+    g.setColour(surface::surface);
     g.fillRect(addBounds);
-    g.setColour(juce::Colour(160, 160, 180));
+    g.setColour(text::t2);
     g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
     g.drawText("+ Add Track", addBounds, juce::Justification::centred);
-    g.setColour(juce::Colour(60, 60, 70));
+    g.setColour(border::strong);
     g.drawHorizontalLine(addBounds.getY(), 0.0f, static_cast<float>(getWidth()));
 }
 

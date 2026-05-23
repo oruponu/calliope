@@ -114,12 +114,13 @@ std::vector<PianoRollComponent::NoteRef> PianoRollComponent::findNotesInRect(con
 
 void PianoRollComponent::drawRubberBand(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (dragMode != DragMode::RubberBand || rubberBandRect.isEmpty())
         return;
 
-    g.setColour(juce::Colour(100, 150, 255).withAlpha(0.15f));
+    g.setColour(accent::soft);
     g.fillRect(rubberBandRect);
-    g.setColour(juce::Colour(100, 150, 255).withAlpha(0.6f));
+    g.setColour(accent::base.withAlpha(0.6f));
     g.drawRect(rubberBandRect, 1);
 }
 
@@ -247,7 +248,8 @@ void PianoRollComponent::setPlayheadTick(double tick)
 
 void PianoRollComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(30, 30, 30));
+    using namespace calliope::theme;
+    g.fillAll(surface::surface);
     drawGrid(g);
     drawLoopRegion(g);
     drawNotes(g);
@@ -627,19 +629,20 @@ void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::M
 
 void PianoRollComponent::drawKeyboard(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     int kbLeft = getKeyboardLeft();
     int blackKeyW = keyboardWidth * 55 / 100;
 
     auto clip = g.getClipBounds();
 
-    g.setColour(juce::Colour(235, 235, 235));
+    g.setColour(text::t1);
     g.fillRect(kbLeft, clip.getY(), keyboardWidth, clip.getHeight());
 
     double whiteKeyH = 12.0 * noteHeight / 7.0;
     int minOctave = std::max(0, yToNote(clip.getBottom())) / 12;
     int maxOctave = std::min(totalNotes - 1, yToNote(clip.getY())) / 12;
 
-    g.setColour(juce::Colour(180, 180, 180));
+    g.setColour(text::t2);
     for (int oct = minOctave; oct <= maxOctave; ++oct)
     {
         double octBottom = static_cast<double>(noteToY(oct * 12) + noteHeight);
@@ -663,12 +666,12 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
             if (bkTop + bkH < clip.getY() || bkTop > clip.getBottom())
                 continue;
 
-            g.setColour(juce::Colour(25, 25, 25));
+            g.setColour(surface::bg);
             g.fillRect(kbLeft, bkTop, blackKeyW, bkH);
         }
     }
 
-    g.setColour(juce::Colour(80, 80, 80));
+    g.setColour(border::strong);
     g.setFont(10.0f);
     for (int oct = minOctave; oct <= maxOctave; ++oct)
     {
@@ -687,7 +690,7 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
         {
             double centerY = noteToY(pn) + noteHeight / 2.0;
             int bkTop = static_cast<int>(centerY - bkH / 2.0);
-            g.setColour(juce::Colour(100, 160, 255).withAlpha(0.5f));
+            g.setColour(accent::base.withAlpha(0.5f));
             g.fillRect(kbLeft, bkTop, blackKeyW, bkH);
         }
         else
@@ -700,26 +703,27 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
                 double octBottom = static_cast<double>(noteToY(oct * 12) + noteHeight);
                 int wkTop = static_cast<int>(octBottom - (wk + 1) * whiteKeyH + 0.5);
                 int wkBottom = static_cast<int>(octBottom - wk * whiteKeyH + 0.5);
-                g.setColour(juce::Colour(100, 160, 255).withAlpha(0.3f));
+                g.setColour(accent::base.withAlpha(0.3f));
                 g.fillRect(kbLeft, wkTop, keyboardWidth, wkBottom - wkTop);
             }
         }
     }
 
-    g.setColour(juce::Colour(60, 60, 60));
+    g.setColour(border::normal);
     g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(clip.getY()),
                        static_cast<float>(clip.getBottom()));
 }
 
 void PianoRollComponent::drawLoopBar(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
     int lbTop = getRulerTop();
     int kbLeft = getKeyboardLeft();
 
-    g.setColour(juce::Colour(35, 35, 42));
+    g.setColour(surface::bg2);
     g.fillRect(kbLeft, lbTop, getWidth() - kbLeft, loopBarHeight);
 
     g.saveState();
@@ -730,10 +734,8 @@ void PianoRollComponent::drawLoopBar(juce::Graphics& g)
         float lx1 = static_cast<float>(tickToX(loopStartTick));
         float lx2 = static_cast<float>(tickToX(loopEndTick));
 
-        auto fillColour =
-            loopEnabled ? juce::Colour(60, 130, 220).withAlpha(0.6f) : juce::Colour(130, 130, 140).withAlpha(0.4f);
-        auto edgeColour =
-            loopEnabled ? juce::Colour(100, 170, 255).withAlpha(0.9f) : juce::Colour(160, 160, 170).withAlpha(0.7f);
+        auto fillColour = loopEnabled ? accent::soft : surface::hover;
+        auto edgeColour = loopEnabled ? accent::base : text::t4;
 
         g.setColour(fillColour);
         g.fillRoundedRectangle(lx1, static_cast<float>(lbTop + 2), lx2 - lx1 + 1.0f,
@@ -747,18 +749,19 @@ void PianoRollComponent::drawLoopBar(juce::Graphics& g)
     float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
     if (phX >= static_cast<float>(kbLeft + keyboardWidth) && phX <= static_cast<float>(getWidth()))
     {
-        g.setColour(juce::Colours::white);
+        g.setColour(text::t1);
         g.drawLine(phX, static_cast<float>(lbTop), phX, static_cast<float>(lbTop + loopBarHeight), 1.0f);
     }
 
     g.restoreState();
 
-    g.setColour(juce::Colour(50, 50, 58));
+    g.setColour(border::normal);
     g.drawHorizontalLine(lbTop + loopBarHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawRuler(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
@@ -769,7 +772,7 @@ void PianoRollComponent::drawRuler(juce::Graphics& g)
     int visibleLeft = clip.getX();
     int visibleRight = clip.getRight();
 
-    g.setColour(juce::Colour(50, 50, 55));
+    g.setColour(border::normal);
     g.fillRect(kbLeft, hTop, getWidth() - kbLeft, rulerHeight);
 
     g.saveState();
@@ -810,18 +813,18 @@ void PianoRollComponent::drawRuler(juce::Graphics& g)
                 int x = tickToX(subTick);
                 if (x > visibleRight)
                     break;
-                if (x < visibleLeft - 30) // 小節番号のテキスト幅
+                if (x < visibleLeft - 30)
                     continue;
 
                 if (sub == 0)
                 {
                     bool isBar = (beat == 0);
-                    g.setColour(isBar ? juce::Colour(90, 90, 100) : juce::Colour(60, 60, 65));
+                    g.setColour(isBar ? border::strong : border::normal);
                     g.drawVerticalLine(x, static_cast<float>(hTop), static_cast<float>(hTop + rulerHeight));
 
                     if (isBar)
                     {
-                        g.setColour(juce::Colour(180, 180, 190));
+                        g.setColour(text::t2);
                         g.setFont(11.0f);
                         g.drawText(juce::String(barNumber), x + 4, hTop + 2, 30, rulerHeight - 4,
                                    juce::Justification::centredLeft);
@@ -829,7 +832,7 @@ void PianoRollComponent::drawRuler(juce::Graphics& g)
                 }
                 else
                 {
-                    g.setColour(juce::Colour(55, 55, 60));
+                    g.setColour(border::soft);
                     int tickH = rulerHeight / 3;
                     g.drawVerticalLine(x, static_cast<float>(hTop + rulerHeight - tickH),
                                        static_cast<float>(hTop + rulerHeight));
@@ -846,7 +849,7 @@ void PianoRollComponent::drawRuler(juce::Graphics& g)
                     : static_cast<float>(keyboardWidth);
     if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
     {
-        g.setColour(juce::Colours::white);
+        g.setColour(text::t1);
         g.drawLine(phX, static_cast<float>(hTop), phX, static_cast<float>(hTop + rulerHeight), 1.0f);
     }
 
@@ -854,15 +857,16 @@ void PianoRollComponent::drawRuler(juce::Graphics& g)
 
     g.restoreState();
 
-    g.setColour(juce::Colour(60, 60, 60));
+    g.setColour(border::normal);
     g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(hTop), static_cast<float>(hTop + rulerHeight));
 
-    g.setColour(juce::Colour(70, 70, 80));
+    g.setColour(border::strong);
     g.drawHorizontalLine(hTop + rulerHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
@@ -874,7 +878,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
     int visibleLeft = clip.getX();
     int visibleRight = clip.getRight();
 
-    g.setColour(juce::Colour(40, 42, 48));
+    g.setColour(surface::surface2);
     g.fillRect(kbLeft, tTop, getWidth() - kbLeft, tempoTrackHeight);
 
     g.saveState();
@@ -886,7 +890,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
     const auto& tempoChanges = sequence->getTempoChanges();
     if (tempoChanges.empty())
     {
-        g.setColour(juce::Colour(220, 160, 60));
+        g.setColour(accent::base);
         g.setFont(9.0f);
         g.drawText("120.00", kbLeft + keyboardWidth + 4, tTop, 60, tempoTrackHeight, juce::Justification::centredLeft);
     }
@@ -925,7 +929,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
             return static_cast<float>(graphBottom - normalized * graphHeight);
         };
 
-        juce::Colour amberColour(220, 160, 60);
+        juce::Colour amberColour = accent::base;
         g.setColour(amberColour);
 
         int totalTicks = xToTick(getWidth());
@@ -969,7 +973,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
     float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
     if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
     {
-        g.setColour(juce::Colours::white);
+        g.setColour(text::t1);
         g.drawLine(phX, static_cast<float>(tTop), phX, static_cast<float>(tTop + tempoTrackHeight), 1.0f);
     }
 
@@ -977,20 +981,21 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 
     g.restoreState();
 
-    g.setColour(juce::Colour(160, 160, 170));
+    g.setColour(text::t3);
     g.setFont(10.0f);
     g.drawText("Tempo", kbLeft + 4, tTop, keyboardWidth - 8, tempoTrackHeight, juce::Justification::centredLeft);
 
-    g.setColour(juce::Colour(60, 60, 60));
+    g.setColour(border::normal);
     g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(tTop),
                        static_cast<float>(tTop + tempoTrackHeight));
 
-    g.setColour(juce::Colour(60, 62, 70));
+    g.setColour(border::strong);
     g.drawHorizontalLine(tTop + tempoTrackHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
@@ -1002,7 +1007,7 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
     int visibleLeft = clip.getX();
     int visibleRight = clip.getRight();
 
-    g.setColour(juce::Colour(40, 42, 48));
+    g.setColour(surface::surface2);
     g.fillRect(kbLeft, tsTop, getWidth() - kbLeft, timeSignatureTrackHeight);
 
     g.saveState();
@@ -1014,14 +1019,14 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
     const auto& tsChanges = sequence->getTimeSignatureChanges();
     if (tsChanges.empty())
     {
-        g.setColour(juce::Colour(100, 180, 220));
+        g.setColour(track::teal);
         g.setFont(11.0f);
         g.drawText("4/4", kbLeft + keyboardWidth + 4, tsTop, 40, timeSignatureTrackHeight,
                    juce::Justification::centredLeft);
     }
     else
     {
-        juce::Colour tsColour(100, 180, 220);
+        juce::Colour tsColour = track::teal;
 
         for (size_t i = 0; i < tsChanges.size(); ++i)
         {
@@ -1056,7 +1061,7 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
     float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
     if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
     {
-        g.setColour(juce::Colours::white);
+        g.setColour(text::t1);
         g.drawLine(phX, static_cast<float>(tsTop), phX, static_cast<float>(tsTop + timeSignatureTrackHeight), 1.0f);
     }
 
@@ -1064,22 +1069,23 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
 
     g.restoreState();
 
-    g.setColour(juce::Colour(160, 160, 170));
+    g.setColour(text::t3);
     g.setFont(10.0f);
     g.drawText("Time Sig", kbLeft + 4, tsTop, keyboardWidth - 8, timeSignatureTrackHeight,
                juce::Justification::centredLeft);
 
-    g.setColour(juce::Colour(60, 60, 60));
+    g.setColour(border::normal);
     g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(tsTop),
                        static_cast<float>(tsTop + timeSignatureTrackHeight));
 
-    g.setColour(juce::Colour(60, 62, 70));
+    g.setColour(border::strong);
     g.drawHorizontalLine(tsTop + timeSignatureTrackHeight - 1, static_cast<float>(kbLeft),
                          static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
@@ -1091,7 +1097,7 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
     int visibleLeft = clip.getX();
     int visibleRight = clip.getRight();
 
-    g.setColour(juce::Colour(40, 42, 48));
+    g.setColour(surface::surface2);
     g.fillRect(kbLeft, ksTop, getWidth() - kbLeft, keySignatureTrackHeight);
 
     g.saveState();
@@ -1103,14 +1109,14 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
     const auto& ksChanges = sequence->getKeySignatureChanges();
     if (ksChanges.empty())
     {
-        g.setColour(juce::Colour(180, 160, 100));
+        g.setColour(track::sand);
         g.setFont(11.0f);
         g.drawText("C", kbLeft + keyboardWidth + 4, ksTop, 40, keySignatureTrackHeight,
                    juce::Justification::centredLeft);
     }
     else
     {
-        juce::Colour ksColour(180, 160, 100);
+        juce::Colour ksColour = track::sand;
 
         for (size_t i = 0; i < ksChanges.size(); ++i)
         {
@@ -1145,7 +1151,7 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
     float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
     if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
     {
-        g.setColour(juce::Colours::white);
+        g.setColour(text::t1);
         g.drawLine(phX, static_cast<float>(ksTop), phX, static_cast<float>(ksTop + keySignatureTrackHeight), 1.0f);
     }
 
@@ -1153,21 +1159,22 @@ void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
 
     g.restoreState();
 
-    g.setColour(juce::Colour(160, 160, 170));
+    g.setColour(text::t3);
     g.setFont(10.0f);
     g.drawText("Key", kbLeft + 4, ksTop, keyboardWidth - 8, keySignatureTrackHeight, juce::Justification::centredLeft);
 
-    g.setColour(juce::Colour(60, 60, 60));
+    g.setColour(border::normal);
     g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(ksTop),
                        static_cast<float>(ksTop + keySignatureTrackHeight));
 
-    g.setColour(juce::Colour(60, 62, 70));
+    g.setColour(border::strong);
     g.drawHorizontalLine(ksTop + keySignatureTrackHeight - 1, static_cast<float>(kbLeft),
                          static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawChordTrack(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
 
@@ -1180,7 +1187,7 @@ void PianoRollComponent::drawChordTrack(juce::Graphics& g)
     int visibleLeft = clip.getX();
     int visibleRight = clip.getRight();
 
-    g.setColour(juce::Colour(40, 42, 48));
+    g.setColour(surface::surface2);
     g.fillRect(kbLeft, ctTop, getWidth() - kbLeft, chordTrackHeight);
 
     g.saveState();
@@ -1192,7 +1199,7 @@ void PianoRollComponent::drawChordTrack(juce::Graphics& g)
     const auto& chordChanges = sequence->getChordChanges();
     if (!chordChanges.empty())
     {
-        juce::Colour chordColour(200, 140, 180);
+        juce::Colour chordColour = track::violet;
         int barY = ctTop + 3;
         int barH = chordTrackHeight - 6;
 
@@ -1229,7 +1236,7 @@ void PianoRollComponent::drawChordTrack(juce::Graphics& g)
     float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
     if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
     {
-        g.setColour(juce::Colours::white);
+        g.setColour(text::t1);
         g.drawLine(phX, static_cast<float>(ctTop), phX, static_cast<float>(ctTop + chordTrackHeight), 1.0f);
     }
 
@@ -1237,20 +1244,21 @@ void PianoRollComponent::drawChordTrack(juce::Graphics& g)
 
     g.restoreState();
 
-    g.setColour(juce::Colour(160, 160, 170));
+    g.setColour(text::t3);
     g.setFont(10.0f);
     g.drawText("Chord", kbLeft + 4, ctTop, keyboardWidth - 8, chordTrackHeight, juce::Justification::centredLeft);
 
-    g.setColour(juce::Colour(60, 60, 60));
+    g.setColour(border::normal);
     g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(ctTop),
                        static_cast<float>(ctTop + chordTrackHeight));
 
-    g.setColour(juce::Colour(60, 62, 70));
+    g.setColour(border::strong);
     g.drawHorizontalLine(ctTop + chordTrackHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
 void PianoRollComponent::drawGrid(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     auto clip = g.getClipBounds();
     int visibleLeft = clip.getX();
     int visibleRight = clip.getRight();
@@ -1268,7 +1276,7 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
         int y = noteToY(note);
         bool black = isBlackKey(note);
 
-        g.setColour(black ? juce::Colour(35, 35, 40) : juce::Colour(45, 45, 50));
+        g.setColour(black ? surface::bg : surface::surface2);
         g.fillRect(gridLeft, y, gridRight - gridLeft, noteHeight);
     }
 
@@ -1277,7 +1285,7 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
         int y = noteToY(note) + noteHeight;
         bool isC = (note % 12 == 0);
 
-        g.setColour(isC ? juce::Colour(80, 80, 90) : juce::Colour(55, 55, 60));
+        g.setColour(isC ? border::strong : border::normal);
         g.drawHorizontalLine(y, static_cast<float>(gridLeft), static_cast<float>(gridRight));
     }
 
@@ -1320,11 +1328,11 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
                 if (sub == 0)
                 {
                     bool isBar = (beat == 0);
-                    g.setColour(isBar ? juce::Colour(90, 90, 100) : juce::Colour(55, 55, 60));
+                    g.setColour(isBar ? border::strong : border::normal);
                 }
                 else
                 {
-                    g.setColour(juce::Colour(50, 50, 58));
+                    g.setColour(border::soft);
                 }
                 g.drawVerticalLine(x, static_cast<float>(visibleTop), static_cast<float>(visibleBottom));
             }
@@ -1449,13 +1457,14 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
 
 void PianoRollComponent::drawPlayhead(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence)
         return;
     float x = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
     auto clip = g.getClipBounds();
     if (x < static_cast<float>(clip.getX()) - 1.0f || x > static_cast<float>(clip.getRight()) + 1.0f)
         return;
-    g.setColour(juce::Colours::white);
+    g.setColour(text::t1);
     g.drawLine(x, static_cast<float>(clip.getY()), x, static_cast<float>(clip.getBottom()), 1.0f);
 }
 
@@ -1469,6 +1478,7 @@ void PianoRollComponent::setLoopRegion(bool enabled, int startTick, int endTick)
 
 void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
 {
+    using namespace calliope::theme;
     if (!sequence || loopEndTick <= loopStartTick)
         return;
 
@@ -1483,17 +1493,17 @@ void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
     float gridTop = static_cast<float>(gridTopY);
     float bottom = static_cast<float>(clip.getBottom());
 
-    g.setColour(loopEnabled ? juce::Colour(60, 120, 200).withAlpha(0.08f)
-                            : juce::Colour(130, 130, 140).withAlpha(0.08f));
+    g.setColour(loopEnabled ? accent::soft : surface::hover);
     g.fillRect(x1, gridTop, x2 - x1, bottom - gridTop);
 
-    g.setColour(loopEnabled ? juce::Colour(80, 160, 255).withAlpha(0.7f) : juce::Colour(150, 150, 160).withAlpha(0.5f));
+    g.setColour(loopEnabled ? accent::base.withAlpha(0.7f) : text::t4);
     g.drawVerticalLine(static_cast<int>(x1), gridTop, bottom);
     g.drawVerticalLine(static_cast<int>(x2), gridTop, bottom);
 }
 
 void PianoRollComponent::drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha)
 {
+    using namespace calliope::theme;
     if (loopEndTick <= loopStartTick)
         return;
 
@@ -1502,11 +1512,10 @@ void PianoRollComponent::drawLoopOverlay(juce::Graphics& g, int top, int height,
     float fTop = static_cast<float>(top);
     float fBottom = static_cast<float>(top + height);
 
-    g.setColour(loopEnabled ? juce::Colour(60, 120, 200).withAlpha(fillAlpha)
-                            : juce::Colour(130, 130, 140).withAlpha(fillAlpha * 0.5f));
+    g.setColour(loopEnabled ? accent::base.withAlpha(fillAlpha) : surface::hover);
     g.fillRect(lx1, fTop, lx2 - lx1, static_cast<float>(height));
 
-    g.setColour(loopEnabled ? juce::Colour(80, 160, 255).withAlpha(0.7f) : juce::Colour(150, 150, 160).withAlpha(0.5f));
+    g.setColour(loopEnabled ? accent::base.withAlpha(0.7f) : text::t4);
     g.drawVerticalLine(static_cast<int>(lx1), fTop, fBottom);
     g.drawVerticalLine(static_cast<int>(lx2), fTop, fBottom);
 }
@@ -1637,6 +1646,7 @@ void PianoRollComponent::setQuantizeDenominator(int denom)
 void PianoRollComponent::drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top,
                                             float bottom)
 {
+    using namespace calliope::theme;
     int ppq = sequence->getTicksPerQuarterNote();
     int quantizeGrid = ppq * 4 / quantizeDenominator;
     int totalTicks = xToTick(getWidth());
@@ -1676,11 +1686,11 @@ void PianoRollComponent::drawTrackGridLines(juce::Graphics& g, int visibleLeft, 
                 if (sub == 0)
                 {
                     bool isBar = (beat == 0);
-                    g.setColour(isBar ? juce::Colour(70, 70, 80) : juce::Colour(50, 52, 58));
+                    g.setColour(isBar ? border::strong : border::normal);
                 }
                 else
                 {
-                    g.setColour(juce::Colour(45, 47, 53));
+                    g.setColour(border::soft);
                 }
                 g.drawVerticalLine(x, top, bottom);
             }

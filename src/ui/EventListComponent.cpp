@@ -4,10 +4,11 @@
 
 EventListComponent::EventListComponent()
 {
+    using namespace calliope::theme;
     listBox.setModel(this);
     listBox.setRowHeight(rowHeight);
     listBox.setMultipleSelectionEnabled(true);
-    listBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(30, 30, 38));
+    listBox.setColour(juce::ListBox::backgroundColourId, surface::bg2);
     addAndMakeVisible(listBox);
 }
 
@@ -214,13 +215,14 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
 
 void EventListComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(30, 30, 38));
+    using namespace calliope::theme;
+    g.fillAll(surface::bg2);
 
     auto headerArea = getLocalBounds().removeFromTop(headerHeight);
-    g.setColour(juce::Colour(40, 40, 52));
+    g.setColour(surface::surface);
     g.fillRect(headerArea);
 
-    g.setColour(juce::Colour(140, 140, 160));
+    g.setColour(text::t3);
     g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
 
     int x = 6;
@@ -232,7 +234,7 @@ void EventListComponent::paint(juce::Graphics& g)
     x += colLength;
     g.drawText("Value", x, headerArea.getY(), colValue, headerHeight, juce::Justification::centredLeft);
 
-    g.setColour(juce::Colour(60, 60, 70));
+    g.setColour(border::normal);
     g.drawHorizontalLine(headerHeight - 1, 0.0f, static_cast<float>(getWidth()));
 }
 
@@ -248,18 +250,19 @@ int EventListComponent::getNumRows()
 
 void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected)
 {
+    using namespace calliope::theme;
     if (rowNumber < 0 || rowNumber >= static_cast<int>(items.size()))
         return;
 
     const auto& item = items[static_cast<size_t>(rowNumber)];
 
-    if (rowIsSelected)
-        g.setColour(juce::Colour(55, 65, 90));
-    else if (rowNumber % 2 == 0)
-        g.setColour(juce::Colour(32, 32, 40));
-    else
-        g.setColour(juce::Colour(36, 36, 44));
+    g.setColour(rowNumber % 2 == 0 ? surface::surface : surface::surface2);
     g.fillRect(0, 0, width, height);
+    if (rowIsSelected)
+    {
+        g.setColour(accent::soft);
+        g.fillRect(0, 0, width, height);
+    }
 
     g.setColour(TrackColours::getColour(item.trackIndex));
     g.fillRect(0, 0, 3, height);
@@ -267,14 +270,14 @@ void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int 
     auto bbt = sequence->tickToBarBeatTick(item.tick);
 
     g.setFont(juce::Font(juce::FontOptions(11.0f)));
-    g.setColour(juce::Colours::white.withAlpha(0.85f));
+    g.setColour(text::t1);
     int x = 6;
     g.drawText(formatPosition(bbt), x, 0, colPosition, height, juce::Justification::centredLeft);
     x += colPosition;
     g.drawText(formatEvent(item), x, 0, colEvent, height, juce::Justification::centredLeft);
     x += colEvent;
 
-    g.setColour(juce::Colours::white.withAlpha(0.6f));
+    g.setColour(text::t2);
     g.drawText(formatLength(item), x, 0, colLength, height, juce::Justification::centredLeft);
     x += colLength;
     g.drawText(formatValue(item), x, 0, colValue, height, juce::Justification::centredLeft);
