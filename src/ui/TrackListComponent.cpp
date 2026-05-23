@@ -105,7 +105,7 @@ void TrackListComponent::paint(juce::Graphics& g)
         if (i != editingRow)
         {
             g.setColour(text::t1);
-            g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
+            g.setFont(font::sans(font::sizeLG).boldened());
             juce::String trackLabel =
                 track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
             g.drawText(trackLabel, getNameLabelBounds(i), juce::Justification::centredLeft);
@@ -117,7 +117,7 @@ void TrackListComponent::paint(juce::Graphics& g)
         g.setColour(border::normal);
         g.fillRoundedRectangle(channelBounds.toFloat(), 3.0f);
         g.setColour(text::t1);
-        g.setFont(juce::Font(juce::FontOptions(11.0f)));
+        g.setFont(font::sans(font::sizeXS));
         g.drawText("Ch:" + juce::String(track.getChannel()), channelBounds, juce::Justification::centred);
 
         juce::String pluginName = pluginNameForTrack ? pluginNameForTrack(i) : juce::String{};
@@ -175,7 +175,7 @@ void TrackListComponent::paint(juce::Graphics& g)
             g.setColour(border::strong);
         g.fillRoundedRectangle(muteBounds.toFloat(), 3.0f);
         g.setColour(track.isMuted() ? text::t1 : text::t3);
-        g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
+        g.setFont(font::sans(font::sizeXS).boldened());
         g.drawText("M", muteBounds, juce::Justification::centred);
 
         auto soloBounds = getSoloButtonBounds(i);
@@ -185,14 +185,14 @@ void TrackListComponent::paint(juce::Graphics& g)
             g.setColour(border::strong);
         g.fillRoundedRectangle(soloBounds.toFloat(), 3.0f);
         g.setColour(track.isSolo() ? surface::bg : text::t3);
-        g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
+        g.setFont(font::sans(font::sizeXS).boldened());
         g.drawText("S", soloBounds, juce::Justification::centred);
 
         auto editorBounds = getEditorButtonBounds(i);
         g.setColour(border::strong);
         g.fillRoundedRectangle(editorBounds.toFloat(), 3.0f);
         g.setColour(pluginName.isEmpty() ? text::t3 : text::t1);
-        g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
+        g.setFont(font::sans(font::sizeXS).boldened());
         g.drawText("e", editorBounds, juce::Justification::centred);
 
         g.setColour(border::strong);
@@ -203,7 +203,7 @@ void TrackListComponent::paint(juce::Graphics& g)
     g.setColour(surface::surface);
     g.fillRect(addBounds);
     g.setColour(text::t2);
-    g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
+    g.setFont(font::sans(font::sizeMD).boldened());
     g.drawText("+ Add Track", addBounds, juce::Justification::centred);
     g.setColour(border::strong);
     g.drawHorizontalLine(addBounds.getY(), 0.0f, static_cast<float>(getWidth()));
@@ -380,7 +380,7 @@ void TrackListComponent::beginEditingName(int rowIndex)
     editingRow = rowIndex;
     nameEditor = std::make_unique<juce::TextEditor>();
     nameEditor->setBounds(getNameLabelBounds(rowIndex));
-    nameEditor->setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
+    nameEditor->setFont(calliope::theme::font::sans(calliope::theme::font::sizeLG).boldened());
     nameEditor->setText(initialText, juce::dontSendNotification);
     nameEditor->setSelectAllWhenFocused(true);
     nameEditor->onReturnKey = [this]() { commitNameEdit(); };

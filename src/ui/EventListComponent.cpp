@@ -223,7 +223,7 @@ void EventListComponent::paint(juce::Graphics& g)
     g.fillRect(headerArea);
 
     g.setColour(text::t3);
-    g.setFont(juce::Font(juce::FontOptions(11.0f)).boldened());
+    g.setFont(font::sans(font::sizeXS).boldened());
 
     int x = 6;
     g.drawText("Position", x, headerArea.getY(), colPosition, headerHeight, juce::Justification::centredLeft);
@@ -269,7 +269,7 @@ void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int 
 
     auto bbt = sequence->tickToBarBeatTick(item.tick);
 
-    g.setFont(juce::Font(juce::FontOptions(11.0f)));
+    g.setFont(font::sans(font::sizeSM));
     g.setColour(text::t1);
     int x = 6;
     g.drawText(formatPosition(bbt), x, 0, colPosition, height, juce::Justification::centredLeft);
