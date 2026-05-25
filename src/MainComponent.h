@@ -331,17 +331,22 @@ private:
 
     juce::ComboBox quantizeComboBox;
 
-    juce::Label positionHeaderLabel{"", "Bar"};
+    juce::Label positionHeaderLabel{"", "POSITION"};
     juce::Label positionLabel;
 
-    juce::Label timeSigHeaderLabel{"", "Beat"};
+    juce::Label timeSigHeaderLabel{"", "TIME"};
     juce::Label timeSigValueLabel;
 
-    juce::Label keyHeaderLabel{"", "Key"};
+    juce::Label keyHeaderLabel{"", "KEY"};
     juce::Label keyValueLabel;
 
-    juce::Label tempoHeaderLabel{"", "Tempo"};
+    juce::Label tempoHeaderLabel{"", "TEMPO"};
     juce::Label tempoValueLabel;
+
+    juce::Rectangle<int> positionBoxBounds;
+    juce::Rectangle<int> infoBoxBounds;
+    int infoDividerX1 = 0;
+    int infoDividerX2 = 0;
 
     juce::File currentFile;
     std::unique_ptr<juce::FileChooser> fileChooser;
