@@ -349,7 +349,7 @@ private:
     bool fileDragOver = false;
     bool updatingFromEventList = false;
 
-    static constexpr int menuBarHeight = 24;
+    static constexpr int menuBarHeight = 30;
     static constexpr int transportBarHeight = 64;
     static constexpr int toolBarHeight = 32;
     static constexpr int dividerThickness = 5;
