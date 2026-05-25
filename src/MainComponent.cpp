@@ -88,11 +88,36 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
     using namespace calliope::theme;
     auto bounds = getLocalBounds().toFloat();
     bool hover = isMouseOver();
-    float alpha = hover ? 1.0f : 0.65f;
+
+    juce::Colour boxColour, boxBorder, iconColour;
+    if (type == Play && active)
+    {
+        boxColour = accent::base;
+        boxBorder = accent::base;
+        iconColour = surface::bg;
+    }
+    else if (type == Loop && active)
+    {
+        boxColour = accent::soft;
+        boxBorder = accent::dim;
+        iconColour = accent::strong;
+    }
+    else
+    {
+        boxColour = hover ? surface::surface3 : surface::surface2;
+        boxBorder = hover ? border::strong : border::normal;
+        iconColour = hover ? text::t1 : text::t2;
+    }
+
+    g.setColour(boxColour);
+    g.fillRoundedRectangle(bounds, radius::r2);
+    g.setColour(boxBorder);
+    g.drawRoundedRectangle(bounds.reduced(0.5f), radius::r2, 1.0f);
+
+    g.setColour(iconColour);
 
     if (type == ReturnToStart)
     {
-        g.setColour(text::t2.withAlpha(alpha));
         auto h = bounds.getHeight() * 0.45f;
         auto w = h * 0.55f;
         auto cx = bounds.getCentreX();
@@ -105,14 +130,11 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
     }
     else if (type == Stop)
     {
-        g.setColour(text::t2.withAlpha(alpha));
         auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) * 0.42f;
         g.fillRoundedRectangle(bounds.withSizeKeepingCentre(size, size), 2.0f);
     }
     else if (type == Play)
     {
-        auto colour = active ? accent::base : text::t1;
-        g.setColour(colour.withAlpha(active ? 1.0f : alpha));
         auto h = bounds.getHeight() * 0.5f;
         auto w = h * 0.85f;
         auto cx = bounds.getCentreX();
@@ -123,8 +145,6 @@ void MainComponent::TransportButton::paint(juce::Graphics& g)
     }
     else if (type == Loop)
     {
-        auto colour = active ? accent::base : text::t1;
-        g.setColour(colour.withAlpha(active ? 1.0f : alpha * 0.7f));
         auto cx = bounds.getCentreX();
         auto cy = bounds.getCentreY();
         float s = bounds.getHeight() * 0.2f;
@@ -688,7 +708,7 @@ MainComponent::MainComponent()
     };
 
     using namespace calliope::theme;
-    auto headerColour = text::t3;
+    auto headerColour = text::t2;
     auto headerFont = font::sans(font::sizeXS);
 
     for (auto* label : {&positionHeaderLabel, &timeSigHeaderLabel, &keyHeaderLabel, &tempoHeaderLabel})
@@ -1136,8 +1156,29 @@ void MainComponent::paint(juce::Graphics& g)
     using namespace calliope::theme;
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
-    g.setColour(surface::surface);
+    g.setColour(surface::bg2);
     g.fillRect(0, menuBarHeight, getWidth(), transportBarHeight);
+
+    auto drawInfoBox = [&](juce::Rectangle<int> b)
+    {
+        if (b.isEmpty())
+            return;
+        g.setColour(surface::surface);
+        g.fillRoundedRectangle(b.toFloat(), radius::r2);
+        g.setColour(border::normal);
+        g.drawRoundedRectangle(b.toFloat().reduced(0.5f), radius::r2, 1.0f);
+    };
+    drawInfoBox(positionBoxBounds);
+    drawInfoBox(infoBoxBounds);
+
+    if (!infoBoxBounds.isEmpty())
+    {
+        g.setColour(border::soft);
+        auto top = static_cast<float>(infoBoxBounds.getY()) + 1.0f;
+        auto bottom = static_cast<float>(infoBoxBounds.getBottom()) - 1.0f;
+        g.drawVerticalLine(infoDividerX1, top, bottom);
+        g.drawVerticalLine(infoDividerX2, top, bottom);
+    }
 
     int toolBarTop = menuBarHeight + transportBarHeight;
     g.setColour(surface::surface2);
@@ -1205,28 +1246,33 @@ void MainComponent::resized()
     auto transportArea = area.removeFromTop(transportBarHeight);
     auto toolbar = transportArea;
 
-    const int posW = 190;
+    const int posW = 176;
     const int btnW = 172;
-    const int tsW = 55;
-    const int keyW = 55;
-    const int tempoW = 90;
-    const int g1 = 28, g2 = 36, g3 = 36, g4 = 36;
-    const int contentWidth = posW + g1 + btnW + g2 + tsW + g3 + keyW + g4 + tempoW;
+    const int tsW = 68;
+    const int keyW = 60;
+    const int tempoW = 96;
+    const int infoW = tsW + keyW + tempoW;
+    const int g1 = 20, g2 = 20;
+    const int contentWidth = posW + g1 + btnW + g2 + infoW;
 
     auto content = toolbar.withSizeKeepingCentre(contentWidth, transportBarHeight);
 
-    const int topPad = 8;
-    const int headerH = 18;
+    const int boxH = 44;
+    const int boxPadX = 8;
+    const int boxPadTop = 5;
+    const int headerH = 13;
 
-    auto layoutSection = [&](int width, juce::Label& header, juce::Label& value)
+    auto layoutSegment = [&](juce::Rectangle<int> segment, juce::Label& header, juce::Label& value)
     {
-        auto section = content.removeFromLeft(width);
-        section.removeFromTop(topPad);
-        header.setBounds(section.removeFromTop(headerH));
-        value.setBounds(section);
+        auto inner = segment.reduced(boxPadX, 0);
+        inner.removeFromTop(boxPadTop);
+        header.setBounds(inner.removeFromTop(headerH));
+        value.setBounds(inner.removeFromTop(boxH - boxPadTop - headerH));
     };
 
-    layoutSection(posW, positionHeaderLabel, positionLabel);
+    auto posBox = content.removeFromLeft(posW).withSizeKeepingCentre(posW, boxH);
+    positionBoxBounds = posBox;
+    layoutSegment(posBox, positionHeaderLabel, positionLabel);
     content.removeFromLeft(g1);
 
     auto btnSection = content.removeFromLeft(btnW);
@@ -1240,13 +1286,16 @@ void MainComponent::resized()
     loopButton.setBounds(btnArea.removeFromLeft(40));
     content.removeFromLeft(g2);
 
-    layoutSection(tsW, timeSigHeaderLabel, timeSigValueLabel);
-    content.removeFromLeft(g3);
-
-    layoutSection(keyW, keyHeaderLabel, keyValueLabel);
-    content.removeFromLeft(g4);
-
-    layoutSection(tempoW, tempoHeaderLabel, tempoValueLabel);
+    auto infoBox = content.removeFromLeft(infoW).withSizeKeepingCentre(infoW, boxH);
+    infoBoxBounds = infoBox;
+    auto timeSeg = infoBox.removeFromLeft(tsW);
+    auto keySeg = infoBox.removeFromLeft(keyW);
+    auto tempoSeg = infoBox;
+    infoDividerX1 = timeSeg.getRight();
+    infoDividerX2 = keySeg.getRight();
+    layoutSegment(timeSeg, timeSigHeaderLabel, timeSigValueLabel);
+    layoutSegment(keySeg, keyHeaderLabel, keyValueLabel);
+    layoutSegment(tempoSeg, tempoHeaderLabel, tempoValueLabel);
 
     auto toolBarArea = area.removeFromTop(toolBarHeight);
     {
