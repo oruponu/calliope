@@ -139,6 +139,22 @@ void LookAndFeel::drawPopupMenuBackground(Graphics& g, int w, int h)
     g.drawRect(0, 0, w, h, 1);
 }
 
+void LookAndFeel::getIdealPopupMenuItemSize(const String& text, bool isSeparator, int /*standardMenuItemHeight*/,
+                                            int& idealWidth, int& idealHeight)
+{
+    constexpr int itemHeight = 25;
+
+    if (isSeparator)
+    {
+        idealWidth = 50;
+        idealHeight = 9;
+        return;
+    }
+
+    idealHeight = itemHeight;
+    idealWidth = GlyphArrangement::getStringWidthInt(getPopupMenuFont(), text) + itemHeight * 2;
+}
+
 void LookAndFeel::drawPopupMenuItem(Graphics& g, const Rectangle<int>& area, bool isSeparator, bool isActive,
                                     bool isHighlighted, bool isTicked, bool hasSubMenu, const String& text,
                                     const String& shortcutKeyText, const Drawable*, const Colour*)
@@ -197,6 +213,11 @@ void LookAndFeel::drawPopupMenuItem(Graphics& g, const Rectangle<int>& area, boo
         const int s = 6;
         g.fillEllipse((float)area.getX() + 12, (float)area.getCentreY() - s / 2.f, (float)s, (float)s);
     }
+}
+
+Font LookAndFeel::getMenuBarFont(MenuBarComponent&, int, const String&)
+{
+    return t::font::sans(t::font::sizeLG);
 }
 
 void LookAndFeel::drawMenuBarItem(Graphics& g, int width, int height, int itemIndex, const String& itemText,
