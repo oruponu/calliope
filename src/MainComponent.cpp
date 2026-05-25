@@ -1156,8 +1156,11 @@ void MainComponent::paint(juce::Graphics& g)
     using namespace calliope::theme;
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
+    int transportBarTop = getHeight() - transportBarHeight;
     g.setColour(surface::bg2);
-    g.fillRect(0, menuBarHeight, getWidth(), transportBarHeight);
+    g.fillRect(0, transportBarTop, getWidth(), transportBarHeight);
+    g.setColour(border::strong);
+    g.drawHorizontalLine(transportBarTop, 0.0f, static_cast<float>(getWidth()));
 
     auto drawInfoBox = [&](juce::Rectangle<int> b)
     {
@@ -1180,7 +1183,7 @@ void MainComponent::paint(juce::Graphics& g)
         g.drawVerticalLine(infoDividerX2, top, bottom);
     }
 
-    int toolBarTop = menuBarHeight + transportBarHeight;
+    int toolBarTop = menuBarHeight;
     g.setColour(surface::surface2);
     g.fillRect(0, toolBarTop, getWidth(), toolBarHeight);
     g.setColour(border::strong);
@@ -1243,7 +1246,8 @@ void MainComponent::resized()
 {
     auto area = getLocalBounds();
     menuBar.setBounds(area.removeFromTop(menuBarHeight));
-    auto transportArea = area.removeFromTop(transportBarHeight);
+    auto toolBarArea = area.removeFromTop(toolBarHeight);
+    auto transportArea = area.removeFromBottom(transportBarHeight);
     auto toolbar = transportArea;
 
     const int posW = 176;
@@ -1297,7 +1301,6 @@ void MainComponent::resized()
     layoutSegment(keySeg, keyHeaderLabel, keyValueLabel);
     layoutSegment(tempoSeg, tempoHeaderLabel, tempoValueLabel);
 
-    auto toolBarArea = area.removeFromTop(toolBarHeight);
     {
         const int btnSize = 28;
         const int pad = 4;
