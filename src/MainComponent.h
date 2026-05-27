@@ -345,6 +345,7 @@ private:
 
     juce::Rectangle<int> positionBoxBounds;
     juce::Rectangle<int> infoBoxBounds;
+    juce::Rectangle<int> toolBarBounds;
     int infoDividerX1 = 0;
     int infoDividerX2 = 0;
 
