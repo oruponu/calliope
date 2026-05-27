@@ -2,6 +2,16 @@
 #include "TrackColours.h"
 #include <algorithm>
 
+namespace
+{
+constexpr int kPadLeft = 10;
+constexpr int kColDot = 16;
+constexpr int kColPosition = 84;
+constexpr int kColLength = 34;
+constexpr int kColValue = 40;
+constexpr int kPadRight = 8;
+} // namespace
+
 EventListComponent::EventListComponent()
 {
     using namespace calliope::theme;
@@ -225,17 +235,20 @@ void EventListComponent::paint(juce::Graphics& g)
     g.setColour(text::t3);
     g.setFont(font::sans(font::sizeXS).boldened());
 
-    int x = 6;
-    g.drawText("Position", x, headerArea.getY(), colPosition, headerHeight, juce::Justification::centredLeft);
-    x += colPosition;
-    g.drawText("Event", x, headerArea.getY(), colEvent, headerHeight, juce::Justification::centredLeft);
-    x += colEvent;
-    g.drawText("Length", x, headerArea.getY(), colLength, headerHeight, juce::Justification::centredLeft);
-    x += colLength;
-    g.drawText("Value", x, headerArea.getY(), colValue, headerHeight, juce::Justification::centredLeft);
+    const int width = getWidth();
+    const int positionX = kPadLeft + kColDot;
+    const int eventX = positionX + kColPosition;
+    const int valueX = width - kPadRight - kColValue;
+    const int lengthX = valueX - kColLength;
+    const int eventWidth = lengthX - eventX;
+
+    g.drawText("POSITION", positionX, headerArea.getY(), kColPosition, headerHeight, juce::Justification::centredLeft);
+    g.drawText("EVENT", eventX, headerArea.getY(), eventWidth, headerHeight, juce::Justification::centredLeft);
+    g.drawText("LEN", lengthX, headerArea.getY(), kColLength, headerHeight, juce::Justification::centredLeft);
+    g.drawText("VAL", valueX, headerArea.getY(), kColValue, headerHeight, juce::Justification::centredLeft);
 
     g.setColour(border::normal);
-    g.drawHorizontalLine(headerHeight - 1, 0.0f, static_cast<float>(getWidth()));
+    g.drawHorizontalLine(headerHeight - 1, 0.0f, static_cast<float>(width));
 }
 
 void EventListComponent::resized()
@@ -264,23 +277,28 @@ void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int 
         g.fillRect(0, 0, width, height);
     }
 
+    constexpr int dotSize = 8;
+    const int dotX = kPadLeft;
+    const int dotY = (height - dotSize) / 2;
     g.setColour(TrackColours::getColour(item.trackIndex));
-    g.fillRect(0, 0, 3, height);
+    g.fillRoundedRectangle(static_cast<float>(dotX), static_cast<float>(dotY), static_cast<float>(dotSize),
+                           static_cast<float>(dotSize), 2.0f);
+
+    const int positionX = kPadLeft + kColDot;
+    const int eventX = positionX + kColPosition;
+    const int valueX = width - kPadRight - kColValue;
+    const int lengthX = valueX - kColLength;
+    const int eventWidth = lengthX - eventX;
 
     auto bbt = sequence->tickToBarBeatTick(item.tick);
 
-    g.setFont(font::sans(font::sizeSM));
     g.setColour(text::t1);
-    int x = 6;
-    g.drawText(formatPosition(bbt), x, 0, colPosition, height, juce::Justification::centredLeft);
-    x += colPosition;
-    g.drawText(formatEvent(item), x, 0, colEvent, height, juce::Justification::centredLeft);
-    x += colEvent;
+    g.setFont(font::sans(font::sizeSM));
 
-    g.setColour(text::t2);
-    g.drawText(formatLength(item), x, 0, colLength, height, juce::Justification::centredLeft);
-    x += colLength;
-    g.drawText(formatValue(item), x, 0, colValue, height, juce::Justification::centredLeft);
+    g.drawText(formatPosition(bbt), positionX, 0, kColPosition, height, juce::Justification::centredLeft);
+    g.drawText(formatEvent(item), eventX, 0, eventWidth, height, juce::Justification::centredLeft);
+    g.drawText(formatLength(item), lengthX, 0, kColLength, height, juce::Justification::centredRight);
+    g.drawText(formatValue(item), valueX, 0, kColValue, height, juce::Justification::centredRight);
 }
 
 juce::String EventListComponent::formatPosition(const BarBeatTick& bbt)
