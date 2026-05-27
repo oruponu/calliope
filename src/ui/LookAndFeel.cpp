@@ -239,14 +239,14 @@ void LookAndFeel::drawMenuBarItem(Graphics& g, int width, int height, int itemIn
 void LookAndFeel::drawScrollbar(Graphics& g, ScrollBar&, int x, int y, int width, int height, bool isVertical,
                                 int thumbStartPos, int thumbSize, bool isMouseOver, bool isMouseDown)
 {
-    Rectangle<int> thumb = isVertical ? Rectangle<int>(x + 2, thumbStartPos, width - 4, thumbSize)
-                                      : Rectangle<int>(thumbStartPos, y + 2, thumbSize, height - 4);
+    Rectangle<int> thumb = isVertical ? Rectangle<int>(x + 1, thumbStartPos, width - 2, thumbSize)
+                                      : Rectangle<int>(thumbStartPos, y + 1, thumbSize, height - 2);
 
-    Colour c = t::surface::surface3;
+    Colour c = t::surface::surface3.brighter(0.35f);
     if (isMouseDown)
         c = t::accent::dim;
     else if (isMouseOver)
-        c = t::border::strong;
+        c = t::surface::surface3.brighter(0.7f);
 
     g.setColour(c);
     g.fillRoundedRectangle(thumb.toFloat(),
