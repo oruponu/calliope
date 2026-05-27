@@ -32,8 +32,8 @@ public:
     void mouseDoubleClick(const juce::MouseEvent& e) override;
 
     static constexpr int trackRowHeight = 48;
-    static constexpr int addButtonRowHeight = 28;
-    static constexpr int preferredWidth = 180;
+    static constexpr int addButtonRowHeight = 44;
+    static constexpr int preferredWidth = 248;
 
 private:
     int getRowIndexAt(int y) const;
