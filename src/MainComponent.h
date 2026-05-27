@@ -348,6 +348,7 @@ private:
     juce::Rectangle<int> toolBarBounds;
     int infoDividerX1 = 0;
     int infoDividerX2 = 0;
+    int toolBarSeparatorX = 0;
 
     juce::File currentFile;
     std::unique_ptr<juce::FileChooser> fileChooser;
