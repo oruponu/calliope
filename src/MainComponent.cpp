@@ -1183,11 +1183,11 @@ void MainComponent::paint(juce::Graphics& g)
         g.drawVerticalLine(infoDividerX2, top, bottom);
     }
 
-    int toolBarTop = menuBarHeight;
     g.setColour(surface::surface2);
-    g.fillRect(0, toolBarTop, getWidth(), toolBarHeight);
+    g.fillRect(toolBarBounds);
     g.setColour(border::strong);
-    g.drawHorizontalLine(toolBarTop + toolBarHeight - 1, 0.0f, static_cast<float>(getWidth()));
+    g.drawHorizontalLine(toolBarBounds.getBottom() - 1, static_cast<float>(toolBarBounds.getX()),
+                         static_cast<float>(toolBarBounds.getRight()));
 
     if (fileDragOver)
     {
@@ -1246,7 +1246,6 @@ void MainComponent::resized()
 {
     auto area = getLocalBounds();
     menuBar.setBounds(area.removeFromTop(menuBarHeight));
-    auto toolBarArea = area.removeFromTop(toolBarHeight);
     auto transportArea = area.removeFromBottom(transportBarHeight);
     auto toolbar = transportArea;
 
@@ -1301,6 +1300,16 @@ void MainComponent::resized()
     layoutSegment(keySeg, keyHeaderLabel, keyValueLabel);
     layoutSegment(tempoSeg, tempoHeaderLabel, tempoValueLabel);
 
+    int clampedTrackListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - eventListWidth - 200), trackListWidth);
+    trackListViewport.setBounds(area.removeFromLeft(clampedTrackListW));
+    trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
+    trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
+    int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
+    eventList.setBounds(area.removeFromRight(clampedEventListW));
+    eventListDivider.setBounds(area.removeFromRight(dividerThickness));
+
+    auto toolBarArea = area.removeFromTop(toolBarHeight);
+    toolBarBounds = toolBarArea;
     {
         const int btnSize = 28;
         const int pad = 4;
@@ -1312,14 +1321,6 @@ void MainComponent::resized()
         toolBtnArea.removeFromLeft(pad * 2);
         quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70));
     }
-
-    int clampedTrackListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - eventListWidth - 200), trackListWidth);
-    trackListViewport.setBounds(area.removeFromLeft(clampedTrackListW));
-    trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
-    trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
-    int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
-    eventList.setBounds(area.removeFromRight(clampedEventListW));
-    eventListDivider.setBounds(area.removeFromRight(dividerThickness));
 
     int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
     auto editorArea = area.removeFromBottom(clampedEditorH);
