@@ -166,6 +166,7 @@ private:
     PianoRollViewport viewport;
     TrackListComponent trackList;
     juce::Viewport trackListViewport;
+    juce::Rectangle<int> trackListHeaderBounds;
 
     ControllerLaneComponent controllerLane;
 
@@ -275,8 +276,8 @@ private:
     ZoomStrip verticalZoomStrip{ZoomStrip::Vertical};
     int controllerLaneHeight = 120;
     int controllerLaneHeightOnDragStart = 120;
-    int trackListWidth = 180;
-    int trackListWidthOnDragStart = 180;
+    int trackListWidth = 248;
+    int trackListWidthOnDragStart = 248;
     int eventListWidth = 280;
     int eventListWidthOnDragStart = 280;
     bool syncingScroll = false;

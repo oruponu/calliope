@@ -409,6 +409,7 @@ MainComponent::MainComponent()
         pianoRoll.repaint();
         controllerLane.repaint();
         eventList.refresh();
+        repaint(trackListHeaderBounds);
     };
     trackList.onRemoveTrackRequested = [this](int trackIndex)
     {
@@ -428,6 +429,7 @@ MainComponent::MainComponent()
         int newActive = juce::jlimit(0, sequence.getNumTracks() - 1, trackIndex);
         trackList.refresh();
         trackList.setActiveTrackIndex(newActive);
+        repaint(trackListHeaderBounds);
     };
     trackList.onTrackRenamed = [this](int trackIndex, juce::String newName)
     {
@@ -1198,6 +1200,20 @@ void MainComponent::paint(juce::Graphics& g)
     g.drawVerticalLine(toolBarSeparatorX, static_cast<float>(toolBarBounds.getY() + 8),
                        static_cast<float>(toolBarBounds.getBottom() - 8));
 
+    if (!trackListHeaderBounds.isEmpty())
+    {
+        g.setColour(surface::bg2);
+        g.fillRect(trackListHeaderBounds);
+        g.setColour(border::soft);
+        g.drawHorizontalLine(trackListHeaderBounds.getBottom() - 1, static_cast<float>(trackListHeaderBounds.getX()),
+                             static_cast<float>(trackListHeaderBounds.getRight()));
+        int numTracks = sequence.getNumTracks();
+        g.setColour(text::t3);
+        g.setFont(font::sans(font::sizeXS));
+        g.drawText(juce::String::fromUTF8("TRACKS \xc2\xb7 ") + juce::String(numTracks),
+                   trackListHeaderBounds.reduced(12, 0), juce::Justification::centredLeft);
+    }
+
     if (fileDragOver)
     {
         g.setColour(surface::press);
@@ -1310,7 +1326,9 @@ void MainComponent::resized()
     layoutSegment(tempoSeg, tempoHeaderLabel, tempoValueLabel);
 
     int clampedTrackListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - eventListWidth - 200), trackListWidth);
-    trackListViewport.setBounds(area.removeFromLeft(clampedTrackListW));
+    auto trackListColumn = area.removeFromLeft(clampedTrackListW);
+    trackListHeaderBounds = trackListColumn.removeFromTop(toolBarHeight);
+    trackListViewport.setBounds(trackListColumn);
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
     trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
     int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
@@ -1411,6 +1429,7 @@ void MainComponent::refreshAllViews()
     controllerLane.repaint();
     trackList.refresh();
     eventList.refresh();
+    repaint(trackListHeaderBounds);
 }
 
 void MainComponent::setHorizontalZoom(int newBeatWidth, int anchorXInViewport)
@@ -1587,6 +1606,7 @@ void MainComponent::onSequenceLoaded()
 
     int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * pianoRoll.noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
+    repaint(trackListHeaderBounds);
 }
 
 void MainComponent::updateTitleBar()
