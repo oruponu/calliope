@@ -193,18 +193,25 @@ void MainComponent::ToolButton::paint(juce::Graphics& g)
     auto bounds = getLocalBounds().toFloat();
     bool hover = isMouseOver();
 
+    juce::Colour boxColour, boxBorder, iconColour;
     if (active)
     {
-        g.setColour(accent::soft);
-        g.fillRoundedRectangle(bounds.reduced(1.0f), 4.0f);
+        boxColour = accent::soft;
+        boxBorder = accent::dim;
+        iconColour = accent::strong;
     }
-    else if (hover)
+    else
     {
-        g.setColour(surface::hover);
-        g.fillRoundedRectangle(bounds.reduced(1.0f), 4.0f);
+        boxColour = hover ? surface::surface3 : surface::surface2;
+        boxBorder = hover ? border::strong : border::normal;
+        iconColour = hover ? text::t1 : text::t2;
     }
 
-    auto iconColour = active ? accent::base : text::t2.withAlpha(hover ? 0.85f : 0.55f);
+    g.setColour(boxColour);
+    g.fillRoundedRectangle(bounds, radius::r2);
+    g.setColour(boxBorder);
+    g.drawRoundedRectangle(bounds.reduced(0.5f), radius::r2, 1.0f);
+
     g.setColour(iconColour);
 
     float cx = bounds.getCentreX();
@@ -1188,6 +1195,8 @@ void MainComponent::paint(juce::Graphics& g)
     g.setColour(border::strong);
     g.drawHorizontalLine(toolBarBounds.getBottom() - 1, static_cast<float>(toolBarBounds.getX()),
                          static_cast<float>(toolBarBounds.getRight()));
+    g.drawVerticalLine(toolBarSeparatorX, static_cast<float>(toolBarBounds.getY() + 8),
+                       static_cast<float>(toolBarBounds.getBottom() - 8));
 
     if (fileDragOver)
     {
@@ -1313,13 +1322,15 @@ void MainComponent::resized()
     {
         const int btnSize = 28;
         const int pad = 4;
-        auto toolBtnArea = toolBarArea.withTrimmedLeft(pad).withSizeKeepingCentre(toolBarArea.getWidth(), btnSize);
-        auto left = toolBtnArea.removeFromLeft(btnSize + pad);
-        left.removeFromLeft(pad);
-        selectToolButton.setBounds(left.removeFromLeft(btnSize));
+        auto toolBtnArea =
+            toolBarArea.withTrimmedLeft(pad * 2).withSizeKeepingCentre(toolBarArea.getWidth() - pad * 2, btnSize);
+        selectToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
+        toolBtnArea.removeFromLeft(pad);
         editToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
         toolBtnArea.removeFromLeft(pad * 2);
-        quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70));
+        toolBarSeparatorX = toolBtnArea.getX();
+        toolBtnArea.removeFromLeft(pad * 2);
+        quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70).withSizeKeepingCentre(70, 26));
     }
 
     int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
