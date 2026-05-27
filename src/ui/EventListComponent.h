@@ -46,8 +46,8 @@ public:
     void resized() override;
 
     static constexpr int preferredWidth = 280;
-    static constexpr int rowHeight = 20;
-    static constexpr int headerHeight = 22;
+    static constexpr int rowHeight = 25;
+    static constexpr int headerHeight = 25;
 
 private:
     int getNumRows() override;
@@ -70,9 +70,4 @@ private:
     int lastPlayheadRow = -1;
     bool updatingFromPlayhead = false;
     bool updatingFromNoteSelection = false;
-
-    static constexpr int colPosition = 90;
-    static constexpr int colEvent = 80;
-    static constexpr int colLength = 50;
-    static constexpr int colValue = 46;
 };
