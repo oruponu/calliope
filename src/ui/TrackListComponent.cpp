@@ -1,6 +1,21 @@
 #include "TrackListComponent.h"
 #include "TrackColours.h"
 
+namespace
+{
+constexpr int kStripeX = 10;
+constexpr int kContentLeft = 18;
+constexpr int kButtonSize = 20;
+constexpr int kButtonGap = 2;
+constexpr int kRightPad = 10;
+constexpr int kRow1Y = 6;
+constexpr int kRow2Y = 28;
+constexpr int kRow2H = 16;
+constexpr int kOutputWidth = 116;
+constexpr int kChannelWidth = 52;
+constexpr int kComboGap = 4;
+} // namespace
+
 void TrackListComponent::setSequence(MidiSequence* seq)
 {
     cancelNameEdit();
@@ -88,37 +103,32 @@ void TrackListComponent::paint(juce::Graphics& g)
         const auto& track = sequence->getTrack(i);
         int y = i * trackRowHeight;
 
-        auto rowBounds = juce::Rectangle<int>(0, y, getWidth(), trackRowHeight);
-
-        bool isSelected = selectedTrackIndices.count(i) > 0;
-        g.setColour(isSelected ? surface::surface2 : surface::surface);
-        g.fillRect(rowBounds);
+        auto highlightBounds = juce::Rectangle<int>(4, y + 2, getWidth() - 8, trackRowHeight - 4).toFloat();
         if (i == activeTrackIndex)
         {
             g.setColour(accent::soft);
-            g.fillRect(rowBounds);
+            g.fillRoundedRectangle(highlightBounds, radius::r2);
+        }
+        else if (selectedTrackIndices.count(i) > 0)
+        {
+            g.setColour(surface::hover);
+            g.fillRoundedRectangle(highlightBounds, radius::r2);
         }
 
         g.setColour(TrackColours::getColour(i));
-        g.fillRect(0, y, 4, trackRowHeight);
+        g.fillRoundedRectangle(juce::Rectangle<float>(kStripeX, y + 10.0f, 3.0f, trackRowHeight - 20.0f), 1.5f);
 
         if (i != editingRow)
         {
             g.setColour(text::t1);
-            g.setFont(font::sans(font::sizeLG).boldened());
+            g.setFont(font::sans(font::sizeLG));
             juce::String trackLabel =
                 track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String(track.getName());
             g.drawText(trackLabel, getNameLabelBounds(i), juce::Justification::centredLeft);
         }
 
         auto pluginBounds = getPluginLabelBounds(i);
-
         auto channelBounds = getChannelLabelBounds(i);
-        g.setColour(border::normal);
-        g.fillRoundedRectangle(channelBounds.toFloat(), 3.0f);
-        g.setColour(text::t1);
-        g.setFont(font::sans(font::sizeXS));
-        g.drawText("Ch:" + juce::String(track.getChannel()), channelBounds, juce::Justification::centred);
 
         juce::String pluginName = pluginNameForTrack ? pluginNameForTrack(i) : juce::String{};
         auto destination = track.getOutputDestination();
@@ -163,50 +173,69 @@ void TrackListComponent::paint(juce::Graphics& g)
             labelActive = false;
             break;
         }
-        g.setColour(border::normal);
-        g.fillRoundedRectangle(pluginBounds.toFloat(), 3.0f);
-        g.setColour(labelActive ? text::t1 : text::t3);
-        g.drawText(labelText, pluginBounds.reduced(4, 0), juce::Justification::centredLeft);
+        auto drawCombo =
+            [&](juce::Rectangle<int> b, const juce::String& txt, const juce::Font& fnt, juce::Colour txtColour)
+        {
+            auto rect = b.toFloat();
+            g.setColour(surface::surface2);
+            g.fillRoundedRectangle(rect, radius::r1);
+            g.setColour(border::normal);
+            g.drawRoundedRectangle(rect.reduced(0.5f), radius::r1, 1.0f);
 
-        auto muteBounds = getMuteButtonBounds(i);
-        if (track.isMuted())
-            g.setColour(status::danger);
-        else
-            g.setColour(border::strong);
-        g.fillRoundedRectangle(muteBounds.toFloat(), 3.0f);
-        g.setColour(track.isMuted() ? text::t1 : text::t3);
-        g.setFont(font::sans(font::sizeXS).boldened());
-        g.drawText("M", muteBounds, juce::Justification::centred);
+            float cx = rect.getRight() - 9.0f;
+            float cy = rect.getCentreY();
+            juce::Path chevron;
+            chevron.startNewSubPath(cx - 3.0f, cy - 1.5f);
+            chevron.lineTo(cx, cy + 2.0f);
+            chevron.lineTo(cx + 3.0f, cy - 1.5f);
+            g.setColour(text::t3);
+            g.strokePath(chevron, juce::PathStrokeType(1.0f));
 
-        auto soloBounds = getSoloButtonBounds(i);
-        if (track.isSolo())
-            g.setColour(status::warn);
-        else
-            g.setColour(border::strong);
-        g.fillRoundedRectangle(soloBounds.toFloat(), 3.0f);
-        g.setColour(track.isSolo() ? surface::bg : text::t3);
-        g.setFont(font::sans(font::sizeXS).boldened());
-        g.drawText("S", soloBounds, juce::Justification::centred);
+            g.setColour(txtColour);
+            g.setFont(fnt);
+            g.drawText(txt, b.withTrimmedLeft(6).withTrimmedRight(14), juce::Justification::centredLeft);
+        };
 
-        auto editorBounds = getEditorButtonBounds(i);
-        g.setColour(border::strong);
-        g.fillRoundedRectangle(editorBounds.toFloat(), 3.0f);
-        g.setColour(pluginName.isEmpty() ? text::t3 : text::t1);
-        g.setFont(font::sans(font::sizeXS).boldened());
-        g.drawText("e", editorBounds, juce::Justification::centred);
+        drawCombo(pluginBounds, labelText, font::sans(font::sizeXS), labelActive ? text::t2 : text::t3);
+        drawCombo(channelBounds, "Ch " + juce::String(track.getChannel()).paddedLeft('0', 2), font::sans(font::sizeXS),
+                  text::t2);
 
-        g.setColour(border::strong);
-        g.drawHorizontalLine(y + trackRowHeight - 1, 0.0f, static_cast<float>(getWidth()));
+        auto drawToggle =
+            [&](juce::Rectangle<int> b, const juce::String& label, bool on, juce::Colour onFill, juce::Colour onText)
+        {
+            auto rect = b.toFloat();
+            if (on)
+            {
+                g.setColour(onFill);
+                g.fillRoundedRectangle(rect, radius::r1);
+            }
+            else
+            {
+                g.setColour(border::normal);
+                g.drawRoundedRectangle(rect.reduced(0.5f), radius::r1, 1.0f);
+            }
+            g.setColour(on ? onText : text::t3);
+            g.setFont(font::sans(font::sizeXS).boldened());
+            g.drawText(label, b, juce::Justification::centred);
+        };
+
+        bool hasPlugin = !pluginName.isEmpty();
+        drawToggle(getEditorButtonBounds(i), "e", hasPlugin, accent::soft, accent::strong);
+        drawToggle(getMuteButtonBounds(i), "M", track.isMuted(), status::danger, text::t1);
+        drawToggle(getSoloButtonBounds(i), "S", track.isSolo(), status::warn, surface::bg);
     }
 
-    auto addBounds = getAddButtonBounds();
-    g.setColour(surface::surface);
-    g.fillRect(addBounds);
-    g.setColour(text::t2);
-    g.setFont(font::sans(font::sizeMD).boldened());
-    g.drawText("+ Add Track", addBounds, juce::Justification::centred);
+    auto addBounds = getAddButtonBounds().reduced(8, 8).toFloat();
+    juce::Path dashed;
+    dashed.addRoundedRectangle(addBounds, radius::r2);
+    juce::Path stroked;
+    const float dashes[] = {4.0f, 3.0f};
+    juce::PathStrokeType(1.0f).createDashedStroke(stroked, dashed, dashes, 2);
     g.setColour(border::strong);
-    g.drawHorizontalLine(addBounds.getY(), 0.0f, static_cast<float>(getWidth()));
+    g.fillPath(stroked);
+    g.setColour(text::t3);
+    g.setFont(font::sans(font::sizeSM));
+    g.drawText("+ Add Track", getAddButtonBounds(), juce::Justification::centred);
 }
 
 void TrackListComponent::mouseDown(const juce::MouseEvent& e)
@@ -380,7 +409,7 @@ void TrackListComponent::beginEditingName(int rowIndex)
     editingRow = rowIndex;
     nameEditor = std::make_unique<juce::TextEditor>();
     nameEditor->setBounds(getNameLabelBounds(rowIndex));
-    nameEditor->setFont(calliope::theme::font::sans(calliope::theme::font::sizeLG).boldened());
+    nameEditor->setFont(calliope::theme::font::sans(calliope::theme::font::sizeLG));
     nameEditor->setText(initialText, juce::dontSendNotification);
     nameEditor->setSelectAllWhenFocused(true);
     nameEditor->onReturnKey = [this]() { commitNameEdit(); };
@@ -428,42 +457,47 @@ int TrackListComponent::getRowIndexAt(int y) const
     return y / trackRowHeight;
 }
 
+juce::Rectangle<int> TrackListComponent::getEditorButtonBounds(int rowIndex) const
+{
+    int y = rowIndex * trackRowHeight;
+    return {kContentLeft, y + kRow1Y, kButtonSize, kButtonSize};
+}
+
 juce::Rectangle<int> TrackListComponent::getMuteButtonBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
-    return {getWidth() - 52, y + 4, 24, 20};
+    return {kContentLeft + (kButtonSize + kButtonGap), y + kRow1Y, kButtonSize, kButtonSize};
 }
 
 juce::Rectangle<int> TrackListComponent::getSoloButtonBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
-    return {getWidth() - 26, y + 4, 24, 20};
-}
-
-juce::Rectangle<int> TrackListComponent::getPluginLabelBounds(int rowIndex) const
-{
-    int y = rowIndex * trackRowHeight;
-    auto channelBounds = getChannelLabelBounds(rowIndex);
-    int width = juce::jmax(0, channelBounds.getX() - 14);
-    return {10, y + 24, width, 16};
-}
-
-juce::Rectangle<int> TrackListComponent::getEditorButtonBounds(int rowIndex) const
-{
-    int y = rowIndex * trackRowHeight;
-    return {getWidth() - 78, y + 4, 24, 20};
-}
-
-juce::Rectangle<int> TrackListComponent::getChannelLabelBounds(int rowIndex) const
-{
-    int y = rowIndex * trackRowHeight;
-    return {getWidth() - 114, y + 24, 32, 16};
+    return {kContentLeft + 2 * (kButtonSize + kButtonGap), y + kRow1Y, kButtonSize, kButtonSize};
 }
 
 juce::Rectangle<int> TrackListComponent::getNameLabelBounds(int rowIndex) const
 {
     int y = rowIndex * trackRowHeight;
-    return {10, y + 4, getWidth() - 88, 20};
+    int x = getSoloButtonBounds(rowIndex).getRight() + 8;
+    int width = juce::jmax(0, getWidth() - kRightPad - x);
+    return {x, y + kRow1Y, width, kButtonSize};
+}
+
+juce::Rectangle<int> TrackListComponent::getPluginLabelBounds(int rowIndex) const
+{
+    int y = rowIndex * trackRowHeight;
+    int maxRight = getWidth() - kRightPad;
+    int width = kOutputWidth;
+    if (kContentLeft + width + kComboGap + kChannelWidth > maxRight)
+        width = juce::jmax(30, maxRight - kContentLeft - kComboGap - kChannelWidth);
+    return {kContentLeft, y + kRow2Y, width, kRow2H};
+}
+
+juce::Rectangle<int> TrackListComponent::getChannelLabelBounds(int rowIndex) const
+{
+    int y = rowIndex * trackRowHeight;
+    int x = getPluginLabelBounds(rowIndex).getRight() + kComboGap;
+    return {x, y + kRow2Y, kChannelWidth, kRow2H};
 }
 
 juce::Rectangle<int> TrackListComponent::getAddButtonBounds() const
