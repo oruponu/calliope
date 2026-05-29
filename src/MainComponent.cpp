@@ -321,6 +321,7 @@ MainComponent::MainComponent()
     };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, false);
+    viewport.setVerticalScrollBarBottomInset(zoomStripLength);
     viewport.onReachedEnd = [this]()
     {
         pianoRoll.extendContent();
@@ -566,6 +567,7 @@ MainComponent::MainComponent()
     };
     controllerLaneViewport.setViewedComponent(&controllerLane, false);
     controllerLaneViewport.setScrollBarsShown(false, true);
+    controllerLaneViewport.setHorizontalScrollBarRightInset(zoomStripLength);
     controllerLaneViewport.onVisibleAreaChanged = [this]()
     {
         if (!syncingScroll)
