@@ -124,6 +124,12 @@ void ControllerLaneComponent::setBeatWidth(int w)
     repaint();
 }
 
+void ControllerLaneComponent::setRightPadding(int px)
+{
+    rightPadding = px;
+    updateSize();
+}
+
 void ControllerLaneComponent::setQuantizeDenominator(int denom)
 {
     quantizeDenominator = denom;
@@ -135,7 +141,7 @@ void ControllerLaneComponent::updateSize()
     if (!sequence)
         return;
 
-    int width = leftPanelWidth + contentBeats * beatWidth;
+    int width = leftPanelWidth + contentBeats * beatWidth + rightPadding;
 
     if (auto* vp = findParentComponentOfClass<juce::Viewport>())
         width = std::max(width, vp->getMaximumVisibleWidth());
