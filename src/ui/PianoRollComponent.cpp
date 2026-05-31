@@ -73,7 +73,8 @@ void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
 
 void PianoRollComponent::setEditMode(EditMode mode)
 {
-    editMode = mode;
+    baseEditMode = mode;
+    editMode = toolSwapActive ? swapTool(mode) : mode;
     selectedNote = {};
     selectedNotes.clear();
     dragMode = DragMode::None;
@@ -83,6 +84,35 @@ void PianoRollComponent::setEditMode(EditMode mode)
 PianoRollComponent::EditMode PianoRollComponent::getEditMode() const
 {
     return editMode;
+}
+
+PianoRollComponent::EditMode PianoRollComponent::swapTool(EditMode mode)
+{
+    return mode == EditMode::Edit ? EditMode::Select : EditMode::Edit;
+}
+
+void PianoRollComponent::updateEffectiveEditMode()
+{
+    const auto desired = toolSwapActive ? swapTool(baseEditMode) : baseEditMode;
+    if (desired == editMode)
+        return;
+
+    editMode = desired;
+    repaint();
+}
+
+void PianoRollComponent::modifierKeysChanged(const juce::ModifierKeys& modifiers)
+{
+    const bool modifierDown = modifiers.isCommandDown();
+    if (modifierDown == toolSwapActive)
+        return;
+
+    toolSwapActive = modifierDown;
+
+    if (dragMode != DragMode::None || isCreatingNote || isKeyboardDragging || isRulerDragging || isLoopDragging)
+        return;
+
+    updateEffectiveEditMode();
 }
 
 bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
@@ -268,6 +298,9 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 {
     if (!sequence || sequence->getNumTracks() == 0)
         return;
+
+    toolSwapActive = e.mods.isCommandDown();
+    updateEffectiveEditMode();
 
     if (e.y < getRulerTop() + loopBarHeight)
     {

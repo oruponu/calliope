@@ -58,6 +58,7 @@ public:
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseMove(const juce::MouseEvent& e) override;
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override;
+    void modifierKeysChanged(const juce::ModifierKeys& modifiers) override;
 
     static constexpr int keyboardWidth = 72;
     static constexpr int defaultNoteHeight = 14;
@@ -152,7 +153,12 @@ private:
     void drawRubberBand(juce::Graphics& g);
     std::vector<NoteRef> findNotesInRect(const juce::Rectangle<int>& rect) const;
 
+    static EditMode swapTool(EditMode mode);
+    void updateEffectiveEditMode();
+
     EditMode editMode = EditMode::Select;
+    EditMode baseEditMode = EditMode::Select;
+    bool toolSwapActive = false;
     NoteRef selectedNote;
     std::set<NoteRef> selectedNotes;
     DragMode dragMode = DragMode::None;
