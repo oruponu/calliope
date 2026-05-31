@@ -171,7 +171,7 @@ void EventListComponent::setSelectedNotes(const std::set<std::pair<int, int>>& s
     for (int i = 0; i < static_cast<int>(items.size()); ++i)
     {
         const auto& item = items[static_cast<size_t>(i)];
-        if (item.kind == EventListItem::Note && selected.count({item.trackIndex, item.sourceIndex}) > 0)
+        if (item.kind == EventListItem::Note && selected.contains({item.trackIndex, item.sourceIndex}))
         {
             listBox.selectRow(i, true, false);
             if (firstRow < 0)
