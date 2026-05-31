@@ -35,6 +35,8 @@ target_sources(Calliope PRIVATE
     src/io/MidiFileIO.cpp
 )
 
+target_compile_features(Calliope PRIVATE cxx_std_20)
+
 target_compile_definitions(Calliope PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
