@@ -1,5 +1,4 @@
 #include "PlaybackEngine.h"
-#include <algorithm>
 
 PlaybackEngine::PlaybackEngine() = default;
 
@@ -82,7 +81,7 @@ void PlaybackEngine::addListener(Listener* listener)
 
 void PlaybackEngine::removeListener(Listener* listener)
 {
-    listeners.erase(std::remove(listeners.begin(), listeners.end(), listener), listeners.end());
+    std::erase(listeners, listener);
 }
 
 void PlaybackEngine::hiResTimerCallback()
@@ -167,19 +166,15 @@ void PlaybackEngine::processEvents(int fromTick, int toTick)
 
 void PlaybackEngine::processNoteOffs(int toTick)
 {
-    for (auto it = activeNotes.begin(); it != activeNotes.end();)
-    {
-        if (it->note->endTick() <= toTick)
-        {
-            for (auto* listener : listeners)
-                listener->onNoteOff(it->trackIndex, *(it->note));
-            it = activeNotes.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
+    std::erase_if(activeNotes,
+                  [&](const ActiveNote& active)
+                  {
+                      if (active.note->endTick() > toTick)
+                          return false;
+                      for (auto* listener : listeners)
+                          listener->onNoteOff(active.trackIndex, *(active.note));
+                      return true;
+                  });
 }
 
 void PlaybackEngine::sendAllNoteOffs()
@@ -194,17 +189,13 @@ void PlaybackEngine::sendAllNoteOffs()
 
 void PlaybackEngine::releaseActiveNotesForTrack(int trackIndex)
 {
-    for (auto it = activeNotes.begin(); it != activeNotes.end();)
-    {
-        if (it->trackIndex == trackIndex)
-        {
-            for (auto* listener : listeners)
-                listener->onNoteOff(it->trackIndex, *(it->note));
-            it = activeNotes.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
+    std::erase_if(activeNotes,
+                  [&](const ActiveNote& active)
+                  {
+                      if (active.trackIndex != trackIndex)
+                          return false;
+                      for (auto* listener : listeners)
+                          listener->onNoteOff(active.trackIndex, *(active.note));
+                      return true;
+                  });
 }
