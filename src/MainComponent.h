@@ -145,7 +145,7 @@ private:
 
         void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
         {
-            if (e.mods.isCtrlDown() && onZoom)
+            if (e.mods.isCommandDown() && onZoom)
             {
                 onZoom(e, wheel);
                 return;
