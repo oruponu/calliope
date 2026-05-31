@@ -1,5 +1,6 @@
 #include "MidiSequence.h"
 #include <algorithm>
+#include <ranges>
 
 MidiSequence::MidiSequence()
 {
@@ -52,12 +53,7 @@ int MidiSequence::getNumTracks() const
 
 bool MidiSequence::isAnySolo() const
 {
-    for (const auto& track : tracks)
-    {
-        if (track.isSolo())
-            return true;
-    }
-    return false;
+    return std::ranges::any_of(tracks, [](const MidiTrack& track) { return track.isSolo(); });
 }
 
 void MidiSequence::setBpm(double newBpm)
@@ -87,30 +83,16 @@ void MidiSequence::setTicksPerQuarterNote(int ppq)
 
 double MidiSequence::getTempoAt(int tick) const
 {
-    double bpm = 120.0;
-    for (auto it = tempoChanges.rbegin(); it != tempoChanges.rend(); ++it)
-    {
-        if (it->tick <= tick)
-        {
-            bpm = it->bpm;
-            break;
-        }
-    }
-    return bpm;
+    auto reversed = std::views::reverse(tempoChanges);
+    auto it = std::ranges::find_if(reversed, [tick](const TempoChange& tc) { return tc.tick <= tick; });
+    return it != reversed.end() ? it->bpm : 120.0;
 }
 
 TimeSignatureChange MidiSequence::getTimeSignatureAt(int tick) const
 {
-    TimeSignatureChange ts = {0, 4, 4};
-    for (auto it = timeSignatureChanges.rbegin(); it != timeSignatureChanges.rend(); ++it)
-    {
-        if (it->tick <= tick)
-        {
-            ts = *it;
-            break;
-        }
-    }
-    return ts;
+    auto reversed = std::views::reverse(timeSignatureChanges);
+    auto it = std::ranges::find_if(reversed, [tick](const TimeSignatureChange& ts) { return ts.tick <= tick; });
+    return it != reversed.end() ? *it : TimeSignatureChange{0, 4, 4};
 }
 
 const std::vector<TempoChange>& MidiSequence::getTempoChanges() const
@@ -134,8 +116,7 @@ void MidiSequence::addTempoChange(int tick, double bpm)
         }
     }
     tempoChanges.push_back({tick, bpm});
-    std::sort(tempoChanges.begin(), tempoChanges.end(),
-              [](const TempoChange& a, const TempoChange& b) { return a.tick < b.tick; });
+    std::ranges::sort(tempoChanges, {}, &TempoChange::tick);
 }
 
 void MidiSequence::addTimeSignatureChange(int tick, int num, int den)
@@ -150,22 +131,14 @@ void MidiSequence::addTimeSignatureChange(int tick, int num, int den)
         }
     }
     timeSignatureChanges.push_back({tick, num, den});
-    std::sort(timeSignatureChanges.begin(), timeSignatureChanges.end(),
-              [](const TimeSignatureChange& a, const TimeSignatureChange& b) { return a.tick < b.tick; });
+    std::ranges::sort(timeSignatureChanges, {}, &TimeSignatureChange::tick);
 }
 
 KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
 {
-    KeySignatureChange ks = {0, 0, false};
-    for (auto it = keySignatureChanges.rbegin(); it != keySignatureChanges.rend(); ++it)
-    {
-        if (it->tick <= tick)
-        {
-            ks = *it;
-            break;
-        }
-    }
-    return ks;
+    auto reversed = std::views::reverse(keySignatureChanges);
+    auto it = std::ranges::find_if(reversed, [tick](const KeySignatureChange& ks) { return ks.tick <= tick; });
+    return it != reversed.end() ? *it : KeySignatureChange{0, 0, false};
 }
 
 const std::vector<KeySignatureChange>& MidiSequence::getKeySignatureChanges() const
@@ -190,8 +163,7 @@ void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMin
         }
     }
     keySignatureChanges.push_back({tick, sharpsOrFlats, isMinor});
-    std::sort(keySignatureChanges.begin(), keySignatureChanges.end(),
-              [](const KeySignatureChange& a, const KeySignatureChange& b) { return a.tick < b.tick; });
+    std::ranges::sort(keySignatureChanges, {}, &KeySignatureChange::tick);
 }
 
 void MidiSequence::addChordChange(int tick, int chordRoot, int chordType, int bassRoot, int bassType)
@@ -208,8 +180,7 @@ void MidiSequence::addChordChange(int tick, int chordRoot, int chordType, int ba
         }
     }
     chordChanges.push_back({tick, chordRoot, chordType, bassRoot, bassType});
-    std::sort(chordChanges.begin(), chordChanges.end(),
-              [](const ChordChange& a, const ChordChange& b) { return a.tick < b.tick; });
+    std::ranges::sort(chordChanges, {}, &ChordChange::tick);
 }
 
 std::string MidiSequence::chordToString(const ChordChange& chord)
