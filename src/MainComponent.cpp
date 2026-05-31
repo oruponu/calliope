@@ -822,34 +822,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     juce::PopupMenu menu;
     if (menuIndex == 0)
     {
-        juce::PopupMenu::Item newItem;
-        newItem.itemID = CommandID::newFile_;
-        newItem.text = "New";
-        newItem.shortcutKeyDescription = "Ctrl+N";
-        newItem.action = [this]() { commandManager.invokeDirectly(CommandID::newFile_, true); };
-        menu.addItem(newItem);
-
-        juce::PopupMenu::Item open;
-        open.itemID = CommandID::openFile;
-        open.text = "Open...";
-        open.shortcutKeyDescription = "Ctrl+O";
-        open.action = [this]() { commandManager.invokeDirectly(CommandID::openFile, true); };
-        menu.addItem(open);
-
-        juce::PopupMenu::Item save;
-        save.itemID = CommandID::saveFile_;
-        save.text = "Save...";
-        save.shortcutKeyDescription = "Ctrl+S";
-        save.action = [this]() { commandManager.invokeDirectly(CommandID::saveFile_, true); };
-        menu.addItem(save);
-
+        menu.addCommandItem(&commandManager, CommandID::newFile_);
+        menu.addCommandItem(&commandManager, CommandID::openFile);
+        menu.addCommandItem(&commandManager, CommandID::saveFile_);
         menu.addSeparator();
-
-        juce::PopupMenu::Item quit;
-        quit.itemID = CommandID::quitApp;
-        quit.text = "Exit";
-        quit.action = [this]() { commandManager.invokeDirectly(CommandID::quitApp, true); };
-        menu.addItem(quit);
+        menu.addCommandItem(&commandManager, CommandID::quitApp);
     }
     else if (menuIndex == 1)
     {
