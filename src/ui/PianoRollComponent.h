@@ -20,16 +20,7 @@ public:
         int trackIndex = -1;
         int noteIndex = -1;
         bool isValid() const { return trackIndex >= 0 && noteIndex >= 0; }
-        bool operator<(const NoteRef& other) const
-        {
-            if (trackIndex != other.trackIndex)
-                return trackIndex < other.trackIndex;
-            return noteIndex < other.noteIndex;
-        }
-        bool operator==(const NoteRef& other) const
-        {
-            return trackIndex == other.trackIndex && noteIndex == other.noteIndex;
-        }
+        auto operator<=>(const NoteRef&) const = default;
     };
 
     void setSequence(MidiSequence* seq);
