@@ -568,6 +568,7 @@ MainComponent::MainComponent()
     controllerLaneViewport.setViewedComponent(&controllerLane, false);
     controllerLaneViewport.setScrollBarsShown(false, true);
     controllerLaneViewport.setHorizontalScrollBarRightInset(zoomStripLength);
+    controllerLane.setRightPadding(viewport.getScrollBarThickness());
     controllerLaneViewport.onVisibleAreaChanged = [this]()
     {
         if (!syncingScroll)
@@ -1393,6 +1394,7 @@ void MainComponent::scrollToPlayhead(int tick)
         int desiredX = playheadX - PianoRollComponent::keyboardWidth;
         while (desiredX + viewport.getViewWidth() > pianoRoll.getWidth())
             pianoRoll.extendContent();
+        controllerLane.setContentBeats(pianoRoll.getContentBeats());
 
         viewport.setViewPosition(desiredX, viewport.getViewPositionY());
     }
