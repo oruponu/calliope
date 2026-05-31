@@ -75,8 +75,6 @@ void PianoRollComponent::setEditMode(EditMode mode)
 {
     baseEditMode = mode;
     editMode = toolSwapActive ? swapTool(mode) : mode;
-    selectedNote = {};
-    selectedNotes.clear();
     dragMode = DragMode::None;
     repaint();
 }
@@ -117,8 +115,6 @@ void PianoRollComponent::modifierKeysChanged(const juce::ModifierKeys& modifiers
 
 bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
 {
-    if (editMode == EditMode::Edit)
-        return selectedNote.isValid() && selectedNote == ref;
     return selectedNotes.contains(ref);
 }
 
@@ -369,9 +365,12 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                 sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
             }
             selectedNote = {};
+            selectedNotes.clear();
             repaint();
             if (onNotesChanged)
                 onNotesChanged();
+            if (onNoteSelectionChanged)
+                onNoteSelectionChanged(selectedNotes);
             return;
         }
 
@@ -399,6 +398,10 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             track.addNote(newNote);
             selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
         }
+        selectedNotes.clear();
+        selectedNotes.insert(selectedNote);
+        if (onNoteSelectionChanged)
+            onNoteSelectionChanged(selectedNotes);
         startNotePreview(newNote);
 
         resizeTargets.clear();
