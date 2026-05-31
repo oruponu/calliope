@@ -172,6 +172,7 @@ private:
     ResizeEdge resizeEdge = ResizeEdge::None;
     int resizeAnchorStartTick = 0;
     int resizeAnchorEndTick = 0;
+    bool isCreatingNote = false;
     void beginResize(const NoteRef& hit, ResizeEdge edge);
     int contentBeats = 0;
     juce::Point<int> rubberBandStart;
