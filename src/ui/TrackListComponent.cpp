@@ -75,7 +75,7 @@ const std::set<int>& TrackListComponent::getSelectedTrackIndices() const
 
 bool TrackListComponent::isTrackSelected(int index) const
 {
-    return selectedTrackIndices.count(index) > 0;
+    return selectedTrackIndices.contains(index);
 }
 
 void TrackListComponent::setSelectedTrackIndices(const std::set<int>& indices)
@@ -109,7 +109,7 @@ void TrackListComponent::paint(juce::Graphics& g)
             g.setColour(accent::soft);
             g.fillRoundedRectangle(highlightBounds, radius::r2);
         }
-        else if (selectedTrackIndices.count(i) > 0)
+        else if (selectedTrackIndices.contains(i))
         {
             g.setColour(surface::hover);
             g.fillRoundedRectangle(highlightBounds, radius::r2);
@@ -291,7 +291,7 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
     if (getMuteButtonBounds(row).contains(e.x, e.y))
     {
         bool newMuted = !track.isMuted();
-        if (selectedTrackIndices.count(row) > 0)
+        if (selectedTrackIndices.contains(row))
         {
             for (int idx : selectedTrackIndices)
                 sequence->getTrack(idx).setMuted(newMuted);
@@ -309,7 +309,7 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
     if (getSoloButtonBounds(row).contains(e.x, e.y))
     {
         bool newSolo = !track.isSolo();
-        if (selectedTrackIndices.count(row) > 0)
+        if (selectedTrackIndices.contains(row))
         {
             for (int idx : selectedTrackIndices)
                 sequence->getTrack(idx).setSolo(newSolo);
@@ -347,7 +347,7 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
 
     if (e.mods.isCtrlDown())
     {
-        if (selectedTrackIndices.count(row) > 0)
+        if (selectedTrackIndices.contains(row))
         {
             if (selectedTrackIndices.size() > 1)
             {

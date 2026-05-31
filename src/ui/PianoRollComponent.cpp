@@ -89,7 +89,7 @@ bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
 {
     if (editMode == EditMode::Edit)
         return selectedNote.isValid() && selectedNote == ref;
-    return selectedNotes.count(ref) > 0;
+    return selectedNotes.contains(ref);
 }
 
 std::vector<PianoRollComponent::NoteRef> PianoRollComponent::findNotesInRect(const juce::Rectangle<int>& rect) const
@@ -415,7 +415,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         {
             if (e.mods.isShiftDown())
             {
-                if (selectedNotes.count(hit) > 0)
+                if (selectedNotes.contains(hit))
                     selectedNotes.erase(hit);
                 else
                     selectedNotes.insert(hit);
@@ -1405,7 +1405,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
     }
 
     if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks() &&
-        selectedTrackIndices.count(activeTrackIndex) > 0)
+        selectedTrackIndices.contains(activeTrackIndex))
     {
         const auto& track = sequence->getTrack(activeTrackIndex);
 
@@ -1730,7 +1730,7 @@ PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
         return {};
 
     if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks() &&
-        selectedTrackIndices.count(activeTrackIndex) > 0)
+        selectedTrackIndices.contains(activeTrackIndex))
     {
         const auto& track = sequence->getTrack(activeTrackIndex);
         for (int i = 0; i < track.getNumNotes(); ++i)
