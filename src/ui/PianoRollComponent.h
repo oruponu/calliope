@@ -5,6 +5,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 #include <set>
+#include <vector>
 
 class PianoRollComponent : public juce::Component
 {
@@ -124,9 +125,16 @@ private:
     int roundTickToGrid(int tick) const;
     int floorTickToGrid(int tick) const;
 
+    enum class ResizeEdge
+    {
+        None,
+        Left,
+        Right
+    };
+
     NoteRef hitTestNote(int x, int y) const;
     int keyboardNoteAtPosition(int x, int y) const;
-    bool isOnRightEdge(int x, const MidiNote& note) const;
+    ResizeEdge edgeAt(int x, const MidiNote& note) const;
 
     int getKeyboardLeft() const;
     int getRulerTop() const;
@@ -153,6 +161,18 @@ private:
     int originalStartTick = 0;
     int originalNoteNumber = 0;
     int originalDuration = 0;
+
+    struct ResizeTarget
+    {
+        NoteRef ref;
+        int startTick = 0;
+        int duration = 0;
+    };
+    std::vector<ResizeTarget> resizeTargets;
+    ResizeEdge resizeEdge = ResizeEdge::None;
+    int resizeAnchorStartTick = 0;
+    int resizeAnchorEndTick = 0;
+    void beginResize(const NoteRef& hit, ResizeEdge edge);
     int contentBeats = 0;
     juce::Point<int> rubberBandStart;
     juce::Rectangle<int> rubberBandRect;

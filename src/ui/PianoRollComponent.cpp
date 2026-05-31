@@ -316,6 +316,16 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
     {
         if (hit.isValid())
         {
+            if (!e.mods.isRightButtonDown())
+            {
+                auto edge = edgeAt(e.x, sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex));
+                if (edge != ResizeEdge::None)
+                {
+                    beginResize(hit, edge);
+                    return;
+                }
+            }
+
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Delete Note");
@@ -397,6 +407,16 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 
         if (hit.isValid())
         {
+            if (!e.mods.isShiftDown())
+            {
+                auto edge = edgeAt(e.x, sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex));
+                if (edge != ResizeEdge::None)
+                {
+                    beginResize(hit, edge);
+                    return;
+                }
+            }
+
             if (e.mods.isShiftDown())
             {
                 if (selectedNotes.contains(hit))
@@ -485,6 +505,41 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
+    if (dragMode == DragMode::Resizing)
+    {
+        if (resizeTargets.empty())
+            return;
+
+        int minDuration = sequence ? sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
+        int currentTick = roundTickToGrid(xToTick(e.x));
+
+        if (resizeEdge == ResizeEdge::Right)
+        {
+            int delta = currentTick - resizeAnchorEndTick;
+            for (const auto& t : resizeTargets)
+            {
+                auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
+                note.startTick = t.startTick;
+                note.duration = std::max(minDuration, t.duration + delta);
+            }
+        }
+        else if (resizeEdge == ResizeEdge::Left)
+        {
+            int delta = currentTick - resizeAnchorStartTick;
+            for (const auto& t : resizeTargets)
+            {
+                auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
+                int endTick = t.startTick + t.duration;
+                int newStart = std::clamp(t.startTick + delta, 0, endTick - minDuration);
+                note.startTick = newStart;
+                note.duration = endTick - newStart;
+            }
+        }
+
+        repaint();
+        return;
+    }
+
     if (!selectedNote.isValid() || dragMode == DragMode::None)
         return;
 
@@ -505,13 +560,6 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
         if (newNote != previewNote.noteNumber)
             startNotePreview(note);
-    }
-    else if (dragMode == DragMode::Resizing)
-    {
-        int currentTick = xToTick(e.x);
-        int newDuration = roundTickToGrid(currentTick - originalStartTick);
-        int minDuration = sequence ? sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
-        note.duration = std::max(minDuration, newDuration);
     }
 
     repaint();
@@ -545,7 +593,38 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         return;
     }
 
-    if (dragMode == DragMode::Moving || dragMode == DragMode::Resizing)
+    if (dragMode == DragMode::Resizing)
+    {
+        if (undoManager)
+        {
+            bool transactionStarted = false;
+            for (const auto& t : resizeTargets)
+            {
+                auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
+                if (note.startTick == t.startTick && note.duration == t.duration)
+                    continue;
+
+                MidiNote beforeNote{note.noteNumber, note.velocity, t.startTick, t.duration};
+                MidiNote afterNote = note;
+
+                if (!transactionStarted)
+                {
+                    undoManager->beginNewTransaction(resizeTargets.size() > 1 ? "Resize Notes" : "Resize Note");
+                    transactionStarted = true;
+                }
+                undoManager->perform(
+                    new NoteModifyAction(sequence, t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote));
+            }
+        }
+        resizeTargets.clear();
+        resizeEdge = ResizeEdge::None;
+        dragMode = DragMode::None;
+        if (onNotesChanged)
+            onNotesChanged();
+        return;
+    }
+
+    if (dragMode == DragMode::Moving)
     {
         if (undoManager && selectedNote.isValid())
         {
@@ -556,7 +635,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
             if (beforeNote.startTick != afterNote.startTick || beforeNote.noteNumber != afterNote.noteNumber ||
                 beforeNote.duration != afterNote.duration)
             {
-                undoManager->beginNewTransaction(dragMode == DragMode::Moving ? "Move Note" : "Resize Note");
+                undoManager->beginNewTransaction("Move Note");
                 undoManager->perform(new NoteModifyAction(sequence, selectedNote.trackIndex, selectedNote.noteIndex,
                                                           beforeNote, afterNote));
             }
@@ -578,19 +657,18 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 
     auto hit = hitTestNote(e.x, e.y);
 
-    if (editMode == EditMode::Select)
-    {
-        if (hit.isValid())
-            setMouseCursor(juce::MouseCursor::PointingHandCursor);
-        else
-            setMouseCursor(juce::MouseCursor::NormalCursor);
-        return;
-    }
-
     if (hit.isValid())
-        setMouseCursor(juce::MouseCursor::PointingHandCursor);
+    {
+        auto edge = edgeAt(e.x, sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex));
+        if (edge != ResizeEdge::None)
+            setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);
+        else
+            setMouseCursor(juce::MouseCursor::PointingHandCursor);
+    }
     else
+    {
         setMouseCursor(juce::MouseCursor::NormalCursor);
+    }
 }
 
 void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
@@ -1700,6 +1778,36 @@ void PianoRollComponent::extendContent()
     updateSize();
 }
 
+void PianoRollComponent::beginResize(const NoteRef& hit, ResizeEdge edge)
+{
+    std::set<NoteRef> targets;
+    if (selectedNotes.contains(hit))
+        targets = selectedNotes;
+    else
+    {
+        selectedNotes.clear();
+        selectedNotes.insert(hit);
+        targets.insert(hit);
+        if (onNoteSelectionChanged)
+            onNoteSelectionChanged(selectedNotes);
+    }
+
+    resizeTargets.clear();
+    for (const auto& ref : targets)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        resizeTargets.push_back({ref, note.startTick, note.duration});
+    }
+
+    const auto& anchor = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
+    resizeAnchorStartTick = anchor.startTick;
+    resizeAnchorEndTick = anchor.endTick();
+    resizeEdge = edge;
+    selectedNote = hit;
+    dragMode = DragMode::Resizing;
+    repaint();
+}
+
 PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
 {
     if (!sequence)
@@ -1744,10 +1852,19 @@ PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
     return {};
 }
 
-bool PianoRollComponent::isOnRightEdge(int x, const MidiNote& note) const
+PianoRollComponent::ResizeEdge PianoRollComponent::edgeAt(int x, const MidiNote& note) const
 {
+    int leftX = tickToX(note.startTick);
     int rightX = tickToX(note.endTick());
-    return std::abs(x - rightX) <= resizeEdgeWidth;
+
+    bool nearRight = std::abs(x - rightX) <= resizeEdgeWidth;
+    bool nearLeft = std::abs(x - leftX) <= resizeEdgeWidth;
+
+    if (nearRight)
+        return ResizeEdge::Right;
+    if (nearLeft && x < (leftX + rightX) / 2)
+        return ResizeEdge::Left;
+    return ResizeEdge::None;
 }
 
 int PianoRollComponent::getKeyboardLeft() const
