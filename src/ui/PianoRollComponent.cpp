@@ -314,69 +314,53 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 
     if (editMode == EditMode::Edit)
     {
-        if (e.mods.isRightButtonDown())
-        {
-            if (hit.isValid())
-            {
-                if (undoManager)
-                {
-                    undoManager->beginNewTransaction("Delete Note");
-                    undoManager->perform(new NoteDeleteAction(sequence, hit.trackIndex, hit.noteIndex));
-                }
-                else
-                {
-                    sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
-                }
-                selectedNote = {};
-                repaint();
-                if (onNotesChanged)
-                    onNotesChanged();
-            }
-            return;
-        }
-
         if (hit.isValid())
         {
-            selectedNote = hit;
-            const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
-            originalStartTick = note.startTick;
-            originalNoteNumber = note.noteNumber;
-            originalDuration = note.duration;
-            dragStartTick = xToTick(e.x);
-            dragStartNote = yToNote(e.y);
-
-            dragMode = isOnRightEdge(e.x, note) ? DragMode::Resizing : DragMode::Moving;
-            startNotePreview(note);
-        }
-        else
-        {
-            int tick = floorTickToGrid(xToTick(e.x));
-            int noteNum = yToNote(e.y);
-            if (noteNum < 0 || noteNum > 127)
-                return;
-
-            int defaultDuration = sequence ? sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
-            MidiNote newNote{noteNum, 100, tick, defaultDuration};
-
             if (undoManager)
             {
-                undoManager->beginNewTransaction("Add Note");
-                auto* action = new NoteAddAction(sequence, activeTrackIndex, newNote);
-                undoManager->perform(action);
-                selectedNote = {activeTrackIndex, action->getAddedIndex()};
+                undoManager->beginNewTransaction("Delete Note");
+                undoManager->perform(new NoteDeleteAction(sequence, hit.trackIndex, hit.noteIndex));
             }
             else
             {
-                auto& track = sequence->getTrack(activeTrackIndex);
-                track.addNote(newNote);
-                selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
+                sequence->getTrack(hit.trackIndex).removeNote(hit.noteIndex);
             }
-            startNotePreview(newNote);
-            dragMode = DragMode::None;
+            selectedNote = {};
             repaint();
             if (onNotesChanged)
                 onNotesChanged();
+            return;
         }
+
+        if (e.mods.isRightButtonDown())
+            return;
+
+        int tick = floorTickToGrid(xToTick(e.x));
+        int noteNum = yToNote(e.y);
+        if (noteNum < 0 || noteNum > 127)
+            return;
+
+        int defaultDuration = sequence ? sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
+        MidiNote newNote{noteNum, 100, tick, defaultDuration};
+
+        if (undoManager)
+        {
+            undoManager->beginNewTransaction("Add Note");
+            auto* action = new NoteAddAction(sequence, activeTrackIndex, newNote);
+            undoManager->perform(action);
+            selectedNote = {activeTrackIndex, action->getAddedIndex()};
+        }
+        else
+        {
+            auto& track = sequence->getTrack(activeTrackIndex);
+            track.addNote(newNote);
+            selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
+        }
+        startNotePreview(newNote);
+        dragMode = DragMode::None;
+        repaint();
+        if (onNotesChanged)
+            onNotesChanged();
     }
     else // Select mode
     {
@@ -604,17 +588,9 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
     }
 
     if (hit.isValid())
-    {
-        const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
-        if (isOnRightEdge(e.x, note))
-            setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);
-        else
-            setMouseCursor(juce::MouseCursor::DraggingHandCursor);
-    }
+        setMouseCursor(juce::MouseCursor::PointingHandCursor);
     else
-    {
         setMouseCursor(juce::MouseCursor::NormalCursor);
-    }
 }
 
 void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
