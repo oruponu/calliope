@@ -372,53 +372,43 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 {
                     auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::ControlChange;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getControllerNumber();
-                    ev.data2 = msg.getControllerValue();
-                    track.addEvent(ev);
+                    track.addEvent({.type = MidiEvent::Type::ControlChange,
+                                    .tick = static_cast<int>(msg.getTimeStamp()),
+                                    .data1 = msg.getControllerNumber(),
+                                    .data2 = msg.getControllerValue()});
                 }
                 else if (msg.isProgramChange())
                 {
                     auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::ProgramChange;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getProgramChangeNumber();
-                    track.addEvent(ev);
+                    track.addEvent({.type = MidiEvent::Type::ProgramChange,
+                                    .tick = static_cast<int>(msg.getTimeStamp()),
+                                    .data1 = msg.getProgramChangeNumber()});
                 }
                 else if (msg.isPitchWheel())
                 {
                     auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::PitchBend;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getPitchWheelValue();
-                    track.addEvent(ev);
+                    track.addEvent({.type = MidiEvent::Type::PitchBend,
+                                    .tick = static_cast<int>(msg.getTimeStamp()),
+                                    .data1 = msg.getPitchWheelValue()});
                 }
                 else if (msg.isChannelPressure())
                 {
                     auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::ChannelPressure;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getChannelPressureValue();
-                    track.addEvent(ev);
+                    track.addEvent({.type = MidiEvent::Type::ChannelPressure,
+                                    .tick = static_cast<int>(msg.getTimeStamp()),
+                                    .data1 = msg.getChannelPressureValue()});
                 }
                 else if (msg.isAftertouch())
                 {
                     auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::KeyPressure;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getNoteNumber();
-                    ev.data2 = msg.getAfterTouchValue();
-                    track.addEvent(ev);
+                    track.addEvent({.type = MidiEvent::Type::KeyPressure,
+                                    .tick = static_cast<int>(msg.getTimeStamp()),
+                                    .data1 = msg.getNoteNumber(),
+                                    .data2 = msg.getAfterTouchValue()});
                 }
             }
         }
@@ -470,12 +460,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                         track->setChannel(msg.getChannel());
                     }
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::ControlChange;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getControllerNumber();
-                    ev.data2 = msg.getControllerValue();
-                    track->addEvent(ev);
+                    track->addEvent({.type = MidiEvent::Type::ControlChange,
+                                     .tick = static_cast<int>(msg.getTimeStamp()),
+                                     .data1 = msg.getControllerNumber(),
+                                     .data2 = msg.getControllerValue()});
                 }
                 else if (msg.isProgramChange())
                 {
@@ -485,11 +473,9 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                         track->setChannel(msg.getChannel());
                     }
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::ProgramChange;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getProgramChangeNumber();
-                    track->addEvent(ev);
+                    track->addEvent({.type = MidiEvent::Type::ProgramChange,
+                                     .tick = static_cast<int>(msg.getTimeStamp()),
+                                     .data1 = msg.getProgramChangeNumber()});
                 }
                 else if (msg.isPitchWheel())
                 {
@@ -499,11 +485,9 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                         track->setChannel(msg.getChannel());
                     }
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::PitchBend;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getPitchWheelValue();
-                    track->addEvent(ev);
+                    track->addEvent({.type = MidiEvent::Type::PitchBend,
+                                     .tick = static_cast<int>(msg.getTimeStamp()),
+                                     .data1 = msg.getPitchWheelValue()});
                 }
                 else if (msg.isChannelPressure())
                 {
@@ -513,11 +497,9 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                         track->setChannel(msg.getChannel());
                     }
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::ChannelPressure;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getChannelPressureValue();
-                    track->addEvent(ev);
+                    track->addEvent({.type = MidiEvent::Type::ChannelPressure,
+                                     .tick = static_cast<int>(msg.getTimeStamp()),
+                                     .data1 = msg.getChannelPressureValue()});
                 }
                 else if (msg.isAftertouch())
                 {
@@ -527,12 +509,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                         track->setChannel(msg.getChannel());
                     }
 
-                    MidiEvent ev;
-                    ev.type = MidiEvent::Type::KeyPressure;
-                    ev.tick = static_cast<int>(msg.getTimeStamp());
-                    ev.data1 = msg.getNoteNumber();
-                    ev.data2 = msg.getAfterTouchValue();
-                    track->addEvent(ev);
+                    track->addEvent({.type = MidiEvent::Type::KeyPressure,
+                                     .tick = static_cast<int>(msg.getTimeStamp()),
+                                     .data1 = msg.getNoteNumber(),
+                                     .data2 = msg.getAfterTouchValue()});
                 }
             }
 
