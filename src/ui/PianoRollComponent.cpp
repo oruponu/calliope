@@ -367,7 +367,15 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             selectedNote = {activeTrackIndex, track.getNumNotes() - 1};
         }
         startNotePreview(newNote);
-        dragMode = DragMode::None;
+
+        resizeTargets.clear();
+        resizeTargets.push_back({selectedNote, newNote.startTick, newNote.duration});
+        resizeAnchorStartTick = newNote.startTick;
+        resizeAnchorEndTick = newNote.endTick();
+        resizeEdge = ResizeEdge::Right;
+        isCreatingNote = true;
+        dragMode = DragMode::Resizing;
+
         repaint();
         if (onNotesChanged)
             onNotesChanged();
@@ -609,7 +617,8 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
                 if (!transactionStarted)
                 {
-                    undoManager->beginNewTransaction(resizeTargets.size() > 1 ? "Resize Notes" : "Resize Note");
+                    if (!isCreatingNote)
+                        undoManager->beginNewTransaction(resizeTargets.size() > 1 ? "Resize Notes" : "Resize Note");
                     transactionStarted = true;
                 }
                 undoManager->perform(
@@ -618,6 +627,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         }
         resizeTargets.clear();
         resizeEdge = ResizeEdge::None;
+        isCreatingNote = false;
         dragMode = DragMode::None;
         if (onNotesChanged)
             onNotesChanged();
