@@ -345,7 +345,7 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
-    if (e.mods.isCtrlDown())
+    if (e.mods.isCommandDown())
     {
         if (selectedTrackIndices.contains(row))
         {

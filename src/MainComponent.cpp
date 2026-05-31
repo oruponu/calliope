@@ -551,7 +551,7 @@ MainComponent::MainComponent()
     };
     controllerLane.onMouseWheel = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
     {
-        if (e.mods.isCtrlDown())
+        if (e.mods.isCommandDown())
         {
             float factor = w.deltaY > 0 ? 1.15f : (1.0f / 1.15f);
             auto relEvent = e.getEventRelativeTo(&controllerLaneViewport);
@@ -971,15 +971,15 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     {
     case CommandID::newFile_:
         result.setInfo("New", "", "File", 0);
-        result.addDefaultKeypress('N', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('N', juce::ModifierKeys::commandModifier);
         break;
     case CommandID::openFile:
         result.setInfo("Open...", "", "File", 0);
-        result.addDefaultKeypress('O', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('O', juce::ModifierKeys::commandModifier);
         break;
     case CommandID::saveFile_:
         result.setInfo("Save...", "", "File", 0);
-        result.addDefaultKeypress('S', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('S', juce::ModifierKeys::commandModifier);
         break;
     case CommandID::quitApp:
         result.setInfo("Exit", "", "File", 0);
@@ -990,7 +990,7 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         break;
     case CommandID::returnToStart:
         result.setInfo("Return to Start", "", "Transport", 0);
-        result.addDefaultKeypress(',', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress(',', juce::ModifierKeys::commandModifier);
         break;
     case CommandID::prevBar:
         result.setInfo("Previous Bar", "", "Transport", 0);
@@ -1010,48 +1010,48 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         break;
     case CommandID::undoAction:
         result.setInfo("Undo", "", "Edit", 0);
-        result.addDefaultKeypress('Z', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('Z', juce::ModifierKeys::commandModifier);
         result.setActive(undoManager.canUndo());
         break;
     case CommandID::redoAction:
         result.setInfo("Redo", "", "Edit", 0);
-        result.addDefaultKeypress('Y', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('Y', juce::ModifierKeys::commandModifier);
         result.setActive(undoManager.canRedo());
         break;
     case CommandID::cutAction:
         result.setInfo("Cut", "", "Edit", 0);
-        result.addDefaultKeypress('X', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('X', juce::ModifierKeys::commandModifier);
         result.setActive(pianoRoll.hasSelectedNotes());
         break;
     case CommandID::copyAction:
         result.setInfo("Copy", "", "Edit", 0);
-        result.addDefaultKeypress('C', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('C', juce::ModifierKeys::commandModifier);
         result.setActive(pianoRoll.hasSelectedNotes());
         break;
     case CommandID::pasteAction:
         result.setInfo("Paste", "", "Edit", 0);
-        result.addDefaultKeypress('V', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('V', juce::ModifierKeys::commandModifier);
         result.setActive(pianoRoll.hasClipboardNotes());
         break;
     case CommandID::zoomInHorizontal:
         result.setInfo("Zoom In (Horizontal)", "", "View", 0);
-        result.addDefaultKeypress('=', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('=', juce::ModifierKeys::commandModifier);
         break;
     case CommandID::zoomOutHorizontal:
         result.setInfo("Zoom Out (Horizontal)", "", "View", 0);
-        result.addDefaultKeypress('-', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('-', juce::ModifierKeys::commandModifier);
         break;
     case CommandID::zoomInVertical:
         result.setInfo("Zoom In (Vertical)", "", "View", 0);
-        result.addDefaultKeypress('=', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::shiftModifier);
+        result.addDefaultKeypress('=', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier);
         break;
     case CommandID::zoomOutVertical:
         result.setInfo("Zoom Out (Vertical)", "", "View", 0);
-        result.addDefaultKeypress('-', juce::ModifierKeys::ctrlModifier | juce::ModifierKeys::shiftModifier);
+        result.addDefaultKeypress('-', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier);
         break;
     case CommandID::zoomReset:
         result.setInfo("Reset Zoom", "", "View", 0);
-        result.addDefaultKeypress('0', juce::ModifierKeys::ctrlModifier);
+        result.addDefaultKeypress('0', juce::ModifierKeys::commandModifier);
         break;
     case CommandID::toggleLoop:
         result.setInfo("Toggle Loop", "", "Transport", 0);
