@@ -29,6 +29,7 @@ public:
     void setLoopRegion(bool enabled, int startTick, int endTick);
     void setContentBeats(int beats);
     void setBeatWidth(int w);
+    void setRightPadding(int px);
     void setQuantizeDenominator(int denom);
     void updateSize();
 
@@ -80,6 +81,7 @@ private:
     int loopStartTick = 0;
     int loopEndTick = 0;
     int contentBeats = 16;
+    int rightPadding = 0;
 
     int quantizeDenominator = 4;
 
