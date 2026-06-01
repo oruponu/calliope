@@ -836,6 +836,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
         menu.addCommandItem(&commandManager, CommandID::cutAction);
         menu.addCommandItem(&commandManager, CommandID::copyAction);
         menu.addCommandItem(&commandManager, CommandID::pasteAction);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager, CommandID::selectAllAction);
     }
     else if (menuIndex == 2)
     {
@@ -929,17 +931,17 @@ juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 
 void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
-    commands.addArray({CommandID::newFile_,          CommandID::openFile,
-                       CommandID::saveFile_,         CommandID::quitApp,
-                       CommandID::togglePlay,        CommandID::returnToStart,
-                       CommandID::prevBar,           CommandID::nextBar,
-                       CommandID::switchToEditTool,  CommandID::switchToSelectTool,
-                       CommandID::undoAction,        CommandID::redoAction,
-                       CommandID::cutAction,         CommandID::copyAction,
-                       CommandID::pasteAction,       CommandID::zoomInHorizontal,
-                       CommandID::zoomOutHorizontal, CommandID::zoomInVertical,
-                       CommandID::zoomOutVertical,   CommandID::zoomReset,
-                       CommandID::toggleLoop});
+    commands.addArray({CommandID::newFile_,         CommandID::openFile,
+                       CommandID::saveFile_,        CommandID::quitApp,
+                       CommandID::togglePlay,       CommandID::returnToStart,
+                       CommandID::prevBar,          CommandID::nextBar,
+                       CommandID::switchToEditTool, CommandID::switchToSelectTool,
+                       CommandID::undoAction,       CommandID::redoAction,
+                       CommandID::cutAction,        CommandID::copyAction,
+                       CommandID::pasteAction,      CommandID::selectAllAction,
+                       CommandID::zoomInHorizontal, CommandID::zoomOutHorizontal,
+                       CommandID::zoomInVertical,   CommandID::zoomOutVertical,
+                       CommandID::zoomReset,        CommandID::toggleLoop});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -1009,6 +1011,11 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         result.setInfo("Paste", "", "Edit", 0);
         result.addDefaultKeypress('V', juce::ModifierKeys::commandModifier);
         result.setActive(pianoRoll.hasClipboardNotes());
+        break;
+    case CommandID::selectAllAction:
+        result.setInfo("Select All", "", "Edit", 0);
+        result.addDefaultKeypress('A', juce::ModifierKeys::commandModifier);
+        result.setActive(pianoRoll.hasNotesInActiveTrack());
         break;
     case CommandID::zoomInHorizontal:
         result.setInfo("Zoom In (Horizontal)", "", "View", 0);
@@ -1115,6 +1122,9 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case CommandID::pasteAction:
         pianoRoll.pasteNotes(static_cast<int>(playbackEngine.getCurrentTick()));
+        return true;
+    case CommandID::selectAllAction:
+        pianoRoll.selectAllNotes();
         return true;
     case CommandID::zoomInHorizontal:
         zoomHorizontal(1.15f, viewport.getViewWidth() / 2);
