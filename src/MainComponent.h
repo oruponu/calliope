@@ -379,6 +379,7 @@ private:
         cutAction,
         copyAction,
         pasteAction,
+        selectAllAction,
         zoomInHorizontal,
         zoomOutHorizontal,
         zoomInVertical,
