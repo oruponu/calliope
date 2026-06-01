@@ -212,6 +212,29 @@ void PianoRollComponent::cutSelectedNotes()
         onNoteSelectionChanged(selectedNotes);
 }
 
+void PianoRollComponent::selectAllNotes()
+{
+    if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return;
+
+    selectedNotes.clear();
+    const auto& track = sequence->getTrack(activeTrackIndex);
+    for (int i = 0; i < track.getNumNotes(); ++i)
+        selectedNotes.insert({activeTrackIndex, i});
+
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+bool PianoRollComponent::hasNotesInActiveTrack() const
+{
+    if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return false;
+
+    return sequence->getTrack(activeTrackIndex).getNumNotes() > 0;
+}
+
 void PianoRollComponent::pasteNotes(int atTick)
 {
     if (!sequence || clipboard.empty() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
