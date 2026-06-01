@@ -50,8 +50,10 @@ public:
     void copySelectedNotes();
     void cutSelectedNotes();
     void pasteNotes(int atTick);
+    void selectAllNotes();
     bool hasClipboardNotes() const { return !clipboard.empty(); }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
+    bool hasNotesInActiveTrack() const;
 
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
