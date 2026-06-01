@@ -83,6 +83,13 @@ void MainComponent::ZoomStrip::mouseUp(const juce::MouseEvent& e)
         onZoomIn();
 }
 
+void MainComponent::FocusBorder::paint(juce::Graphics& g)
+{
+    using namespace calliope::theme;
+    g.setColour(text::t2);
+    g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), radius::r2, 1.0f);
+}
+
 void MainComponent::TransportButton::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -768,6 +775,15 @@ MainComponent::MainComponent()
 
     updateTransportDisplay();
 
+    trackList.setWantsKeyboardFocus(true);
+    pianoRoll.setWantsKeyboardFocus(true);
+    eventList.setWantsKeyboardFocus(true);
+    controllerLane.setWantsKeyboardFocus(true);
+    selectToolButton.setWantsKeyboardFocus(true);
+    editToolButton.setWantsKeyboardFocus(true);
+    addAndMakeVisible(focusBorder);
+    juce::Desktop::getInstance().addFocusChangeListener(this);
+
     commandManager.registerAllCommandsForTarget(this);
     setApplicationCommandManagerToWatch(&commandManager);
     setWantsKeyboardFocus(true);
@@ -779,6 +795,7 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
+    juce::Desktop::getInstance().removeFocusChangeListener(this);
     knownPluginList.removeChangeListener(this);
     audioDeviceManager.removeChangeListener(this);
     menuBar.setModel(nullptr);
@@ -806,10 +823,62 @@ void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
     }
 }
 
+void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
+{
+    if (focusedComponent == nullptr)
+        return;
+
+    auto belongsTo = [focusedComponent](const juce::Component& panel)
+    { return &panel == focusedComponent || panel.isParentOf(focusedComponent); };
+
+    FocusPanel detected = focusedPanel;
+    if (belongsTo(trackList))
+        detected = FocusPanel::TrackList;
+    else if (belongsTo(pianoRoll) || belongsTo(controllerLane) || belongsTo(quantizeComboBox) ||
+             belongsTo(selectToolButton) || belongsTo(editToolButton))
+        detected = FocusPanel::PianoRoll;
+    else if (belongsTo(eventList))
+        detected = FocusPanel::EventList;
+    else
+        return;
+
+    if (detected == focusedPanel)
+        return;
+
+    focusedPanel = detected;
+    updateFocusBorder();
+}
+
+void MainComponent::updateFocusBorder()
+{
+    juce::Rectangle<int> target;
+    switch (focusedPanel)
+    {
+    case FocusPanel::TrackList:
+        target = trackListPanelBounds;
+        break;
+    case FocusPanel::PianoRoll:
+        target = pianoRollPanelBounds;
+        break;
+    case FocusPanel::EventList:
+        target = eventListPanelBounds;
+        break;
+    }
+
+    focusBorder.setBounds(target);
+    focusBorder.setVisible(!target.isEmpty());
+}
+
 void MainComponent::parentHierarchyChanged()
 {
     if (auto* topLevel = getTopLevelComponent())
         topLevel->addKeyListener(commandManager.getKeyMappings());
+}
+
+void MainComponent::mouseDown(const juce::MouseEvent& e)
+{
+    if (toolBarBounds.contains(e.getPosition()))
+        pianoRoll.grabKeyboardFocus();
 }
 
 juce::StringArray MainComponent::getMenuBarNames()
@@ -1317,13 +1386,17 @@ void MainComponent::resized()
 
     int clampedTrackListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - eventListWidth - 200), trackListWidth);
     auto trackListColumn = area.removeFromLeft(clampedTrackListW);
+    trackListPanelBounds = trackListColumn;
     trackListHeaderBounds = trackListColumn.removeFromTop(toolBarHeight);
     trackListViewport.setBounds(trackListColumn);
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
     trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
     int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
-    eventList.setBounds(area.removeFromRight(clampedEventListW));
+    auto eventListColumn = area.removeFromRight(clampedEventListW);
+    eventListPanelBounds = eventListColumn;
+    eventList.setBounds(eventListColumn);
     eventListDivider.setBounds(area.removeFromRight(dividerThickness));
+    pianoRollPanelBounds = area;
 
     auto toolBarArea = area.removeFromTop(toolBarHeight);
     toolBarBounds = toolBarArea;
@@ -1358,6 +1431,8 @@ void MainComponent::resized()
                                 zoomStripLength);
     horizontalZoomStrip.setBounds(controllerLaneViewport.getRight() - zoomStripLength,
                                   controllerLaneViewport.getBottom() - sbThickness, zoomStripLength, sbThickness);
+
+    updateFocusBorder();
 }
 
 void MainComponent::onVBlank()
