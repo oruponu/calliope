@@ -16,7 +16,8 @@ class MainComponent : public juce::Component,
                       public juce::MenuBarModel,
                       public juce::ApplicationCommandTarget,
                       public juce::FileDragAndDropTarget,
-                      public juce::ChangeListener
+                      public juce::ChangeListener,
+                      public juce::FocusChangeListener
 {
 public:
     MainComponent();
@@ -25,8 +26,11 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void parentHierarchyChanged() override;
+    void mouseDown(const juce::MouseEvent& e) override;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+
+    void globalFocusChanged(juce::Component* focusedComponent) override;
 
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int menuIndex, const juce::String& menuName) override;
@@ -341,6 +345,18 @@ private:
         juce::Rectangle<int> minusBounds, plusBounds;
     };
 
+    class FocusBorder : public juce::Component
+    {
+    public:
+        FocusBorder()
+        {
+            setInterceptsMouseClicks(false, false);
+            setOpaque(false);
+            setAlwaysOnTop(true);
+        }
+        void paint(juce::Graphics& g) override;
+    };
+
     Divider controllerLaneDivider{Divider::Horizontal};
     Divider trackListDivider{Divider::Vertical};
     Divider eventListDivider{Divider::Vertical};
@@ -355,6 +371,19 @@ private:
     bool syncingScroll = false;
 
     EventListComponent eventList;
+
+    enum class FocusPanel
+    {
+        TrackList,
+        PianoRoll,
+        EventList
+    };
+    FocusPanel focusedPanel = FocusPanel::PianoRoll;
+    FocusBorder focusBorder;
+    juce::Rectangle<int> trackListPanelBounds;
+    juce::Rectangle<int> pianoRollPanelBounds;
+    juce::Rectangle<int> eventListPanelBounds;
+    void updateFocusBorder();
 
     void setHorizontalZoom(int newBeatWidth, int anchorXInViewport);
     void setVerticalZoom(int newNoteHeight, int anchorYInViewport);
