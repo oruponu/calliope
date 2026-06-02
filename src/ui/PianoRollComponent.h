@@ -166,9 +166,6 @@ private:
     DragMode dragMode = DragMode::None;
     int dragStartTick = 0;
     int dragStartNote = 0;
-    int originalStartTick = 0;
-    int originalNoteNumber = 0;
-    int originalDuration = 0;
 
     struct ResizeTarget
     {
@@ -177,11 +174,22 @@ private:
         int duration = 0;
     };
     std::vector<ResizeTarget> resizeTargets;
+
+    struct MoveTarget
+    {
+        NoteRef ref;
+        int startTick = 0;
+        int noteNumber = 0;
+    };
+    std::vector<MoveTarget> moveTargets;
+    int moveAnchorStartTick = 0;
+
     ResizeEdge resizeEdge = ResizeEdge::None;
     int resizeAnchorStartTick = 0;
     int resizeAnchorEndTick = 0;
     bool isCreatingNote = false;
     void beginResize(const NoteRef& hit, ResizeEdge edge);
+    void beginMove(const NoteRef& anchor, const juce::MouseEvent& e);
     int contentBeats = 0;
     juce::Point<int> rubberBandStart;
     juce::Rectangle<int> rubberBandRect;
