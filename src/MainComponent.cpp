@@ -326,6 +326,7 @@ MainComponent::MainComponent()
         midiOutput.onNoteOff(trackIdx, note);
         pluginHost.onNoteOff(trackIdx, note);
     };
+    pianoRoll.onScrollToNote = [this](int startTick, int noteNumber) { scrollNoteIntoView(startTick, noteNumber); };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, false);
     viewport.setVerticalScrollBarBottomInset(zoomStripLength);
@@ -1000,18 +1001,19 @@ juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 
 void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
-    commands.addArray({CommandID::newFile_,         CommandID::openFile,
-                       CommandID::saveFile_,        CommandID::quitApp,
-                       CommandID::togglePlay,       CommandID::returnToStart,
-                       CommandID::prevBar,          CommandID::nextBar,
-                       CommandID::switchToEditTool, CommandID::switchToSelectTool,
-                       CommandID::undoAction,       CommandID::redoAction,
-                       CommandID::cutAction,        CommandID::copyAction,
-                       CommandID::pasteAction,      CommandID::selectAllAction,
-                       CommandID::moveNotesUp,      CommandID::moveNotesDown,
-                       CommandID::zoomInHorizontal, CommandID::zoomOutHorizontal,
-                       CommandID::zoomInVertical,   CommandID::zoomOutVertical,
-                       CommandID::zoomReset,        CommandID::toggleLoop});
+    commands.addArray({CommandID::newFile_,          CommandID::openFile,
+                       CommandID::saveFile_,         CommandID::quitApp,
+                       CommandID::togglePlay,        CommandID::returnToStart,
+                       CommandID::prevBar,           CommandID::nextBar,
+                       CommandID::switchToEditTool,  CommandID::switchToSelectTool,
+                       CommandID::undoAction,        CommandID::redoAction,
+                       CommandID::cutAction,         CommandID::copyAction,
+                       CommandID::pasteAction,       CommandID::selectAllAction,
+                       CommandID::moveNotesUp,       CommandID::moveNotesDown,
+                       CommandID::moveSelectionPrev, CommandID::moveSelectionNext,
+                       CommandID::zoomInHorizontal,  CommandID::zoomOutHorizontal,
+                       CommandID::zoomInVertical,    CommandID::zoomOutVertical,
+                       CommandID::zoomReset,         CommandID::toggleLoop});
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -1096,6 +1098,16 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         result.setInfo("Move Down", "", "Edit", 0);
         result.addDefaultKeypress(juce::KeyPress::downKey, 0);
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasSelectedNotes());
+        break;
+    case CommandID::moveSelectionPrev:
+        result.setInfo("Select Previous Note", "", "Edit", 0);
+        result.addDefaultKeypress(juce::KeyPress::leftKey, 0);
+        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
+        break;
+    case CommandID::moveSelectionNext:
+        result.setInfo("Select Next Note", "", "Edit", 0);
+        result.addDefaultKeypress(juce::KeyPress::rightKey, 0);
+        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
         break;
     case CommandID::zoomInHorizontal:
         result.setInfo("Zoom In (Horizontal)", "", "View", 0);
@@ -1214,6 +1226,14 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::moveNotesDown:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.nudgeSelectedNotesPitch(-1);
+        return true;
+    case CommandID::moveSelectionPrev:
+        if (focusedPanel == FocusPanel::PianoRoll)
+            pianoRoll.moveSelectionToAdjacentNote(-1);
+        return true;
+    case CommandID::moveSelectionNext:
+        if (focusedPanel == FocusPanel::PianoRoll)
+            pianoRoll.moveSelectionToAdjacentNote(1);
         return true;
     case CommandID::zoomInHorizontal:
         zoomHorizontal(1.15f, viewport.getViewWidth() / 2);
@@ -1480,6 +1500,40 @@ void MainComponent::scrollToPlayhead(int tick)
 
         viewport.setViewPosition(desiredX, viewport.getViewPositionY());
     }
+}
+
+void MainComponent::scrollNoteIntoView(int startTick, int noteNumber)
+{
+    int noteX = pianoRoll.tickToX(startTick);
+    int noteY = pianoRoll.noteToY(noteNumber);
+    int noteH = pianoRoll.getNoteHeight();
+
+    int viewX = viewport.getViewPositionX();
+    int viewW = viewport.getViewWidth();
+    int viewY = viewport.getViewPositionY();
+    int viewH = viewport.getViewHeight();
+
+    int newX = viewX;
+    if (noteX < viewX + PianoRollComponent::keyboardWidth)
+        newX = noteX - PianoRollComponent::keyboardWidth;
+    else if (noteX > viewX + viewW - 20)
+        newX = noteX - viewW + 20;
+
+    newX = juce::jmax(0, newX);
+    while (newX + viewW > pianoRoll.getWidth())
+        pianoRoll.extendContent();
+    controllerLane.setContentBeats(pianoRoll.getContentBeats());
+
+    int newY = viewY;
+    if (noteY < viewY + PianoRollComponent::gridTopOffset)
+        newY = noteY - PianoRollComponent::gridTopOffset;
+    else if (noteY + noteH > viewY + viewH)
+        newY = noteY + noteH - viewH;
+
+    newY = juce::jmax(0, newY);
+
+    if (newX != viewX || newY != viewY)
+        viewport.setViewPosition(newX, newY);
 }
 
 void MainComponent::updateTransportDisplay()
