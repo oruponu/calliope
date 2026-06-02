@@ -24,6 +24,76 @@ void PianoRollComponent::stopNotePreview()
     repaint();
 }
 
+void PianoRollComponent::timerCallback()
+{
+    stopTimer();
+    stopNotePreview();
+}
+
+bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
+{
+    if (selectedNotes.empty())
+        return false;
+
+    if (key == juce::KeyPress::upKey)
+    {
+        nudgeSelectedNotesPitch(1);
+        return true;
+    }
+    if (key == juce::KeyPress::downKey)
+    {
+        nudgeSelectedNotesPitch(-1);
+        return true;
+    }
+    return false;
+}
+
+void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
+{
+    if (!sequence || selectedNotes.empty() || deltaNote == 0)
+        return;
+
+    int minNote = 127;
+    int maxNote = 0;
+    for (const auto& ref : selectedNotes)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        minNote = std::min(minNote, note.noteNumber);
+        maxNote = std::max(maxNote, note.noteNumber);
+    }
+
+    if (deltaNote > 0 && maxNote + deltaNote > 127)
+        return;
+    if (deltaNote < 0 && minNote + deltaNote < 0)
+        return;
+
+    if (undoManager)
+        undoManager->beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
+
+    for (const auto& ref : selectedNotes)
+    {
+        auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        MidiNote beforeNote = note;
+        MidiNote afterNote = note;
+        afterNote.noteNumber = note.noteNumber + deltaNote;
+
+        if (undoManager)
+            undoManager->perform(new NoteModifyAction(sequence, ref.trackIndex, ref.noteIndex, beforeNote, afterNote));
+        else
+            note = afterNote;
+    }
+
+    NoteRef previewRef =
+        (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
+    startNotePreview(sequence->getTrack(previewRef.trackIndex).getNote(previewRef.noteIndex));
+    startTimer(previewHoldMs);
+
+    if (onNotesChanged)
+        onNotesChanged();
+
+    repaint();
+}
+
 void PianoRollComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;

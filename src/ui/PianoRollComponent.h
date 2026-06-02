@@ -7,7 +7,7 @@
 #include <set>
 #include <vector>
 
-class PianoRollComponent : public juce::Component
+class PianoRollComponent : public juce::Component, private juce::Timer
 {
 public:
     enum class EditMode
@@ -51,6 +51,7 @@ public:
     void cutSelectedNotes();
     void pasteNotes(int atTick);
     void selectAllNotes();
+    void nudgeSelectedNotesPitch(int deltaNote);
     bool hasClipboardNotes() const { return !clipboard.empty(); }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
     bool hasNotesInActiveTrack() const;
@@ -61,6 +62,7 @@ public:
     void mouseMove(const juce::MouseEvent& e) override;
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override;
     void modifierKeysChanged(const juce::ModifierKeys& modifiers) override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
     static constexpr int keyboardWidth = 72;
     static constexpr int defaultNoteHeight = 14;
@@ -203,6 +205,8 @@ private:
     bool isPreviewing = false;
     void startNotePreview(const MidiNote& note);
     void stopNotePreview();
+    void timerCallback() override;
+    static constexpr int previewHoldMs = 300;
 
     bool isKeyboardDragging = false;
 
