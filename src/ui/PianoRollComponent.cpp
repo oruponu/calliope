@@ -32,6 +32,17 @@ void PianoRollComponent::timerCallback()
 
 bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
 {
+    if (key == juce::KeyPress::leftKey)
+    {
+        moveSelectionToAdjacentNote(-1);
+        return true;
+    }
+    if (key == juce::KeyPress::rightKey)
+    {
+        moveSelectionToAdjacentNote(1);
+        return true;
+    }
+
     if (selectedNotes.empty())
         return false;
 
@@ -46,6 +57,94 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
     return false;
+}
+
+void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
+{
+    if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return;
+
+    auto& track = sequence->getTrack(activeTrackIndex);
+    const int n = track.getNumNotes();
+    if (n == 0)
+        return;
+
+    std::vector<int> order(n);
+    for (int i = 0; i < n; ++i)
+        order[i] = i;
+    std::sort(order.begin(), order.end(),
+              [&track](int a, int b)
+              {
+                  const auto& na = track.getNote(a);
+                  const auto& nb = track.getNote(b);
+                  if (na.startTick != nb.startTick)
+                      return na.startTick < nb.startTick;
+                  if (na.noteNumber != nb.noteNumber)
+                      return na.noteNumber < nb.noteNumber;
+                  return a < b;
+              });
+
+    auto posOf = [&order](int noteIndex)
+    {
+        for (int p = 0; p < static_cast<int>(order.size()); ++p)
+            if (order[p] == noteIndex)
+                return p;
+        return -1;
+    };
+
+    int refIndex = -1;
+    if (selectedNote.isValid() && selectedNote.trackIndex == activeTrackIndex && selectedNotes.contains(selectedNote))
+    {
+        refIndex = selectedNote.noteIndex;
+    }
+    else
+    {
+        int minPos = -1;
+        int maxPos = -1;
+        for (const auto& ref : selectedNotes)
+        {
+            if (ref.trackIndex != activeTrackIndex)
+                continue;
+            int p = posOf(ref.noteIndex);
+            if (p < 0)
+                continue;
+            if (minPos < 0 || p < minPos)
+                minPos = p;
+            if (maxPos < 0 || p > maxPos)
+                maxPos = p;
+        }
+        if (maxPos >= 0)
+            refIndex = order[direction > 0 ? maxPos : minPos];
+    }
+
+    int targetPos;
+    if (refIndex >= 0)
+    {
+        int np = posOf(refIndex) + (direction > 0 ? 1 : -1);
+        if (np < 0 || np >= n)
+            return;
+        targetPos = np;
+    }
+    else
+    {
+        targetPos = direction > 0 ? 0 : n - 1;
+    }
+
+    NoteRef target{activeTrackIndex, order[targetPos]};
+    selectedNotes.clear();
+    selectedNotes.insert(target);
+    selectedNote = target;
+
+    const auto& note = track.getNote(target.noteIndex);
+    startNotePreview(note);
+    startTimer(previewHoldMs);
+
+    if (onScrollToNote)
+        onScrollToNote(note.startTick, note.noteNumber);
+
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
 }
 
 void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)

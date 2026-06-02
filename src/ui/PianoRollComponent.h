@@ -39,6 +39,7 @@ public:
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
     std::function<void(const MidiNote&)> onNotePreview;
     std::function<void(const MidiNote&)> onNotePreviewEnd;
+    std::function<void(int startTick, int noteNumber)> onScrollToNote;
     std::function<void()> onZoomChanged;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onRulerWheel;
     std::function<void(const juce::MouseEvent&, int deltaY)> onRulerDrag;
@@ -52,6 +53,7 @@ public:
     void pasteNotes(int atTick);
     void selectAllNotes();
     void nudgeSelectedNotesPitch(int deltaNote);
+    void moveSelectionToAdjacentNote(int direction);
     bool hasClipboardNotes() const { return !clipboard.empty(); }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
     bool hasNotesInActiveTrack() const;
