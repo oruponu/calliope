@@ -302,6 +302,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawGrid(g);
     drawLoopRegion(g);
     drawNotes(g);
+    drawMoveGhosts(g);
     drawRubberBand(g);
     drawPlayhead(g);
     drawKeyboard(g);
@@ -631,16 +632,17 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     snappedDeltaTick = std::max(snappedDeltaTick, -minStart);
     deltaNote = std::clamp(deltaNote, -minNote, 127 - maxNote);
 
-    for (const auto& t : moveTargets)
-    {
-        auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
-        note.startTick = t.startTick + snappedDeltaTick;
-        note.noteNumber = t.noteNumber + deltaNote;
-    }
+    moveDeltaTick = snappedDeltaTick;
+    moveDeltaNote = deltaNote;
 
     const auto& anchorNote = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
-    if (anchorNote.noteNumber != previewNote.noteNumber)
-        startNotePreview(anchorNote);
+    int previewPitch = anchorNote.noteNumber + moveDeltaNote;
+    if (previewPitch != previewNote.noteNumber)
+    {
+        MidiNote ghost = anchorNote;
+        ghost.noteNumber = previewPitch;
+        startNotePreview(ghost);
+    }
 
     repaint();
 }
@@ -708,30 +710,33 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
     if (dragMode == DragMode::Moving)
     {
-        if (undoManager)
+        if (moveDeltaTick != 0 || moveDeltaNote != 0)
         {
-            bool transactionStarted = false;
+            if (undoManager)
+                undoManager->beginNewTransaction(moveTargets.size() > 1 ? "Move Notes" : "Move Note");
+
             for (const auto& t : moveTargets)
             {
                 auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
-                if (note.startTick == t.startTick && note.noteNumber == t.noteNumber)
-                    continue;
-
                 MidiNote beforeNote{t.noteNumber, note.velocity, t.startTick, note.duration};
-                MidiNote afterNote = note;
+                MidiNote afterNote = beforeNote;
+                afterNote.startTick = t.startTick + moveDeltaTick;
+                afterNote.noteNumber = t.noteNumber + moveDeltaNote;
 
-                if (!transactionStarted)
-                {
-                    undoManager->beginNewTransaction(moveTargets.size() > 1 ? "Move Notes" : "Move Note");
-                    transactionStarted = true;
-                }
-                undoManager->perform(
-                    new NoteModifyAction(sequence, t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote));
+                if (undoManager)
+                    undoManager->perform(
+                        new NoteModifyAction(sequence, t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote));
+                else
+                    note = afterNote;
             }
+
+            if (onNotesChanged)
+                onNotesChanged();
         }
+
         moveTargets.clear();
-        if (onNotesChanged)
-            onNotesChanged();
+        moveDeltaTick = 0;
+        moveDeltaNote = 0;
     }
 
     dragMode = DragMode::None;
@@ -1599,6 +1604,64 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
     }
 }
 
+void PianoRollComponent::drawMoveGhosts(juce::Graphics& g)
+{
+    if (!sequence || dragMode != DragMode::Moving || moveTargets.empty())
+        return;
+    if (moveDeltaTick == 0 && moveDeltaNote == 0)
+        return;
+
+    auto clip = g.getClipBounds();
+
+    for (const auto& t : moveTargets)
+    {
+        if (t.ref.trackIndex < 0 || t.ref.trackIndex >= sequence->getNumTracks())
+            continue;
+
+        const auto& track = sequence->getTrack(t.ref.trackIndex);
+        const auto& note = track.getNote(t.ref.noteIndex);
+
+        int x = tickToX(t.startTick + moveDeltaTick);
+        int y = noteToY(t.noteNumber + moveDeltaNote);
+        int w = tickToWidth(note.duration);
+
+        if (y + noteHeight < clip.getY() || y > clip.getBottom())
+            continue;
+
+        auto baseColour = TrackColours::getColour(t.ref.trackIndex);
+        auto fillColour = baseColour.brighter(0.2f).withAlpha(0.6f);
+        auto outlineColour = baseColour.brighter(0.8f);
+
+        if (track.getChannel() == 10)
+        {
+            float diameter = static_cast<float>(noteHeight - 2);
+            float cx = static_cast<float>(x);
+            float cy = static_cast<float>(y + 1) + diameter * 0.5f;
+            float left = cx - diameter * 0.5f;
+
+            if (left + diameter < clip.getX() || left > clip.getRight())
+                continue;
+
+            g.setColour(fillColour);
+            g.fillEllipse(left, cy - diameter * 0.5f, diameter, diameter);
+            g.setColour(outlineColour);
+            g.drawEllipse(left, cy - diameter * 0.5f, diameter, diameter, 1.0f);
+        }
+        else
+        {
+            if (x + w < clip.getX() || x > clip.getRight())
+                continue;
+
+            g.setColour(fillColour);
+            g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
+                                   static_cast<float>(noteHeight - 2), 2.0f);
+            g.setColour(outlineColour);
+            g.drawRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
+                                   static_cast<float>(noteHeight - 2), 2.0f, 1.0f);
+        }
+    }
+}
+
 void PianoRollComponent::drawPlayhead(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -1909,6 +1972,8 @@ void PianoRollComponent::beginMove(const NoteRef& anchor, const juce::MouseEvent
 
     const auto& anchorNote = sequence->getTrack(anchor.trackIndex).getNote(anchor.noteIndex);
     moveAnchorStartTick = anchorNote.startTick;
+    moveDeltaTick = 0;
+    moveDeltaNote = 0;
     dragStartTick = xToTick(e.x);
     dragStartNote = yToNote(e.y);
     selectedNote = anchor;
