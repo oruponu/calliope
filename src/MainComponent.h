@@ -102,6 +102,7 @@ private:
     void setActiveTool(PianoRollComponent::EditMode mode);
     void onVBlank();
     void scrollToPlayhead(int tick);
+    void scrollNoteIntoView(int startTick, int noteNumber);
     void updateTransportDisplay();
     void newFile();
     void saveFile();
@@ -411,6 +412,8 @@ private:
         selectAllAction,
         moveNotesUp,
         moveNotesDown,
+        moveSelectionPrev,
+        moveSelectionNext,
         zoomInHorizontal,
         zoomOutHorizontal,
         zoomInVertical,
