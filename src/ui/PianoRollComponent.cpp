@@ -490,15 +490,19 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                     selectedNotes.erase(hit);
                 else
                     selectedNotes.insert(hit);
+                dragMode = DragMode::None;
             }
             else
             {
-                selectedNotes.clear();
-                selectedNotes.insert(hit);
+                if (!selectedNotes.contains(hit))
+                {
+                    selectedNotes.clear();
+                    selectedNotes.insert(hit);
+                }
+                beginMove(hit, e);
             }
             const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
             startNotePreview(note);
-            dragMode = DragMode::None;
             repaint();
             if (onNoteSelectionChanged)
                 onNoteSelectionChanged(selectedNotes);
@@ -607,27 +611,36 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
-    if (!selectedNote.isValid() || dragMode == DragMode::None)
+    if (dragMode != DragMode::Moving || moveTargets.empty())
         return;
 
-    auto& note = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
-
-    if (dragMode == DragMode::Moving)
+    int currentTick = xToTick(e.x);
+    int currentNote = yToNote(e.y);
+    int rawDeltaTick = currentTick - dragStartTick;
+    int deltaNote = currentNote - dragStartNote;
+    int snappedDeltaTick = roundTickToGrid(moveAnchorStartTick + rawDeltaTick) - moveAnchorStartTick;
+    int minStart = moveTargets.front().startTick;
+    int minNote = moveTargets.front().noteNumber;
+    int maxNote = moveTargets.front().noteNumber;
+    for (const auto& t : moveTargets)
     {
-        int currentTick = xToTick(e.x);
-        int currentNote = yToNote(e.y);
-        int deltaTick = currentTick - dragStartTick;
-        int deltaNote = currentNote - dragStartNote;
-
-        int newStart = roundTickToGrid(originalStartTick + deltaTick);
-        int newNote = std::clamp(originalNoteNumber + deltaNote, 0, 127);
-
-        note.startTick = std::max(0, newStart);
-        note.noteNumber = newNote;
-
-        if (newNote != previewNote.noteNumber)
-            startNotePreview(note);
+        minStart = std::min(minStart, t.startTick);
+        minNote = std::min(minNote, t.noteNumber);
+        maxNote = std::max(maxNote, t.noteNumber);
     }
+    snappedDeltaTick = std::max(snappedDeltaTick, -minStart);
+    deltaNote = std::clamp(deltaNote, -minNote, 127 - maxNote);
+
+    for (const auto& t : moveTargets)
+    {
+        auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
+        note.startTick = t.startTick + snappedDeltaTick;
+        note.noteNumber = t.noteNumber + deltaNote;
+    }
+
+    const auto& anchorNote = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
+    if (anchorNote.noteNumber != previewNote.noteNumber)
+        startNotePreview(anchorNote);
 
     repaint();
 }
@@ -695,20 +708,28 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
     if (dragMode == DragMode::Moving)
     {
-        if (undoManager && selectedNote.isValid())
+        if (undoManager)
         {
-            auto& note = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
-            MidiNote beforeNote{originalNoteNumber, note.velocity, originalStartTick, originalDuration};
-            MidiNote afterNote = note;
-
-            if (beforeNote.startTick != afterNote.startTick || beforeNote.noteNumber != afterNote.noteNumber ||
-                beforeNote.duration != afterNote.duration)
+            bool transactionStarted = false;
+            for (const auto& t : moveTargets)
             {
-                undoManager->beginNewTransaction("Move Note");
-                undoManager->perform(new NoteModifyAction(sequence, selectedNote.trackIndex, selectedNote.noteIndex,
-                                                          beforeNote, afterNote));
+                auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
+                if (note.startTick == t.startTick && note.noteNumber == t.noteNumber)
+                    continue;
+
+                MidiNote beforeNote{t.noteNumber, note.velocity, t.startTick, note.duration};
+                MidiNote afterNote = note;
+
+                if (!transactionStarted)
+                {
+                    undoManager->beginNewTransaction(moveTargets.size() > 1 ? "Move Notes" : "Move Note");
+                    transactionStarted = true;
+                }
+                undoManager->perform(
+                    new NoteModifyAction(sequence, t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote));
             }
         }
+        moveTargets.clear();
         if (onNotesChanged)
             onNotesChanged();
     }
@@ -1875,6 +1896,23 @@ void PianoRollComponent::beginResize(const NoteRef& hit, ResizeEdge edge)
     selectedNote = hit;
     dragMode = DragMode::Resizing;
     repaint();
+}
+
+void PianoRollComponent::beginMove(const NoteRef& anchor, const juce::MouseEvent& e)
+{
+    moveTargets.clear();
+    for (const auto& ref : selectedNotes)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        moveTargets.push_back({ref, note.startTick, note.noteNumber});
+    }
+
+    const auto& anchorNote = sequence->getTrack(anchor.trackIndex).getNote(anchor.noteIndex);
+    moveAnchorStartTick = anchorNote.startTick;
+    dragStartTick = xToTick(e.x);
+    dragStartNote = yToNote(e.y);
+    selectedNote = anchor;
+    dragMode = DragMode::Moving;
 }
 
 PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
