@@ -119,6 +119,7 @@ private:
     void drawChordTrack(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
+    void drawMoveGhosts(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
     void drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha);
@@ -183,6 +184,8 @@ private:
     };
     std::vector<MoveTarget> moveTargets;
     int moveAnchorStartTick = 0;
+    int moveDeltaTick = 0;
+    int moveDeltaNote = 0;
 
     ResizeEdge resizeEdge = ResizeEdge::None;
     int resizeAnchorStartTick = 0;
