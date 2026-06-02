@@ -1084,7 +1084,7 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case CommandID::selectAllAction:
         result.setInfo("Select All", "", "Edit", 0);
         result.addDefaultKeypress('A', juce::ModifierKeys::commandModifier);
-        result.setActive(pianoRoll.hasNotesInActiveTrack());
+        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
         break;
     case CommandID::zoomInHorizontal:
         result.setInfo("Zoom In (Horizontal)", "", "View", 0);
@@ -1193,7 +1193,8 @@ bool MainComponent::perform(const InvocationInfo& info)
         pianoRoll.pasteNotes(static_cast<int>(playbackEngine.getCurrentTick()));
         return true;
     case CommandID::selectAllAction:
-        pianoRoll.selectAllNotes();
+        if (focusedPanel == FocusPanel::PianoRoll)
+            pianoRoll.selectAllNotes();
         return true;
     case CommandID::zoomInHorizontal:
         zoomHorizontal(1.15f, viewport.getViewWidth() / 2);
