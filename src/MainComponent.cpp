@@ -1008,6 +1008,7 @@ void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
                        CommandID::undoAction,       CommandID::redoAction,
                        CommandID::cutAction,        CommandID::copyAction,
                        CommandID::pasteAction,      CommandID::selectAllAction,
+                       CommandID::moveNotesUp,      CommandID::moveNotesDown,
                        CommandID::zoomInHorizontal, CommandID::zoomOutHorizontal,
                        CommandID::zoomInVertical,   CommandID::zoomOutVertical,
                        CommandID::zoomReset,        CommandID::toggleLoop});
@@ -1085,6 +1086,16 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         result.setInfo("Select All", "", "Edit", 0);
         result.addDefaultKeypress('A', juce::ModifierKeys::commandModifier);
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
+        break;
+    case CommandID::moveNotesUp:
+        result.setInfo("Move Up", "", "Edit", 0);
+        result.addDefaultKeypress(juce::KeyPress::upKey, 0);
+        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasSelectedNotes());
+        break;
+    case CommandID::moveNotesDown:
+        result.setInfo("Move Down", "", "Edit", 0);
+        result.addDefaultKeypress(juce::KeyPress::downKey, 0);
+        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasSelectedNotes());
         break;
     case CommandID::zoomInHorizontal:
         result.setInfo("Zoom In (Horizontal)", "", "View", 0);
@@ -1195,6 +1206,14 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::selectAllAction:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.selectAllNotes();
+        return true;
+    case CommandID::moveNotesUp:
+        if (focusedPanel == FocusPanel::PianoRoll)
+            pianoRoll.nudgeSelectedNotesPitch(1);
+        return true;
+    case CommandID::moveNotesDown:
+        if (focusedPanel == FocusPanel::PianoRoll)
+            pianoRoll.nudgeSelectedNotesPitch(-1);
         return true;
     case CommandID::zoomInHorizontal:
         zoomHorizontal(1.15f, viewport.getViewWidth() / 2);

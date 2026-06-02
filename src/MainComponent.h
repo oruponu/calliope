@@ -409,6 +409,8 @@ private:
         copyAction,
         pasteAction,
         selectAllAction,
+        moveNotesUp,
+        moveNotesDown,
         zoomInHorizontal,
         zoomOutHorizontal,
         zoomInVertical,
