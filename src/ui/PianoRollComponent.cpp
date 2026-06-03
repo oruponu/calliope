@@ -71,6 +71,22 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
         }
     }
 
+    if (key.getModifiers().isShiftDown())
+    {
+        if (key.getKeyCode() == juce::KeyPress::upKey)
+        {
+            if (!selectedNotes.empty())
+                nudgeSelectedNotesPitch(12);
+            return true;
+        }
+        if (key.getKeyCode() == juce::KeyPress::downKey)
+        {
+            if (!selectedNotes.empty())
+                nudgeSelectedNotesPitch(-12);
+            return true;
+        }
+    }
+
     if (key == juce::KeyPress::upKey)
     {
         if (!selectedNotes.empty())
