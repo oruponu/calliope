@@ -227,8 +227,12 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
 
     NoteRef previewRef =
         (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
-    startNotePreview(sequence->getTrack(previewRef.trackIndex).getNote(previewRef.noteIndex));
+    const auto& previewNoteRef = sequence->getTrack(previewRef.trackIndex).getNote(previewRef.noteIndex);
+    startNotePreview(previewNoteRef);
     startTimer(previewHoldMs);
+
+    if (onScrollToNote)
+        onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
 
     if (onNotesChanged)
         onNotesChanged();
