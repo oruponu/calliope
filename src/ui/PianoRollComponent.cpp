@@ -57,6 +57,18 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
                 onScrollVertical(defaultNoteHeight);
             return true;
         }
+        if (key.getKeyCode() == juce::KeyPress::leftKey)
+        {
+            if (onScrollHorizontal)
+                onScrollHorizontal(-defaultNoteHeight);
+            return true;
+        }
+        if (key.getKeyCode() == juce::KeyPress::rightKey)
+        {
+            if (onScrollHorizontal)
+                onScrollHorizontal(defaultNoteHeight);
+            return true;
+        }
     }
 
     if (key == juce::KeyPress::upKey)

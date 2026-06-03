@@ -41,6 +41,7 @@ public:
     std::function<void(const MidiNote&)> onNotePreviewEnd;
     std::function<void(int startTick, int noteNumber)> onScrollToNote;
     std::function<void(int deltaY)> onScrollVertical;
+    std::function<void(int deltaX)> onScrollHorizontal;
     std::function<void()> onZoomChanged;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onRulerWheel;
     std::function<void(const juce::MouseEvent&, int deltaY)> onRulerDrag;
