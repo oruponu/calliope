@@ -327,6 +327,7 @@ MainComponent::MainComponent()
         pluginHost.onNoteOff(trackIdx, note);
     };
     pianoRoll.onScrollToNote = [this](int startTick, int noteNumber) { scrollNoteIntoView(startTick, noteNumber); };
+    pianoRoll.onScrollVertical = [this](int deltaY) { scrollViewVertically(deltaY); };
     viewport.setViewedComponent(&pianoRoll, false);
     viewport.setScrollBarsShown(true, false);
     viewport.setVerticalScrollBarBottomInset(zoomStripLength);
@@ -1011,6 +1012,7 @@ void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
                        CommandID::pasteAction,       CommandID::selectAllAction,
                        CommandID::moveNotesUp,       CommandID::moveNotesDown,
                        CommandID::moveSelectionPrev, CommandID::moveSelectionNext,
+                       CommandID::scrollViewUp,      CommandID::scrollViewDown,
                        CommandID::zoomInHorizontal,  CommandID::zoomOutHorizontal,
                        CommandID::zoomInVertical,    CommandID::zoomOutVertical,
                        CommandID::zoomReset,         CommandID::toggleLoop});
@@ -1108,6 +1110,16 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         result.setInfo("Select Next Note", "", "Edit", 0);
         result.addDefaultKeypress(juce::KeyPress::rightKey, 0);
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
+        break;
+    case CommandID::scrollViewUp:
+        result.setInfo("Scroll Up", "", "View", 0);
+        result.addDefaultKeypress(juce::KeyPress::upKey, juce::ModifierKeys::commandModifier);
+        result.setActive(focusedPanel == FocusPanel::PianoRoll);
+        break;
+    case CommandID::scrollViewDown:
+        result.setInfo("Scroll Down", "", "View", 0);
+        result.addDefaultKeypress(juce::KeyPress::downKey, juce::ModifierKeys::commandModifier);
+        result.setActive(focusedPanel == FocusPanel::PianoRoll);
         break;
     case CommandID::zoomInHorizontal:
         result.setInfo("Zoom In (Horizontal)", "", "View", 0);
@@ -1234,6 +1246,14 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::moveSelectionNext:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.moveSelectionToAdjacentNote(1);
+        return true;
+    case CommandID::scrollViewUp:
+        if (focusedPanel == FocusPanel::PianoRoll)
+            scrollViewVertically(-PianoRollComponent::defaultNoteHeight);
+        return true;
+    case CommandID::scrollViewDown:
+        if (focusedPanel == FocusPanel::PianoRoll)
+            scrollViewVertically(PianoRollComponent::defaultNoteHeight);
         return true;
     case CommandID::zoomInHorizontal:
         zoomHorizontal(1.15f, viewport.getViewWidth() / 2);
@@ -1534,6 +1554,13 @@ void MainComponent::scrollNoteIntoView(int startTick, int noteNumber)
 
     if (newX != viewX || newY != viewY)
         viewport.setViewPosition(newX, newY);
+}
+
+void MainComponent::scrollViewVertically(int deltaY)
+{
+    int newY = viewport.getViewPositionY() + deltaY;
+    newY = juce::jlimit(0, juce::jmax(0, pianoRoll.getHeight() - viewport.getViewHeight()), newY);
+    viewport.setViewPosition(viewport.getViewPositionX(), newY);
 }
 
 void MainComponent::updateTransportDisplay()
