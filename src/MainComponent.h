@@ -103,6 +103,7 @@ private:
     void onVBlank();
     void scrollToPlayhead(int tick);
     void scrollNoteIntoView(int startTick, int noteNumber);
+    void scrollViewVertically(int deltaY);
     void updateTransportDisplay();
     void newFile();
     void saveFile();
@@ -414,6 +415,8 @@ private:
         moveNotesDown,
         moveSelectionPrev,
         moveSelectionNext,
+        scrollViewUp,
+        scrollViewDown,
         zoomInHorizontal,
         zoomOutHorizontal,
         zoomInVertical,
