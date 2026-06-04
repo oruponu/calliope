@@ -55,6 +55,7 @@ public:
     void pasteNotes(int atTick);
     void selectAllNotes();
     void nudgeSelectedNotesPitch(int deltaNote);
+    void nudgeSelectedNotesTime(int deltaTick);
     bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
     bool hasClipboardNotes() const { return !clipboard.empty(); }
