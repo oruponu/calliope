@@ -71,6 +71,25 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
         }
     }
 
+    if (key.getModifiers().isAltDown())
+    {
+        const bool isUp = key.getKeyCode() == juce::KeyPress::upKey;
+        const bool isDown = key.getKeyCode() == juce::KeyPress::downKey;
+        if (isUp || isDown)
+        {
+            const int magnitude = key.getModifiers().isShiftDown() ? 12 : 1;
+            const int delta = isUp ? magnitude : -magnitude;
+            if (!selectedNotes.empty())
+            {
+                if (altDuplicateDone)
+                    nudgeSelectedNotesPitch(delta);
+                else if (duplicateSelectedNotesWithPitchOffset(delta))
+                    altDuplicateDone = true;
+            }
+            return true;
+        }
+    }
+
     if (key.getModifiers().isShiftDown())
     {
         if (key.getKeyCode() == juce::KeyPress::upKey)
@@ -240,6 +259,76 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
     repaint();
 }
 
+bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
+{
+    if (!sequence || selectedNotes.empty() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return false;
+
+    int minNote = 127;
+    int maxNote = 0;
+    for (const auto& ref : selectedNotes)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        minNote = std::min(minNote, note.noteNumber);
+        maxNote = std::max(maxNote, note.noteNumber);
+    }
+
+    if (deltaNote > 0 && maxNote + deltaNote > 127)
+        return false;
+    if (deltaNote < 0 && minNote + deltaNote < 0)
+        return false;
+
+    std::vector<MidiNote> notesToAdd;
+    notesToAdd.reserve(selectedNotes.size());
+    for (const auto& ref : selectedNotes)
+    {
+        MidiNote note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        note.noteNumber += deltaNote;
+        notesToAdd.push_back(note);
+    }
+
+    selectedNotes.clear();
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction(notesToAdd.size() > 1 ? "Duplicate Notes" : "Duplicate Note");
+        auto* action = new MultiNoteAddAction(sequence, activeTrackIndex, notesToAdd);
+        undoManager->perform(action);
+        int start = action->getAddedStartIndex();
+        for (int i = 0; i < action->getAddedCount(); ++i)
+            selectedNotes.insert({activeTrackIndex, start + i});
+    }
+    else
+    {
+        auto& track = sequence->getTrack(activeTrackIndex);
+        int start = track.getNumNotes();
+        for (const auto& n : notesToAdd)
+            track.addNote(n);
+        for (int i = 0; i < static_cast<int>(notesToAdd.size()); ++i)
+            selectedNotes.insert({activeTrackIndex, start + i});
+    }
+
+    if (selectedNotes.empty())
+        return false;
+    selectedNote = *selectedNotes.begin();
+
+    const auto& previewNoteRef = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
+    startNotePreview(previewNoteRef);
+    startTimer(previewHoldMs);
+
+    if (onScrollToNote)
+        onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
+
+    if (onNotesChanged)
+        onNotesChanged();
+
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+
+    return true;
+}
+
 void PianoRollComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;
@@ -317,6 +406,11 @@ void PianoRollComponent::updateEffectiveEditMode()
 
 void PianoRollComponent::modifierKeysChanged(const juce::ModifierKeys& modifiers)
 {
+    const bool altDown = modifiers.isAltDown();
+    if (altKeyDown && !altDown)
+        altDuplicateDone = false;
+    altKeyDown = altDown;
+
     const bool modifierDown = modifiers.isCommandDown();
     if (modifierDown == toolSwapActive)
         return;
