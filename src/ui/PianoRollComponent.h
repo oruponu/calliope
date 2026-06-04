@@ -55,6 +55,7 @@ public:
     void pasteNotes(int atTick);
     void selectAllNotes();
     void nudgeSelectedNotesPitch(int deltaNote);
+    bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
     bool hasClipboardNotes() const { return !clipboard.empty(); }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
@@ -168,6 +169,8 @@ private:
     EditMode editMode = EditMode::Select;
     EditMode baseEditMode = EditMode::Select;
     bool toolSwapActive = false;
+    bool altKeyDown = false;
+    bool altDuplicateDone = false;
     NoteRef selectedNote;
     std::set<NoteRef> selectedNotes;
     DragMode dragMode = DragMode::None;
