@@ -88,6 +88,18 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
             }
             return true;
         }
+
+        const bool isLeft = key.getKeyCode() == juce::KeyPress::leftKey;
+        const bool isRight = key.getKeyCode() == juce::KeyPress::rightKey;
+        if (isLeft || isRight)
+        {
+            if (!selectedNotes.empty() && sequence)
+            {
+                const int grid = sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator;
+                nudgeSelectedNotesTime(isRight ? grid : -grid);
+            }
+            return true;
+        }
     }
 
     if (key.getModifiers().isShiftDown())
@@ -252,6 +264,50 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
 
     if (onScrollToNote)
         onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
+
+    if (onNotesChanged)
+        onNotesChanged();
+
+    repaint();
+}
+
+void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
+{
+    if (!sequence || selectedNotes.empty() || deltaTick == 0)
+        return;
+
+    int minStart = std::numeric_limits<int>::max();
+    for (const auto& ref : selectedNotes)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        minStart = std::min(minStart, note.startTick);
+    }
+
+    if (minStart + deltaTick < 0)
+        return;
+
+    if (undoManager)
+        undoManager->beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
+
+    for (const auto& ref : selectedNotes)
+    {
+        auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        MidiNote beforeNote = note;
+        MidiNote afterNote = note;
+        afterNote.startTick = note.startTick + deltaTick;
+
+        if (undoManager)
+            undoManager->perform(new NoteModifyAction(sequence, ref.trackIndex, ref.noteIndex, beforeNote, afterNote));
+        else
+            note = afterNote;
+    }
+
+    NoteRef anchorRef =
+        (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
+    const auto& anchorNote = sequence->getTrack(anchorRef.trackIndex).getNote(anchorRef.noteIndex);
+
+    if (onScrollToNote)
+        onScrollToNote(anchorNote.startTick, anchorNote.noteNumber);
 
     if (onNotesChanged)
         onNotesChanged();
