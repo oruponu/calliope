@@ -52,6 +52,7 @@ public:
 
     void copySelectedNotes();
     void cutSelectedNotes();
+    void deleteSelectedNotes();
     void pasteNotes(int atTick);
     void selectAllNotes();
     void nudgeSelectedNotesPitch(int deltaNote);
