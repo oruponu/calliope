@@ -43,6 +43,14 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key == juce::KeyPress::backspaceKey || key == juce::KeyPress::deleteKey)
+    {
+        if (selectedNotes.empty())
+            return false;
+        deleteSelectedNotes();
+        return true;
+    }
+
     if (key.getModifiers().isCommandDown())
     {
         if (key.getKeyCode() == juce::KeyPress::upKey)
@@ -571,6 +579,105 @@ void PianoRollComponent::cutSelectedNotes()
     }
 
     selectedNotes.clear();
+    repaint();
+    if (onNotesChanged)
+        onNotesChanged();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::deleteSelectedNotes()
+{
+    if (!sequence || selectedNotes.empty())
+        return;
+
+    int survivorOldIndex = -1;
+    if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks())
+    {
+        auto& track = sequence->getTrack(activeTrackIndex);
+        const int n = track.getNumNotes();
+        if (n > 0)
+        {
+            std::vector<int> order(n);
+            for (int i = 0; i < n; ++i)
+                order[i] = i;
+            std::sort(order.begin(), order.end(),
+                      [&track](int a, int b)
+                      {
+                          const auto& na = track.getNote(a);
+                          const auto& nb = track.getNote(b);
+                          if (na.startTick != nb.startTick)
+                              return na.startTick < nb.startTick;
+                          if (na.noteNumber != nb.noteNumber)
+                              return na.noteNumber < nb.noteNumber;
+                          return a < b;
+                      });
+
+            int minPos = -1;
+            int maxPos = -1;
+            for (int p = 0; p < n; ++p)
+            {
+                if (selectedNotes.contains({activeTrackIndex, order[p]}))
+                {
+                    if (minPos < 0)
+                        minPos = p;
+                    maxPos = p;
+                }
+            }
+
+            if (maxPos >= 0)
+            {
+                if (maxPos + 1 < n)
+                    survivorOldIndex = order[maxPos + 1];
+                else if (minPos - 1 >= 0)
+                    survivorOldIndex = order[minPos - 1];
+            }
+        }
+    }
+
+    int deletedBeforeSurvivor = 0;
+    if (survivorOldIndex >= 0)
+    {
+        for (const auto& ref : selectedNotes)
+            if (ref.trackIndex == activeTrackIndex && ref.noteIndex < survivorOldIndex)
+                ++deletedBeforeSurvivor;
+    }
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction("Delete Notes");
+        undoManager->perform(new MultiNoteDeleteAction(sequence, selectedNotes));
+    }
+    else
+    {
+        std::map<int, std::vector<int>> toRemove;
+        for (const auto& ref : selectedNotes)
+            toRemove[ref.trackIndex].push_back(ref.noteIndex);
+
+        for (auto& [trackIdx, indices] : toRemove)
+        {
+            std::sort(indices.begin(), indices.end(), std::greater<int>());
+            for (int idx : indices)
+                sequence->getTrack(trackIdx).removeNote(idx);
+        }
+    }
+
+    selectedNotes.clear();
+    if (survivorOldIndex >= 0)
+    {
+        const NoteRef survivor{activeTrackIndex, survivorOldIndex - deletedBeforeSurvivor};
+        selectedNotes.insert(survivor);
+        selectedNote = survivor;
+
+        const auto& note = sequence->getTrack(survivor.trackIndex).getNote(survivor.noteIndex);
+        if (onScrollToNote)
+            onScrollToNote(note.startTick, note.noteNumber);
+    }
+    else
+    {
+        selectedNote = {};
+    }
+
     repaint();
     if (onNotesChanged)
         onNotesChanged();
