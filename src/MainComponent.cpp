@@ -784,13 +784,28 @@ MainComponent::MainComponent()
         label.onWheel = [this, unit](int direction) { nudgePosition(unit, direction); };
     }
 
-    for (auto* label : {&keyValueLabel, &tempoValueLabel})
+    addAndMakeVisible(tempoValueLabel);
+    tempoValueLabel.setFont(font::mono(font::sizeDisplay).boldened());
+    tempoValueLabel.setColour(juce::Label::textColourId, text::t1);
+    tempoValueLabel.setJustificationType(juce::Justification::centred);
+
+    addAndMakeVisible(keyValueLabel);
+    keyValueLabel.setFont(font::mono(font::sizeDisplay).boldened());
+    keyValueLabel.setColour(juce::Label::textColourId, text::t1);
+    keyValueLabel.setJustificationType(juce::Justification::centred);
+    keyValueLabel.setBorderSize(juce::BorderSize<int>(0));
+    keyValueLabel.setMinimumHorizontalScale(1.0f);
+    keyValueLabel.setEditable(true);
+    keyValueLabel.onEditorShow = [this]()
     {
-        addAndMakeVisible(label);
-        label->setFont(font::mono(font::sizeDisplay).boldened());
-        label->setColour(juce::Label::textColourId, text::t1);
-        label->setJustificationType(juce::Justification::centred);
-    }
+        if (auto* editor = keyValueLabel.getCurrentTextEditor())
+        {
+            editor->setInputRestrictions(3, "ABCDEFGabcdefg#m");
+            editor->setJustification(juce::Justification::centred);
+            editor->selectAll();
+        }
+    };
+    keyValueLabel.onTextChange = [this]() { commitKeySignatureEdit(); };
 
     struct TimeSigField
     {
@@ -1721,6 +1736,24 @@ void MainComponent::setTimeSignatureAtPlayhead(int num, int den)
     eventList.refresh();
 }
 
+void MainComponent::commitKeySignatureEdit()
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+
+    int sharpsOrFlats = 0;
+    bool isMinor = false;
+    if (MidiSequence::keySignatureFromString(keyValueLabel.getText().toStdString(), sharpsOrFlats, isMinor))
+    {
+        auto ks = sequence.getKeySignatureAt(tick);
+        sequence.addKeySignatureChange(ks.tick, sharpsOrFlats, isMinor);
+    }
+
+    updateTransportDisplay();
+    pianoRoll.repaint();
+    controllerLane.repaint();
+    eventList.refresh();
+}
+
 void MainComponent::scrollToPlayhead(int tick)
 {
     int playheadX = pianoRoll.tickToX(tick);
@@ -1804,13 +1837,16 @@ void MainComponent::updateTransportDisplay()
     if (timeSigDenLabel.getCurrentTextEditor() == nullptr)
         timeSigDenLabel.setText(juce::String(ts.denominator), juce::dontSendNotification);
 
-    if (sequence.getKeySignatureChanges().empty())
-        keyValueLabel.setText("--", juce::dontSendNotification);
-    else
+    if (keyValueLabel.getCurrentTextEditor() == nullptr)
     {
-        auto ks = sequence.getKeySignatureAt(tick);
-        keyValueLabel.setText(MidiSequence::keySignatureToString(ks.sharpsOrFlats, ks.isMinor),
-                              juce::dontSendNotification);
+        if (sequence.getKeySignatureChanges().empty())
+            keyValueLabel.setText("-", juce::dontSendNotification);
+        else
+        {
+            auto ks = sequence.getKeySignatureAt(tick);
+            keyValueLabel.setText(MidiSequence::keySignatureToString(ks.sharpsOrFlats, ks.isMinor),
+                                  juce::dontSendNotification);
+        }
     }
 
     double tempo = sequence.getTempoAt(tick);

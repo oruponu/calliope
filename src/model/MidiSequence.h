@@ -79,6 +79,7 @@ public:
     void addChordChange(int tick, int chordRoot, int chordType, int bassRoot, int bassType);
 
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
+    static bool keySignatureFromString(const std::string& text, int& sharpsOrFlats, bool& isMinor);
     static std::string chordToString(const ChordChange& chord);
 
     double ticksToSeconds(int ticks) const;
