@@ -788,6 +788,19 @@ MainComponent::MainComponent()
     tempoValueLabel.setFont(font::mono(font::sizeDisplay).boldened());
     tempoValueLabel.setColour(juce::Label::textColourId, text::t1);
     tempoValueLabel.setJustificationType(juce::Justification::centred);
+    tempoValueLabel.setBorderSize(juce::BorderSize<int>(0));
+    tempoValueLabel.setMinimumHorizontalScale(1.0f);
+    tempoValueLabel.setEditable(true);
+    tempoValueLabel.onEditorShow = [this]()
+    {
+        if (auto* editor = tempoValueLabel.getCurrentTextEditor())
+        {
+            editor->setInputRestrictions(7, "0123456789.");
+            editor->setJustification(juce::Justification::centred);
+            editor->selectAll();
+        }
+    };
+    tempoValueLabel.onTextChange = [this]() { commitTempoEdit(); };
 
     addAndMakeVisible(keyValueLabel);
     keyValueLabel.setFont(font::mono(font::sizeDisplay).boldened());
@@ -1689,6 +1702,28 @@ void MainComponent::nudgePosition(PositionUnit unit, int direction)
     jumpToTick(juce::jmax(0, tick + direction * step));
 }
 
+void MainComponent::commitTempoEdit()
+{
+    double bpm = tempoValueLabel.getText().getDoubleValue();
+    if (bpm > 0.0)
+        setTempoAtPlayhead(bpm);
+    else
+        updateTransportDisplay();
+}
+
+void MainComponent::setTempoAtPlayhead(double bpm)
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto tc = sequence.getTempoChangeAt(tick);
+
+    sequence.addTempoChange(tc.tick, juce::jlimit(1.0, 999.0, bpm));
+
+    updateTransportDisplay();
+    pianoRoll.repaint();
+    controllerLane.repaint();
+    eventList.refresh();
+}
+
 void MainComponent::commitTimeSignatureEdit()
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
@@ -1867,8 +1902,11 @@ void MainComponent::updateTransportDisplay()
         }
     }
 
-    double tempo = sequence.getTempoAt(tick);
-    tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
+    if (tempoValueLabel.getCurrentTextEditor() == nullptr)
+    {
+        double tempo = sequence.getTempoAt(tick);
+        tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
+    }
 }
 
 void MainComponent::refreshAllViews()
