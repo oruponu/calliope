@@ -305,6 +305,12 @@ MainComponent::MainComponent()
         controllerLane.repaint();
         eventList.refresh();
     };
+    pianoRoll.onTempoChanged = [this]()
+    {
+        updateTransportDisplay();
+        controllerLane.repaint();
+        eventList.refresh();
+    };
     pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
     {
         if (updatingFromEventList)

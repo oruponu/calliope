@@ -32,6 +32,7 @@ public:
     void setLoopRegion(bool enabled, int startTick, int endTick);
 
     std::function<void(int startTick, int endTick)> onLoopRegionChanged;
+    std::function<void()> onTempoChanged;
     void paint(juce::Graphics& g) override;
 
     std::function<void(int tick)> onPlayheadMoved;
@@ -137,6 +138,9 @@ private:
     int tickToWidth(int durationTicks) const;
     int roundTickToGrid(int tick) const;
     int floorTickToGrid(int tick) const;
+
+    float tempoBpmToY(double bpm) const;
+    bool hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const;
 
     enum class ResizeEdge
     {

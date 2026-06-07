@@ -822,6 +822,34 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
+    if (!e.mods.isRightButtonDown())
+    {
+        int tempoTick = 0;
+        double tempoBpm = 0.0;
+        if (hitTestTempoLine(e.x, e.y, tempoTick, tempoBpm))
+        {
+            const auto& changes = sequence->getTempoChanges();
+            bool exists = std::any_of(changes.begin(), changes.end(),
+                                      [tempoTick](const TempoChange& tc) { return tc.tick == tempoTick; });
+            if (!exists)
+            {
+                if (undoManager)
+                {
+                    undoManager->beginNewTransaction("Add Tempo Change");
+                    undoManager->perform(new TempoChangeAction(sequence, tempoTick, tempoBpm));
+                }
+                else
+                {
+                    sequence->addTempoChange(tempoTick, tempoBpm);
+                }
+                repaint();
+                if (onTempoChanged)
+                    onTempoChanged();
+            }
+            return;
+        }
+    }
+
     if (e.y < getRulerTop() + gridTopOffset)
         return;
 
@@ -1486,6 +1514,73 @@ void PianoRollComponent::drawRuler(juce::Graphics& g)
     g.drawHorizontalLine(hTop + rulerHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
+float PianoRollComponent::tempoBpmToY(double bpm) const
+{
+    int tTop = getRulerTop() + loopBarHeight + rulerHeight;
+
+    double minBpm = 120.0;
+    double maxBpm = 120.0;
+    if (sequence)
+    {
+        const auto& tempoChanges = sequence->getTempoChanges();
+        if (!tempoChanges.empty())
+        {
+            minBpm = maxBpm = tempoChanges[0].bpm;
+            for (const auto& tc : tempoChanges)
+            {
+                minBpm = std::min(minBpm, tc.bpm);
+                maxBpm = std::max(maxBpm, tc.bpm);
+            }
+        }
+    }
+
+    double range = maxBpm - minBpm;
+    if (range < 1.0)
+    {
+        minBpm -= 10.0;
+        maxBpm += 10.0;
+        range = 20.0;
+    }
+    else
+    {
+        double pad = range * 0.15;
+        minBpm -= pad;
+        maxBpm += pad;
+        range = maxBpm - minBpm;
+    }
+
+    int graphTop = tTop + 3;
+    int graphBottom = tTop + tempoTrackHeight - 4;
+    int graphHeight = graphBottom - graphTop;
+
+    double normalized = (bpm - minBpm) / range;
+    return static_cast<float>(graphBottom - normalized * graphHeight);
+}
+
+bool PianoRollComponent::hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const
+{
+    if (!sequence)
+        return false;
+
+    int tTop = getRulerTop() + loopBarHeight + rulerHeight;
+    if (y < tTop || y >= tTop + tempoTrackHeight)
+        return false;
+
+    if (x < getKeyboardLeft() + keyboardWidth)
+        return false;
+
+    constexpr int tolerance = 5;
+    double activeBpm = sequence->getTempoAt(xToTick(x));
+    float lineY = tempoBpmToY(activeBpm);
+    if (std::abs(static_cast<float>(y) - lineY) > tolerance)
+        return false;
+
+    int tick = std::max(0, roundTickToGrid(xToTick(x)));
+    outTick = tick;
+    outBpm = sequence->getTempoAt(tick);
+    return true;
+}
+
 void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -1510,48 +1605,18 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
                        static_cast<float>(tTop + tempoTrackHeight));
 
     const auto& tempoChanges = sequence->getTempoChanges();
+    juce::Colour amberColour = accent::base;
     if (tempoChanges.empty())
     {
-        g.setColour(accent::base);
+        float y = tempoBpmToY(120.0);
+        g.setColour(amberColour);
+        g.drawLine(static_cast<float>(visibleLeft), y, static_cast<float>(visibleRight), y, 1.5f);
+
         g.setFont(font::sans(font::size2XS));
         g.drawText("120.00", kbLeft + keyboardWidth + 4, tTop, 60, tempoTrackHeight, juce::Justification::centredLeft);
     }
     else
     {
-        double minBpm = tempoChanges[0].bpm;
-        double maxBpm = tempoChanges[0].bpm;
-        for (const auto& tc : tempoChanges)
-        {
-            minBpm = std::min(minBpm, tc.bpm);
-            maxBpm = std::max(maxBpm, tc.bpm);
-        }
-
-        double range = maxBpm - minBpm;
-        if (range < 1.0)
-        {
-            minBpm -= 10.0;
-            maxBpm += 10.0;
-            range = 20.0;
-        }
-        else
-        {
-            double pad = range * 0.15;
-            minBpm -= pad;
-            maxBpm += pad;
-            range = maxBpm - minBpm;
-        }
-
-        int graphTop = tTop + 3;
-        int graphBottom = tTop + tempoTrackHeight - 4;
-        int graphHeight = graphBottom - graphTop;
-
-        auto bpmToY = [&](double bpm) -> float
-        {
-            double normalized = (bpm - minBpm) / range;
-            return static_cast<float>(graphBottom - normalized * graphHeight);
-        };
-
-        juce::Colour amberColour = accent::base;
         g.setColour(amberColour);
 
         int totalTicks = xToTick(getWidth());
@@ -1560,7 +1625,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
         {
             int startX = tickToX(tempoChanges[i].tick);
             int endX = (i + 1 < tempoChanges.size()) ? tickToX(tempoChanges[i + 1].tick) : tickToX(totalTicks);
-            float y = bpmToY(tempoChanges[i].bpm);
+            float y = tempoBpmToY(tempoChanges[i].bpm);
 
             int drawStartX = std::max(startX, visibleLeft);
             int drawEndX = std::min(endX, visibleRight);
@@ -1572,7 +1637,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 
             if (i > 0 && startX >= visibleLeft && startX <= visibleRight)
             {
-                float prevY = bpmToY(tempoChanges[i - 1].bpm);
+                float prevY = tempoBpmToY(tempoChanges[i - 1].bpm);
                 g.drawLine(static_cast<float>(startX), prevY, static_cast<float>(startX), y, 1.0f);
             }
 
