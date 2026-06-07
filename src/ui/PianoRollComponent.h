@@ -140,7 +140,9 @@ private:
     int floorTickToGrid(int tick) const;
 
     float tempoBpmToY(double bpm) const;
+    double tempoYToBpm(int y) const;
     bool hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const;
+    int hitTestTempoPoint(int x, int y) const;
 
     enum class ResizeEdge
     {
@@ -234,4 +236,9 @@ private:
     int loopEndTick = 0;
     bool isLoopDragging = false;
     int loopDragStartTick = 0;
+
+    bool isTempoPointDragging = false;
+    int tempoDragIndex = -1;
+    bool tempoDragMoved = false;
+    std::vector<TempoChange> tempoDragBefore;
 };
