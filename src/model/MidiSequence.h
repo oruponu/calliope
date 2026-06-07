@@ -86,6 +86,7 @@ public:
 
     BarBeatTick tickToBarBeatTick(int tick) const;
     int barStartToTick(int barNumber) const;
+    int barBeatTickToTick(int bar, int beat, int tickInBeat) const;
 
 private:
     std::vector<MidiTrack> tracks;
