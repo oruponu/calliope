@@ -741,14 +741,14 @@ MainComponent::MainComponent()
         label->setJustificationType(juce::Justification::centred);
     }
 
-    for (auto* dot : {&positionDot1, &positionDot2})
+    for (auto* sep : {&positionDot1, &positionDot2, &timeSigSlashLabel})
     {
-        addAndMakeVisible(dot);
-        dot->setFont(font::mono(font::sizeDisplay).boldened());
-        dot->setColour(juce::Label::textColourId, text::t1);
-        dot->setJustificationType(juce::Justification::centred);
-        dot->setBorderSize(juce::BorderSize<int>(0));
-        dot->setMinimumHorizontalScale(1.0f);
+        addAndMakeVisible(sep);
+        sep->setFont(font::mono(font::sizeDisplay).boldened());
+        sep->setColour(juce::Label::textColourId, text::t1);
+        sep->setJustificationType(juce::Justification::centred);
+        sep->setBorderSize(juce::BorderSize<int>(0));
+        sep->setMinimumHorizontalScale(1.0f);
     }
 
     struct PositionField
@@ -784,12 +784,43 @@ MainComponent::MainComponent()
         label.onWheel = [this, unit](int direction) { nudgePosition(unit, direction); };
     }
 
-    for (auto* label : {&timeSigValueLabel, &keyValueLabel, &tempoValueLabel})
+    for (auto* label : {&keyValueLabel, &tempoValueLabel})
     {
         addAndMakeVisible(label);
         label->setFont(font::mono(font::sizeDisplay).boldened());
         label->setColour(juce::Label::textColourId, text::t1);
         label->setJustificationType(juce::Justification::centred);
+    }
+
+    struct TimeSigField
+    {
+        juce::Label* label;
+        int maxLength;
+        juce::Justification justification;
+    };
+    for (auto field : {TimeSigField{&timeSigNumLabel, 2, juce::Justification::centredRight},
+                       TimeSigField{&timeSigDenLabel, 2, juce::Justification::centredLeft}})
+    {
+        auto* label = field.label;
+        int maxLength = field.maxLength;
+        auto justification = field.justification;
+        addAndMakeVisible(label);
+        label->setFont(font::mono(font::sizeDisplay).boldened());
+        label->setColour(juce::Label::textColourId, text::t1);
+        label->setJustificationType(justification);
+        label->setBorderSize(juce::BorderSize<int>(0));
+        label->setMinimumHorizontalScale(1.0f);
+        label->setEditable(true);
+        label->onEditorShow = [label, maxLength, justification]()
+        {
+            if (auto* editor = label->getCurrentTextEditor())
+            {
+                editor->setInputRestrictions(maxLength, "0123456789");
+                editor->setJustification(justification);
+                editor->selectAll();
+            }
+        };
+        label->onTextChange = [this]() { commitTimeSignatureEdit(); };
     }
 
     addAndMakeVisible(editToolButton);
@@ -1509,7 +1540,27 @@ void MainComponent::resized()
     auto tempoSeg = infoBox;
     infoDividerX1 = timeSeg.getRight();
     infoDividerX2 = keySeg.getRight();
-    layoutSegment(timeSeg, timeSigHeaderLabel, timeSigValueLabel);
+    {
+        auto inner = timeSeg.reduced(boxPadX, 0);
+        inner.removeFromTop(boxPadTop);
+        timeSigHeaderLabel.setBounds(inner.removeFromTop(headerH));
+        auto valueRow = inner.removeFromTop(boxH - boxPadTop - headerH);
+
+        using namespace calliope::theme;
+        auto valueFont = font::mono(font::sizeDisplay).boldened();
+        auto widthOf = [&](const char* s) { return juce::GlyphArrangement::getStringWidthInt(valueFont, s); };
+
+        const int pad = 4;
+        int numW = widthOf("00") + pad;
+        int denW = widthOf("00") + pad;
+        int slashW = widthOf("/");
+
+        int groupW = numW + slashW + denW;
+        auto group = valueRow.withSizeKeepingCentre(groupW, valueRow.getHeight());
+        timeSigNumLabel.setBounds(group.removeFromLeft(numW));
+        timeSigSlashLabel.setBounds(group.removeFromLeft(slashW));
+        timeSigDenLabel.setBounds(group.removeFromLeft(denW));
+    }
     layoutSegment(keySeg, keyHeaderLabel, keyValueLabel);
     layoutSegment(tempoSeg, tempoHeaderLabel, tempoValueLabel);
 
@@ -1619,6 +1670,35 @@ void MainComponent::nudgePosition(PositionUnit unit, int direction)
     jumpToTick(juce::jmax(0, tick + direction * step));
 }
 
+void MainComponent::commitTimeSignatureEdit()
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto ts = sequence.getTimeSignatureAt(tick);
+
+    int num = timeSigNumLabel.getText().isEmpty() ? ts.numerator : timeSigNumLabel.getText().getIntValue();
+    int den = timeSigDenLabel.getText().isEmpty() ? ts.denominator : timeSigDenLabel.getText().getIntValue();
+
+    auto snapToPowerOfTwo = [](int value)
+    {
+        value = juce::jlimit(2, 64, value);
+        int lower = 1;
+        while (lower * 2 <= value)
+            lower *= 2;
+        int upper = juce::jmin(64, lower * 2);
+        return (value - lower <= upper - value) ? lower : upper;
+    };
+
+    num = juce::jlimit(1, 64, num);
+    den = snapToPowerOfTwo(den);
+
+    sequence.addTimeSignatureChange(ts.tick, num, den);
+
+    updateTransportDisplay();
+    pianoRoll.repaint();
+    controllerLane.repaint();
+    eventList.refresh();
+}
+
 void MainComponent::scrollToPlayhead(int tick)
 {
     int playheadX = pianoRoll.tickToX(tick);
@@ -1697,8 +1777,10 @@ void MainComponent::updateTransportDisplay()
         positionTickLabel.setText(juce::String(bbt.tick).paddedLeft('0', 4), juce::dontSendNotification);
 
     auto ts = sequence.getTimeSignatureAt(tick);
-    timeSigValueLabel.setText(juce::String(ts.numerator) + "/" + juce::String(ts.denominator),
-                              juce::dontSendNotification);
+    if (timeSigNumLabel.getCurrentTextEditor() == nullptr)
+        timeSigNumLabel.setText(juce::String(ts.numerator), juce::dontSendNotification);
+    if (timeSigDenLabel.getCurrentTextEditor() == nullptr)
+        timeSigDenLabel.setText(juce::String(ts.denominator), juce::dontSendNotification);
 
     if (sequence.getKeySignatureChanges().empty())
         keyValueLabel.setText("--", juce::dontSendNotification);
