@@ -375,6 +375,34 @@ private:
     std::vector<TempoChange> before;
 };
 
+class TempoMoveAction : public juce::UndoableAction
+{
+public:
+    TempoMoveAction(MidiSequence* seq, std::vector<TempoChange> before, std::vector<TempoChange> after)
+        : sequence(seq), before(std::move(before)), after(std::move(after))
+    {
+    }
+
+    bool perform() override
+    {
+        sequence->setTempoChanges(after);
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->setTempoChanges(before);
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    std::vector<TempoChange> before;
+    std::vector<TempoChange> after;
+};
+
 class TimeSignatureChangeAction : public juce::UndoableAction
 {
 public:
