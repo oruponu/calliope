@@ -801,6 +801,7 @@ MainComponent::MainComponent()
         }
     };
     tempoValueLabel.onTextChange = [this]() { commitTempoEdit(); };
+    tempoValueLabel.onWheel = [this](int direction) { nudgeTempo(direction); };
 
     addAndMakeVisible(keyValueLabel);
     keyValueLabel.setFont(font::mono(font::sizeDisplay).boldened());
@@ -1709,6 +1710,14 @@ void MainComponent::commitTempoEdit()
         setTempoAtPlayhead(bpm);
     else
         updateTransportDisplay();
+}
+
+void MainComponent::nudgeTempo(int direction)
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto tc = sequence.getTempoChangeAt(tick);
+
+    setTempoAtPlayhead(static_cast<int>(tc.bpm) + direction);
 }
 
 void MainComponent::setTempoAtPlayhead(double bpm)
