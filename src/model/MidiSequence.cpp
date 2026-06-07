@@ -136,17 +136,42 @@ void MidiSequence::addTempoChange(int tick, double bpm)
 
 void MidiSequence::addTimeSignatureChange(int tick, int num, int den)
 {
+    std::vector<int> bars;
+    bars.reserve(timeSignatureChanges.size());
+    for (const auto& ts : timeSignatureChanges)
+        bars.push_back(tickToBarBeatTick(ts.tick).bar);
+
+    bool modified = false;
     for (auto& ts : timeSignatureChanges)
     {
         if (ts.tick == tick)
         {
             ts.numerator = num;
             ts.denominator = den;
-            return;
+            modified = true;
+            break;
         }
     }
-    timeSignatureChanges.push_back({tick, num, den});
-    std::ranges::sort(timeSignatureChanges, {}, &TimeSignatureChange::tick);
+
+    if (!modified)
+    {
+        int targetBar = tickToBarBeatTick(tick).bar;
+        size_t insertPos = 0;
+        while (insertPos < timeSignatureChanges.size() && timeSignatureChanges[insertPos].tick < tick)
+            ++insertPos;
+        timeSignatureChanges.insert(timeSignatureChanges.begin() + insertPos, {tick, num, den});
+        bars.insert(bars.begin() + insertPos, targetBar);
+    }
+
+    if (!timeSignatureChanges.empty())
+        timeSignatureChanges[0].tick = 0;
+    for (size_t i = 1; i < timeSignatureChanges.size(); ++i)
+    {
+        int ticksPerBeat = ticksPerQuarterNote * 4 / timeSignatureChanges[i - 1].denominator;
+        int ticksPerBar = ticksPerBeat * timeSignatureChanges[i - 1].numerator;
+        int barsFromPrev = bars[i] - bars[i - 1];
+        timeSignatureChanges[i].tick = timeSignatureChanges[i - 1].tick + barsFromPrev * ticksPerBar;
+    }
 }
 
 KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
