@@ -55,6 +55,12 @@ private:
         Tick
     };
 
+    enum class TimeSigUnit
+    {
+        Numerator,
+        Denominator
+    };
+
     class TransportButton : public juce::Component
     {
     public:
@@ -114,6 +120,8 @@ private:
     void commitPositionEdit();
     void nudgePosition(PositionUnit unit, int direction);
     void commitTimeSignatureEdit();
+    void nudgeTimeSignature(TimeSigUnit unit, int direction);
+    void setTimeSignatureAtPlayhead(int numerator, int denominator);
     void scrollNoteIntoView(int startTick, int noteNumber);
     void scrollViewVertically(int deltaY);
     void scrollViewHorizontally(int deltaX);
@@ -465,8 +473,8 @@ private:
     juce::Label positionDot2{"", "."};
 
     juce::Label timeSigHeaderLabel{"", "TIME"};
-    juce::Label timeSigNumLabel;
-    juce::Label timeSigDenLabel;
+    WheelLabel timeSigNumLabel;
+    WheelLabel timeSigDenLabel;
     juce::Label timeSigSlashLabel{"", "/"};
 
     juce::Label keyHeaderLabel{"", "KEY"};

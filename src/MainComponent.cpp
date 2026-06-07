@@ -794,12 +794,13 @@ MainComponent::MainComponent()
 
     struct TimeSigField
     {
-        juce::Label* label;
+        WheelLabel* label;
         int maxLength;
         juce::Justification justification;
+        TimeSigUnit unit;
     };
-    for (auto field : {TimeSigField{&timeSigNumLabel, 2, juce::Justification::centredRight},
-                       TimeSigField{&timeSigDenLabel, 2, juce::Justification::centredLeft}})
+    for (auto field : {TimeSigField{&timeSigNumLabel, 2, juce::Justification::centredRight, TimeSigUnit::Numerator},
+                       TimeSigField{&timeSigDenLabel, 2, juce::Justification::centredLeft, TimeSigUnit::Denominator}})
     {
         auto* label = field.label;
         int maxLength = field.maxLength;
@@ -821,6 +822,8 @@ MainComponent::MainComponent()
             }
         };
         label->onTextChange = [this]() { commitTimeSignatureEdit(); };
+        TimeSigUnit unit = field.unit;
+        label->onWheel = [this, unit](int direction) { nudgeTimeSignature(unit, direction); };
     }
 
     addAndMakeVisible(editToolButton);
@@ -1677,6 +1680,25 @@ void MainComponent::commitTimeSignatureEdit()
 
     int num = timeSigNumLabel.getText().isEmpty() ? ts.numerator : timeSigNumLabel.getText().getIntValue();
     int den = timeSigDenLabel.getText().isEmpty() ? ts.denominator : timeSigDenLabel.getText().getIntValue();
+
+    setTimeSignatureAtPlayhead(num, den);
+}
+
+void MainComponent::nudgeTimeSignature(TimeSigUnit unit, int direction)
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto ts = sequence.getTimeSignatureAt(tick);
+
+    if (unit == TimeSigUnit::Numerator)
+        setTimeSignatureAtPlayhead(ts.numerator + direction, ts.denominator);
+    else
+        setTimeSignatureAtPlayhead(ts.numerator, direction > 0 ? ts.denominator * 2 : ts.denominator / 2);
+}
+
+void MainComponent::setTimeSignatureAtPlayhead(int num, int den)
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto ts = sequence.getTimeSignatureAt(tick);
 
     auto snapToPowerOfTwo = [](int value)
     {
