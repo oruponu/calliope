@@ -8,6 +8,7 @@
 #include "ui/ControllerLaneComponent.h"
 #include "ui/EventListComponent.h"
 #include "ui/TrackListComponent.h"
+#include "ui/WheelLabel.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
@@ -47,6 +48,13 @@ public:
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
 private:
+    enum class PositionUnit
+    {
+        Bar,
+        Beat,
+        Tick
+    };
+
     class TransportButton : public juce::Component
     {
     public:
@@ -104,6 +112,7 @@ private:
     void scrollToPlayhead(int tick);
     void jumpToTick(int tick);
     void commitPositionEdit();
+    void nudgePosition(PositionUnit unit, int direction);
     void scrollNoteIntoView(int startTick, int noteNumber);
     void scrollViewVertically(int deltaY);
     void scrollViewHorizontally(int deltaX);
@@ -448,9 +457,9 @@ private:
     juce::ComboBox quantizeComboBox;
 
     juce::Label positionHeaderLabel{"", "POSITION"};
-    juce::Label positionBarLabel;
-    juce::Label positionBeatLabel;
-    juce::Label positionTickLabel;
+    WheelLabel positionBarLabel;
+    WheelLabel positionBeatLabel;
+    WheelLabel positionTickLabel;
     juce::Label positionDot1{"", "."};
     juce::Label positionDot2{"", "."};
 
