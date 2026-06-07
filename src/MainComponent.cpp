@@ -741,10 +741,44 @@ MainComponent::MainComponent()
         label->setJustificationType(juce::Justification::centred);
     }
 
-    addAndMakeVisible(positionLabel);
-    positionLabel.setFont(font::mono(font::sizeDisplay).boldened());
-    positionLabel.setColour(juce::Label::textColourId, text::t1);
-    positionLabel.setJustificationType(juce::Justification::centred);
+    for (auto* dot : {&positionDot1, &positionDot2})
+    {
+        addAndMakeVisible(dot);
+        dot->setFont(font::mono(font::sizeDisplay).boldened());
+        dot->setColour(juce::Label::textColourId, text::t1);
+        dot->setJustificationType(juce::Justification::centred);
+        dot->setBorderSize(juce::BorderSize<int>(0));
+        dot->setMinimumHorizontalScale(1.0f);
+    }
+
+    struct PositionField
+    {
+        juce::Label& label;
+        int maxLength;
+    };
+    for (auto field :
+         {PositionField{positionBarLabel, 3}, PositionField{positionBeatLabel, 2}, PositionField{positionTickLabel, 4}})
+    {
+        auto& label = field.label;
+        addAndMakeVisible(label);
+        label.setFont(font::mono(font::sizeDisplay).boldened());
+        label.setColour(juce::Label::textColourId, text::t1);
+        label.setJustificationType(juce::Justification::centred);
+        label.setBorderSize(juce::BorderSize<int>(0));
+        label.setMinimumHorizontalScale(1.0f);
+        label.setEditable(true);
+        int maxLength = field.maxLength;
+        label.onEditorShow = [&label, maxLength]()
+        {
+            if (auto* editor = label.getCurrentTextEditor())
+            {
+                editor->setInputRestrictions(maxLength, "0123456789");
+                editor->setJustification(juce::Justification::centred);
+                editor->selectAll();
+            }
+        };
+        label.onTextChange = [this]() { commitPositionEdit(); };
+    }
 
     for (auto* label : {&timeSigValueLabel, &keyValueLabel, &tempoValueLabel})
     {
@@ -1194,26 +1228,14 @@ bool MainComponent::perform(const InvocationInfo& info)
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
         auto bbt = sequence.tickToBarBeatTick(currentTick);
         int targetBar = juce::jmax(1, bbt.bar - 1);
-        int newTick = sequence.barStartToTick(targetBar);
-        playbackEngine.setPositionInTicks(newTick);
-        pianoRoll.setPlayheadTick(newTick);
-        controllerLane.setPlayheadTick(newTick);
-        eventList.setPlayheadTick(newTick);
-        updateTransportDisplay();
-        scrollToPlayhead(newTick);
+        jumpToTick(sequence.barStartToTick(targetBar));
         return true;
     }
     case CommandID::nextBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
         auto bbt = sequence.tickToBarBeatTick(currentTick);
-        int newTick = sequence.barStartToTick(bbt.bar + 1);
-        playbackEngine.setPositionInTicks(newTick);
-        pianoRoll.setPlayheadTick(newTick);
-        controllerLane.setPlayheadTick(newTick);
-        eventList.setPlayheadTick(newTick);
-        updateTransportDisplay();
-        scrollToPlayhead(newTick);
+        jumpToTick(sequence.barStartToTick(bbt.bar + 1));
         return true;
     }
     case CommandID::switchToEditTool:
@@ -1439,7 +1461,30 @@ void MainComponent::resized()
 
     auto posBox = content.removeFromLeft(posW).withSizeKeepingCentre(posW, boxH);
     positionBoxBounds = posBox;
-    layoutSegment(posBox, positionHeaderLabel, positionLabel);
+    {
+        auto inner = posBox.reduced(boxPadX, 0);
+        inner.removeFromTop(boxPadTop);
+        positionHeaderLabel.setBounds(inner.removeFromTop(headerH));
+        auto valueRow = inner.removeFromTop(boxH - boxPadTop - headerH);
+
+        using namespace calliope::theme;
+        auto valueFont = font::mono(font::sizeDisplay).boldened();
+        auto widthOf = [&](const char* s) { return juce::GlyphArrangement::getStringWidthInt(valueFont, s); };
+
+        const int pad = 4;
+        int barW = widthOf("000") + pad;
+        int beatW = widthOf("00") + pad;
+        int tickW = widthOf("0000") + pad;
+        int dotW = widthOf(".");
+
+        int groupW = barW + dotW + beatW + dotW + tickW;
+        auto group = valueRow.withSizeKeepingCentre(groupW, valueRow.getHeight());
+        positionBarLabel.setBounds(group.removeFromLeft(barW));
+        positionDot1.setBounds(group.removeFromLeft(dotW));
+        positionBeatLabel.setBounds(group.removeFromLeft(beatW));
+        positionDot2.setBounds(group.removeFromLeft(dotW));
+        positionTickLabel.setBounds(group.removeFromLeft(tickW));
+    }
     content.removeFromLeft(g1);
 
     auto btnSection = content.removeFromLeft(btnW);
@@ -1525,6 +1570,28 @@ void MainComponent::onVBlank()
     scrollToPlayhead(static_cast<int>(tick));
 }
 
+void MainComponent::jumpToTick(int tick)
+{
+    playbackEngine.setPositionInTicks(tick);
+    pianoRoll.setPlayheadTick(tick);
+    controllerLane.setPlayheadTick(tick);
+    eventList.setPlayheadTick(tick);
+    updateTransportDisplay();
+    scrollToPlayhead(tick);
+}
+
+void MainComponent::commitPositionEdit()
+{
+    int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto current = sequence.tickToBarBeatTick(currentTick);
+
+    int bar = positionBarLabel.getText().isEmpty() ? current.bar : positionBarLabel.getText().getIntValue();
+    int beat = positionBeatLabel.getText().isEmpty() ? current.beat : positionBeatLabel.getText().getIntValue();
+    int tickInBeat = positionTickLabel.getText().isEmpty() ? current.tick : positionTickLabel.getText().getIntValue();
+
+    jumpToTick(sequence.barBeatTickToTick(bar, beat, tickInBeat));
+}
+
 void MainComponent::scrollToPlayhead(int tick)
 {
     int playheadX = pianoRoll.tickToX(tick);
@@ -1595,9 +1662,12 @@ void MainComponent::updateTransportDisplay()
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
 
     auto bbt = sequence.tickToBarBeatTick(tick);
-    positionLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3) + "." + juce::String(bbt.beat).paddedLeft('0', 2) +
-                              "." + juce::String(bbt.tick).paddedLeft('0', 4),
-                          juce::dontSendNotification);
+    if (positionBarLabel.getCurrentTextEditor() == nullptr)
+        positionBarLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3), juce::dontSendNotification);
+    if (positionBeatLabel.getCurrentTextEditor() == nullptr)
+        positionBeatLabel.setText(juce::String(bbt.beat).paddedLeft('0', 2), juce::dontSendNotification);
+    if (positionTickLabel.getCurrentTextEditor() == nullptr)
+        positionTickLabel.setText(juce::String(bbt.tick).paddedLeft('0', 4), juce::dontSendNotification);
 
     auto ts = sequence.getTimeSignatureAt(tick);
     timeSigValueLabel.setText(juce::String(ts.numerator) + "/" + juce::String(ts.denominator),
