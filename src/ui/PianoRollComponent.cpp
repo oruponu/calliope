@@ -1517,44 +1517,12 @@ void PianoRollComponent::drawRuler(juce::Graphics& g)
 float PianoRollComponent::tempoBpmToY(double bpm) const
 {
     int tTop = getRulerTop() + loopBarHeight + rulerHeight;
-
-    double minBpm = 120.0;
-    double maxBpm = 120.0;
-    if (sequence)
-    {
-        const auto& tempoChanges = sequence->getTempoChanges();
-        if (!tempoChanges.empty())
-        {
-            minBpm = maxBpm = tempoChanges[0].bpm;
-            for (const auto& tc : tempoChanges)
-            {
-                minBpm = std::min(minBpm, tc.bpm);
-                maxBpm = std::max(maxBpm, tc.bpm);
-            }
-        }
-    }
-
-    double range = maxBpm - minBpm;
-    if (range < 1.0)
-    {
-        minBpm -= 10.0;
-        maxBpm += 10.0;
-        range = 20.0;
-    }
-    else
-    {
-        double pad = range * 0.15;
-        minBpm -= pad;
-        maxBpm += pad;
-        range = maxBpm - minBpm;
-    }
-
     int graphTop = tTop + 3;
     int graphBottom = tTop + tempoTrackHeight - 4;
-    int graphHeight = graphBottom - graphTop;
 
-    double normalized = (bpm - minBpm) / range;
-    return static_cast<float>(graphBottom - normalized * graphHeight);
+    double range = MidiSequence::maxBpm - MidiSequence::minBpm;
+    double normalized = (bpm - MidiSequence::minBpm) / range;
+    return static_cast<float>(graphBottom - normalized * (graphBottom - graphTop));
 }
 
 bool PianoRollComponent::hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const

@@ -44,6 +44,8 @@ class MidiSequence
 {
 public:
     static constexpr int defaultTicksPerQuarterNote = 480;
+    static constexpr double minBpm = 10.0;
+    static constexpr double maxBpm = 400.0;
 
     MidiSequence();
 

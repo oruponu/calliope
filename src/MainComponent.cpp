@@ -1732,7 +1732,8 @@ void MainComponent::setTempoAtPlayhead(double bpm)
     auto tc = sequence.getTempoChangeAt(tick);
 
     undoManager.beginNewTransaction();
-    undoManager.perform(new TempoChangeAction(&sequence, tc.tick, juce::jlimit(1.0, 999.0, bpm)));
+    undoManager.perform(
+        new TempoChangeAction(&sequence, tc.tick, juce::jlimit(MidiSequence::minBpm, MidiSequence::maxBpm, bpm)));
 
     updateTransportDisplay();
     pianoRoll.repaint();
