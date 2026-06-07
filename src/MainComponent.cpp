@@ -1725,7 +1725,8 @@ void MainComponent::setTempoAtPlayhead(double bpm)
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
     auto tc = sequence.getTempoChangeAt(tick);
 
-    sequence.addTempoChange(tc.tick, juce::jlimit(1.0, 999.0, bpm));
+    undoManager.beginNewTransaction();
+    undoManager.perform(new TempoChangeAction(&sequence, tc.tick, juce::jlimit(1.0, 999.0, bpm)));
 
     updateTransportDisplay();
     pianoRoll.repaint();
@@ -1773,7 +1774,8 @@ void MainComponent::setTimeSignatureAtPlayhead(int num, int den)
     num = juce::jlimit(1, 64, num);
     den = snapToPowerOfTwo(den);
 
-    sequence.addTimeSignatureChange(ts.tick, num, den);
+    undoManager.beginNewTransaction();
+    undoManager.perform(new TimeSignatureChangeAction(&sequence, ts.tick, num, den));
 
     updateTransportDisplay();
     pianoRoll.repaint();
@@ -1808,7 +1810,8 @@ void MainComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor)
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
     auto ks = sequence.getKeySignatureAt(tick);
 
-    sequence.addKeySignatureChange(ks.tick, sharpsOrFlats, isMinor);
+    undoManager.beginNewTransaction();
+    undoManager.perform(new KeySignatureChangeAction(&sequence, ks.tick, sharpsOrFlats, isMinor));
 
     updateTransportDisplay();
     pianoRoll.repaint();
@@ -1925,6 +1928,7 @@ void MainComponent::refreshAllViews()
     controllerLane.repaint();
     trackList.refresh();
     eventList.refresh();
+    updateTransportDisplay();
     repaint(trackListHeaderBounds);
 }
 
