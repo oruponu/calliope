@@ -181,6 +181,21 @@ void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMin
     std::ranges::sort(keySignatureChanges, {}, &KeySignatureChange::tick);
 }
 
+void MidiSequence::setTempoChanges(std::vector<TempoChange> changes)
+{
+    tempoChanges = std::move(changes);
+}
+
+void MidiSequence::setTimeSignatureChanges(std::vector<TimeSignatureChange> changes)
+{
+    timeSignatureChanges = std::move(changes);
+}
+
+void MidiSequence::setKeySignatureChanges(std::vector<KeySignatureChange> changes)
+{
+    keySignatureChanges = std::move(changes);
+}
+
 void MidiSequence::addChordChange(int tick, int chordRoot, int chordType, int bassRoot, int bassType)
 {
     for (auto& cc : chordChanges)
