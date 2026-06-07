@@ -113,6 +113,7 @@ private:
     void jumpToTick(int tick);
     void commitPositionEdit();
     void nudgePosition(PositionUnit unit, int direction);
+    void commitTimeSignatureEdit();
     void scrollNoteIntoView(int startTick, int noteNumber);
     void scrollViewVertically(int deltaY);
     void scrollViewHorizontally(int deltaX);
@@ -464,7 +465,9 @@ private:
     juce::Label positionDot2{"", "."};
 
     juce::Label timeSigHeaderLabel{"", "TIME"};
-    juce::Label timeSigValueLabel;
+    juce::Label timeSigNumLabel;
+    juce::Label timeSigDenLabel;
+    juce::Label timeSigSlashLabel{"", "/"};
 
     juce::Label keyHeaderLabel{"", "KEY"};
     juce::Label keyValueLabel;
