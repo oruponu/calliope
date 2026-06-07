@@ -64,6 +64,7 @@ public:
     void setTicksPerQuarterNote(int ppq);
 
     double getTempoAt(int tick) const;
+    TempoChange getTempoChangeAt(int tick) const;
     TimeSignatureChange getTimeSignatureAt(int tick) const;
 
     KeySignatureChange getKeySignatureAt(int tick) const;

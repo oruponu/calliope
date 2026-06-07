@@ -119,6 +119,8 @@ private:
     void jumpToTick(int tick);
     void commitPositionEdit();
     void nudgePosition(PositionUnit unit, int direction);
+    void commitTempoEdit();
+    void setTempoAtPlayhead(double bpm);
     void commitTimeSignatureEdit();
     void nudgeTimeSignature(TimeSigUnit unit, int direction);
     void setTimeSignatureAtPlayhead(int numerator, int denominator);
