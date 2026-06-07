@@ -1,6 +1,14 @@
 #include "MidiSequence.h"
 #include <algorithm>
+#include <cctype>
 #include <ranges>
+
+namespace
+{
+const char* const majorKeys[] = {"Cb", "Gb", "Db", "Ab", "Eb", "Bb", "F", "C", "G", "D", "A", "E", "B", "F#", "C#"};
+const char* const minorKeys[] = {"Abm", "Ebm", "Bbm", "Fm",  "Cm",  "Gm",  "Dm", "Am",
+                                 "Em",  "Bm",  "F#m", "C#m", "G#m", "D#m", "A#m"};
+} // namespace
 
 MidiSequence::MidiSequence()
 {
@@ -223,16 +231,44 @@ std::string MidiSequence::chordToString(const ChordChange& chord)
 
 std::string MidiSequence::keySignatureToString(int sharpsOrFlats, bool isMinor)
 {
-    static const char* majorKeys[] = {"Cb", "Gb", "Db", "Ab", "Eb", "Bb", "F", "C",
-                                      "G",  "D",  "A",  "E",  "B",  "F#", "C#"};
-    static const char* minorKeys[] = {"Abm", "Ebm", "Bbm", "Fm",  "Cm",  "Gm",  "Dm", "Am",
-                                      "Em",  "Bm",  "F#m", "C#m", "G#m", "D#m", "A#m"};
-
     int index = sharpsOrFlats + 7;
     if (index < 0 || index > 14)
         return "--";
 
     return isMinor ? minorKeys[index] : majorKeys[index];
+}
+
+bool MidiSequence::keySignatureFromString(const std::string& text, int& sharpsOrFlats, bool& isMinor)
+{
+    std::string s;
+    for (char c : text)
+        if (!std::isspace(static_cast<unsigned char>(c)))
+            s += c;
+
+    if (s.empty())
+        return false;
+
+    s[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(s[0])));
+    for (size_t i = 1; i < s.size(); ++i)
+        s[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(s[i])));
+
+    for (int i = 0; i < 15; ++i)
+    {
+        if (s == majorKeys[i])
+        {
+            sharpsOrFlats = i - 7;
+            isMinor = false;
+            return true;
+        }
+        if (s == minorKeys[i])
+        {
+            sharpsOrFlats = i - 7;
+            isMinor = true;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 double MidiSequence::ticksToSeconds(int ticks) const

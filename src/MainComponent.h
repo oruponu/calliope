@@ -122,6 +122,7 @@ private:
     void commitTimeSignatureEdit();
     void nudgeTimeSignature(TimeSigUnit unit, int direction);
     void setTimeSignatureAtPlayhead(int numerator, int denominator);
+    void commitKeySignatureEdit();
     void scrollNoteIntoView(int startTick, int noteNumber);
     void scrollViewVertically(int deltaY);
     void scrollViewHorizontally(int deltaX);
