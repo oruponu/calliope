@@ -753,11 +753,13 @@ MainComponent::MainComponent()
 
     struct PositionField
     {
-        juce::Label& label;
+        WheelLabel& label;
         int maxLength;
+        PositionUnit unit;
     };
-    for (auto field :
-         {PositionField{positionBarLabel, 3}, PositionField{positionBeatLabel, 2}, PositionField{positionTickLabel, 4}})
+    for (auto field : {PositionField{positionBarLabel, 3, PositionUnit::Bar},
+                       PositionField{positionBeatLabel, 2, PositionUnit::Beat},
+                       PositionField{positionTickLabel, 4, PositionUnit::Tick}})
     {
         auto& label = field.label;
         addAndMakeVisible(label);
@@ -778,6 +780,8 @@ MainComponent::MainComponent()
             }
         };
         label.onTextChange = [this]() { commitPositionEdit(); };
+        PositionUnit unit = field.unit;
+        label.onWheel = [this, unit](int direction) { nudgePosition(unit, direction); };
     }
 
     for (auto* label : {&timeSigValueLabel, &keyValueLabel, &tempoValueLabel})
@@ -1590,6 +1594,29 @@ void MainComponent::commitPositionEdit()
     int tickInBeat = positionTickLabel.getText().isEmpty() ? current.tick : positionTickLabel.getText().getIntValue();
 
     jumpToTick(sequence.barBeatTickToTick(bar, beat, tickInBeat));
+}
+
+void MainComponent::nudgePosition(PositionUnit unit, int direction)
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto ts = sequence.getTimeSignatureAt(tick);
+    int ticksPerBeat = sequence.getTicksPerQuarterNote() * 4 / ts.denominator;
+
+    int step = 1;
+    switch (unit)
+    {
+    case PositionUnit::Bar:
+        step = ticksPerBeat * ts.numerator;
+        break;
+    case PositionUnit::Beat:
+        step = ticksPerBeat;
+        break;
+    case PositionUnit::Tick:
+        step = 1;
+        break;
+    }
+
+    jumpToTick(juce::jmax(0, tick + direction * step));
 }
 
 void MainComponent::scrollToPlayhead(int tick)
