@@ -806,6 +806,7 @@ MainComponent::MainComponent()
         }
     };
     keyValueLabel.onTextChange = [this]() { commitKeySignatureEdit(); };
+    keyValueLabel.onWheel = [this](int direction) { nudgeKeySignature(direction); };
 
     struct TimeSigField
     {
@@ -1738,15 +1739,32 @@ void MainComponent::setTimeSignatureAtPlayhead(int num, int den)
 
 void MainComponent::commitKeySignatureEdit()
 {
-    int tick = static_cast<int>(playbackEngine.getCurrentTick());
-
     int sharpsOrFlats = 0;
     bool isMinor = false;
     if (MidiSequence::keySignatureFromString(keyValueLabel.getText().toStdString(), sharpsOrFlats, isMinor))
-    {
-        auto ks = sequence.getKeySignatureAt(tick);
-        sequence.addKeySignatureChange(ks.tick, sharpsOrFlats, isMinor);
-    }
+        setKeySignatureAtPlayhead(sharpsOrFlats, isMinor);
+    else
+        updateTransportDisplay();
+}
+
+void MainComponent::nudgeKeySignature(int direction)
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto ks = sequence.getKeySignatureAt(tick);
+
+    int sf = juce::jlimit(-6, 6, ks.sharpsOrFlats);
+    int index = juce::jlimit(0, 25, (sf + 6) + (ks.isMinor ? 13 : 0) + direction);
+
+    bool isMinor = index >= 13;
+    setKeySignatureAtPlayhead((isMinor ? index - 13 : index) - 6, isMinor);
+}
+
+void MainComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor)
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+    auto ks = sequence.getKeySignatureAt(tick);
+
+    sequence.addKeySignatureChange(ks.tick, sharpsOrFlats, isMinor);
 
     updateTransportDisplay();
     pianoRoll.repaint();

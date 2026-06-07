@@ -123,6 +123,8 @@ private:
     void nudgeTimeSignature(TimeSigUnit unit, int direction);
     void setTimeSignatureAtPlayhead(int numerator, int denominator);
     void commitKeySignatureEdit();
+    void nudgeKeySignature(int direction);
+    void setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor);
     void scrollNoteIntoView(int startTick, int noteNumber);
     void scrollViewVertically(int deltaY);
     void scrollViewHorizontally(int deltaX);
@@ -479,7 +481,7 @@ private:
     juce::Label timeSigSlashLabel{"", "/"};
 
     juce::Label keyHeaderLabel{"", "KEY"};
-    juce::Label keyValueLabel;
+    WheelLabel keyValueLabel;
 
     juce::Label tempoHeaderLabel{"", "TEMPO"};
     juce::Label tempoValueLabel;
