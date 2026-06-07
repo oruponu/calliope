@@ -1641,6 +1641,17 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
                 g.drawLine(static_cast<float>(startX), prevY, static_cast<float>(startX), y, 1.0f);
             }
 
+            if (startX >= visibleLeft - 4 && startX <= visibleRight + 4)
+            {
+                constexpr float radius = 3.0f;
+                juce::Rectangle<float> dot(static_cast<float>(startX) - radius, y - radius, radius * 2.0f,
+                                           radius * 2.0f);
+                g.setColour(surface::surface2);
+                g.fillEllipse(dot.expanded(1.0f));
+                g.setColour(amberColour);
+                g.fillEllipse(dot);
+            }
+
             if (startX + 4 >= visibleLeft - 60 && startX <= visibleRight)
             {
                 g.setFont(font::sans(font::size2XS));
