@@ -2,6 +2,8 @@
 #include "../model/UndoActions.h"
 #include "TrackColours.h"
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <vector>
 
 void PianoRollComponent::startNotePreview(const MidiNote& note)
@@ -824,6 +826,16 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 
     if (!e.mods.isRightButtonDown())
     {
+        int pointIndex = hitTestTempoPoint(e.x, e.y);
+        if (pointIndex >= 0)
+        {
+            tempoDragBefore = sequence->getTempoChanges();
+            tempoDragIndex = pointIndex;
+            isTempoPointDragging = true;
+            tempoDragMoved = false;
+            return;
+        }
+
         int tempoTick = 0;
         double tempoBpm = 0.0;
         if (hitTestTempoLine(e.x, e.y, tempoTick, tempoBpm))
@@ -1052,6 +1064,40 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
+    if (isTempoPointDragging)
+    {
+        if (tempoDragIndex < 0 || tempoDragIndex >= static_cast<int>(tempoDragBefore.size()))
+            return;
+
+        const TempoChange& orig = tempoDragBefore[tempoDragIndex];
+        int newTick = orig.tick;
+
+        if (orig.tick != 0)
+        {
+            int grid = sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator;
+            int lower = (tempoDragIndex > 0) ? tempoDragBefore[tempoDragIndex - 1].tick + grid : grid;
+            int upper = (tempoDragIndex + 1 < static_cast<int>(tempoDragBefore.size()))
+                            ? tempoDragBefore[tempoDragIndex + 1].tick - grid
+                            : std::numeric_limits<int>::max();
+            if (upper < lower)
+                newTick = orig.tick;
+            else
+                newTick = std::clamp(roundTickToGrid(xToTick(e.x)), lower, upper);
+        }
+
+        double newBpm = std::round(tempoYToBpm(e.y));
+        newBpm = juce::jlimit(MidiSequence::minBpm, MidiSequence::maxBpm, newBpm);
+
+        auto changes = tempoDragBefore;
+        changes[tempoDragIndex].tick = newTick;
+        changes[tempoDragIndex].bpm = newBpm;
+        sequence->setTempoChanges(changes);
+
+        tempoDragMoved = (newTick != orig.tick) || (newBpm != orig.bpm);
+        repaint();
+        return;
+    }
+
     if (isRulerDragging)
     {
         if (std::abs(e.y - rulerDragStartY) < 5)
@@ -1160,6 +1206,29 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
     }
     isRulerDragging = false;
 
+    if (isTempoPointDragging)
+    {
+        isTempoPointDragging = false;
+        tempoDragIndex = -1;
+
+        if (tempoDragMoved)
+        {
+            auto after = sequence->getTempoChanges();
+            if (undoManager)
+            {
+                undoManager->beginNewTransaction("Move Tempo Change");
+                undoManager->perform(new TempoMoveAction(sequence, tempoDragBefore, after));
+            }
+            if (onTempoChanged)
+                onTempoChanged();
+        }
+
+        tempoDragBefore.clear();
+        tempoDragMoved = false;
+        repaint();
+        return;
+    }
+
     if (dragMode == DragMode::RubberBand)
     {
         if (!rubberBandRect.isEmpty())
@@ -1245,6 +1314,12 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
 void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 {
+    if (sequence && hitTestTempoPoint(e.x, e.y) >= 0)
+    {
+        setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+        return;
+    }
+
     if (!sequence || e.x < getKeyboardLeft() + keyboardWidth || e.y < getRulerTop() + gridTopOffset)
     {
         setMouseCursor(juce::MouseCursor::NormalCursor);
@@ -1549,6 +1624,46 @@ bool PianoRollComponent::hitTestTempoLine(int x, int y, int& outTick, double& ou
     return true;
 }
 
+double PianoRollComponent::tempoYToBpm(int y) const
+{
+    int tTop = getRulerTop() + loopBarHeight + rulerHeight;
+    int graphTop = tTop + 3;
+    int graphBottom = tTop + tempoTrackHeight - 4;
+
+    double range = MidiSequence::maxBpm - MidiSequence::minBpm;
+    double normalized = static_cast<double>(graphBottom - y) / static_cast<double>(graphBottom - graphTop);
+    return MidiSequence::minBpm + normalized * range;
+}
+
+int PianoRollComponent::hitTestTempoPoint(int x, int y) const
+{
+    if (!sequence)
+        return -1;
+
+    int tTop = getRulerTop() + loopBarHeight + rulerHeight;
+    if (y < tTop || y >= tTop + tempoTrackHeight)
+        return -1;
+
+    if (x < getKeyboardLeft() + keyboardWidth)
+        return -1;
+
+    const auto& changes = sequence->getTempoChanges();
+    constexpr float hitRadius = 6.0f;
+    float bandTop = static_cast<float>(tTop + 3);
+    float bandBottom = static_cast<float>(tTop + tempoTrackHeight - 4);
+
+    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+    {
+        float px = static_cast<float>(tickToX(changes[i].tick));
+        float py = std::clamp(tempoBpmToY(changes[i].bpm), bandTop, bandBottom);
+        float dx = static_cast<float>(x) - px;
+        float dy = static_cast<float>(y) - py;
+        if (dx * dx + dy * dy <= hitRadius * hitRadius)
+            return i;
+    }
+    return -1;
+}
+
 void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -1588,12 +1703,14 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
         g.setColour(amberColour);
 
         int totalTicks = xToTick(getWidth());
+        float bandTop = static_cast<float>(tTop + 3);
+        float bandBottom = static_cast<float>(tTop + tempoTrackHeight - 4);
 
         for (size_t i = 0; i < tempoChanges.size(); ++i)
         {
             int startX = tickToX(tempoChanges[i].tick);
             int endX = (i + 1 < tempoChanges.size()) ? tickToX(tempoChanges[i + 1].tick) : tickToX(totalTicks);
-            float y = tempoBpmToY(tempoChanges[i].bpm);
+            float y = std::clamp(tempoBpmToY(tempoChanges[i].bpm), bandTop, bandBottom);
 
             int drawStartX = std::max(startX, visibleLeft);
             int drawEndX = std::min(endX, visibleRight);
@@ -1605,7 +1722,7 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 
             if (i > 0 && startX >= visibleLeft && startX <= visibleRight)
             {
-                float prevY = tempoBpmToY(tempoChanges[i - 1].bpm);
+                float prevY = std::clamp(tempoBpmToY(tempoChanges[i - 1].bpm), bandTop, bandBottom);
                 g.drawLine(static_cast<float>(startX), prevY, static_cast<float>(startX), y, 1.0f);
             }
 
