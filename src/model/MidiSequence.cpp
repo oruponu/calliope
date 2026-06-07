@@ -96,6 +96,13 @@ double MidiSequence::getTempoAt(int tick) const
     return it != reversed.end() ? it->bpm : 120.0;
 }
 
+TempoChange MidiSequence::getTempoChangeAt(int tick) const
+{
+    auto reversed = std::views::reverse(tempoChanges);
+    auto it = std::ranges::find_if(reversed, [tick](const TempoChange& tc) { return tc.tick <= tick; });
+    return it != reversed.end() ? *it : TempoChange{0, 120.0};
+}
+
 TimeSignatureChange MidiSequence::getTimeSignatureAt(int tick) const
 {
     auto reversed = std::views::reverse(timeSignatureChanges);
