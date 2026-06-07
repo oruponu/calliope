@@ -120,6 +120,7 @@ private:
     void commitPositionEdit();
     void nudgePosition(PositionUnit unit, int direction);
     void commitTempoEdit();
+    void nudgeTempo(int direction);
     void setTempoAtPlayhead(double bpm);
     void commitTimeSignatureEdit();
     void nudgeTimeSignature(TimeSigUnit unit, int direction);
@@ -486,7 +487,7 @@ private:
     WheelLabel keyValueLabel;
 
     juce::Label tempoHeaderLabel{"", "TEMPO"};
-    juce::Label tempoValueLabel;
+    WheelLabel tempoValueLabel;
 
     juce::Rectangle<int> positionBoxBounds;
     juce::Rectangle<int> infoBoxBounds;
