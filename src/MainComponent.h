@@ -102,6 +102,8 @@ private:
     void setActiveTool(PianoRollComponent::EditMode mode);
     void onVBlank();
     void scrollToPlayhead(int tick);
+    void jumpToTick(int tick);
+    void commitPositionEdit();
     void scrollNoteIntoView(int startTick, int noteNumber);
     void scrollViewVertically(int deltaY);
     void scrollViewHorizontally(int deltaX);
@@ -446,7 +448,11 @@ private:
     juce::ComboBox quantizeComboBox;
 
     juce::Label positionHeaderLabel{"", "POSITION"};
-    juce::Label positionLabel;
+    juce::Label positionBarLabel;
+    juce::Label positionBeatLabel;
+    juce::Label positionTickLabel;
+    juce::Label positionDot1{"", "."};
+    juce::Label positionDot2{"", "."};
 
     juce::Label timeSigHeaderLabel{"", "TIME"};
     juce::Label timeSigValueLabel;

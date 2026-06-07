@@ -356,3 +356,18 @@ int MidiSequence::barStartToTick(int targetBar) const
 
     return 0;
 }
+
+int MidiSequence::barBeatTickToTick(int bar, int beat, int tickInBeat) const
+{
+    bar = std::max(1, bar);
+
+    int barStart = barStartToTick(bar);
+
+    auto ts = getTimeSignatureAt(barStart);
+    int ticksPerBeat = ticksPerQuarterNote * 4 / ts.denominator;
+
+    beat = std::clamp(beat, 1, ts.numerator);
+    tickInBeat = std::clamp(tickInBeat, 0, ticksPerBeat - 1);
+
+    return barStart + (beat - 1) * ticksPerBeat + tickInBeat;
+}
