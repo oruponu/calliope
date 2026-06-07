@@ -348,6 +348,95 @@ private:
     std::vector<int> savedRouteTargets;
 };
 
+class TempoChangeAction : public juce::UndoableAction
+{
+public:
+    TempoChangeAction(MidiSequence* seq, int tick, double bpm) : sequence(seq), tick(tick), newBpm(bpm) {}
+
+    bool perform() override
+    {
+        before = sequence->getTempoChanges();
+        sequence->addTempoChange(tick, newBpm);
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->setTempoChanges(before);
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    int tick;
+    double newBpm;
+    std::vector<TempoChange> before;
+};
+
+class TimeSignatureChangeAction : public juce::UndoableAction
+{
+public:
+    TimeSignatureChangeAction(MidiSequence* seq, int tick, int num, int den)
+        : sequence(seq), tick(tick), numerator(num), denominator(den)
+    {
+    }
+
+    bool perform() override
+    {
+        before = sequence->getTimeSignatureChanges();
+        sequence->addTimeSignatureChange(tick, numerator, denominator);
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->setTimeSignatureChanges(before);
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    int tick;
+    int numerator;
+    int denominator;
+    std::vector<TimeSignatureChange> before;
+};
+
+class KeySignatureChangeAction : public juce::UndoableAction
+{
+public:
+    KeySignatureChangeAction(MidiSequence* seq, int tick, int sharpsOrFlats, bool isMinor)
+        : sequence(seq), tick(tick), sharpsOrFlats(sharpsOrFlats), isMinor(isMinor)
+    {
+    }
+
+    bool perform() override
+    {
+        before = sequence->getKeySignatureChanges();
+        sequence->addKeySignatureChange(tick, sharpsOrFlats, isMinor);
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->setKeySignatureChanges(before);
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    int tick;
+    int sharpsOrFlats;
+    bool isMinor;
+    std::vector<KeySignatureChange> before;
+};
+
 class VelocityEditAction : public juce::UndoableAction
 {
 public:
