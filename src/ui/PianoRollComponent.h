@@ -124,6 +124,7 @@ private:
     void drawLoopBar(juce::Graphics& g);
     void drawRuler(juce::Graphics& g);
     void drawTempoTrack(juce::Graphics& g);
+    void drawTempoRangeSelection(juce::Graphics& g);
     void drawTimeSignatureTrack(juce::Graphics& g);
     void drawKeySignatureTrack(juce::Graphics& g);
     void drawChordTrack(juce::Graphics& g);
@@ -241,4 +242,10 @@ private:
     int tempoDragIndex = -1;
     bool tempoDragMoved = false;
     std::vector<TempoChange> tempoDragBefore;
+
+    std::set<int> selectedTempoIndices;
+    bool isTempoRangeSelecting = false;
+    int tempoSelectStartX = 0;
+    int tempoSelectCurrentX = 0;
+    std::set<int> tempoSelectBase;
 };
