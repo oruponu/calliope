@@ -399,6 +399,9 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
 {
     sequence = seq;
 
+    selectedTempoIndices.clear();
+    isTempoRangeSelecting = false;
+
     contentBeats = 16;
     if (sequence && sequence->getNumTracks() > 0)
     {
@@ -854,10 +857,24 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                 {
                     sequence->addTempoChange(tempoTick, tempoBpm);
                 }
+                selectedTempoIndices.clear();
                 repaint();
                 if (onTempoChanged)
                     onTempoChanged();
             }
+            return;
+        }
+
+        int tBandTop = getRulerTop() + loopBarHeight + rulerHeight;
+        if (e.y >= tBandTop && e.y < tBandTop + tempoTrackHeight && e.x >= getKeyboardLeft() + keyboardWidth)
+        {
+            isTempoRangeSelecting = true;
+            tempoSelectStartX = e.x;
+            tempoSelectCurrentX = e.x;
+            tempoSelectBase = e.mods.isShiftDown() ? selectedTempoIndices : std::set<int>{};
+            if (!e.mods.isShiftDown())
+                selectedTempoIndices.clear();
+            repaint();
             return;
         }
     }
@@ -1098,6 +1115,24 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
+    if (isTempoRangeSelecting)
+    {
+        tempoSelectCurrentX = e.x;
+        int lo = std::min(tempoSelectStartX, tempoSelectCurrentX);
+        int hi = std::max(tempoSelectStartX, tempoSelectCurrentX);
+        int tickLo = xToTick(lo);
+        int tickHi = xToTick(hi);
+
+        selectedTempoIndices = tempoSelectBase;
+        const auto& changes = sequence->getTempoChanges();
+        for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+            if (changes[i].tick >= tickLo && changes[i].tick <= tickHi)
+                selectedTempoIndices.insert(i);
+
+        repaint();
+        return;
+    }
+
     if (isRulerDragging)
     {
         if (std::abs(e.y - rulerDragStartY) < 5)
@@ -1219,12 +1254,21 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
                 undoManager->beginNewTransaction("Move Tempo Change");
                 undoManager->perform(new TempoMoveAction(sequence, tempoDragBefore, after));
             }
+            selectedTempoIndices.clear();
             if (onTempoChanged)
                 onTempoChanged();
         }
 
         tempoDragBefore.clear();
         tempoDragMoved = false;
+        repaint();
+        return;
+    }
+
+    if (isTempoRangeSelecting)
+    {
+        isTempoRangeSelecting = false;
+        tempoSelectBase.clear();
         repaint();
         return;
     }
@@ -1718,6 +1762,10 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
             if (drawEndX < visibleLeft || drawStartX > visibleRight)
                 continue;
 
+            bool selected = selectedTempoIndices.count(static_cast<int>(i)) > 0;
+            juce::Colour lineColour = selected ? amberColour.brighter(0.5f) : amberColour;
+
+            g.setColour(lineColour);
             g.drawLine(static_cast<float>(drawStartX), y, static_cast<float>(drawEndX), y, 1.5f);
 
             if (i > 0 && startX >= visibleLeft && startX <= visibleRight)
@@ -1728,17 +1776,23 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 
             if (startX >= visibleLeft - 4 && startX <= visibleRight + 4)
             {
-                constexpr float radius = 3.0f;
+                float radius = selected ? 4.0f : 3.0f;
                 juce::Rectangle<float> dot(static_cast<float>(startX) - radius, y - radius, radius * 2.0f,
                                            radius * 2.0f);
                 g.setColour(surface::surface2);
                 g.fillEllipse(dot.expanded(1.0f));
-                g.setColour(amberColour);
+                g.setColour(lineColour);
                 g.fillEllipse(dot);
+                if (selected)
+                {
+                    g.setColour(text::t1);
+                    g.drawEllipse(dot, 1.5f);
+                }
             }
 
             if (startX + 4 >= visibleLeft - 60 && startX <= visibleRight)
             {
+                g.setColour(amberColour);
                 g.setFont(font::sans(font::size2XS));
                 int textH = 12;
                 float midY = static_cast<float>(tTop) + tempoTrackHeight * 0.5f;
@@ -1760,6 +1814,8 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
         g.drawLine(phX, static_cast<float>(tTop), phX, static_cast<float>(tTop + tempoTrackHeight), 1.0f);
     }
 
+    drawTempoRangeSelection(g);
+
     drawLoopOverlay(g, tTop, tempoTrackHeight, 0.12f);
 
     g.restoreState();
@@ -1774,6 +1830,26 @@ void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 
     g.setColour(border::strong);
     g.drawHorizontalLine(tTop + tempoTrackHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
+}
+
+void PianoRollComponent::drawTempoRangeSelection(juce::Graphics& g)
+{
+    using namespace calliope::theme;
+    if (!isTempoRangeSelecting)
+        return;
+
+    int tTop = getRulerTop() + loopBarHeight + rulerHeight;
+    int lo = std::min(tempoSelectStartX, tempoSelectCurrentX);
+    int hi = std::max(tempoSelectStartX, tempoSelectCurrentX);
+    if (hi <= lo)
+        return;
+
+    juce::Rectangle<float> band(static_cast<float>(lo), static_cast<float>(tTop), static_cast<float>(hi - lo),
+                                static_cast<float>(tempoTrackHeight));
+    g.setColour(accent::soft);
+    g.fillRect(band);
+    g.setColour(accent::base.withAlpha(0.6f));
+    g.drawRect(band, 1.0f);
 }
 
 void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
