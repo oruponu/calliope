@@ -1,6 +1,28 @@
 #include "MidiDeviceOutput.h"
-#include "../model/MidiSequence.h"
 #include "../model/MidiTrack.h"
+
+namespace
+{
+void sendResetMessages(juce::MidiOutput& output)
+{
+    for (int ch = 1; ch <= 16; ++ch)
+    {
+        output.sendMessageNow(juce::MidiMessage::allNotesOff(ch));
+        output.sendMessageNow(juce::MidiMessage::controllerEvent(ch, 121, 0));
+        output.sendMessageNow(juce::MidiMessage::pitchWheel(ch, 8192));
+        output.sendMessageNow(juce::MidiMessage::programChange(ch, 0));
+
+        // RPN: Pitch Bend Sensitivity = 2 semitones, 0 cents
+        output.sendMessageNow(juce::MidiMessage::controllerEvent(ch, 101, 0));
+        output.sendMessageNow(juce::MidiMessage::controllerEvent(ch, 100, 0));
+        output.sendMessageNow(juce::MidiMessage::controllerEvent(ch, 6, 2));
+        output.sendMessageNow(juce::MidiMessage::controllerEvent(ch, 38, 0));
+        // RPN Null
+        output.sendMessageNow(juce::MidiMessage::controllerEvent(ch, 101, 127));
+        output.sendMessageNow(juce::MidiMessage::controllerEvent(ch, 100, 127));
+    }
+}
+} // namespace
 
 MidiDeviceOutput::~MidiDeviceOutput()
 {
@@ -19,6 +41,7 @@ bool MidiDeviceOutput::open()
 bool MidiDeviceOutput::open(const juce::String& deviceIdentifier)
 {
     close();
+    std::lock_guard<std::mutex> lock(sendMutex);
     midiOutput = juce::MidiOutput::openDevice(deviceIdentifier);
     if (midiOutput != nullptr)
     {
@@ -34,81 +57,55 @@ juce::String MidiDeviceOutput::getCurrentDeviceIdentifier() const
     return currentDeviceIdentifier;
 }
 
-void MidiDeviceOutput::setSequence(const MidiSequence* seq)
-{
-    sequence = seq;
-}
-
 void MidiDeviceOutput::close()
 {
+    std::lock_guard<std::mutex> lock(sendMutex);
     if (midiOutput)
     {
-        reset();
+        sendResetMessages(*midiOutput);
         midiOutput.reset();
     }
 }
 
 void MidiDeviceOutput::reset()
 {
+    std::lock_guard<std::mutex> lock(sendMutex);
     if (!midiOutput)
         return;
 
-    for (int ch = 1; ch <= 16; ++ch)
-    {
-        midiOutput->sendMessageNow(juce::MidiMessage::allNotesOff(ch));
-        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 121, 0));
-        midiOutput->sendMessageNow(juce::MidiMessage::pitchWheel(ch, 8192));
-        midiOutput->sendMessageNow(juce::MidiMessage::programChange(ch, 0));
-
-        // RPN: Pitch Bend Sensitivity = 2 semitones, 0 cents
-        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 101, 0));
-        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 100, 0));
-        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 6, 2));
-        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 38, 0));
-        // RPN Null
-        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 101, 127));
-        midiOutput->sendMessageNow(juce::MidiMessage::controllerEvent(ch, 100, 127));
-    }
+    sendResetMessages(*midiOutput);
 }
 
-void MidiDeviceOutput::onNoteOn(int trackIndex, const MidiNote& note)
+void MidiDeviceOutput::onNoteOn(const PlaybackTrackContext& ctx, const MidiNote& note)
 {
-    if (!midiOutput || sequence == nullptr)
+    std::lock_guard<std::mutex> lock(sendMutex);
+    if (!midiOutput)
         return;
-    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+    if (ctx.destination != MidiTrack::OutputDestination::MidiDevice)
         return;
-    const auto& track = sequence->getTrack(trackIndex);
-    if (track.getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
-        return;
-
     midiOutput->sendMessageNow(
-        juce::MidiMessage::noteOn(track.getChannel(), note.noteNumber, static_cast<juce::uint8>(note.velocity)));
+        juce::MidiMessage::noteOn(ctx.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
 }
 
-void MidiDeviceOutput::onNoteOff(int trackIndex, const MidiNote& note)
+void MidiDeviceOutput::onNoteOff(const PlaybackTrackContext& ctx, const MidiNote& note)
 {
-    if (!midiOutput || sequence == nullptr)
+    std::lock_guard<std::mutex> lock(sendMutex);
+    if (!midiOutput)
         return;
-    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+    if (ctx.destination != MidiTrack::OutputDestination::MidiDevice)
         return;
-    const auto& track = sequence->getTrack(trackIndex);
-    if (track.getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
-        return;
-
-    midiOutput->sendMessageNow(juce::MidiMessage::noteOff(track.getChannel(), note.noteNumber));
+    midiOutput->sendMessageNow(juce::MidiMessage::noteOff(ctx.channel, note.noteNumber));
 }
 
-void MidiDeviceOutput::onMidiEvent(int trackIndex, const MidiEvent& event)
+void MidiDeviceOutput::onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event)
 {
-    if (!midiOutput || sequence == nullptr)
+    std::lock_guard<std::mutex> lock(sendMutex);
+    if (!midiOutput)
         return;
-    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
-        return;
-    const auto& track = sequence->getTrack(trackIndex);
-    if (track.getOutputDestination() != MidiTrack::OutputDestination::MidiDevice)
+    if (ctx.destination != MidiTrack::OutputDestination::MidiDevice)
         return;
 
-    const int ch = track.getChannel();
+    const int ch = ctx.channel;
     juce::MidiMessage msg;
 
     switch (event.type)
