@@ -1,5 +1,4 @@
 #include "VstPluginHost.h"
-#include "../model/MidiSequence.h"
 #include "../model/MidiTrack.h"
 
 namespace
@@ -229,59 +228,42 @@ juce::String VstPluginHost::getPluginName(int trackIndex) const
     return graph->getNodeForId(it->second)->getProcessor()->getName();
 }
 
-void VstPluginHost::setSequence(const MidiSequence* seq)
+juce::MidiMessageCollector* VstPluginHost::resolveCollector(const PlaybackTrackContext& ctx) const
 {
-    sequence = seq;
-}
-
-juce::MidiMessageCollector* VstPluginHost::resolveCollector(int trackIndex) const
-{
-    if (sequence == nullptr)
-        return nullptr;
-    if (trackIndex < 0 || trackIndex >= sequence->getNumTracks())
+    if (ctx.destination != MidiTrack::OutputDestination::Plugin)
         return nullptr;
 
-    const auto& track = sequence->getTrack(trackIndex);
-    if (track.getOutputDestination() != MidiTrack::OutputDestination::Plugin)
-        return nullptr;
-
-    int targetIndex = track.getRouteTargetTrackIndex();
-    if (targetIndex < 0 || targetIndex >= sequence->getNumTracks())
-        targetIndex = trackIndex;
-
+    int targetIndex = ctx.routeTarget;
     auto it = midiCollectors.find(targetIndex);
     if (it == midiCollectors.end())
         return nullptr;
     return it->second;
 }
 
-void VstPluginHost::onNoteOn(int trackIndex, const MidiNote& note)
+void VstPluginHost::onNoteOn(const PlaybackTrackContext& ctx, const MidiNote& note)
 {
-    auto* collector = resolveCollector(trackIndex);
+    auto* collector = resolveCollector(ctx);
     if (collector == nullptr)
         return;
-    const auto& track = sequence->getTrack(trackIndex);
     collector->addMessageToQueue(
-        juce::MidiMessage::noteOn(track.getChannel(), note.noteNumber, static_cast<juce::uint8>(note.velocity)));
+        juce::MidiMessage::noteOn(ctx.channel, note.noteNumber, static_cast<juce::uint8>(note.velocity)));
 }
 
-void VstPluginHost::onNoteOff(int trackIndex, const MidiNote& note)
+void VstPluginHost::onNoteOff(const PlaybackTrackContext& ctx, const MidiNote& note)
 {
-    auto* collector = resolveCollector(trackIndex);
+    auto* collector = resolveCollector(ctx);
     if (collector == nullptr)
         return;
-    const auto& track = sequence->getTrack(trackIndex);
-    collector->addMessageToQueue(juce::MidiMessage::noteOff(track.getChannel(), note.noteNumber));
+    collector->addMessageToQueue(juce::MidiMessage::noteOff(ctx.channel, note.noteNumber));
 }
 
-void VstPluginHost::onMidiEvent(int trackIndex, const MidiEvent& event)
+void VstPluginHost::onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event)
 {
-    auto* collector = resolveCollector(trackIndex);
+    auto* collector = resolveCollector(ctx);
     if (collector == nullptr)
         return;
 
-    const auto& track = sequence->getTrack(trackIndex);
-    const int ch = track.getChannel();
+    const int ch = ctx.channel;
     juce::MidiMessage msg;
     switch (event.type)
     {

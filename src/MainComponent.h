@@ -141,6 +141,7 @@ private:
     void stopPlayback();
     void onSequenceLoaded();
     void updateTitleBar();
+    PlaybackTrackContext makeTrackContext(int trackIndex) const;
 
     MidiSequence sequence;
     juce::UndoManager undoManager;

@@ -1,25 +1,23 @@
 #pragma once
 
 #include "../model/MidiSequence.h"
+#include "PlaybackListener.h"
+#include "PlaybackProcessor.h"
+#include "PlaybackSnapshot.h"
+#include <atomic>
+#include <cstdint>
 #include <juce_events/juce_events.h>
+#include <memory>
 #include <vector>
 
 class PlaybackEngine : private juce::HighResolutionTimer
 {
 public:
-    class Listener
-    {
-    public:
-        virtual ~Listener() = default;
-        virtual void onNoteOn(int trackIndex, const MidiNote& note) = 0;
-        virtual void onNoteOff(int trackIndex, const MidiNote& note) = 0;
-        virtual void onMidiEvent(int trackIndex, const MidiEvent& event) = 0;
-    };
-
     PlaybackEngine();
     ~PlaybackEngine() override;
 
     void setSequence(const MidiSequence* seq);
+    void rebuildSnapshot();
 
     void play();
     void stop();
@@ -34,33 +32,32 @@ public:
     int getLoopStartTick() const;
     int getLoopEndTick() const;
 
-    void addListener(Listener* listener);
-    void removeListener(Listener* listener);
+    void addListener(PlaybackListener* listener);
+    void removeListener(PlaybackListener* listener);
 
     void releaseActiveNotesForTrack(int trackIndex);
 
+    bool suspendForStructuralChange();
+    void resumeAfterStructuralChange(bool wasRunning);
+
 private:
     void hiResTimerCallback() override;
-    void processNoteOns(int fromTick, int toTick);
-    void processEvents(int fromTick, int toTick);
-    void processNoteOffs(int toTick);
-    void sendAllNoteOffs();
 
     const MidiSequence* sequence = nullptr;
+
     std::atomic<bool> playing{false};
-    double tickPosition = 0.0;
+    std::atomic<double> tickPosition{0.0};
+    std::atomic<int> pendingSeekTick{-1};
+
+    std::atomic<bool> loopEnabled{false};
+    std::atomic<std::uint64_t> loopRange{0};
+
     double lastCallbackTimeMs = 0.0;
+    std::shared_ptr<const PlaybackSnapshot> lastSeenSnapshot;
 
-    bool loopEnabled = false;
-    int loopStartTick = 0;
-    int loopEndTick = 0;
+    std::shared_ptr<const PlaybackSnapshot> currentOwner;
+    std::atomic<std::shared_ptr<const PlaybackSnapshot>> snapshot;
 
-    struct ActiveNote
-    {
-        int trackIndex;
-        const MidiNote* note;
-    };
-    std::vector<ActiveNote> activeNotes;
-
-    std::vector<Listener*> listeners;
+    PlaybackProcessor processor;
+    std::vector<PlaybackListener*> listeners;
 };

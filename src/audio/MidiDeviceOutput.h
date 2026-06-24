@@ -1,12 +1,11 @@
 #pragma once
 
-#include "../engine/PlaybackEngine.h"
+#include "../engine/PlaybackListener.h"
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
+#include <mutex>
 
-class MidiSequence;
-
-class MidiDeviceOutput : public PlaybackEngine::Listener
+class MidiDeviceOutput : public PlaybackListener
 {
 public:
     ~MidiDeviceOutput() override;
@@ -18,14 +17,12 @@ public:
 
     juce::String getCurrentDeviceIdentifier() const;
 
-    void setSequence(const MidiSequence* seq);
-
-    void onNoteOn(int trackIndex, const MidiNote& note) override;
-    void onNoteOff(int trackIndex, const MidiNote& note) override;
-    void onMidiEvent(int trackIndex, const MidiEvent& event) override;
+    void onNoteOn(const PlaybackTrackContext& ctx, const MidiNote& note) override;
+    void onNoteOff(const PlaybackTrackContext& ctx, const MidiNote& note) override;
+    void onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event) override;
 
 private:
     std::unique_ptr<juce::MidiOutput> midiOutput;
     juce::String currentDeviceIdentifier;
-    const MidiSequence* sequence = nullptr;
+    std::mutex sendMutex;
 };
