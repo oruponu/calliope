@@ -4,6 +4,11 @@
 #include "model/UndoActions.h"
 #include "ui/Theme.h"
 
+namespace
+{
+constexpr const char* kStructuralTxn = "Track structure";
+}
+
 void MainComponent::Divider::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -277,8 +282,6 @@ MainComponent::MainComponent()
     audioDeviceManager.addChangeListener(this);
 
     pluginHost.prepare(audioGraph);
-    midiOutput.setSequence(&sequence);
-    pluginHost.setSequence(&sequence);
 
     audioDeviceManager.addAudioCallback(&audioPlayer);
     audioPlayer.setProcessor(&audioGraph);
@@ -304,12 +307,14 @@ MainComponent::MainComponent()
         trackList.refresh();
         controllerLane.repaint();
         eventList.refresh();
+        playbackEngine.rebuildSnapshot();
     };
     pianoRoll.onTempoChanged = [this]()
     {
         updateTransportDisplay();
         controllerLane.repaint();
         eventList.refresh();
+        playbackEngine.rebuildSnapshot();
     };
     pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
     {
@@ -322,15 +327,15 @@ MainComponent::MainComponent()
     };
     pianoRoll.onNotePreview = [this](const MidiNote& note)
     {
-        int trackIdx = pianoRoll.getActiveTrackIndex();
-        midiOutput.onNoteOn(trackIdx, note);
-        pluginHost.onNoteOn(trackIdx, note);
+        auto ctx = makeTrackContext(pianoRoll.getActiveTrackIndex());
+        midiOutput.onNoteOn(ctx, note);
+        pluginHost.onNoteOn(ctx, note);
     };
     pianoRoll.onNotePreviewEnd = [this](const MidiNote& note)
     {
-        int trackIdx = pianoRoll.getActiveTrackIndex();
-        midiOutput.onNoteOff(trackIdx, note);
-        pluginHost.onNoteOff(trackIdx, note);
+        auto ctx = makeTrackContext(pianoRoll.getActiveTrackIndex());
+        midiOutput.onNoteOff(ctx, note);
+        pluginHost.onNoteOff(ctx, note);
     };
     pianoRoll.onScrollToNote = [this](int startTick, int noteNumber) { scrollNoteIntoView(startTick, noteNumber); };
     pianoRoll.onScrollVertical = [this](int deltaY) { scrollViewVertically(deltaY); };
@@ -386,7 +391,7 @@ MainComponent::MainComponent()
         controllerLane.setSelectedTracks(activeIdx, selected);
         eventList.setSelectedTracks(selected);
     };
-    trackList.onMuteSoloChanged = []() {};
+    trackList.onMuteSoloChanged = [this]() { playbackEngine.rebuildSnapshot(); };
     trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
     trackList.onEditorButtonClicked = [this](int trackIndex) { pluginHost.showEditor(trackIndex); };
     trackList.onChannelLabelClicked = [this](int trackIndex)
@@ -406,6 +411,7 @@ MainComponent::MainComponent()
                              undoManager.perform(
                                  new ChannelChangeAction(&sequence, trackIndex, currentChannel, ch, [this](int idx)
                                                          { playbackEngine.releaseActiveNotesForTrack(idx); }));
+                             playbackEngine.rebuildSnapshot();
                              trackList.repaint();
                              pianoRoll.repaint();
                              eventList.refresh();
@@ -415,7 +421,7 @@ MainComponent::MainComponent()
     };
     trackList.onAddTrackRequested = [this]()
     {
-        undoManager.beginNewTransaction();
+        undoManager.beginNewTransaction(kStructuralTxn);
         undoManager.perform(new TrackAddAction(&sequence,
                                                [this](int idx)
                                                {
@@ -427,21 +433,19 @@ MainComponent::MainComponent()
         controllerLane.repaint();
         eventList.refresh();
         repaint(trackListHeaderBounds);
+        playbackEngine.rebuildSnapshot();
     };
     trackList.onRemoveTrackRequested = [this](int trackIndex)
     {
         if (sequence.getNumTracks() <= 1)
             return;
 
-        undoManager.beginNewTransaction();
+        bool wasRunning = playbackEngine.suspendForStructuralChange();
+        undoManager.beginNewTransaction(kStructuralTxn);
         undoManager.perform(new TrackRemoveAction(
-            &sequence, trackIndex,
-            [this](int idx)
-            {
-                playbackEngine.releaseActiveNotesForTrack(idx);
-                pluginHost.detachPlugin(idx);
-            },
+            &sequence, trackIndex, [this](int idx) { pluginHost.detachPlugin(idx); },
             [this](int from, int delta) { pluginHost.renumberTrackIndices(from, delta); }));
+        playbackEngine.resumeAfterStructuralChange(wasRunning);
 
         int newActive = juce::jlimit(0, sequence.getNumTracks() - 1, trackIndex);
         trackList.refresh();
@@ -486,6 +490,7 @@ MainComponent::MainComponent()
                              auto& track = sequence.getTrack(trackIndex);
                              track.setRouteTargetTrackIndex(isOwn ? -1 : i);
                              track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                             playbackEngine.rebuildSnapshot();
                              trackList.repaint();
                          });
         }
@@ -495,6 +500,7 @@ MainComponent::MainComponent()
                      {
                          playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         playbackEngine.rebuildSnapshot();
                          trackList.repaint();
                      });
 
@@ -503,6 +509,7 @@ MainComponent::MainComponent()
                      {
                          playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::None);
+                         playbackEngine.rebuildSnapshot();
                          trackList.repaint();
                      });
         menu.addSeparator();
@@ -518,11 +525,14 @@ MainComponent::MainComponent()
                                  auto file = fc.getResult();
                                  if (file == juce::File{})
                                      return;
+                                 if (playbackEngine.isPlaying())
+                                     stopPlayback();
                                  if (pluginHost.attachPlugin(trackIndex, file))
                                  {
                                      auto& track = sequence.getTrack(trackIndex);
                                      track.setRouteTargetTrackIndex(-1);
                                      track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                     playbackEngine.rebuildSnapshot();
                                  }
                                  trackList.repaint();
                              });
@@ -536,8 +546,12 @@ MainComponent::MainComponent()
         menu.addItem("Detach Plugin", hasPlugin, false,
                      [this, trackIndex]()
                      {
+                         if (playbackEngine.isPlaying())
+                             stopPlayback();
+                         playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          pluginHost.detachPlugin(trackIndex);
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         playbackEngine.rebuildSnapshot();
                          trackList.repaint();
                      });
 
@@ -547,11 +561,14 @@ MainComponent::MainComponent()
                                int index = juce::KnownPluginList::getIndexChosenByMenu(types, result);
                                if (index < 0)
                                    return;
+                               if (playbackEngine.isPlaying())
+                                   stopPlayback();
                                if (pluginHost.attachPlugin(trackIndex, types.getReference(index)))
                                {
                                    auto& track = sequence.getTrack(trackIndex);
                                    track.setRouteTargetTrackIndex(-1);
                                    track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                   playbackEngine.rebuildSnapshot();
                                }
                                trackList.repaint();
                            });
@@ -1319,13 +1336,33 @@ bool MainComponent::perform(const InvocationInfo& info)
         setActiveTool(PianoRollComponent::EditMode::Select);
         return true;
     case CommandID::undoAction:
+    {
+        const bool structural = (undoManager.getUndoDescription() == juce::String(kStructuralTxn));
+        bool wasRunning = false;
+        if (structural)
+            wasRunning = playbackEngine.suspendForStructuralChange();
         undoManager.undo();
+        if (structural)
+            playbackEngine.resumeAfterStructuralChange(wasRunning);
+        else
+            playbackEngine.rebuildSnapshot();
         refreshAllViews();
         return true;
+    }
     case CommandID::redoAction:
+    {
+        const bool structural = (undoManager.getRedoDescription() == juce::String(kStructuralTxn));
+        bool wasRunning = false;
+        if (structural)
+            wasRunning = playbackEngine.suspendForStructuralChange();
         undoManager.redo();
+        if (structural)
+            playbackEngine.resumeAfterStructuralChange(wasRunning);
+        else
+            playbackEngine.rebuildSnapshot();
         refreshAllViews();
         return true;
+    }
     case CommandID::cutAction:
         pianoRoll.cutSelectedNotes();
         return true;
@@ -2036,11 +2073,14 @@ void MainComponent::loadPlugin()
                                  auto file = fc.getResult();
                                  if (file == juce::File{})
                                      return;
+                                 if (playbackEngine.isPlaying())
+                                     stopPlayback();
                                  if (pluginHost.loadPlugin(file))
                                  {
                                      auto& track = sequence.getTrack(0);
                                      track.setRouteTargetTrackIndex(-1);
                                      track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                     playbackEngine.rebuildSnapshot();
                                  }
                              });
 }
@@ -2084,6 +2124,20 @@ void MainComponent::stopPlayback()
     vblankAttachment.reset();
 }
 
+PlaybackTrackContext MainComponent::makeTrackContext(int trackIndex) const
+{
+    PlaybackTrackContext ctx;
+    ctx.trackIndex = trackIndex;
+    if (trackIndex < 0 || trackIndex >= sequence.getNumTracks())
+        return ctx;
+    const auto& track = sequence.getTrack(trackIndex);
+    ctx.channel = track.getChannel();
+    ctx.destination = track.getOutputDestination();
+    const int rt = track.getRouteTargetTrackIndex();
+    ctx.routeTarget = (rt >= 0 && rt < sequence.getNumTracks()) ? rt : trackIndex;
+    return ctx;
+}
+
 void MainComponent::onSequenceLoaded()
 {
     playbackEngine.setPositionInTicks(0);
@@ -2114,6 +2168,8 @@ void MainComponent::onSequenceLoaded()
     int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * pianoRoll.noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
     repaint(trackListHeaderBounds);
+
+    playbackEngine.rebuildSnapshot();
 }
 
 void MainComponent::updateTitleBar()

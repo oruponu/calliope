@@ -1,13 +1,11 @@
 #pragma once
 
-#include "../engine/PlaybackEngine.h"
+#include "../engine/PlaybackListener.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <unordered_map>
 
-class MidiSequence;
-
-class VstPluginHost : public PlaybackEngine::Listener
+class VstPluginHost : public PlaybackListener
 {
 public:
     VstPluginHost();
@@ -24,16 +22,14 @@ public:
 
     juce::String getPluginName(int trackIndex) const;
 
-    void setSequence(const MidiSequence* seq);
-
     juce::AudioPluginFormatManager& getFormatManager() { return formatManager; }
 
-    void onNoteOn(int trackIndex, const MidiNote& note) override;
-    void onNoteOff(int trackIndex, const MidiNote& note) override;
-    void onMidiEvent(int trackIndex, const MidiEvent& event) override;
+    void onNoteOn(const PlaybackTrackContext& ctx, const MidiNote& note) override;
+    void onNoteOff(const PlaybackTrackContext& ctx, const MidiNote& note) override;
+    void onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event) override;
 
 private:
-    juce::MidiMessageCollector* resolveCollector(int trackIndex) const;
+    juce::MidiMessageCollector* resolveCollector(const PlaybackTrackContext& ctx) const;
 
     juce::AudioPluginFormatManager formatManager;
     juce::AudioProcessorGraph* graph = nullptr;
@@ -42,5 +38,4 @@ private:
     std::unordered_map<int, juce::AudioProcessorGraph::NodeID> midiSourceNodes;
     std::unordered_map<int, juce::MidiMessageCollector*> midiCollectors;
     std::unordered_map<int, std::unique_ptr<juce::DocumentWindow>> editorWindows;
-    const MidiSequence* sequence = nullptr;
 };
