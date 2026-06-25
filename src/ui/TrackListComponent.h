@@ -46,6 +46,7 @@ private:
     juce::Rectangle<int> getAddButtonBounds() const;
     void updateSize();
     void notifySelectionChanged();
+    bool reconcileSelectionWithTracks();
 
     void beginEditingName(int rowIndex);
     void commitNameEdit();

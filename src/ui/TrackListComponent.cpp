@@ -41,8 +41,49 @@ void TrackListComponent::setSequence(MidiSequence* seq)
 void TrackListComponent::refresh()
 {
     cancelNameEdit();
+    bool selectionChanged = reconcileSelectionWithTracks();
     updateSize();
     repaint();
+    if (selectionChanged)
+        notifySelectionChanged();
+}
+
+bool TrackListComponent::reconcileSelectionWithTracks()
+{
+    int numTracks = sequence ? sequence->getNumTracks() : 0;
+    auto previousSelection = selectedTrackIndices;
+    int previousActive = activeTrackIndex;
+
+    if (numTracks <= 0)
+    {
+        selectedTrackIndices.clear();
+        activeTrackIndex = -1;
+        anchorTrackIndex = -1;
+    }
+    else
+    {
+        for (auto it = selectedTrackIndices.begin(); it != selectedTrackIndices.end();)
+        {
+            if (*it < 0 || *it >= numTracks)
+                it = selectedTrackIndices.erase(it);
+            else
+                ++it;
+        }
+
+        anchorTrackIndex = juce::jlimit(0, numTracks - 1, anchorTrackIndex);
+
+        if (selectedTrackIndices.empty())
+        {
+            activeTrackIndex = juce::jlimit(0, numTracks - 1, activeTrackIndex);
+            selectedTrackIndices.insert(activeTrackIndex);
+        }
+        else if (!selectedTrackIndices.contains(activeTrackIndex))
+        {
+            activeTrackIndex = *selectedTrackIndices.rbegin();
+        }
+    }
+
+    return selectedTrackIndices != previousSelection || activeTrackIndex != previousActive;
 }
 
 void TrackListComponent::updateSize()
@@ -294,7 +335,8 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         if (selectedTrackIndices.contains(row))
         {
             for (int idx : selectedTrackIndices)
-                sequence->getTrack(idx).setMuted(newMuted);
+                if (idx >= 0 && idx < sequence->getNumTracks())
+                    sequence->getTrack(idx).setMuted(newMuted);
         }
         else
         {
@@ -312,7 +354,8 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         if (selectedTrackIndices.contains(row))
         {
             for (int idx : selectedTrackIndices)
-                sequence->getTrack(idx).setSolo(newSolo);
+                if (idx >= 0 && idx < sequence->getNumTracks())
+                    sequence->getTrack(idx).setSolo(newSolo);
         }
         else
         {
