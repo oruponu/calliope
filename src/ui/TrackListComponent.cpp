@@ -395,16 +395,19 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
             if (selectedTrackIndices.size() > 1)
             {
                 selectedTrackIndices.erase(row);
+                int remaining = *selectedTrackIndices.rbegin();
                 if (activeTrackIndex == row)
-                    activeTrackIndex = *selectedTrackIndices.rbegin();
+                    activeTrackIndex = remaining;
+                if (anchorTrackIndex == row)
+                    anchorTrackIndex = remaining;
             }
         }
         else
         {
             selectedTrackIndices.insert(row);
+            activeTrackIndex = row;
+            anchorTrackIndex = row;
         }
-        activeTrackIndex = row;
-        anchorTrackIndex = row;
     }
     else if (e.mods.isShiftDown())
     {
