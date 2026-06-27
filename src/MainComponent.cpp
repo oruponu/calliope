@@ -1402,11 +1402,11 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case CommandID::scrollViewLeft:
         if (focusedPanel == FocusPanel::PianoRoll)
-            scrollViewHorizontally(-PianoRollComponent::defaultNoteHeight);
+            scrollViewHorizontally(-PianoRollComponent::defaultBeatWidth);
         return true;
     case CommandID::scrollViewRight:
         if (focusedPanel == FocusPanel::PianoRoll)
-            scrollViewHorizontally(PianoRollComponent::defaultNoteHeight);
+            scrollViewHorizontally(PianoRollComponent::defaultBeatWidth);
         return true;
     case CommandID::zoomInHorizontal:
         zoomHorizontal(1.15f, viewport.getViewWidth() / 2);
