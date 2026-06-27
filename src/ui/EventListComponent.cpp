@@ -47,6 +47,7 @@ void EventListComponent::rebuildList()
     {
         listBox.updateContent();
         listBox.repaint();
+        repaint();
         return;
     }
 
@@ -116,6 +117,7 @@ void EventListComponent::rebuildList()
 
     listBox.updateContent();
     listBox.repaint();
+    repaint();
 }
 
 void EventListComponent::setPlayheadTick(double tick)
@@ -236,9 +238,15 @@ void EventListComponent::paint(juce::Graphics& g)
     g.setFont(font::sans(font::sizeXS).boldened());
 
     const int width = getWidth();
+
+    int contentWidth = width;
+    auto& scrollBar = listBox.getVerticalScrollBar();
+    if (scrollBar.isVisible())
+        contentWidth -= scrollBar.getWidth();
+
     const int positionX = kPadLeft + kColDot;
     const int eventX = positionX + kColPosition;
-    const int valueX = width - kPadRight - kColValue;
+    const int valueX = contentWidth - kPadRight - kColValue;
     const int lengthX = valueX - kColLength;
     const int eventWidth = lengthX - eventX;
 
