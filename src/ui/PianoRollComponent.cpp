@@ -1010,10 +1010,13 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                     }
                 }
 
+                selectedNote = {};
                 selectedNotes.clear();
                 repaint();
                 if (onNotesChanged)
                     onNotesChanged();
+                if (onNoteSelectionChanged)
+                    onNoteSelectionChanged(selectedNotes);
             }
             return;
         }
