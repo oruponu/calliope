@@ -85,6 +85,7 @@ public:
     void setTimeSignatureChanges(std::vector<TimeSignatureChange> changes);
     void setKeySignatureChanges(std::vector<KeySignatureChange> changes);
 
+    static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
     static bool keySignatureFromString(const std::string& text, int& sharpsOrFlats, bool& isMinor);
     static std::string chordToString(const ChordChange& chord);
