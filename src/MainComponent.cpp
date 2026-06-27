@@ -1768,9 +1768,15 @@ void MainComponent::setTempoAtPlayhead(double bpm)
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
     auto tc = sequence.getTempoChangeAt(tick);
 
+    double clamped = juce::jlimit(MidiSequence::minBpm, MidiSequence::maxBpm, bpm);
+    if (clamped == tc.bpm)
+    {
+        updateTransportDisplay();
+        return;
+    }
+
     undoManager.beginNewTransaction();
-    undoManager.perform(
-        new TempoChangeAction(&sequence, tc.tick, juce::jlimit(MidiSequence::minBpm, MidiSequence::maxBpm, bpm)));
+    undoManager.perform(new TempoChangeAction(&sequence, tc.tick, clamped));
 
     updateTransportDisplay();
     pianoRoll.repaint();
@@ -1818,6 +1824,12 @@ void MainComponent::setTimeSignatureAtPlayhead(int num, int den)
     num = juce::jlimit(1, 64, num);
     den = snapToPowerOfTwo(den);
 
+    if (num == ts.numerator && den == ts.denominator)
+    {
+        updateTransportDisplay();
+        return;
+    }
+
     undoManager.beginNewTransaction();
     undoManager.perform(new TimeSignatureChangeAction(&sequence, ts.tick, num, den));
 
@@ -1853,6 +1865,21 @@ void MainComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
     auto ks = sequence.getKeySignatureAt(tick);
+
+    bool hasActiveKey = false;
+    for (const auto& k : sequence.getKeySignatureChanges())
+        if (k.tick <= tick)
+        {
+            hasActiveKey = true;
+            break;
+        }
+
+    sharpsOrFlats = MidiSequence::normalizeSharpsOrFlats(sharpsOrFlats);
+    if (hasActiveKey && sharpsOrFlats == ks.sharpsOrFlats && isMinor == ks.isMinor)
+    {
+        updateTransportDisplay();
+        return;
+    }
 
     undoManager.beginNewTransaction();
     undoManager.perform(new KeySignatureChangeAction(&sequence, ks.tick, sharpsOrFlats, isMinor));

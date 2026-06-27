@@ -191,12 +191,18 @@ const std::vector<ChordChange>& MidiSequence::getChordChanges() const
     return chordChanges;
 }
 
-void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor)
+int MidiSequence::normalizeSharpsOrFlats(int sharpsOrFlats)
 {
     if (sharpsOrFlats == 7)
-        sharpsOrFlats = -5;
-    else if (sharpsOrFlats == -7)
-        sharpsOrFlats = 5;
+        return -5;
+    if (sharpsOrFlats == -7)
+        return 5;
+    return sharpsOrFlats;
+}
+
+void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor)
+{
+    sharpsOrFlats = normalizeSharpsOrFlats(sharpsOrFlats);
 
     for (auto& ks : keySignatureChanges)
     {
