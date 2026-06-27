@@ -193,6 +193,11 @@ const std::vector<ChordChange>& MidiSequence::getChordChanges() const
 
 void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor)
 {
+    if (sharpsOrFlats == 7)
+        sharpsOrFlats = -5;
+    else if (sharpsOrFlats == -7)
+        sharpsOrFlats = 5;
+
     for (auto& ks : keySignatureChanges)
     {
         if (ks.tick == tick)
@@ -311,6 +316,30 @@ bool MidiSequence::keySignatureFromString(const std::string& text, int& sharpsOr
         {
             sharpsOrFlats = i - 7;
             isMinor = true;
+            return true;
+        }
+    }
+
+    struct Alias
+    {
+        const char* name;
+        int sharpsOrFlats;
+        bool isMinor;
+    };
+    static const Alias aliases[] = {
+        {"D#", -3, false}, // → Eb
+        {"G#", -4, false}, // → Ab
+        {"A#", -2, false}, // → Bb
+        {"Dbm", 4, true},  // → C#m
+        {"Gbm", 3, true},  // → F#m
+    };
+
+    for (const auto& a : aliases)
+    {
+        if (s == a.name)
+        {
+            sharpsOrFlats = a.sharpsOrFlats;
+            isMinor = a.isMinor;
             return true;
         }
     }
