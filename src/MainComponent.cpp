@@ -2188,9 +2188,11 @@ void MainComponent::onSequenceLoaded()
     controllerLane.setSequence(&sequence);
     controllerLane.setContentBeats(pianoRoll.getContentBeats());
     controllerLane.setSelectedTracks(0, allTracks);
+    controllerLane.setPlayheadTick(0);
 
     eventList.setSequence(&sequence);
     eventList.setSelectedTracks(allTracks);
+    eventList.setPlayheadTick(0);
 
     int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * pianoRoll.noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
