@@ -1760,7 +1760,7 @@ void MainComponent::nudgeTempo(int direction)
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
     auto tc = sequence.getTempoChangeAt(tick);
 
-    setTempoAtPlayhead(static_cast<int>(tc.bpm) + direction);
+    setTempoAtPlayhead(juce::roundToInt(tc.bpm) + direction);
 }
 
 void MainComponent::setTempoAtPlayhead(double bpm)
