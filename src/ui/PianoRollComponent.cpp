@@ -832,16 +832,31 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         int pointIndex = hitTestTempoPoint(e.x, e.y);
         if (pointIndex >= 0)
         {
+            if (e.mods.isShiftDown())
+            {
+                if (selectedTempoIndices.count(pointIndex) > 0)
+                    selectedTempoIndices.erase(pointIndex);
+                else
+                    selectedTempoIndices.insert(pointIndex);
+                repaint();
+                return;
+            }
+
             tempoDragBefore = sequence->getTempoChanges();
             tempoDragIndex = pointIndex;
             isTempoPointDragging = true;
             tempoDragMoved = false;
+
+            if (selectedTempoIndices.count(pointIndex) > 0 && selectedTempoIndices.size() > 1)
+                tempoDragGroup.assign(selectedTempoIndices.begin(), selectedTempoIndices.end());
+            else
+                tempoDragGroup = {pointIndex};
             return;
         }
 
         int tempoTick = 0;
         double tempoBpm = 0.0;
-        if (hitTestTempoLine(e.x, e.y, tempoTick, tempoBpm))
+        if (!e.mods.isShiftDown() && hitTestTempoLine(e.x, e.y, tempoTick, tempoBpm))
         {
             const auto& changes = sequence->getTempoChanges();
             bool exists = std::any_of(changes.begin(), changes.end(),
@@ -1083,34 +1098,56 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
     if (isTempoPointDragging)
     {
-        if (tempoDragIndex < 0 || tempoDragIndex >= static_cast<int>(tempoDragBefore.size()))
+        const int count = static_cast<int>(tempoDragBefore.size());
+        if (tempoDragIndex < 0 || tempoDragIndex >= count)
             return;
 
-        const TempoChange& orig = tempoDragBefore[tempoDragIndex];
-        int newTick = orig.tick;
+        const int grid = sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator;
 
-        if (orig.tick != 0)
+        std::set<int> moving;
+        for (int i : tempoDragGroup)
+            if (i >= 0 && i < count && tempoDragBefore[i].tick != 0)
+                moving.insert(i);
+
+        const TempoChange& dragOrig = tempoDragBefore[tempoDragIndex];
+        int deltaTick = (dragOrig.tick == 0) ? 0 : (std::max(0, roundTickToGrid(xToTick(e.x))) - dragOrig.tick);
+        double deltaBpm = std::round(tempoYToBpm(e.y)) - dragOrig.bpm;
+
+        int deltaLo = std::numeric_limits<int>::min();
+        int deltaHi = std::numeric_limits<int>::max();
+        for (int i : moving)
+            deltaLo = std::max(deltaLo, grid - tempoDragBefore[i].tick);
+        for (int i = 0; i + 1 < count; ++i)
         {
-            int grid = sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator;
-            int lower = (tempoDragIndex > 0) ? tempoDragBefore[tempoDragIndex - 1].tick + grid : grid;
-            int upper = (tempoDragIndex + 1 < static_cast<int>(tempoDragBefore.size()))
-                            ? tempoDragBefore[tempoDragIndex + 1].tick - grid
-                            : std::numeric_limits<int>::max();
-            if (upper < lower)
-                newTick = orig.tick;
-            else
-                newTick = std::clamp(roundTickToGrid(xToTick(e.x)), lower, upper);
+            bool aMoving = moving.count(i) > 0;
+            bool bMoving = moving.count(i + 1) > 0;
+            int gap = tempoDragBefore[i + 1].tick - tempoDragBefore[i].tick;
+            if (bMoving && !aMoving)
+                deltaLo = std::max(deltaLo, grid - gap);
+            else if (aMoving && !bMoving)
+                deltaHi = std::min(deltaHi, gap - grid);
         }
+        deltaTick = (deltaLo > deltaHi) ? 0 : std::clamp(deltaTick, deltaLo, deltaHi);
 
-        double newBpm = std::round(tempoYToBpm(e.y));
-        newBpm = juce::jlimit(MidiSequence::minBpm, MidiSequence::maxBpm, newBpm);
+        double groupMinBpm = MidiSequence::maxBpm;
+        double groupMaxBpm = MidiSequence::minBpm;
+        for (int i : tempoDragGroup)
+            if (i >= 0 && i < count)
+            {
+                groupMinBpm = std::min(groupMinBpm, tempoDragBefore[i].bpm);
+                groupMaxBpm = std::max(groupMaxBpm, tempoDragBefore[i].bpm);
+            }
+        deltaBpm = juce::jlimit(MidiSequence::minBpm - groupMinBpm, MidiSequence::maxBpm - groupMaxBpm, deltaBpm);
 
         auto changes = tempoDragBefore;
-        changes[tempoDragIndex].tick = newTick;
-        changes[tempoDragIndex].bpm = newBpm;
+        for (int i : tempoDragGroup)
+            if (i >= 0 && i < count)
+                changes[i].bpm = tempoDragBefore[i].bpm + deltaBpm;
+        for (int i : moving)
+            changes[i].tick = tempoDragBefore[i].tick + deltaTick;
         sequence->setTempoChanges(changes);
 
-        tempoDragMoved = (newTick != orig.tick) || (newBpm != orig.bpm);
+        tempoDragMoved = (deltaTick != 0) || (deltaBpm != 0.0);
         repaint();
         return;
     }
@@ -1244,6 +1281,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
     if (isTempoPointDragging)
     {
         isTempoPointDragging = false;
+        int draggedIndex = tempoDragIndex;
         tempoDragIndex = -1;
 
         if (tempoDragMoved)
@@ -1254,12 +1292,18 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
                 undoManager->beginNewTransaction("Move Tempo Change");
                 undoManager->perform(new TempoMoveAction(sequence, tempoDragBefore, after));
             }
-            selectedTempoIndices.clear();
+            selectedTempoIndices = std::set<int>(tempoDragGroup.begin(), tempoDragGroup.end());
             if (onTempoChanged)
                 onTempoChanged();
         }
+        else if (draggedIndex >= 0)
+        {
+            selectedTempoIndices.clear();
+            selectedTempoIndices.insert(draggedIndex);
+        }
 
         tempoDragBefore.clear();
+        tempoDragGroup.clear();
         tempoDragMoved = false;
         repaint();
         return;
