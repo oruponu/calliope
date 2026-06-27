@@ -242,6 +242,7 @@ private:
     int tempoDragIndex = -1;
     bool tempoDragMoved = false;
     std::vector<TempoChange> tempoDragBefore;
+    std::vector<int> tempoDragGroup;
 
     std::set<int> selectedTempoIndices;
     bool isTempoRangeSelecting = false;
