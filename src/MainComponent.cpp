@@ -303,13 +303,7 @@ MainComponent::MainComponent()
         eventList.setPlayheadTick(tick);
         updateTransportDisplay();
     };
-    pianoRoll.onNotesChanged = [this]()
-    {
-        trackList.refresh();
-        controllerLane.repaint();
-        eventList.refresh();
-        playbackEngine.rebuildSnapshot();
-    };
+    pianoRoll.onNotesChanged = [this]() { playbackEngine.rebuildSnapshot(); };
     pianoRoll.onTempoChanged = [this]()
     {
         updateTransportDisplay();

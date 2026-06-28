@@ -28,7 +28,10 @@ EventListComponent::~EventListComponent()
         sequence->removeListener(this);
 }
 
-void EventListComponent::notesChanged(int) {}
+void EventListComponent::notesChanged(int)
+{
+    refresh();
+}
 void EventListComponent::tracksChanged() {}
 void EventListComponent::tempoChanged() {}
 void EventListComponent::timelineMetadataChanged() {}

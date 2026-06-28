@@ -401,7 +401,10 @@ PianoRollComponent::~PianoRollComponent()
         sequence->removeListener(this);
 }
 
-void PianoRollComponent::notesChanged(int) {}
+void PianoRollComponent::notesChanged(int)
+{
+    repaint();
+}
 void PianoRollComponent::tracksChanged() {}
 void PianoRollComponent::tempoChanged() {}
 void PianoRollComponent::timelineMetadataChanged() {}
