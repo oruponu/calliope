@@ -19,12 +19,14 @@ public:
     {
         sequence->getTrack(trackIdx).addNote(note);
         addedIndex = sequence->getTrack(trackIdx).getNumNotes() - 1;
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
     bool undo() override
     {
         sequence->getTrack(trackIdx).removeNote(addedIndex);
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
@@ -51,12 +53,14 @@ public:
     {
         deletedNote = sequence->getTrack(trackIdx).getNote(noteIdx);
         sequence->getTrack(trackIdx).removeNote(noteIdx);
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
     bool undo() override
     {
         sequence->getTrack(trackIdx).insertNote(noteIdx, deletedNote);
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
@@ -81,6 +85,7 @@ public:
     {
         auto& note = sequence->getTrack(trackIdx).getNote(noteIdx);
         note = afterNote;
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
@@ -88,6 +93,7 @@ public:
     {
         auto& note = sequence->getTrack(trackIdx).getNote(noteIdx);
         note = beforeNote;
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
@@ -132,6 +138,7 @@ public:
     {
         for (const auto& info : deletedNotes)
             sequence->getTrack(info.trackIndex).removeNote(info.noteIndex);
+        sequence->notifyNotesChanged(-1);
         return true;
     }
 
@@ -139,6 +146,7 @@ public:
     {
         for (auto it = deletedNotes.rbegin(); it != deletedNotes.rend(); ++it)
             sequence->getTrack(it->trackIndex).insertNote(it->noteIndex, it->note);
+        sequence->notifyNotesChanged(-1);
         return true;
     }
 
@@ -163,6 +171,7 @@ public:
         addedStartIndex = track.getNumNotes();
         for (const auto& note : notes)
             track.addNote(note);
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
@@ -171,6 +180,7 @@ public:
         auto& track = sequence->getTrack(trackIdx);
         for (int i = static_cast<int>(notes.size()) - 1; i >= 0; --i)
             track.removeNote(addedStartIndex + i);
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
@@ -208,6 +218,7 @@ public:
         if (beforeChange)
             beforeChange(trackIdx);
         sequence->getTrack(trackIdx).setChannel(newCh);
+        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -216,6 +227,7 @@ public:
         if (beforeChange)
             beforeChange(trackIdx);
         sequence->getTrack(trackIdx).setChannel(oldCh);
+        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -240,12 +252,14 @@ public:
     bool perform() override
     {
         sequence->getTrack(trackIdx).setName(newName);
+        sequence->notifyTracksChanged();
         return true;
     }
 
     bool undo() override
     {
         sequence->getTrack(trackIdx).setName(oldName);
+        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -270,6 +284,7 @@ public:
     {
         sequence->addTrack();
         addedIndex = sequence->getNumTracks() - 1;
+        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -278,6 +293,7 @@ public:
         if (beforeRemove)
             beforeRemove(addedIndex);
         sequence->removeTrack(addedIndex);
+        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -324,6 +340,7 @@ public:
             else if (rt > trackIdx)
                 t.setRouteTargetTrackIndex(rt - 1);
         }
+        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -334,6 +351,7 @@ public:
         sequence->insertTrack(trackIdx, savedTrack);
         for (int i = 0; i < static_cast<int>(savedRouteTargets.size()); ++i)
             sequence->getTrack(i).setRouteTargetTrackIndex(savedRouteTargets[i]);
+        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -357,12 +375,14 @@ public:
     {
         before = sequence->getTempoChanges();
         sequence->addTempoChange(tick, newBpm);
+        sequence->notifyTempoChanged();
         return true;
     }
 
     bool undo() override
     {
         sequence->setTempoChanges(before);
+        sequence->notifyTempoChanged();
         return true;
     }
 
@@ -386,12 +406,14 @@ public:
     bool perform() override
     {
         sequence->setTempoChanges(after);
+        sequence->notifyTempoChanged();
         return true;
     }
 
     bool undo() override
     {
         sequence->setTempoChanges(before);
+        sequence->notifyTempoChanged();
         return true;
     }
 
@@ -415,12 +437,14 @@ public:
     {
         before = sequence->getTimeSignatureChanges();
         sequence->addTimeSignatureChange(tick, numerator, denominator);
+        sequence->notifyTimelineMetadataChanged();
         return true;
     }
 
     bool undo() override
     {
         sequence->setTimeSignatureChanges(before);
+        sequence->notifyTimelineMetadataChanged();
         return true;
     }
 
@@ -446,12 +470,14 @@ public:
     {
         before = sequence->getKeySignatureChanges();
         sequence->addKeySignatureChange(tick, sharpsOrFlats, isMinor);
+        sequence->notifyTimelineMetadataChanged();
         return true;
     }
 
     bool undo() override
     {
         sequence->setKeySignatureChanges(before);
+        sequence->notifyTimelineMetadataChanged();
         return true;
     }
 
@@ -478,6 +504,7 @@ public:
         auto& track = sequence->getTrack(trackIdx);
         for (const auto& c : changes)
             track.getNote(c.noteIndex).velocity = c.newVelocity;
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
@@ -486,6 +513,7 @@ public:
         auto& track = sequence->getTrack(trackIdx);
         for (const auto& c : changes)
             track.getNote(c.noteIndex).velocity = c.oldVelocity;
+        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
