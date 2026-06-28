@@ -36,7 +36,10 @@ void EventListComponent::tracksChanged()
 {
     refresh();
 }
-void EventListComponent::tempoChanged() {}
+void EventListComponent::tempoChanged()
+{
+    refresh();
+}
 void EventListComponent::timelineMetadataChanged() {}
 
 void EventListComponent::setSequence(MidiSequence* seq)

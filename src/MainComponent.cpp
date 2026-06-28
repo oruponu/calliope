@@ -304,13 +304,7 @@ MainComponent::MainComponent()
         updateTransportDisplay();
     };
     pianoRoll.onNotesChanged = [this]() { playbackEngine.rebuildSnapshot(); };
-    pianoRoll.onTempoChanged = [this]()
-    {
-        updateTransportDisplay();
-        controllerLane.repaint();
-        eventList.refresh();
-        playbackEngine.rebuildSnapshot();
-    };
+    pianoRoll.onTempoChanged = [this]() { playbackEngine.rebuildSnapshot(); };
     pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
     {
         if (updatingFromEventList)
@@ -915,7 +909,10 @@ void MainComponent::tracksChanged()
 {
     repaint(trackListHeaderBounds);
 }
-void MainComponent::tempoChanged() {}
+void MainComponent::tempoChanged()
+{
+    updateTransportDisplay();
+}
 void MainComponent::timelineMetadataChanged() {}
 
 MainComponent::~MainComponent()
@@ -1778,11 +1775,6 @@ void MainComponent::setTempoAtPlayhead(double bpm)
     undoManager.beginNewTransaction();
     undoManager.perform(new TempoChangeAction(&sequence, tc.tick, clamped));
     playbackEngine.rebuildSnapshot();
-
-    updateTransportDisplay();
-    pianoRoll.repaint();
-    controllerLane.repaint();
-    eventList.refresh();
 }
 
 void MainComponent::commitTimeSignatureEdit()
