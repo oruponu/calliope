@@ -409,7 +409,10 @@ void PianoRollComponent::tracksChanged()
 {
     repaint();
 }
-void PianoRollComponent::tempoChanged() {}
+void PianoRollComponent::tempoChanged()
+{
+    repaint();
+}
 void PianoRollComponent::timelineMetadataChanged() {}
 
 void PianoRollComponent::setSequence(MidiSequence* seq)
