@@ -5,9 +5,11 @@
 #include <functional>
 #include <set>
 
-class TrackListComponent : public juce::Component
+class TrackListComponent : public juce::Component, public MidiSequence::Listener
 {
 public:
+    ~TrackListComponent() override;
+
     void setSequence(MidiSequence* seq);
     void refresh();
 
@@ -36,6 +38,9 @@ public:
     static constexpr int preferredWidth = 248;
 
 private:
+    void notesChanged(int trackIndex) override;
+    void tracksChanged() override;
+
     int getRowIndexAt(int y) const;
     juce::Rectangle<int> getMuteButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getSoloButtonBounds(int rowIndex) const;

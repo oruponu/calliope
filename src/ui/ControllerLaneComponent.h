@@ -7,10 +7,11 @@
 #include <set>
 #include <vector>
 
-class ControllerLaneComponent : public juce::Component
+class ControllerLaneComponent : public juce::Component, public MidiSequence::Listener
 {
 public:
     ControllerLaneComponent() = default;
+    ~ControllerLaneComponent() override;
 
     enum class DisplayMode
     {
@@ -52,6 +53,11 @@ public:
     int beatWidth = defaultBeatWidth;
 
 private:
+    void notesChanged(int trackIndex) override;
+    void tracksChanged() override;
+    void tempoChanged() override;
+    void timelineMetadataChanged() override;
+
     void drawLeftPanel(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawVelocity(juce::Graphics& g);

@@ -16,10 +16,23 @@ constexpr int kChannelWidth = 52;
 constexpr int kComboGap = 4;
 } // namespace
 
+TrackListComponent::~TrackListComponent()
+{
+    if (sequence != nullptr)
+        sequence->removeListener(this);
+}
+
+void TrackListComponent::notesChanged(int) {}
+void TrackListComponent::tracksChanged() {}
+
 void TrackListComponent::setSequence(MidiSequence* seq)
 {
     cancelNameEdit();
+    if (sequence != nullptr)
+        sequence->removeListener(this);
     sequence = seq;
+    if (sequence != nullptr)
+        sequence->addListener(this);
     if (seq && seq->getNumTracks() > 0)
     {
         activeTrackIndex = 0;
