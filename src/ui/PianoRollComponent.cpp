@@ -1367,7 +1367,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
     {
         if (undoManager)
         {
-            bool transactionStarted = false;
+            std::vector<NoteModification> mods;
             for (const auto& t : resizeTargets)
             {
                 auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
@@ -1376,15 +1376,14 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
                 MidiNote beforeNote{note.noteNumber, note.velocity, t.startTick, t.duration};
                 MidiNote afterNote = note;
+                mods.push_back({t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote});
+            }
 
-                if (!transactionStarted)
-                {
-                    if (!isCreatingNote)
-                        undoManager->beginNewTransaction(resizeTargets.size() > 1 ? "Resize Notes" : "Resize Note");
-                    transactionStarted = true;
-                }
-                undoManager->perform(
-                    new NoteModifyAction(sequence, t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote));
+            if (!mods.empty())
+            {
+                if (!isCreatingNote)
+                    undoManager->beginNewTransaction(mods.size() > 1 ? "Resize Notes" : "Resize Note");
+                undoManager->perform(new MultiNoteModifyAction(sequence, std::move(mods)));
             }
         }
         resizeTargets.clear();
@@ -1401,21 +1400,31 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         if (moveDeltaTick != 0 || moveDeltaNote != 0)
         {
             if (undoManager)
-                undoManager->beginNewTransaction(moveTargets.size() > 1 ? "Move Notes" : "Move Note");
-
-            for (const auto& t : moveTargets)
             {
-                auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
-                MidiNote beforeNote{t.noteNumber, note.velocity, t.startTick, note.duration};
-                MidiNote afterNote = beforeNote;
-                afterNote.startTick = t.startTick + moveDeltaTick;
-                afterNote.noteNumber = t.noteNumber + moveDeltaNote;
-
-                if (undoManager)
-                    undoManager->perform(
-                        new NoteModifyAction(sequence, t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote));
-                else
+                undoManager->beginNewTransaction(moveTargets.size() > 1 ? "Move Notes" : "Move Note");
+                std::vector<NoteModification> mods;
+                for (const auto& t : moveTargets)
+                {
+                    auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
+                    MidiNote beforeNote{t.noteNumber, note.velocity, t.startTick, note.duration};
+                    MidiNote afterNote = beforeNote;
+                    afterNote.startTick = t.startTick + moveDeltaTick;
+                    afterNote.noteNumber = t.noteNumber + moveDeltaNote;
+                    mods.push_back({t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote});
+                }
+                if (!mods.empty())
+                    undoManager->perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+            }
+            else
+            {
+                for (const auto& t : moveTargets)
+                {
+                    auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
+                    MidiNote afterNote{t.noteNumber, note.velocity, t.startTick, note.duration};
+                    afterNote.startTick = t.startTick + moveDeltaTick;
+                    afterNote.noteNumber = t.noteNumber + moveDeltaNote;
                     note = afterNote;
+                }
             }
 
             if (onNotesChanged)
