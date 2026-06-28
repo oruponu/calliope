@@ -61,7 +61,10 @@ void ControllerLaneComponent::tempoChanged()
 {
     repaint();
 }
-void ControllerLaneComponent::timelineMetadataChanged() {}
+void ControllerLaneComponent::timelineMetadataChanged()
+{
+    repaint();
+}
 
 void ControllerLaneComponent::setSequence(MidiSequence* seq)
 {
