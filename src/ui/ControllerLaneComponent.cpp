@@ -49,7 +49,10 @@ ControllerLaneComponent::~ControllerLaneComponent()
         sequence->removeListener(this);
 }
 
-void ControllerLaneComponent::notesChanged(int) {}
+void ControllerLaneComponent::notesChanged(int)
+{
+    repaint();
+}
 void ControllerLaneComponent::tracksChanged() {}
 void ControllerLaneComponent::tempoChanged() {}
 void ControllerLaneComponent::timelineMetadataChanged() {}

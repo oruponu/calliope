@@ -22,7 +22,11 @@ TrackListComponent::~TrackListComponent()
         sequence->removeListener(this);
 }
 
-void TrackListComponent::notesChanged(int) {}
+void TrackListComponent::notesChanged(int)
+{
+    updateSize();
+    repaint();
+}
 void TrackListComponent::tracksChanged() {}
 
 void TrackListComponent::setSequence(MidiSequence* seq)
