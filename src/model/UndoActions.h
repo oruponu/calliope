@@ -107,6 +107,44 @@ private:
     MidiNote afterNote;
 };
 
+struct NoteModification
+{
+    int trackIndex;
+    int noteIndex;
+    MidiNote before;
+    MidiNote after;
+};
+
+class MultiNoteModifyAction : public juce::UndoableAction
+{
+public:
+    MultiNoteModifyAction(MidiSequence* seq, std::vector<NoteModification> mods) : sequence(seq), mods(std::move(mods))
+    {
+    }
+
+    bool perform() override
+    {
+        for (const auto& m : mods)
+            sequence->getTrack(m.trackIndex).getNote(m.noteIndex) = m.after;
+        sequence->notifyNotesChanged(-1);
+        return true;
+    }
+
+    bool undo() override
+    {
+        for (const auto& m : mods)
+            sequence->getTrack(m.trackIndex).getNote(m.noteIndex) = m.before;
+        sequence->notifyNotesChanged(-1);
+        return true;
+    }
+
+    int getSizeInUnits() override { return static_cast<int>(mods.size()); }
+
+private:
+    MidiSequence* sequence;
+    std::vector<NoteModification> mods;
+};
+
 struct DeletedNoteInfo
 {
     int trackIndex;
