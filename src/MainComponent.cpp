@@ -391,7 +391,11 @@ MainComponent::MainComponent()
         controllerLane.setSelectedTracks(activeIdx, selected);
         eventList.setSelectedTracks(selected);
     };
-    trackList.onMuteSoloChanged = [this]() { playbackEngine.rebuildSnapshot(); };
+    trackList.onMuteSoloChanged = [this]()
+    {
+        sequence.notifyTracksChanged();
+        playbackEngine.rebuildSnapshot();
+    };
     trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
     trackList.onEditorButtonClicked = [this](int trackIndex) { pluginHost.showEditor(trackIndex); };
     trackList.onChannelLabelClicked = [this](int trackIndex)
@@ -490,6 +494,7 @@ MainComponent::MainComponent()
                              auto& track = sequence.getTrack(trackIndex);
                              track.setRouteTargetTrackIndex(isOwn ? -1 : i);
                              track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                             sequence.notifyTracksChanged();
                              playbackEngine.rebuildSnapshot();
                              trackList.repaint();
                          });
@@ -500,6 +505,7 @@ MainComponent::MainComponent()
                      {
                          playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         sequence.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
                          trackList.repaint();
                      });
@@ -509,6 +515,7 @@ MainComponent::MainComponent()
                      {
                          playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::None);
+                         sequence.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
                          trackList.repaint();
                      });
@@ -532,6 +539,7 @@ MainComponent::MainComponent()
                                      auto& track = sequence.getTrack(trackIndex);
                                      track.setRouteTargetTrackIndex(-1);
                                      track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                     sequence.notifyTracksChanged();
                                      playbackEngine.rebuildSnapshot();
                                  }
                                  trackList.repaint();
@@ -551,6 +559,7 @@ MainComponent::MainComponent()
                          playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          pluginHost.detachPlugin(trackIndex);
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         sequence.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
                          trackList.repaint();
                      });
@@ -568,6 +577,7 @@ MainComponent::MainComponent()
                                    auto& track = sequence.getTrack(trackIndex);
                                    track.setRouteTargetTrackIndex(-1);
                                    track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                   sequence.notifyTracksChanged();
                                    playbackEngine.rebuildSnapshot();
                                }
                                trackList.repaint();
@@ -1118,6 +1128,8 @@ void MainComponent::menuItemSelected(int menuItemID, int)
         auto& track = sequence.getTrack(0);
         track.setRouteTargetTrackIndex(-1);
         track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+        sequence.notifyTracksChanged();
+        playbackEngine.rebuildSnapshot();
     }
 }
 
@@ -1777,6 +1789,7 @@ void MainComponent::setTempoAtPlayhead(double bpm)
 
     undoManager.beginNewTransaction();
     undoManager.perform(new TempoChangeAction(&sequence, tc.tick, clamped));
+    playbackEngine.rebuildSnapshot();
 
     updateTransportDisplay();
     pianoRoll.repaint();
@@ -2107,6 +2120,7 @@ void MainComponent::loadPlugin()
                                      auto& track = sequence.getTrack(0);
                                      track.setRouteTargetTrackIndex(-1);
                                      track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
+                                     sequence.notifyTracksChanged();
                                      playbackEngine.rebuildSnapshot();
                                  }
                              });
@@ -2199,6 +2213,7 @@ void MainComponent::onSequenceLoaded()
     repaint(trackListHeaderBounds);
 
     playbackEngine.rebuildSnapshot();
+    sequence.notifySequenceReset();
 }
 
 void MainComponent::updateTitleBar()
