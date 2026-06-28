@@ -1346,7 +1346,8 @@ bool MainComponent::perform(const InvocationInfo& info)
             playbackEngine.resumeAfterStructuralChange(wasRunning);
         else
             playbackEngine.rebuildSnapshot();
-        refreshAllViews();
+        trackList.refresh();
+        pianoRoll.setSelectedNotes({});
         return true;
     }
     case CommandID::redoAction:
@@ -1360,7 +1361,8 @@ bool MainComponent::perform(const InvocationInfo& info)
             playbackEngine.resumeAfterStructuralChange(wasRunning);
         else
             playbackEngine.rebuildSnapshot();
-        refreshAllViews();
+        trackList.refresh();
+        pianoRoll.setSelectedNotes({});
         return true;
     }
     case CommandID::cutAction:
@@ -1976,17 +1978,6 @@ void MainComponent::updateTransportDisplay()
         double tempo = sequence.getTempoAt(tick);
         tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
     }
-}
-
-void MainComponent::refreshAllViews()
-{
-    pianoRoll.setSelectedNotes({});
-    pianoRoll.repaint();
-    controllerLane.repaint();
-    trackList.refresh();
-    eventList.refresh();
-    updateTransportDisplay();
-    repaint(trackListHeaderBounds);
 }
 
 void MainComponent::setHorizontalZoom(int newBeatWidth, int anchorXInViewport)

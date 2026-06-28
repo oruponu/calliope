@@ -424,7 +424,6 @@ private:
     void setVerticalZoom(int newNoteHeight, int anchorYInViewport);
     void zoomHorizontal(float factor, int anchorXInViewport);
     void zoomVertical(float factor, int anchorYInViewport);
-    void refreshAllViews();
 
     enum CommandID
     {
