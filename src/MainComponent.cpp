@@ -913,7 +913,10 @@ void MainComponent::tempoChanged()
 {
     updateTransportDisplay();
 }
-void MainComponent::timelineMetadataChanged() {}
+void MainComponent::timelineMetadataChanged()
+{
+    updateTransportDisplay();
+}
 
 MainComponent::~MainComponent()
 {
@@ -1825,11 +1828,6 @@ void MainComponent::setTimeSignatureAtPlayhead(int num, int den)
 
     undoManager.beginNewTransaction();
     undoManager.perform(new TimeSignatureChangeAction(&sequence, ts.tick, num, den));
-
-    updateTransportDisplay();
-    pianoRoll.repaint();
-    controllerLane.repaint();
-    eventList.refresh();
 }
 
 void MainComponent::commitKeySignatureEdit()
@@ -1876,11 +1874,6 @@ void MainComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor)
 
     undoManager.beginNewTransaction();
     undoManager.perform(new KeySignatureChangeAction(&sequence, ks.tick, sharpsOrFlats, isMinor));
-
-    updateTransportDisplay();
-    pianoRoll.repaint();
-    controllerLane.repaint();
-    eventList.refresh();
 }
 
 void MainComponent::scrollToPlayhead(int tick)
