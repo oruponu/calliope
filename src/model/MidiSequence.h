@@ -43,6 +43,30 @@ struct BarBeatTick
 class MidiSequence
 {
 public:
+    struct Listener
+    {
+        virtual ~Listener() = default;
+        virtual void notesChanged([[maybe_unused]] int trackIndex) {}
+        virtual void tracksChanged() {}
+        virtual void tempoChanged() {}
+        virtual void timelineMetadataChanged() {}
+        virtual void sequenceReset() {}
+    };
+
+    MidiSequence(const MidiSequence&) = delete;
+    MidiSequence& operator=(const MidiSequence&) = delete;
+    MidiSequence(MidiSequence&&) = delete;
+    MidiSequence& operator=(MidiSequence&&) = delete;
+
+    void addListener(Listener* listener);
+    void removeListener(Listener* listener);
+
+    void notifyNotesChanged(int trackIndex);
+    void notifyTracksChanged();
+    void notifyTempoChanged();
+    void notifyTimelineMetadataChanged();
+    void notifySequenceReset();
+
     static constexpr int defaultTicksPerQuarterNote = 480;
     static constexpr double minBpm = 10.0;
     static constexpr double maxBpm = 400.0;
@@ -104,4 +128,5 @@ private:
     std::vector<KeySignatureChange> keySignatureChanges;
     std::vector<ChordChange> chordChanges;
     int ticksPerQuarterNote = defaultTicksPerQuarterNote;
+    std::vector<Listener*> listeners;
 };
