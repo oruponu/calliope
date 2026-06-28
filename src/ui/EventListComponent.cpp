@@ -40,7 +40,10 @@ void EventListComponent::tempoChanged()
 {
     refresh();
 }
-void EventListComponent::timelineMetadataChanged() {}
+void EventListComponent::timelineMetadataChanged()
+{
+    refresh();
+}
 
 void EventListComponent::setSequence(MidiSequence* seq)
 {
