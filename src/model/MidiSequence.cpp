@@ -486,3 +486,49 @@ int MidiSequence::barBeatTickToTick(int bar, int beat, int tickInBeat) const
 
     return std::max(0, barStart + (beat - 1) * ticksPerBeat + tickInBeat);
 }
+
+void MidiSequence::addListener(Listener* listener)
+{
+    if (listener != nullptr && std::find(listeners.begin(), listeners.end(), listener) == listeners.end())
+        listeners.push_back(listener);
+}
+
+void MidiSequence::removeListener(Listener* listener)
+{
+    listeners.erase(std::remove(listeners.begin(), listeners.end(), listener), listeners.end());
+}
+
+void MidiSequence::notifyNotesChanged(int trackIndex)
+{
+    const auto snapshot = listeners;
+    for (auto* l : snapshot)
+        l->notesChanged(trackIndex);
+}
+
+void MidiSequence::notifyTracksChanged()
+{
+    const auto snapshot = listeners;
+    for (auto* l : snapshot)
+        l->tracksChanged();
+}
+
+void MidiSequence::notifyTempoChanged()
+{
+    const auto snapshot = listeners;
+    for (auto* l : snapshot)
+        l->tempoChanged();
+}
+
+void MidiSequence::notifyTimelineMetadataChanged()
+{
+    const auto snapshot = listeners;
+    for (auto* l : snapshot)
+        l->timelineMetadataChanged();
+}
+
+void MidiSequence::notifySequenceReset()
+{
+    const auto snapshot = listeners;
+    for (auto* l : snapshot)
+        l->sequenceReset();
+}
