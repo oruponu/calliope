@@ -27,7 +27,11 @@ void TrackListComponent::notesChanged(int)
     updateSize();
     repaint();
 }
-void TrackListComponent::tracksChanged() {}
+void TrackListComponent::tracksChanged()
+{
+    updateSize();
+    repaint();
+}
 
 void TrackListComponent::setSequence(MidiSequence* seq)
 {

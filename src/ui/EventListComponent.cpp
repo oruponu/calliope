@@ -32,7 +32,10 @@ void EventListComponent::notesChanged(int)
 {
     refresh();
 }
-void EventListComponent::tracksChanged() {}
+void EventListComponent::tracksChanged()
+{
+    refresh();
+}
 void EventListComponent::tempoChanged() {}
 void EventListComponent::timelineMetadataChanged() {}
 

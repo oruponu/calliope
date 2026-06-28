@@ -411,9 +411,6 @@ MainComponent::MainComponent()
                                  new ChannelChangeAction(&sequence, trackIndex, currentChannel, ch, [this](int idx)
                                                          { playbackEngine.releaseActiveNotesForTrack(idx); }));
                              playbackEngine.rebuildSnapshot();
-                             trackList.repaint();
-                             pianoRoll.repaint();
-                             eventList.refresh();
                          });
         }
         menu.showMenuAsync(juce::PopupMenu::Options{});
@@ -428,10 +425,6 @@ MainComponent::MainComponent()
                                                    pluginHost.detachPlugin(idx);
                                                }));
         trackList.refresh();
-        pianoRoll.repaint();
-        controllerLane.repaint();
-        eventList.refresh();
-        repaint(trackListHeaderBounds);
         playbackEngine.rebuildSnapshot();
     };
     trackList.onRemoveTrackRequested = [this](int trackIndex)
@@ -449,7 +442,6 @@ MainComponent::MainComponent()
         int newActive = juce::jlimit(0, sequence.getNumTracks() - 1, trackIndex);
         trackList.refresh();
         trackList.setActiveTrackIndex(newActive);
-        repaint(trackListHeaderBounds);
     };
     trackList.onTrackRenamed = [this](int trackIndex, juce::String newName)
     {
@@ -461,7 +453,6 @@ MainComponent::MainComponent()
             return;
         undoManager.beginNewTransaction();
         undoManager.perform(new TrackRenameAction(&sequence, trackIndex, oldName, requested));
-        trackList.repaint();
     };
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
@@ -491,7 +482,6 @@ MainComponent::MainComponent()
                              track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
                              sequence.notifyTracksChanged();
                              playbackEngine.rebuildSnapshot();
-                             trackList.repaint();
                          });
         }
 
@@ -502,7 +492,6 @@ MainComponent::MainComponent()
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
                          sequence.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
-                         trackList.repaint();
                      });
 
         menu.addItem("None", true, currentDest == MidiTrack::OutputDestination::None,
@@ -512,7 +501,6 @@ MainComponent::MainComponent()
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::None);
                          sequence.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
-                         trackList.repaint();
                      });
         menu.addSeparator();
 
@@ -537,7 +525,6 @@ MainComponent::MainComponent()
                                      sequence.notifyTracksChanged();
                                      playbackEngine.rebuildSnapshot();
                                  }
-                                 trackList.repaint();
                              });
                      });
 
@@ -556,7 +543,6 @@ MainComponent::MainComponent()
                          sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
                          sequence.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
-                         trackList.repaint();
                      });
 
         menu.showMenuAsync(juce::PopupMenu::Options{},
@@ -575,7 +561,6 @@ MainComponent::MainComponent()
                                    sequence.notifyTracksChanged();
                                    playbackEngine.rebuildSnapshot();
                                }
-                               trackList.repaint();
                            });
     };
 
@@ -926,7 +911,10 @@ MainComponent::MainComponent()
     viewport.setViewPosition(0, c4Y);
 }
 
-void MainComponent::tracksChanged() {}
+void MainComponent::tracksChanged()
+{
+    repaint(trackListHeaderBounds);
+}
 void MainComponent::tempoChanged() {}
 void MainComponent::timelineMetadataChanged() {}
 
