@@ -405,7 +405,10 @@ void PianoRollComponent::notesChanged(int)
 {
     repaint();
 }
-void PianoRollComponent::tracksChanged() {}
+void PianoRollComponent::tracksChanged()
+{
+    repaint();
+}
 void PianoRollComponent::tempoChanged() {}
 void PianoRollComponent::timelineMetadataChanged() {}
 
