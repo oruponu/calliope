@@ -395,9 +395,24 @@ bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
     return true;
 }
 
+PianoRollComponent::~PianoRollComponent()
+{
+    if (sequence != nullptr)
+        sequence->removeListener(this);
+}
+
+void PianoRollComponent::notesChanged(int) {}
+void PianoRollComponent::tracksChanged() {}
+void PianoRollComponent::tempoChanged() {}
+void PianoRollComponent::timelineMetadataChanged() {}
+
 void PianoRollComponent::setSequence(MidiSequence* seq)
 {
+    if (sequence != nullptr)
+        sequence->removeListener(this);
     sequence = seq;
+    if (sequence != nullptr)
+        sequence->addListener(this);
 
     selectedTempoIndices.clear();
     isTempoRangeSelecting = false;

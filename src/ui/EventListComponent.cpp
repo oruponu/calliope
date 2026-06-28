@@ -22,9 +22,24 @@ EventListComponent::EventListComponent()
     addAndMakeVisible(listBox);
 }
 
+EventListComponent::~EventListComponent()
+{
+    if (sequence != nullptr)
+        sequence->removeListener(this);
+}
+
+void EventListComponent::notesChanged(int) {}
+void EventListComponent::tracksChanged() {}
+void EventListComponent::tempoChanged() {}
+void EventListComponent::timelineMetadataChanged() {}
+
 void EventListComponent::setSequence(MidiSequence* seq)
 {
+    if (sequence != nullptr)
+        sequence->removeListener(this);
     sequence = seq;
+    if (sequence != nullptr)
+        sequence->addListener(this);
     rebuildList();
 }
 
