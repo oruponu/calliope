@@ -7,9 +7,11 @@
 #include <set>
 #include <vector>
 
-class PianoRollComponent : public juce::Component, private juce::Timer
+class PianoRollComponent : public juce::Component, public MidiSequence::Listener, private juce::Timer
 {
 public:
+    ~PianoRollComponent() override;
+
     enum class EditMode
     {
         Edit,
@@ -112,6 +114,11 @@ public:
     void extendContent();
 
 private:
+    void notesChanged(int trackIndex) override;
+    void tracksChanged() override;
+    void tempoChanged() override;
+    void timelineMetadataChanged() override;
+
     enum class DragMode
     {
         None,

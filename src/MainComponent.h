@@ -18,7 +18,8 @@ class MainComponent : public juce::Component,
                       public juce::ApplicationCommandTarget,
                       public juce::FileDragAndDropTarget,
                       public juce::ChangeListener,
-                      public juce::FocusChangeListener
+                      public juce::FocusChangeListener,
+                      public MidiSequence::Listener
 {
 public:
     MainComponent();
@@ -48,6 +49,10 @@ public:
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
 private:
+    void tracksChanged() override;
+    void tempoChanged() override;
+    void timelineMetadataChanged() override;
+
     enum class PositionUnit
     {
         Bar,

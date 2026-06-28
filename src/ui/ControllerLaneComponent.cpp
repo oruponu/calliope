@@ -43,9 +43,24 @@ const char* const gmProgramNames[] = {
 // clang-format on
 } // namespace
 
+ControllerLaneComponent::~ControllerLaneComponent()
+{
+    if (sequence != nullptr)
+        sequence->removeListener(this);
+}
+
+void ControllerLaneComponent::notesChanged(int) {}
+void ControllerLaneComponent::tracksChanged() {}
+void ControllerLaneComponent::tempoChanged() {}
+void ControllerLaneComponent::timelineMetadataChanged() {}
+
 void ControllerLaneComponent::setSequence(MidiSequence* seq)
 {
+    if (sequence != nullptr)
+        sequence->removeListener(this);
     sequence = seq;
+    if (sequence != nullptr)
+        sequence->addListener(this);
 
     contentBeats = 16;
     if (sequence && sequence->getNumTracks() > 0)

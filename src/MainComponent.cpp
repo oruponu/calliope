@@ -287,6 +287,7 @@ MainComponent::MainComponent()
     audioPlayer.setProcessor(&audioGraph);
 
     sequence.addTrack();
+    sequence.addListener(this);
 
     playbackEngine.setSequence(&sequence);
     playbackEngine.addListener(&midiOutput);
@@ -931,8 +932,13 @@ MainComponent::MainComponent()
     viewport.setViewPosition(0, c4Y);
 }
 
+void MainComponent::tracksChanged() {}
+void MainComponent::tempoChanged() {}
+void MainComponent::timelineMetadataChanged() {}
+
 MainComponent::~MainComponent()
 {
+    sequence.removeListener(this);
     juce::Desktop::getInstance().removeFocusChangeListener(this);
     knownPluginList.removeChangeListener(this);
     audioDeviceManager.removeChangeListener(this);

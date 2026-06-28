@@ -28,10 +28,11 @@ struct EventListItem
     int data2 = 0;
 };
 
-class EventListComponent : public juce::Component, private juce::ListBoxModel
+class EventListComponent : public juce::Component, public MidiSequence::Listener, private juce::ListBoxModel
 {
 public:
     EventListComponent();
+    ~EventListComponent() override;
 
     void setSequence(MidiSequence* seq);
     void setSelectedTracks(const std::set<int>& selected);
@@ -50,6 +51,11 @@ public:
     static constexpr int headerHeight = 25;
 
 private:
+    void notesChanged(int trackIndex) override;
+    void tracksChanged() override;
+    void tempoChanged() override;
+    void timelineMetadataChanged() override;
+
     int getNumRows() override;
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
     void selectedRowsChanged(int lastRowSelected) override;
