@@ -53,7 +53,10 @@ void ControllerLaneComponent::notesChanged(int)
 {
     repaint();
 }
-void ControllerLaneComponent::tracksChanged() {}
+void ControllerLaneComponent::tracksChanged()
+{
+    repaint();
+}
 void ControllerLaneComponent::tempoChanged() {}
 void ControllerLaneComponent::timelineMetadataChanged() {}
 
