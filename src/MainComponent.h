@@ -3,6 +3,7 @@
 #include "audio/MidiDeviceOutput.h"
 #include "audio/VstPluginHost.h"
 #include "engine/PlaybackEngine.h"
+#include "document/Document.h"
 #include "model/MidiSequence.h"
 #include "ui/PianoRollComponent.h"
 #include "ui/ControllerLaneComponent.h"
@@ -148,8 +149,7 @@ private:
     void updateTitleBar();
     PlaybackTrackContext makeTrackContext(int trackIndex) const;
 
-    MidiSequence sequence;
-    juce::UndoManager undoManager;
+    Document document;
     PlaybackEngine playbackEngine;
     MidiDeviceOutput midiOutput;
     juce::AudioDeviceManager audioDeviceManager;
@@ -501,7 +501,6 @@ private:
     int infoDividerX2 = 0;
     int toolBarSeparatorX = 0;
 
-    juce::File currentFile;
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;

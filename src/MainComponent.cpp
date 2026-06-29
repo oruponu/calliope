@@ -1,6 +1,5 @@
 #include "MainComponent.h"
 #include "AppProperties.h"
-#include "io/MidiFileIO.h"
 #include "model/UndoActions.h"
 #include "ui/Theme.h"
 
@@ -286,15 +285,15 @@ MainComponent::MainComponent()
     audioDeviceManager.addAudioCallback(&audioPlayer);
     audioPlayer.setProcessor(&audioGraph);
 
-    sequence.addTrack();
-    sequence.addListener(this);
+    document.getSequence().addTrack();
+    document.getSequence().addListener(this);
 
-    playbackEngine.setSequence(&sequence);
+    playbackEngine.setSequence(&document.getSequence());
     playbackEngine.addListener(&midiOutput);
     playbackEngine.addListener(&pluginHost);
 
-    pianoRoll.setSequence(&sequence);
-    pianoRoll.setUndoManager(&undoManager);
+    pianoRoll.setSequence(&document.getSequence());
+    pianoRoll.setUndoManager(&document.getUndoManager());
 
     pianoRoll.onPlayheadMoved = [this](int tick)
     {
@@ -370,7 +369,7 @@ MainComponent::MainComponent()
     };
     addAndMakeVisible(viewport);
 
-    trackList.setSequence(&sequence);
+    trackList.setSequence(&document.getSequence());
     trackListViewport.setViewedComponent(&trackList, false);
     trackListViewport.setScrollBarsShown(true, false);
     addAndMakeVisible(trackListViewport);
@@ -382,14 +381,14 @@ MainComponent::MainComponent()
     };
     trackList.onMuteSoloChanged = [this]()
     {
-        sequence.notifyTracksChanged();
+        document.getSequence().notifyTracksChanged();
         playbackEngine.rebuildSnapshot();
     };
     trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
     trackList.onEditorButtonClicked = [this](int trackIndex) { pluginHost.showEditor(trackIndex); };
     trackList.onChannelLabelClicked = [this](int trackIndex)
     {
-        int currentCh = sequence.getTrack(trackIndex).getChannel();
+        int currentCh = document.getSequence().getTrack(trackIndex).getChannel();
         juce::PopupMenu menu;
         menu.addSectionHeader("Channel");
         for (int ch = 1; ch <= 16; ++ch)
@@ -397,13 +396,13 @@ MainComponent::MainComponent()
             menu.addItem(juce::String(ch), true, ch == currentCh,
                          [this, trackIndex, ch]()
                          {
-                             int currentChannel = sequence.getTrack(trackIndex).getChannel();
+                             int currentChannel = document.getSequence().getTrack(trackIndex).getChannel();
                              if (currentChannel == ch)
                                  return;
-                             undoManager.beginNewTransaction();
-                             undoManager.perform(
-                                 new ChannelChangeAction(&sequence, trackIndex, currentChannel, ch, [this](int idx)
-                                                         { playbackEngine.releaseActiveNotesForTrack(idx); }));
+                             document.getUndoManager().beginNewTransaction();
+                             document.getUndoManager().perform(new ChannelChangeAction(
+                                 &document.getSequence(), trackIndex, currentChannel, ch,
+                                 [this](int idx) { playbackEngine.releaseActiveNotesForTrack(idx); }));
                              playbackEngine.rebuildSnapshot();
                          });
         }
@@ -411,54 +410,55 @@ MainComponent::MainComponent()
     };
     trackList.onAddTrackRequested = [this]()
     {
-        undoManager.beginNewTransaction(kStructuralTxn);
-        undoManager.perform(new TrackAddAction(&sequence,
-                                               [this](int idx)
-                                               {
-                                                   playbackEngine.releaseActiveNotesForTrack(idx);
-                                                   pluginHost.detachPlugin(idx);
-                                               }));
+        document.getUndoManager().beginNewTransaction(kStructuralTxn);
+        document.getUndoManager().perform(new TrackAddAction(&document.getSequence(),
+                                                             [this](int idx)
+                                                             {
+                                                                 playbackEngine.releaseActiveNotesForTrack(idx);
+                                                                 pluginHost.detachPlugin(idx);
+                                                             }));
         trackList.refresh();
         playbackEngine.rebuildSnapshot();
     };
     trackList.onRemoveTrackRequested = [this](int trackIndex)
     {
-        if (sequence.getNumTracks() <= 1)
+        if (document.getSequence().getNumTracks() <= 1)
             return;
 
         bool wasRunning = playbackEngine.suspendForStructuralChange();
-        undoManager.beginNewTransaction(kStructuralTxn);
-        undoManager.perform(new TrackRemoveAction(
-            &sequence, trackIndex, [this](int idx) { pluginHost.detachPlugin(idx); },
+        document.getUndoManager().beginNewTransaction(kStructuralTxn);
+        document.getUndoManager().perform(new TrackRemoveAction(
+            &document.getSequence(), trackIndex, [this](int idx) { pluginHost.detachPlugin(idx); },
             [this](int from, int delta) { pluginHost.renumberTrackIndices(from, delta); }));
         playbackEngine.resumeAfterStructuralChange(wasRunning);
 
-        int newActive = juce::jlimit(0, sequence.getNumTracks() - 1, trackIndex);
+        int newActive = juce::jlimit(0, document.getSequence().getNumTracks() - 1, trackIndex);
         trackList.refresh();
         trackList.setActiveTrackIndex(newActive);
     };
     trackList.onTrackRenamed = [this](int trackIndex, juce::String newName)
     {
-        if (trackIndex < 0 || trackIndex >= sequence.getNumTracks())
+        if (trackIndex < 0 || trackIndex >= document.getSequence().getNumTracks())
             return;
-        std::string oldName = sequence.getTrack(trackIndex).getName();
+        std::string oldName = document.getSequence().getTrack(trackIndex).getName();
         std::string requested = newName.toStdString();
         if (oldName == requested)
             return;
-        undoManager.beginNewTransaction();
-        undoManager.perform(new TrackRenameAction(&sequence, trackIndex, oldName, requested));
+        document.getUndoManager().beginNewTransaction();
+        document.getUndoManager().perform(
+            new TrackRenameAction(&document.getSequence(), trackIndex, oldName, requested));
     };
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
         auto types = knownPluginList.getTypes();
 
         juce::PopupMenu menu;
-        const auto& currentTrack = sequence.getTrack(trackIndex);
+        const auto& currentTrack = document.getSequence().getTrack(trackIndex);
         auto currentDest = currentTrack.getOutputDestination();
         int currentRouteTarget = currentTrack.getRouteTargetTrackIndex();
 
         menu.addSectionHeader("Output");
-        for (int i = 0; i < sequence.getNumTracks(); ++i)
+        for (int i = 0; i < document.getSequence().getNumTracks(); ++i)
         {
             juce::String pluginName = pluginHost.getPluginName(i);
             if (pluginName.isEmpty())
@@ -471,10 +471,10 @@ MainComponent::MainComponent()
                          [this, trackIndex, i, isOwn]()
                          {
                              playbackEngine.releaseActiveNotesForTrack(trackIndex);
-                             auto& track = sequence.getTrack(trackIndex);
+                             auto& track = document.getSequence().getTrack(trackIndex);
                              track.setRouteTargetTrackIndex(isOwn ? -1 : i);
                              track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                             sequence.notifyTracksChanged();
+                             document.getSequence().notifyTracksChanged();
                              playbackEngine.rebuildSnapshot();
                          });
         }
@@ -483,19 +483,22 @@ MainComponent::MainComponent()
                      [this, trackIndex]()
                      {
                          playbackEngine.releaseActiveNotesForTrack(trackIndex);
-                         sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
-                         sequence.notifyTracksChanged();
+                         document.getSequence()
+                             .getTrack(trackIndex)
+                             .setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         document.getSequence().notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
                      });
 
-        menu.addItem("None", true, currentDest == MidiTrack::OutputDestination::None,
-                     [this, trackIndex]()
-                     {
-                         playbackEngine.releaseActiveNotesForTrack(trackIndex);
-                         sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::None);
-                         sequence.notifyTracksChanged();
-                         playbackEngine.rebuildSnapshot();
-                     });
+        menu.addItem(
+            "None", true, currentDest == MidiTrack::OutputDestination::None,
+            [this, trackIndex]()
+            {
+                playbackEngine.releaseActiveNotesForTrack(trackIndex);
+                document.getSequence().getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::None);
+                document.getSequence().notifyTracksChanged();
+                playbackEngine.rebuildSnapshot();
+            });
         menu.addSeparator();
 
         menu.addItem("Load Plugin...", true, false,
@@ -513,10 +516,10 @@ MainComponent::MainComponent()
                                      stopPlayback();
                                  if (pluginHost.attachPlugin(trackIndex, file))
                                  {
-                                     auto& track = sequence.getTrack(trackIndex);
+                                     auto& track = document.getSequence().getTrack(trackIndex);
                                      track.setRouteTargetTrackIndex(-1);
                                      track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                                     sequence.notifyTracksChanged();
+                                     document.getSequence().notifyTracksChanged();
                                      playbackEngine.rebuildSnapshot();
                                  }
                              });
@@ -534,8 +537,10 @@ MainComponent::MainComponent()
                              stopPlayback();
                          playbackEngine.releaseActiveNotesForTrack(trackIndex);
                          pluginHost.detachPlugin(trackIndex);
-                         sequence.getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
-                         sequence.notifyTracksChanged();
+                         document.getSequence()
+                             .getTrack(trackIndex)
+                             .setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         document.getSequence().notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
                      });
 
@@ -549,17 +554,17 @@ MainComponent::MainComponent()
                                    stopPlayback();
                                if (pluginHost.attachPlugin(trackIndex, types.getReference(index)))
                                {
-                                   auto& track = sequence.getTrack(trackIndex);
+                                   auto& track = document.getSequence().getTrack(trackIndex);
                                    track.setRouteTargetTrackIndex(-1);
                                    track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                                   sequence.notifyTracksChanged();
+                                   document.getSequence().notifyTracksChanged();
                                    playbackEngine.rebuildSnapshot();
                                }
                            });
     };
 
-    controllerLane.setSequence(&sequence);
-    controllerLane.setUndoManager(&undoManager);
+    controllerLane.setSequence(&document.getSequence());
+    controllerLane.setUndoManager(&document.getUndoManager());
     controllerLane.setSelectedTracks(0, {0});
     controllerLane.onDataChanged = [this]()
     {
@@ -652,7 +657,7 @@ MainComponent::MainComponent()
         resized();
     };
 
-    eventList.setSequence(&sequence);
+    eventList.setSequence(&document.getSequence());
     eventList.setSelectedTracks({0});
     eventList.onEventSelected = [this](int tick)
     {
@@ -920,7 +925,7 @@ void MainComponent::timelineMetadataChanged()
 
 MainComponent::~MainComponent()
 {
-    sequence.removeListener(this);
+    document.getSequence().removeListener(this);
     juce::Desktop::getInstance().removeFocusChangeListener(this);
     knownPluginList.removeChangeListener(this);
     audioDeviceManager.removeChangeListener(this);
@@ -1113,10 +1118,10 @@ void MainComponent::menuItemSelected(int menuItemID, int)
 
     if (pluginHost.loadPlugin(pluginMenuSnapshot.getReference(index)))
     {
-        auto& track = sequence.getTrack(0);
+        auto& track = document.getSequence().getTrack(0);
         track.setRouteTargetTrackIndex(-1);
         track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-        sequence.notifyTracksChanged();
+        document.getSequence().notifyTracksChanged();
         playbackEngine.rebuildSnapshot();
     }
 }
@@ -1191,12 +1196,12 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case CommandID::undoAction:
         result.setInfo("Undo", "", "Edit", 0);
         result.addDefaultKeypress('Z', juce::ModifierKeys::commandModifier);
-        result.setActive(undoManager.canUndo());
+        result.setActive(document.getUndoManager().canUndo());
         break;
     case CommandID::redoAction:
         result.setInfo("Redo", "", "Edit", 0);
         result.addDefaultKeypress('Y', juce::ModifierKeys::commandModifier);
-        result.setActive(undoManager.canRedo());
+        result.setActive(document.getUndoManager().canRedo());
         break;
     case CommandID::cutAction:
         result.setInfo("Cut", "", "Edit", 0);
@@ -1317,16 +1322,16 @@ bool MainComponent::perform(const InvocationInfo& info)
     case CommandID::prevBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
-        auto bbt = sequence.tickToBarBeatTick(currentTick);
+        auto bbt = document.getSequence().tickToBarBeatTick(currentTick);
         int targetBar = juce::jmax(1, bbt.bar - 1);
-        jumpToTick(sequence.barStartToTick(targetBar));
+        jumpToTick(document.getSequence().barStartToTick(targetBar));
         return true;
     }
     case CommandID::nextBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
-        auto bbt = sequence.tickToBarBeatTick(currentTick);
-        jumpToTick(sequence.barStartToTick(bbt.bar + 1));
+        auto bbt = document.getSequence().tickToBarBeatTick(currentTick);
+        jumpToTick(document.getSequence().barStartToTick(bbt.bar + 1));
         return true;
     }
     case CommandID::switchToEditTool:
@@ -1337,11 +1342,11 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case CommandID::undoAction:
     {
-        const bool structural = (undoManager.getUndoDescription() == juce::String(kStructuralTxn));
+        const bool structural = (document.getUndoManager().getUndoDescription() == juce::String(kStructuralTxn));
         bool wasRunning = false;
         if (structural)
             wasRunning = playbackEngine.suspendForStructuralChange();
-        undoManager.undo();
+        document.getUndoManager().undo();
         if (structural)
             playbackEngine.resumeAfterStructuralChange(wasRunning);
         else
@@ -1352,11 +1357,11 @@ bool MainComponent::perform(const InvocationInfo& info)
     }
     case CommandID::redoAction:
     {
-        const bool structural = (undoManager.getRedoDescription() == juce::String(kStructuralTxn));
+        const bool structural = (document.getUndoManager().getRedoDescription() == juce::String(kStructuralTxn));
         bool wasRunning = false;
         if (structural)
             wasRunning = playbackEngine.suspendForStructuralChange();
-        undoManager.redo();
+        document.getUndoManager().redo();
         if (structural)
             playbackEngine.resumeAfterStructuralChange(wasRunning);
         else
@@ -1481,7 +1486,7 @@ void MainComponent::paint(juce::Graphics& g)
         g.setColour(border::soft);
         g.drawHorizontalLine(trackListHeaderBounds.getBottom() - 1, static_cast<float>(trackListHeaderBounds.getX()),
                              static_cast<float>(trackListHeaderBounds.getRight()));
-        int numTracks = sequence.getNumTracks();
+        int numTracks = document.getSequence().getNumTracks();
         g.setColour(text::t3);
         g.setFont(font::sans(font::sizeXS));
         g.drawText(juce::String::fromUTF8("TRACKS \xc2\xb7 ") + juce::String(numTracks),
@@ -1529,10 +1534,8 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
             juce::File file(path);
             stopPlayback();
             pluginHost.detachAllPlugins();
-            if (MidiFileIO::load(sequence, file))
+            if (document.loadFrom(file))
             {
-                currentFile = file;
-                undoManager.clearUndoHistory();
                 onSequenceLoaded();
                 updateTitleBar();
             }
@@ -1716,20 +1719,20 @@ void MainComponent::jumpToTick(int tick)
 void MainComponent::commitPositionEdit()
 {
     int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto current = sequence.tickToBarBeatTick(currentTick);
+    auto current = document.getSequence().tickToBarBeatTick(currentTick);
 
     int bar = positionBarLabel.getText().isEmpty() ? current.bar : positionBarLabel.getText().getIntValue();
     int beat = positionBeatLabel.getText().isEmpty() ? current.beat : positionBeatLabel.getText().getIntValue();
     int tickInBeat = positionTickLabel.getText().isEmpty() ? current.tick : positionTickLabel.getText().getIntValue();
 
-    jumpToTick(sequence.barBeatTickToTick(bar, beat, tickInBeat));
+    jumpToTick(document.getSequence().barBeatTickToTick(bar, beat, tickInBeat));
 }
 
 void MainComponent::nudgePosition(PositionUnit unit, int direction)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ts = sequence.getTimeSignatureAt(tick);
-    int ticksPerBeat = sequence.getTicksPerQuarterNote() * 4 / ts.denominator;
+    auto ts = document.getSequence().getTimeSignatureAt(tick);
+    int ticksPerBeat = document.getSequence().getTicksPerQuarterNote() * 4 / ts.denominator;
 
     int step = 1;
     switch (unit)
@@ -1760,7 +1763,7 @@ void MainComponent::commitTempoEdit()
 void MainComponent::nudgeTempo(int direction)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto tc = sequence.getTempoChangeAt(tick);
+    auto tc = document.getSequence().getTempoChangeAt(tick);
 
     setTempoAtPlayhead(juce::roundToInt(tc.bpm) + direction);
 }
@@ -1768,7 +1771,7 @@ void MainComponent::nudgeTempo(int direction)
 void MainComponent::setTempoAtPlayhead(double bpm)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto tc = sequence.getTempoChangeAt(tick);
+    auto tc = document.getSequence().getTempoChangeAt(tick);
 
     double clamped = juce::jlimit(MidiSequence::minBpm, MidiSequence::maxBpm, bpm);
     if (clamped == tc.bpm)
@@ -1777,15 +1780,15 @@ void MainComponent::setTempoAtPlayhead(double bpm)
         return;
     }
 
-    undoManager.beginNewTransaction();
-    undoManager.perform(new TempoChangeAction(&sequence, tc.tick, clamped));
+    document.getUndoManager().beginNewTransaction();
+    document.getUndoManager().perform(new TempoChangeAction(&document.getSequence(), tc.tick, clamped));
     playbackEngine.rebuildSnapshot();
 }
 
 void MainComponent::commitTimeSignatureEdit()
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ts = sequence.getTimeSignatureAt(tick);
+    auto ts = document.getSequence().getTimeSignatureAt(tick);
 
     int num = timeSigNumLabel.getText().isEmpty() ? ts.numerator : timeSigNumLabel.getText().getIntValue();
     int den = timeSigDenLabel.getText().isEmpty() ? ts.denominator : timeSigDenLabel.getText().getIntValue();
@@ -1796,7 +1799,7 @@ void MainComponent::commitTimeSignatureEdit()
 void MainComponent::nudgeTimeSignature(TimeSigUnit unit, int direction)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ts = sequence.getTimeSignatureAt(tick);
+    auto ts = document.getSequence().getTimeSignatureAt(tick);
 
     if (unit == TimeSigUnit::Numerator)
         setTimeSignatureAtPlayhead(ts.numerator + direction, ts.denominator);
@@ -1807,7 +1810,7 @@ void MainComponent::nudgeTimeSignature(TimeSigUnit unit, int direction)
 void MainComponent::setTimeSignatureAtPlayhead(int num, int den)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ts = sequence.getTimeSignatureAt(tick);
+    auto ts = document.getSequence().getTimeSignatureAt(tick);
 
     auto snapToPowerOfTwo = [](int value)
     {
@@ -1828,8 +1831,8 @@ void MainComponent::setTimeSignatureAtPlayhead(int num, int den)
         return;
     }
 
-    undoManager.beginNewTransaction();
-    undoManager.perform(new TimeSignatureChangeAction(&sequence, ts.tick, num, den));
+    document.getUndoManager().beginNewTransaction();
+    document.getUndoManager().perform(new TimeSignatureChangeAction(&document.getSequence(), ts.tick, num, den));
 }
 
 void MainComponent::commitKeySignatureEdit()
@@ -1845,7 +1848,7 @@ void MainComponent::commitKeySignatureEdit()
 void MainComponent::nudgeKeySignature(int direction)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ks = sequence.getKeySignatureAt(tick);
+    auto ks = document.getSequence().getKeySignatureAt(tick);
 
     int sf = juce::jlimit(-6, 6, ks.sharpsOrFlats);
     int index = juce::jlimit(0, 25, (sf + 6) + (ks.isMinor ? 13 : 0) + direction);
@@ -1857,10 +1860,10 @@ void MainComponent::nudgeKeySignature(int direction)
 void MainComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ks = sequence.getKeySignatureAt(tick);
+    auto ks = document.getSequence().getKeySignatureAt(tick);
 
     bool hasActiveKey = false;
-    for (const auto& k : sequence.getKeySignatureChanges())
+    for (const auto& k : document.getSequence().getKeySignatureChanges())
         if (k.tick <= tick)
         {
             hasActiveKey = true;
@@ -1874,8 +1877,9 @@ void MainComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor)
         return;
     }
 
-    undoManager.beginNewTransaction();
-    undoManager.perform(new KeySignatureChangeAction(&sequence, ks.tick, sharpsOrFlats, isMinor));
+    document.getUndoManager().beginNewTransaction();
+    document.getUndoManager().perform(
+        new KeySignatureChangeAction(&document.getSequence(), ks.tick, sharpsOrFlats, isMinor));
 }
 
 void MainComponent::scrollToPlayhead(int tick)
@@ -1947,7 +1951,7 @@ void MainComponent::updateTransportDisplay()
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
 
-    auto bbt = sequence.tickToBarBeatTick(tick);
+    auto bbt = document.getSequence().tickToBarBeatTick(tick);
     if (positionBarLabel.getCurrentTextEditor() == nullptr)
         positionBarLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3), juce::dontSendNotification);
     if (positionBeatLabel.getCurrentTextEditor() == nullptr)
@@ -1955,7 +1959,7 @@ void MainComponent::updateTransportDisplay()
     if (positionTickLabel.getCurrentTextEditor() == nullptr)
         positionTickLabel.setText(juce::String(bbt.tick).paddedLeft('0', 4), juce::dontSendNotification);
 
-    auto ts = sequence.getTimeSignatureAt(tick);
+    auto ts = document.getSequence().getTimeSignatureAt(tick);
     if (timeSigNumLabel.getCurrentTextEditor() == nullptr)
         timeSigNumLabel.setText(juce::String(ts.numerator), juce::dontSendNotification);
     if (timeSigDenLabel.getCurrentTextEditor() == nullptr)
@@ -1963,11 +1967,11 @@ void MainComponent::updateTransportDisplay()
 
     if (keyValueLabel.getCurrentTextEditor() == nullptr)
     {
-        if (sequence.getKeySignatureChanges().empty())
+        if (document.getSequence().getKeySignatureChanges().empty())
             keyValueLabel.setText("-", juce::dontSendNotification);
         else
         {
-            auto ks = sequence.getKeySignatureAt(tick);
+            auto ks = document.getSequence().getKeySignatureAt(tick);
             keyValueLabel.setText(MidiSequence::keySignatureToString(ks.sharpsOrFlats, ks.isMinor),
                                   juce::dontSendNotification);
         }
@@ -1975,7 +1979,7 @@ void MainComponent::updateTransportDisplay()
 
     if (tempoValueLabel.getCurrentTextEditor() == nullptr)
     {
-        double tempo = sequence.getTempoAt(tick);
+        double tempo = document.getSequence().getTempoAt(tick);
         tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
     }
 }
@@ -2023,10 +2027,7 @@ void MainComponent::newFile()
 {
     stopPlayback();
     pluginHost.detachAllPlugins();
-    sequence.clear();
-    sequence.addTrack();
-    currentFile = juce::File{};
-    undoManager.clearUndoHistory();
+    document.newDocument();
     onSequenceLoaded();
     updateTitleBar();
 }
@@ -2038,12 +2039,8 @@ void MainComponent::saveFile()
                              [this](const juce::FileChooser& fc)
                              {
                                  auto file = fc.getResult();
-                                 if (file != juce::File{})
-                                 {
-                                     MidiFileIO::save(sequence, file);
-                                     currentFile = file;
+                                 if (file != juce::File{} && document.saveTo(file))
                                      updateTitleBar();
-                                 }
                              });
 }
 
@@ -2058,10 +2055,8 @@ void MainComponent::loadFile()
                                      return;
                                  stopPlayback();
                                  pluginHost.detachAllPlugins();
-                                 if (MidiFileIO::load(sequence, file))
+                                 if (document.loadFrom(file))
                                  {
-                                     currentFile = file;
-                                     undoManager.clearUndoHistory();
                                      onSequenceLoaded();
                                      updateTitleBar();
                                  }
@@ -2081,10 +2076,10 @@ void MainComponent::loadPlugin()
                                      stopPlayback();
                                  if (pluginHost.loadPlugin(file))
                                  {
-                                     auto& track = sequence.getTrack(0);
+                                     auto& track = document.getSequence().getTrack(0);
                                      track.setRouteTargetTrackIndex(-1);
                                      track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                                     sequence.notifyTracksChanged();
+                                     document.getSequence().notifyTracksChanged();
                                      playbackEngine.rebuildSnapshot();
                                  }
                              });
@@ -2133,13 +2128,13 @@ PlaybackTrackContext MainComponent::makeTrackContext(int trackIndex) const
 {
     PlaybackTrackContext ctx;
     ctx.trackIndex = trackIndex;
-    if (trackIndex < 0 || trackIndex >= sequence.getNumTracks())
+    if (trackIndex < 0 || trackIndex >= document.getSequence().getNumTracks())
         return ctx;
-    const auto& track = sequence.getTrack(trackIndex);
+    const auto& track = document.getSequence().getTrack(trackIndex);
     ctx.channel = track.getChannel();
     ctx.destination = track.getOutputDestination();
     const int rt = track.getRouteTargetTrackIndex();
-    ctx.routeTarget = (rt >= 0 && rt < sequence.getNumTracks()) ? rt : trackIndex;
+    ctx.routeTarget = (rt >= 0 && rt < document.getSequence().getNumTracks()) ? rt : trackIndex;
     return ctx;
 }
 
@@ -2153,22 +2148,22 @@ void MainComponent::onSequenceLoaded()
     controllerLane.setLoopRegion(false, 0, 0);
 
     std::set<int> allTracks;
-    for (int i = 0; i < sequence.getNumTracks(); ++i)
+    for (int i = 0; i < document.getSequence().getNumTracks(); ++i)
         allTracks.insert(i);
 
-    pianoRoll.setSequence(&sequence);
+    pianoRoll.setSequence(&document.getSequence());
     pianoRoll.setSelectedTracks(0, allTracks);
     pianoRoll.setPlayheadTick(0);
     updateTransportDisplay();
 
-    trackList.setSequence(&sequence);
+    trackList.setSequence(&document.getSequence());
 
-    controllerLane.setSequence(&sequence);
+    controllerLane.setSequence(&document.getSequence());
     controllerLane.setContentBeats(pianoRoll.getContentBeats());
     controllerLane.setSelectedTracks(0, allTracks);
     controllerLane.setPlayheadTick(0);
 
-    eventList.setSequence(&sequence);
+    eventList.setSequence(&document.getSequence());
     eventList.setSelectedTracks(allTracks);
     eventList.setPlayheadTick(0);
 
@@ -2177,7 +2172,7 @@ void MainComponent::onSequenceLoaded()
     repaint(trackListHeaderBounds);
 
     playbackEngine.rebuildSnapshot();
-    sequence.notifySequenceReset();
+    document.getSequence().notifySequenceReset();
 }
 
 void MainComponent::updateTitleBar()
@@ -2185,8 +2180,8 @@ void MainComponent::updateTitleBar()
     if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
     {
         auto appName = juce::JUCEApplication::getInstance()->getApplicationName();
-        if (currentFile != juce::File{})
-            window->setName(currentFile.getFileName() + " - " + appName);
+        if (document.getCurrentFile() != juce::File{})
+            window->setName(document.getCurrentFile().getFileName() + " - " + appName);
         else
             window->setName(appName);
     }
