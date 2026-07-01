@@ -10,6 +10,8 @@
 #include "ui/EventListComponent.h"
 #include "ui/TrackListComponent.h"
 #include "ui/WheelLabel.h"
+#include "ui/PianoRollViewport.h"
+#include "ui/ControllerLaneViewport.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
@@ -159,82 +161,6 @@ private:
     juce::KnownPluginList knownPluginList;
     juce::Array<juce::PluginDescription> pluginMenuSnapshot;
 
-    class PianoRollViewport : public juce::Viewport
-    {
-    public:
-        PianoRollViewport() { getVerticalScrollBar().addComponentListener(&scrollBarInsetListener); }
-
-        ~PianoRollViewport() override { getVerticalScrollBar().removeComponentListener(&scrollBarInsetListener); }
-
-        void setVerticalScrollBarBottomInset(int inset)
-        {
-            scrollBarBottomInset = inset;
-            applyScrollBarInset();
-        }
-
-        std::function<void()> onReachedEnd;
-        std::function<void()> onVisibleAreaChanged;
-        std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onZoom;
-
-        void visibleAreaChanged(const juce::Rectangle<int>&) override
-        {
-            if (onVisibleAreaChanged)
-                onVisibleAreaChanged();
-        }
-
-        void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
-        {
-            if (e.mods.isCommandDown() && onZoom)
-            {
-                onZoom(e, wheel);
-                return;
-            }
-            if (auto* content = getViewedComponent())
-            {
-                int speed = 600;
-                int newX = getViewPositionX() - juce::roundToInt(wheel.deltaX * speed);
-                int newY = getViewPositionY() - juce::roundToInt(wheel.deltaY * speed);
-                newX = juce::jlimit(0, juce::jmax(0, content->getWidth() - getViewWidth()), newX);
-                newY = juce::jlimit(0, juce::jmax(0, content->getHeight() - getViewHeight()), newY);
-                setViewPosition(newX, newY);
-            }
-            if (isAtRightEdge() && onReachedEnd)
-                onReachedEnd();
-        }
-
-    private:
-        bool isAtRightEdge() const
-        {
-            if (auto* content = getViewedComponent())
-                return getViewPositionX() + getViewWidth() >= content->getWidth() - 1;
-            return false;
-        }
-
-        void applyScrollBarInset()
-        {
-            auto& vbar = getVerticalScrollBar();
-            const bool hBarVisible = getHorizontalScrollBar().isVisible();
-            const int fullHeight = getHeight() - (hBarVisible ? getScrollBarThickness() : 0);
-            const int target = juce::jlimit(0, fullHeight, fullHeight - scrollBarBottomInset);
-            if (vbar.getHeight() != target)
-                vbar.setSize(vbar.getWidth(), target);
-        }
-
-        struct ScrollBarInsetListener : public juce::ComponentListener
-        {
-            PianoRollViewport& owner;
-            explicit ScrollBarInsetListener(PianoRollViewport& o) : owner(o) {}
-            void componentMovedOrResized(juce::Component&, bool, bool wasResized) override
-            {
-                if (wasResized)
-                    owner.applyScrollBarInset();
-            }
-        };
-
-        ScrollBarInsetListener scrollBarInsetListener{*this};
-        int scrollBarBottomInset = 0;
-    };
-
     PianoRollComponent pianoRoll;
     PianoRollViewport viewport;
     TrackListComponent trackList;
@@ -242,87 +168,6 @@ private:
     juce::Rectangle<int> trackListHeaderBounds;
 
     ControllerLaneComponent controllerLane;
-
-    class ControllerLaneViewport : public juce::Viewport
-    {
-    public:
-        std::function<void()> onVisibleAreaChanged;
-        std::function<void()> onReachedEnd;
-
-        ControllerLaneViewport()
-        {
-            getHorizontalScrollBar().addMouseListener(&scrollBarListener, false);
-            getHorizontalScrollBar().addComponentListener(&scrollBarInsetListener);
-        }
-
-        ~ControllerLaneViewport() override
-        {
-            getHorizontalScrollBar().removeComponentListener(&scrollBarInsetListener);
-            getHorizontalScrollBar().removeMouseListener(&scrollBarListener);
-        }
-
-        void setHorizontalScrollBarRightInset(int inset)
-        {
-            scrollBarRightInset = inset;
-            applyScrollBarInset();
-        }
-
-        void visibleAreaChanged(const juce::Rectangle<int>&) override
-        {
-            pendingExtend = isAtRightEdge();
-            if (onVisibleAreaChanged)
-                onVisibleAreaChanged();
-        }
-
-    private:
-        bool isAtRightEdge() const
-        {
-            if (auto* content = getViewedComponent())
-                return getViewPositionX() + getViewWidth() >= content->getWidth() - 1;
-            return false;
-        }
-
-        void applyScrollBarInset()
-        {
-            auto& hbar = getHorizontalScrollBar();
-            const bool vBarVisible = getVerticalScrollBar().isVisible();
-            const int fullWidth = getWidth() - (vBarVisible ? getScrollBarThickness() : 0);
-            const int target = juce::jlimit(0, fullWidth, fullWidth - scrollBarRightInset);
-            if (hbar.getWidth() != target)
-                hbar.setSize(target, hbar.getHeight());
-        }
-
-        struct ScrollBarInsetListener : public juce::ComponentListener
-        {
-            ControllerLaneViewport& owner;
-            explicit ScrollBarInsetListener(ControllerLaneViewport& o) : owner(o) {}
-            void componentMovedOrResized(juce::Component&, bool, bool wasResized) override
-            {
-                if (wasResized)
-                    owner.applyScrollBarInset();
-            }
-        };
-
-        ScrollBarInsetListener scrollBarInsetListener{*this};
-        int scrollBarRightInset = 0;
-
-        struct ScrollBarListener : public juce::MouseListener
-        {
-            ControllerLaneViewport& owner;
-            explicit ScrollBarListener(ControllerLaneViewport& o) : owner(o) {}
-            void mouseUp(const juce::MouseEvent&) override
-            {
-                if (owner.pendingExtend && owner.onReachedEnd)
-                {
-                    owner.pendingExtend = false;
-                    owner.onReachedEnd();
-                }
-            }
-        };
-
-        ScrollBarListener scrollBarListener{*this};
-        bool pendingExtend = false;
-    };
 
     ControllerLaneViewport controllerLaneViewport;
 
