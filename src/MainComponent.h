@@ -15,6 +15,8 @@
 #include "ui/Divider.h"
 #include "ui/ZoomStrip.h"
 #include "ui/FocusBorder.h"
+#include "ui/TransportButton.h"
+#include "ui/ToolButton.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
@@ -70,58 +72,6 @@ private:
     {
         Numerator,
         Denominator
-    };
-
-    class TransportButton : public juce::Component
-    {
-    public:
-        enum Type
-        {
-            ReturnToStart,
-            Stop,
-            Play,
-            Loop
-        };
-        TransportButton(Type t) : type(t) { setRepaintsOnMouseActivity(true); }
-        Type getType() const { return type; }
-        void setActive(bool a)
-        {
-            active = a;
-            repaint();
-        }
-        bool isActive() const { return active; }
-        void paint(juce::Graphics& g) override;
-        void mouseUp(const juce::MouseEvent& e) override;
-        std::function<void()> onClick;
-
-    private:
-        Type type;
-        bool active = false;
-    };
-
-    class ToolButton : public juce::Component
-    {
-    public:
-        enum Type
-        {
-            EditTool,
-            SelectTool
-        };
-        ToolButton(Type t) : type(t) { setRepaintsOnMouseActivity(true); }
-        Type getType() const { return type; }
-        void setActive(bool a)
-        {
-            active = a;
-            repaint();
-        }
-        bool isActive() const { return active; }
-        void paint(juce::Graphics& g) override;
-        void mouseUp(const juce::MouseEvent& e) override;
-        std::function<void()> onClick;
-
-    private:
-        Type type;
-        bool active = false;
     };
 
     void setActiveTool(PianoRollComponent::EditMode mode);
