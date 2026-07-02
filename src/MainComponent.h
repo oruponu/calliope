@@ -12,6 +12,9 @@
 #include "ui/WheelLabel.h"
 #include "ui/PianoRollViewport.h"
 #include "ui/ControllerLaneViewport.h"
+#include "ui/Divider.h"
+#include "ui/ZoomStrip.h"
+#include "ui/FocusBorder.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
@@ -170,72 +173,6 @@ private:
     ControllerLaneComponent controllerLane;
 
     ControllerLaneViewport controllerLaneViewport;
-
-    class Divider : public juce::Component
-    {
-    public:
-        enum Orientation
-        {
-            Horizontal,
-            Vertical
-        };
-
-        explicit Divider(Orientation o = Horizontal) : orientation(o)
-        {
-            setMouseCursor(o == Horizontal ? juce::MouseCursor::UpDownResizeCursor
-                                           : juce::MouseCursor::LeftRightResizeCursor);
-        }
-        void paint(juce::Graphics& g) override;
-        void mouseDown(const juce::MouseEvent&) override;
-        void mouseDrag(const juce::MouseEvent& e) override;
-        std::function<void()> onDragStart;
-        std::function<void(int delta)> onDrag;
-
-    private:
-        Orientation orientation;
-    };
-
-    class ZoomStrip : public juce::Component
-    {
-    public:
-        enum Orientation
-        {
-            Horizontal,
-            Vertical
-        };
-
-        explicit ZoomStrip(Orientation o) : orientation(o)
-        {
-            setRepaintsOnMouseActivity(true);
-            addAndMakeVisible(slider);
-            slider.setSliderStyle(o == Horizontal ? juce::Slider::LinearHorizontal : juce::Slider::LinearVertical);
-            slider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
-        }
-
-        void paint(juce::Graphics& g) override;
-        void resized() override;
-        void mouseUp(const juce::MouseEvent& e) override;
-
-        juce::Slider slider;
-        std::function<void()> onZoomIn;
-        std::function<void()> onZoomOut;
-
-    private:
-        Orientation orientation;
-        juce::Rectangle<int> minusBounds, plusBounds;
-    };
-
-    class FocusBorder : public juce::Component
-    {
-    public:
-        FocusBorder()
-        {
-            setInterceptsMouseClicks(false, false);
-            setOpaque(false);
-            setAlwaysOnTop(true);
-        }
-        void paint(juce::Graphics& g) override;
-    };
 
     Divider controllerLaneDivider{Divider::Horizontal};
     Divider trackListDivider{Divider::Vertical};
