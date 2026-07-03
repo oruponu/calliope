@@ -34,6 +34,7 @@ target_sources(Calliope PRIVATE
     src/ui/TrackListComponent.cpp
     src/ui/ControllerLaneComponent.cpp
     src/ui/EventListComponent.cpp
+    src/ui/TransportBarComponent.cpp
     src/ui/LookAndFeel.cpp
     src/io/MidiFileIO.cpp
 )

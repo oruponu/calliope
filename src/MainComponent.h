@@ -9,13 +9,12 @@
 #include "ui/ControllerLaneComponent.h"
 #include "ui/EventListComponent.h"
 #include "ui/TrackListComponent.h"
-#include "ui/WheelLabel.h"
 #include "ui/PianoRollViewport.h"
 #include "ui/ControllerLaneViewport.h"
 #include "ui/Divider.h"
 #include "ui/ZoomStrip.h"
 #include "ui/FocusBorder.h"
-#include "ui/TransportButton.h"
+#include "ui/TransportBarComponent.h"
 #include "ui/ToolButton.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -58,41 +57,13 @@ public:
 
 private:
     void tracksChanged() override;
-    void tempoChanged() override;
-    void timelineMetadataChanged() override;
-
-    enum class PositionUnit
-    {
-        Bar,
-        Beat,
-        Tick
-    };
-
-    enum class TimeSigUnit
-    {
-        Numerator,
-        Denominator
-    };
 
     void setActiveTool(PianoRollComponent::EditMode mode);
     void onVBlank();
     void scrollToPlayhead(int tick);
-    void jumpToTick(int tick);
-    void commitPositionEdit();
-    void nudgePosition(PositionUnit unit, int direction);
-    void commitTempoEdit();
-    void nudgeTempo(int direction);
-    void setTempoAtPlayhead(double bpm);
-    void commitTimeSignatureEdit();
-    void nudgeTimeSignature(TimeSigUnit unit, int direction);
-    void setTimeSignatureAtPlayhead(int numerator, int denominator);
-    void commitKeySignatureEdit();
-    void nudgeKeySignature(int direction);
-    void setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor);
     void scrollNoteIntoView(int startTick, int noteNumber);
     void scrollViewVertically(int deltaY);
     void scrollViewHorizontally(int deltaX);
-    void updateTransportDisplay();
     void newFile();
     void saveFile();
     void loadFile();
@@ -113,6 +84,8 @@ private:
     VstPluginHost pluginHost;
     juce::KnownPluginList knownPluginList;
     juce::Array<juce::PluginDescription> pluginMenuSnapshot;
+
+    TransportBarComponent transportBar{document, playbackEngine};
 
     PianoRollComponent pianoRoll;
     PianoRollViewport viewport;
@@ -198,39 +171,12 @@ private:
 
     juce::MenuBarComponent menuBar;
 
-    TransportButton returnToStartButton{TransportButton::ReturnToStart};
-    TransportButton stopButton{TransportButton::Stop};
-    TransportButton playButton{TransportButton::Play};
-    TransportButton loopButton{TransportButton::Loop};
-
     ToolButton editToolButton{ToolButton::EditTool};
     ToolButton selectToolButton{ToolButton::SelectTool};
 
     juce::ComboBox quantizeComboBox;
 
-    juce::Label positionHeaderLabel{"", "POSITION"};
-    WheelLabel positionBarLabel;
-    WheelLabel positionBeatLabel;
-    WheelLabel positionTickLabel;
-    juce::Label positionDot1{"", "."};
-    juce::Label positionDot2{"", "."};
-
-    juce::Label timeSigHeaderLabel{"", "TIME"};
-    WheelLabel timeSigNumLabel;
-    WheelLabel timeSigDenLabel;
-    juce::Label timeSigSlashLabel{"", "/"};
-
-    juce::Label keyHeaderLabel{"", "KEY"};
-    WheelLabel keyValueLabel;
-
-    juce::Label tempoHeaderLabel{"", "TEMPO"};
-    WheelLabel tempoValueLabel;
-
-    juce::Rectangle<int> positionBoxBounds;
-    juce::Rectangle<int> infoBoxBounds;
     juce::Rectangle<int> toolBarBounds;
-    int infoDividerX1 = 0;
-    int infoDividerX2 = 0;
     int toolBarSeparatorX = 0;
 
     std::unique_ptr<juce::FileChooser> fileChooser;
