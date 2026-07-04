@@ -37,6 +37,7 @@ target_sources(Calliope PRIVATE
     src/ui/EventListComponent.cpp
     src/ui/TransportBarComponent.cpp
     src/ui/LookAndFeel.cpp
+    src/ui/commands/AppCommands.cpp
     src/io/MidiFileIO.cpp
 )
 
