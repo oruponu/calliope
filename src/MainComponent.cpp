@@ -20,10 +20,6 @@ MainComponent::MainComponent()
     if (!midiOutput.open(getAppProperties().getUserSettings()->getValue("midiOutputDeviceId")))
         midiOutput.open();
 
-    if (auto xml = getAppProperties().getUserSettings()->getXmlValue("knownPluginList"))
-        knownPluginList.recreateFromXml(*xml);
-    knownPluginList.addChangeListener(this);
-
     auto savedAudioState = getAppProperties().getUserSettings()->getXmlValue("audioDeviceState");
     audioDeviceManager.initialise(0, 2, savedAudioState.get(), true);
     audioDeviceManager.addChangeListener(this);
@@ -198,7 +194,7 @@ MainComponent::MainComponent()
     };
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
-        auto types = knownPluginList.getTypes();
+        auto types = pluginController.getPluginTypes();
 
         juce::PopupMenu menu;
         const auto& currentTrack = document.getSequence().getTrack(trackIndex);
@@ -250,28 +246,7 @@ MainComponent::MainComponent()
         menu.addSeparator();
 
         menu.addItem("Load Plugin...", true, false,
-                     [this, trackIndex]()
-                     {
-                         fileChooser = std::make_unique<juce::FileChooser>("Load Plugin", juce::File{}, "*.vst3");
-                         fileChooser->launchAsync(
-                             juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-                             [this, trackIndex](const juce::FileChooser& fc)
-                             {
-                                 auto file = fc.getResult();
-                                 if (file == juce::File{})
-                                     return;
-                                 if (playbackEngine.isPlaying())
-                                     stopPlayback();
-                                 if (pluginHost.attachPlugin(trackIndex, file))
-                                 {
-                                     auto& track = document.getSequence().getTrack(trackIndex);
-                                     track.setRouteTargetTrackIndex(-1);
-                                     track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                                     document.getSequence().notifyTracksChanged();
-                                     playbackEngine.rebuildSnapshot();
-                                 }
-                             });
-                     });
+                     [this, trackIndex]() { pluginController.attachPluginToTrackViaFileChooser(trackIndex); });
 
         juce::PopupMenu chooseSubmenu;
         juce::KnownPluginList::addToMenu(chooseSubmenu, types, juce::KnownPluginList::sortByManufacturer);
@@ -298,16 +273,7 @@ MainComponent::MainComponent()
                                int index = juce::KnownPluginList::getIndexChosenByMenu(types, result);
                                if (index < 0)
                                    return;
-                               if (playbackEngine.isPlaying())
-                                   stopPlayback();
-                               if (pluginHost.attachPlugin(trackIndex, types.getReference(index)))
-                               {
-                                   auto& track = document.getSequence().getTrack(trackIndex);
-                                   track.setRouteTargetTrackIndex(-1);
-                                   track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                                   document.getSequence().notifyTracksChanged();
-                                   playbackEngine.rebuildSnapshot();
-                               }
+                               pluginController.attachPluginToTrack(trackIndex, types.getReference(index));
                            });
     };
 
@@ -508,7 +474,6 @@ MainComponent::~MainComponent()
 {
     document.getSequence().removeListener(this);
     juce::Desktop::getInstance().removeFocusChangeListener(this);
-    knownPluginList.removeChangeListener(this);
     audioDeviceManager.removeChangeListener(this);
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
@@ -523,12 +488,7 @@ MainComponent::~MainComponent()
 
 void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
-    if (source == &knownPluginList)
-    {
-        if (auto xml = knownPluginList.createXml())
-            getAppProperties().getUserSettings()->setValue("knownPluginList", xml.get());
-    }
-    else if (source == &audioDeviceManager)
+    if (source == &audioDeviceManager)
     {
         if (auto xml = audioDeviceManager.createStateXml())
             getAppProperties().getUserSettings()->setValue("audioDeviceState", xml.get());
@@ -632,24 +592,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     }
     else if (menuIndex == 3)
     {
-        juce::PopupMenu::Item loadPluginItem;
-        loadPluginItem.itemID = CommandID::loadPlugin_;
-        loadPluginItem.text = "Load Plugin...";
-        loadPluginItem.action = [this]() { loadPlugin(); };
-        menu.addItem(loadPluginItem);
-
-        pluginMenuSnapshot = knownPluginList.getTypes();
-        juce::PopupMenu scannedSubmenu;
-        juce::KnownPluginList::addToMenu(scannedSubmenu, pluginMenuSnapshot, juce::KnownPluginList::sortByManufacturer);
-        menu.addSubMenu("Load Scanned Plugin", scannedSubmenu, !pluginMenuSnapshot.isEmpty());
-
-        menu.addSeparator();
-
-        juce::PopupMenu::Item manageItem;
-        manageItem.itemID = CommandID::managePlugins_;
-        manageItem.text = "Manage Plugins...";
-        manageItem.action = [this]() { managePlugins(); };
-        menu.addItem(manageItem);
+        menu = pluginController.buildPluginMenu();
     }
     else if (menuIndex == 4)
     {
@@ -693,18 +636,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
 
 void MainComponent::menuItemSelected(int menuItemID, int)
 {
-    int index = juce::KnownPluginList::getIndexChosenByMenu(pluginMenuSnapshot, menuItemID);
-    if (index < 0)
-        return;
-
-    if (pluginHost.loadPlugin(pluginMenuSnapshot.getReference(index)))
-    {
-        auto& track = document.getSequence().getTrack(0);
-        track.setRouteTargetTrackIndex(-1);
-        track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-        document.getSequence().notifyTracksChanged();
-        playbackEngine.rebuildSnapshot();
-    }
+    pluginController.handleMenuSelection(menuItemID);
 }
 
 juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
@@ -1302,44 +1234,6 @@ void MainComponent::loadFile()
                                      updateTitleBar();
                                  }
                              });
-}
-
-void MainComponent::loadPlugin()
-{
-    fileChooser = std::make_unique<juce::FileChooser>("Load Plugin", juce::File{}, "*.vst3");
-    fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-                             [this](const juce::FileChooser& fc)
-                             {
-                                 auto file = fc.getResult();
-                                 if (file == juce::File{})
-                                     return;
-                                 if (playbackEngine.isPlaying())
-                                     stopPlayback();
-                                 if (pluginHost.loadPlugin(file))
-                                 {
-                                     auto& track = document.getSequence().getTrack(0);
-                                     track.setRouteTargetTrackIndex(-1);
-                                     track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                                     document.getSequence().notifyTracksChanged();
-                                     playbackEngine.rebuildSnapshot();
-                                 }
-                             });
-}
-
-void MainComponent::managePlugins()
-{
-    auto* listComp =
-        new juce::PluginListComponent(pluginHost.getFormatManager(), knownPluginList, juce::File{}, nullptr);
-    listComp->setSize(800, 600);
-
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(listComp);
-    options.dialogTitle = "Manage Plugins";
-    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    options.launchAsync();
 }
 
 void MainComponent::showAudioSettings()

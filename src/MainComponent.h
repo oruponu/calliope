@@ -16,6 +16,7 @@
 #include "ui/FocusBorder.h"
 #include "ui/TransportBarComponent.h"
 #include "ui/ToolButton.h"
+#include "plugin/PluginManagementController.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
@@ -67,8 +68,6 @@ private:
     void newFile();
     void saveFile();
     void loadFile();
-    void loadPlugin();
-    void managePlugins();
     void showAudioSettings();
     void stopPlayback();
     void onSequenceLoaded();
@@ -82,8 +81,7 @@ private:
     juce::AudioProcessorGraph audioGraph;
     juce::AudioProcessorPlayer audioPlayer;
     VstPluginHost pluginHost;
-    juce::KnownPluginList knownPluginList;
-    juce::Array<juce::PluginDescription> pluginMenuSnapshot;
+    PluginManagementController pluginController{pluginHost, document, playbackEngine, [this] { stopPlayback(); }};
 
     TransportBarComponent transportBar{document, playbackEngine};
 
@@ -162,8 +160,6 @@ private:
         zoomOutVertical,
         zoomReset,
         toggleLoop,
-        loadPlugin_,
-        managePlugins_,
         audioSettings_
     };
 
