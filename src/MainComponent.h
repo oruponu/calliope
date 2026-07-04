@@ -5,6 +5,7 @@
 #include "engine/PlaybackEngine.h"
 #include "document/Document.h"
 #include "model/MidiSequence.h"
+#include "ui/menu/MainMenuModel.h"
 #include "ui/PianoRollComponent.h"
 #include "ui/ControllerLaneComponent.h"
 #include "ui/EventListComponent.h"
@@ -22,7 +23,6 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 
 class MainComponent : public juce::Component,
-                      public juce::MenuBarModel,
                       public juce::ApplicationCommandTarget,
                       public juce::FileDragAndDropTarget,
                       public juce::ChangeListener,
@@ -41,10 +41,6 @@ public:
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
     void globalFocusChanged(juce::Component* focusedComponent) override;
-
-    juce::StringArray getMenuBarNames() override;
-    juce::PopupMenu getMenuForIndex(int menuIndex, const juce::String& menuName) override;
-    void menuItemSelected(int menuItemID, int topLevelMenuIndex) override;
 
     juce::ApplicationCommandTarget* getNextCommandTarget() override;
     void getAllCommands(juce::Array<juce::CommandID>& commands) override;
@@ -129,6 +125,8 @@ private:
     void zoomVertical(float factor, int anchorYInViewport);
 
     juce::ApplicationCommandManager commandManager;
+
+    MainMenuModel mainMenuModel{commandManager, pluginController, midiOutput, [this] { showAudioSettings(); }};
 
     juce::MenuBarComponent menuBar;
 
