@@ -128,41 +128,6 @@ private:
     void zoomHorizontal(float factor, int anchorXInViewport);
     void zoomVertical(float factor, int anchorYInViewport);
 
-    enum CommandID
-    {
-        newFile_ = 1,
-        openFile,
-        saveFile_,
-        quitApp,
-        togglePlay,
-        returnToStart,
-        prevBar,
-        nextBar,
-        switchToEditTool,
-        switchToSelectTool,
-        undoAction,
-        redoAction,
-        cutAction,
-        copyAction,
-        pasteAction,
-        selectAllAction,
-        moveNotesUp,
-        moveNotesDown,
-        moveSelectionPrev,
-        moveSelectionNext,
-        scrollViewUp,
-        scrollViewDown,
-        scrollViewLeft,
-        scrollViewRight,
-        zoomInHorizontal,
-        zoomOutHorizontal,
-        zoomInVertical,
-        zoomOutVertical,
-        zoomReset,
-        toggleLoop,
-        audioSettings_
-    };
-
     juce::ApplicationCommandManager commandManager;
 
     juce::MenuBarComponent menuBar;

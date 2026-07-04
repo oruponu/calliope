@@ -2,6 +2,7 @@
 #include "AppProperties.h"
 #include "model/UndoActions.h"
 #include "ui/Theme.h"
+#include "ui/commands/AppCommands.h"
 
 namespace
 {
@@ -563,32 +564,32 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     juce::PopupMenu menu;
     if (menuIndex == 0)
     {
-        menu.addCommandItem(&commandManager, CommandID::newFile_);
-        menu.addCommandItem(&commandManager, CommandID::openFile);
-        menu.addCommandItem(&commandManager, CommandID::saveFile_);
+        menu.addCommandItem(&commandManager, AppCommands::newFile_);
+        menu.addCommandItem(&commandManager, AppCommands::openFile);
+        menu.addCommandItem(&commandManager, AppCommands::saveFile_);
         menu.addSeparator();
-        menu.addCommandItem(&commandManager, CommandID::quitApp);
+        menu.addCommandItem(&commandManager, AppCommands::quitApp);
     }
     else if (menuIndex == 1)
     {
-        menu.addCommandItem(&commandManager, CommandID::undoAction);
-        menu.addCommandItem(&commandManager, CommandID::redoAction);
+        menu.addCommandItem(&commandManager, AppCommands::undoAction);
+        menu.addCommandItem(&commandManager, AppCommands::redoAction);
         menu.addSeparator();
-        menu.addCommandItem(&commandManager, CommandID::cutAction);
-        menu.addCommandItem(&commandManager, CommandID::copyAction);
-        menu.addCommandItem(&commandManager, CommandID::pasteAction);
+        menu.addCommandItem(&commandManager, AppCommands::cutAction);
+        menu.addCommandItem(&commandManager, AppCommands::copyAction);
+        menu.addCommandItem(&commandManager, AppCommands::pasteAction);
         menu.addSeparator();
-        menu.addCommandItem(&commandManager, CommandID::selectAllAction);
+        menu.addCommandItem(&commandManager, AppCommands::selectAllAction);
     }
     else if (menuIndex == 2)
     {
-        menu.addCommandItem(&commandManager, CommandID::zoomInHorizontal);
-        menu.addCommandItem(&commandManager, CommandID::zoomOutHorizontal);
+        menu.addCommandItem(&commandManager, AppCommands::zoomInHorizontal);
+        menu.addCommandItem(&commandManager, AppCommands::zoomOutHorizontal);
         menu.addSeparator();
-        menu.addCommandItem(&commandManager, CommandID::zoomInVertical);
-        menu.addCommandItem(&commandManager, CommandID::zoomOutVertical);
+        menu.addCommandItem(&commandManager, AppCommands::zoomInVertical);
+        menu.addCommandItem(&commandManager, AppCommands::zoomOutVertical);
         menu.addSeparator();
-        menu.addCommandItem(&commandManager, CommandID::zoomReset);
+        menu.addCommandItem(&commandManager, AppCommands::zoomReset);
     }
     else if (menuIndex == 3)
     {
@@ -597,7 +598,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int menuIndex, const juce::String
     else if (menuIndex == 4)
     {
         juce::PopupMenu::Item audioSettingsItem;
-        audioSettingsItem.itemID = CommandID::audioSettings_;
+        audioSettingsItem.itemID = AppCommands::audioSettings_;
         audioSettingsItem.text = "Audio Settings...";
         audioSettingsItem.action = [this]() { showAudioSettings(); };
         menu.addItem(audioSettingsItem);
@@ -646,159 +647,44 @@ juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
 
 void MainComponent::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
-    commands.addArray({CommandID::newFile_,          CommandID::openFile,
-                       CommandID::saveFile_,         CommandID::quitApp,
-                       CommandID::togglePlay,        CommandID::returnToStart,
-                       CommandID::prevBar,           CommandID::nextBar,
-                       CommandID::switchToEditTool,  CommandID::switchToSelectTool,
-                       CommandID::undoAction,        CommandID::redoAction,
-                       CommandID::cutAction,         CommandID::copyAction,
-                       CommandID::pasteAction,       CommandID::selectAllAction,
-                       CommandID::moveNotesUp,       CommandID::moveNotesDown,
-                       CommandID::moveSelectionPrev, CommandID::moveSelectionNext,
-                       CommandID::scrollViewUp,      CommandID::scrollViewDown,
-                       CommandID::scrollViewLeft,    CommandID::scrollViewRight,
-                       CommandID::zoomInHorizontal,  CommandID::zoomOutHorizontal,
-                       CommandID::zoomInVertical,    CommandID::zoomOutVertical,
-                       CommandID::zoomReset,         CommandID::toggleLoop});
+    AppCommands::getAllCommands(commands);
 }
 
 void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
 {
+    AppCommands::getCommandInfo(commandID, result);
+
     switch (commandID)
     {
-    case CommandID::newFile_:
-        result.setInfo("New", "", "File", 0);
-        result.addDefaultKeypress('N', juce::ModifierKeys::commandModifier);
-        break;
-    case CommandID::openFile:
-        result.setInfo("Open...", "", "File", 0);
-        result.addDefaultKeypress('O', juce::ModifierKeys::commandModifier);
-        break;
-    case CommandID::saveFile_:
-        result.setInfo("Save...", "", "File", 0);
-        result.addDefaultKeypress('S', juce::ModifierKeys::commandModifier);
-        break;
-    case CommandID::quitApp:
-        result.setInfo("Exit", "", "File", 0);
-        break;
-    case CommandID::togglePlay:
-        result.setInfo("Play/Stop", "", "Transport", 0);
-        result.addDefaultKeypress(juce::KeyPress::spaceKey, 0);
-        break;
-    case CommandID::returnToStart:
-        result.setInfo("Return to Start", "", "Transport", 0);
-        result.addDefaultKeypress(',', juce::ModifierKeys::commandModifier);
-        break;
-    case CommandID::prevBar:
-        result.setInfo("Previous Bar", "", "Transport", 0);
-        result.addDefaultKeypress(',', 0);
-        break;
-    case CommandID::nextBar:
-        result.setInfo("Next Bar", "", "Transport", 0);
-        result.addDefaultKeypress('.', 0);
-        break;
-    case CommandID::switchToSelectTool:
-        result.setInfo("Select Tool", "", "Tools", 0);
-        result.addDefaultKeypress('1', 0);
-        break;
-    case CommandID::switchToEditTool:
-        result.setInfo("Edit Tool", "", "Tools", 0);
-        result.addDefaultKeypress('2', 0);
-        break;
-    case CommandID::undoAction:
-        result.setInfo("Undo", "", "Edit", 0);
-        result.addDefaultKeypress('Z', juce::ModifierKeys::commandModifier);
+    case AppCommands::undoAction:
         result.setActive(document.getUndoManager().canUndo());
         break;
-    case CommandID::redoAction:
-        result.setInfo("Redo", "", "Edit", 0);
-        result.addDefaultKeypress('Y', juce::ModifierKeys::commandModifier);
+    case AppCommands::redoAction:
         result.setActive(document.getUndoManager().canRedo());
         break;
-    case CommandID::cutAction:
-        result.setInfo("Cut", "", "Edit", 0);
-        result.addDefaultKeypress('X', juce::ModifierKeys::commandModifier);
+    case AppCommands::cutAction:
+    case AppCommands::copyAction:
         result.setActive(pianoRoll.hasSelectedNotes());
         break;
-    case CommandID::copyAction:
-        result.setInfo("Copy", "", "Edit", 0);
-        result.addDefaultKeypress('C', juce::ModifierKeys::commandModifier);
-        result.setActive(pianoRoll.hasSelectedNotes());
-        break;
-    case CommandID::pasteAction:
-        result.setInfo("Paste", "", "Edit", 0);
-        result.addDefaultKeypress('V', juce::ModifierKeys::commandModifier);
+    case AppCommands::pasteAction:
         result.setActive(pianoRoll.hasClipboardNotes());
         break;
-    case CommandID::selectAllAction:
-        result.setInfo("Select All", "", "Edit", 0);
-        result.addDefaultKeypress('A', juce::ModifierKeys::commandModifier);
+    case AppCommands::selectAllAction:
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
         break;
-    case CommandID::moveNotesUp:
-        result.setInfo("Move Up", "", "Edit", 0);
-        result.addDefaultKeypress(juce::KeyPress::upKey, 0);
+    case AppCommands::moveNotesUp:
+    case AppCommands::moveNotesDown:
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasSelectedNotes());
         break;
-    case CommandID::moveNotesDown:
-        result.setInfo("Move Down", "", "Edit", 0);
-        result.addDefaultKeypress(juce::KeyPress::downKey, 0);
-        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasSelectedNotes());
-        break;
-    case CommandID::moveSelectionPrev:
-        result.setInfo("Select Previous Note", "", "Edit", 0);
-        result.addDefaultKeypress(juce::KeyPress::leftKey, 0);
+    case AppCommands::moveSelectionPrev:
+    case AppCommands::moveSelectionNext:
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
         break;
-    case CommandID::moveSelectionNext:
-        result.setInfo("Select Next Note", "", "Edit", 0);
-        result.addDefaultKeypress(juce::KeyPress::rightKey, 0);
-        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
-        break;
-    case CommandID::scrollViewUp:
-        result.setInfo("Scroll Up", "", "View", 0);
-        result.addDefaultKeypress(juce::KeyPress::upKey, juce::ModifierKeys::commandModifier);
+    case AppCommands::scrollViewUp:
+    case AppCommands::scrollViewDown:
+    case AppCommands::scrollViewLeft:
+    case AppCommands::scrollViewRight:
         result.setActive(focusedPanel == FocusPanel::PianoRoll);
-        break;
-    case CommandID::scrollViewDown:
-        result.setInfo("Scroll Down", "", "View", 0);
-        result.addDefaultKeypress(juce::KeyPress::downKey, juce::ModifierKeys::commandModifier);
-        result.setActive(focusedPanel == FocusPanel::PianoRoll);
-        break;
-    case CommandID::scrollViewLeft:
-        result.setInfo("Scroll Left", "", "View", 0);
-        result.addDefaultKeypress(juce::KeyPress::leftKey, juce::ModifierKeys::commandModifier);
-        result.setActive(focusedPanel == FocusPanel::PianoRoll);
-        break;
-    case CommandID::scrollViewRight:
-        result.setInfo("Scroll Right", "", "View", 0);
-        result.addDefaultKeypress(juce::KeyPress::rightKey, juce::ModifierKeys::commandModifier);
-        result.setActive(focusedPanel == FocusPanel::PianoRoll);
-        break;
-    case CommandID::zoomInHorizontal:
-        result.setInfo("Zoom In (Horizontal)", "", "View", 0);
-        result.addDefaultKeypress('=', juce::ModifierKeys::commandModifier);
-        break;
-    case CommandID::zoomOutHorizontal:
-        result.setInfo("Zoom Out (Horizontal)", "", "View", 0);
-        result.addDefaultKeypress('-', juce::ModifierKeys::commandModifier);
-        break;
-    case CommandID::zoomInVertical:
-        result.setInfo("Zoom In (Vertical)", "", "View", 0);
-        result.addDefaultKeypress('=', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier);
-        break;
-    case CommandID::zoomOutVertical:
-        result.setInfo("Zoom Out (Vertical)", "", "View", 0);
-        result.addDefaultKeypress('-', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier);
-        break;
-    case CommandID::zoomReset:
-        result.setInfo("Reset Zoom", "", "View", 0);
-        result.addDefaultKeypress('0', juce::ModifierKeys::commandModifier);
-        break;
-    case CommandID::toggleLoop:
-        result.setInfo("Toggle Loop", "", "Transport", 0);
-        result.addDefaultKeypress('/', 0);
         break;
     default:
         break;
@@ -809,25 +695,25 @@ bool MainComponent::perform(const InvocationInfo& info)
 {
     switch (info.commandID)
     {
-    case CommandID::newFile_:
+    case AppCommands::newFile_:
         newFile();
         return true;
-    case CommandID::openFile:
+    case AppCommands::openFile:
         loadFile();
         return true;
-    case CommandID::saveFile_:
+    case AppCommands::saveFile_:
         saveFile();
         return true;
-    case CommandID::quitApp:
+    case AppCommands::quitApp:
         juce::JUCEApplication::getInstance()->systemRequestedQuit();
         return true;
-    case CommandID::togglePlay:
+    case AppCommands::togglePlay:
         transportBar.togglePlay();
         return true;
-    case CommandID::returnToStart:
+    case AppCommands::returnToStart:
         transportBar.returnToStart();
         return true;
-    case CommandID::prevBar:
+    case AppCommands::prevBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
         auto bbt = document.getSequence().tickToBarBeatTick(currentTick);
@@ -835,20 +721,20 @@ bool MainComponent::perform(const InvocationInfo& info)
         transportBar.jumpToTick(document.getSequence().barStartToTick(targetBar));
         return true;
     }
-    case CommandID::nextBar:
+    case AppCommands::nextBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
         auto bbt = document.getSequence().tickToBarBeatTick(currentTick);
         transportBar.jumpToTick(document.getSequence().barStartToTick(bbt.bar + 1));
         return true;
     }
-    case CommandID::switchToEditTool:
+    case AppCommands::switchToEditTool:
         setActiveTool(PianoRollComponent::EditMode::Edit);
         return true;
-    case CommandID::switchToSelectTool:
+    case AppCommands::switchToSelectTool:
         setActiveTool(PianoRollComponent::EditMode::Select);
         return true;
-    case CommandID::undoAction:
+    case AppCommands::undoAction:
     {
         const bool structural = (document.getUndoManager().getUndoDescription() == juce::String(kStructuralTxn));
         bool wasRunning = false;
@@ -863,7 +749,7 @@ bool MainComponent::perform(const InvocationInfo& info)
         pianoRoll.setSelectedNotes({});
         return true;
     }
-    case CommandID::redoAction:
+    case AppCommands::redoAction:
     {
         const bool structural = (document.getUndoManager().getRedoDescription() == juce::String(kStructuralTxn));
         bool wasRunning = false;
@@ -878,68 +764,68 @@ bool MainComponent::perform(const InvocationInfo& info)
         pianoRoll.setSelectedNotes({});
         return true;
     }
-    case CommandID::cutAction:
+    case AppCommands::cutAction:
         pianoRoll.cutSelectedNotes();
         return true;
-    case CommandID::copyAction:
+    case AppCommands::copyAction:
         pianoRoll.copySelectedNotes();
         return true;
-    case CommandID::pasteAction:
+    case AppCommands::pasteAction:
         pianoRoll.pasteNotes(static_cast<int>(playbackEngine.getCurrentTick()));
         return true;
-    case CommandID::selectAllAction:
+    case AppCommands::selectAllAction:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.selectAllNotes();
         return true;
-    case CommandID::moveNotesUp:
+    case AppCommands::moveNotesUp:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.nudgeSelectedNotesPitch(1);
         return true;
-    case CommandID::moveNotesDown:
+    case AppCommands::moveNotesDown:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.nudgeSelectedNotesPitch(-1);
         return true;
-    case CommandID::moveSelectionPrev:
+    case AppCommands::moveSelectionPrev:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.moveSelectionToAdjacentNote(-1);
         return true;
-    case CommandID::moveSelectionNext:
+    case AppCommands::moveSelectionNext:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.moveSelectionToAdjacentNote(1);
         return true;
-    case CommandID::scrollViewUp:
+    case AppCommands::scrollViewUp:
         if (focusedPanel == FocusPanel::PianoRoll)
             scrollViewVertically(-PianoRollComponent::defaultNoteHeight);
         return true;
-    case CommandID::scrollViewDown:
+    case AppCommands::scrollViewDown:
         if (focusedPanel == FocusPanel::PianoRoll)
             scrollViewVertically(PianoRollComponent::defaultNoteHeight);
         return true;
-    case CommandID::scrollViewLeft:
+    case AppCommands::scrollViewLeft:
         if (focusedPanel == FocusPanel::PianoRoll)
             scrollViewHorizontally(-PianoRollComponent::defaultBeatWidth);
         return true;
-    case CommandID::scrollViewRight:
+    case AppCommands::scrollViewRight:
         if (focusedPanel == FocusPanel::PianoRoll)
             scrollViewHorizontally(PianoRollComponent::defaultBeatWidth);
         return true;
-    case CommandID::zoomInHorizontal:
+    case AppCommands::zoomInHorizontal:
         zoomHorizontal(1.15f, viewport.getViewWidth() / 2);
         return true;
-    case CommandID::zoomOutHorizontal:
+    case AppCommands::zoomOutHorizontal:
         zoomHorizontal(1.0f / 1.15f, viewport.getViewWidth() / 2);
         return true;
-    case CommandID::zoomInVertical:
+    case AppCommands::zoomInVertical:
         zoomVertical(1.15f, viewport.getViewHeight() / 2);
         return true;
-    case CommandID::zoomOutVertical:
+    case AppCommands::zoomOutVertical:
         zoomVertical(1.0f / 1.15f, viewport.getViewHeight() / 2);
         return true;
-    case CommandID::zoomReset:
+    case AppCommands::zoomReset:
         setHorizontalZoom(PianoRollComponent::defaultBeatWidth, viewport.getViewWidth() / 2);
         setVerticalZoom(PianoRollComponent::defaultNoteHeight, viewport.getViewHeight() / 2);
         return true;
-    case CommandID::toggleLoop:
+    case AppCommands::toggleLoop:
         transportBar.toggleLoop();
         return true;
     default:
