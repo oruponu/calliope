@@ -1,6 +1,6 @@
 #include "LookAndFeel.h"
-#include "Theme.h"
 #include "BinaryData.h"
+#include "Theme.h"
 
 namespace calliope
 {

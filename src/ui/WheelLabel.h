@@ -1,7 +1,7 @@
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include <juce_gui_basics/juce_gui_basics.h>
 
 class WheelLabel : public juce::Label
 {

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../model/MidiSequence.h"
-#include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include <juce_gui_basics/juce_gui_basics.h>
 #include <set>
 
 class TrackListComponent : public juce::Component, public MidiSequence::Listener

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Theme.h"
-#include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include <juce_gui_basics/juce_gui_basics.h>
 
 class ToolButton : public juce::Component
 {
