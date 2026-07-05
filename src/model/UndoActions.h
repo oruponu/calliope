@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../model/MidiSequence.h"
-#include <juce_data_structures/juce_data_structures.h>
 #include <algorithm>
 #include <functional>
+#include <juce_data_structures/juce_data_structures.h>
 #include <map>
 #include <vector>
 

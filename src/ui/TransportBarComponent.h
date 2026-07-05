@@ -3,8 +3,8 @@
 #include "../model/MidiSequence.h"
 #include "TransportButton.h"
 #include "WheelLabel.h"
-#include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include <juce_gui_basics/juce_gui_basics.h>
 
 class Document;
 class PlaybackEngine;

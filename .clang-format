@@ -10,4 +10,4 @@ AccessModifierOffset: -4
 AlignTrailingComments: true
 SpaceBeforeParens: ControlStatements
 PointerAlignment: Left
-SortIncludes: false
+SortIncludes: true
