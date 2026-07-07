@@ -120,18 +120,20 @@ const std::vector<TimeSignatureChange>& MidiSequence::getTimeSignatureChanges() 
     return timeSignatureChanges;
 }
 
-void MidiSequence::addTempoChange(int tick, double bpm)
+int MidiSequence::addTempoChange(int tick, double bpm)
 {
-    for (auto& tc : tempoChanges)
+    for (size_t i = 0; i < tempoChanges.size(); ++i)
     {
-        if (tc.tick == tick)
+        if (tempoChanges[i].tick == tick)
         {
-            tc.bpm = bpm;
-            return;
+            tempoChanges[i].bpm = bpm;
+            return static_cast<int>(i);
         }
     }
     tempoChanges.push_back({tick, bpm});
     std::ranges::sort(tempoChanges, {}, &TempoChange::tick);
+    auto it = std::ranges::find(tempoChanges, tick, &TempoChange::tick);
+    return static_cast<int>(it - tempoChanges.begin());
 }
 
 void MidiSequence::addTimeSignatureChange(int tick, int num, int den)

@@ -969,16 +969,21 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                                       [tempoTick](const TempoChange& tc) { return tc.tick == tempoTick; });
             if (!exists)
             {
+                int addedIndex = -1;
                 if (undoManager)
                 {
                     undoManager->beginNewTransaction("Add Tempo Change");
-                    undoManager->perform(new TempoChangeAction(sequence, tempoTick, tempoBpm));
+                    auto* action = new TempoChangeAction(sequence, tempoTick, tempoBpm);
+                    undoManager->perform(action);
+                    addedIndex = action->getAddedIndex();
                 }
                 else
                 {
-                    sequence->addTempoChange(tempoTick, tempoBpm);
+                    addedIndex = sequence->addTempoChange(tempoTick, tempoBpm);
                 }
+                clearNoteSelection();
                 selectedTempoIndices.clear();
+                selectedTempoIndices.insert(addedIndex);
                 repaint();
                 if (onTempoChanged)
                     onTempoChanged();

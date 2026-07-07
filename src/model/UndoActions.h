@@ -412,7 +412,7 @@ public:
     bool perform() override
     {
         before = sequence->getTempoChanges();
-        sequence->addTempoChange(tick, newBpm);
+        addedIndex = sequence->addTempoChange(tick, newBpm);
         sequence->notifyTempoChanged();
         return true;
     }
@@ -426,11 +426,14 @@ public:
 
     int getSizeInUnits() override { return 1; }
 
+    int getAddedIndex() const { return addedIndex; }
+
 private:
     MidiSequence* sequence;
     int tick;
     double newBpm;
     std::vector<TempoChange> before;
+    int addedIndex = -1;
 };
 
 class TempoMoveAction : public juce::UndoableAction
