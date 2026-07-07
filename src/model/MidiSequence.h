@@ -100,7 +100,7 @@ public:
     const std::vector<KeySignatureChange>& getKeySignatureChanges() const;
     const std::vector<ChordChange>& getChordChanges() const;
 
-    void addTempoChange(int tick, double bpm);
+    int addTempoChange(int tick, double bpm);
     void addTimeSignatureChange(int tick, int num, int den);
     void addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor);
     void addChordChange(int tick, int chordRoot, int chordType, int bassRoot, int bassType);
