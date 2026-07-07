@@ -176,6 +176,8 @@ private:
     int activeTrackIndex = 0;
 
     bool isNoteSelected(const NoteRef& ref) const;
+    void clearNoteSelection();
+    void clearTempoSelection();
     void drawRubberBand(juce::Graphics& g);
     std::vector<NoteRef> findNotesInRect(const juce::Rectangle<int>& rect) const;
 

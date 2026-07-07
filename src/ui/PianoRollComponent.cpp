@@ -215,6 +215,7 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
     }
 
     NoteRef target{activeTrackIndex, order[targetPos]};
+    clearTempoSelection();
     selectedNotes.clear();
     selectedNotes.insert(target);
     selectedNote = target;
@@ -483,6 +484,8 @@ void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>&
 
 void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
 {
+    if (!notes.empty())
+        clearTempoSelection();
     selectedNotes = notes;
     selectedNote = {};
     repaint();
@@ -733,11 +736,28 @@ void PianoRollComponent::deleteSelectedNotes()
         onNoteSelectionChanged(selectedNotes);
 }
 
+void PianoRollComponent::clearNoteSelection()
+{
+    if (selectedNotes.empty() && !selectedNote.isValid())
+        return;
+
+    selectedNotes.clear();
+    selectedNote = {};
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::clearTempoSelection()
+{
+    selectedTempoIndices.clear();
+}
+
 void PianoRollComponent::selectAllNotes()
 {
     if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return;
 
+    clearTempoSelection();
     selectedNotes.clear();
     const auto& track = sequence->getTrack(activeTrackIndex);
     for (int i = 0; i < track.getNumNotes(); ++i)
@@ -769,6 +789,7 @@ void PianoRollComponent::pasteNotes(int atTick)
         notesToAdd.push_back(n);
     }
 
+    clearTempoSelection();
     selectedNotes.clear();
 
     if (undoManager)
@@ -875,6 +896,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         int pointIndex = hitTestTempoPoint(e.x, e.y);
         if (pointIndex >= 0)
         {
+            clearNoteSelection();
             if (e.mods.isShiftDown())
             {
                 if (selectedTempoIndices.count(pointIndex) > 0)
@@ -926,6 +948,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         int tBandTop = getRulerTop() + loopBarHeight + rulerHeight;
         if (e.y >= tBandTop && e.y < tBandTop + tempoTrackHeight && e.x >= getKeyboardLeft() + keyboardWidth)
         {
+            clearNoteSelection();
             isTempoRangeSelecting = true;
             tempoSelectStartX = e.x;
             tempoSelectCurrentX = e.x;
@@ -950,6 +973,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         }
         return;
     }
+
+    clearTempoSelection();
 
     auto hit = hitTestNote(e.x, e.y);
 
