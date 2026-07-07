@@ -47,6 +47,11 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
 
     if (key == juce::KeyPress::backspaceKey || key == juce::KeyPress::deleteKey)
     {
+        if (!selectedTempoIndices.empty())
+        {
+            deleteSelectedTempoPoints();
+            return true;
+        }
         if (selectedNotes.empty())
             return false;
         deleteSelectedNotes();
@@ -734,6 +739,42 @@ void PianoRollComponent::deleteSelectedNotes()
         onNotesChanged();
     if (onNoteSelectionChanged)
         onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::deleteSelectedTempoPoints()
+{
+    if (!sequence || selectedTempoIndices.empty())
+        return;
+
+    auto before = sequence->getTempoChanges();
+    const int count = static_cast<int>(before.size());
+
+    std::vector<TempoChange> after;
+    after.reserve(before.size());
+    for (int i = 0; i < count; ++i)
+    {
+        const bool remove = selectedTempoIndices.count(i) > 0 && before[i].tick != 0;
+        if (!remove)
+            after.push_back(before[i]);
+    }
+
+    if (after.size() == before.size())
+        return;
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction("Delete Tempo Changes");
+        undoManager->perform(new TempoDeleteAction(sequence, std::move(before), std::move(after)));
+    }
+    else
+    {
+        sequence->setTempoChanges(std::move(after));
+    }
+
+    selectedTempoIndices.clear();
+    repaint();
+    if (onTempoChanged)
+        onTempoChanged();
 }
 
 void PianoRollComponent::clearNoteSelection()

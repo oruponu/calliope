@@ -60,6 +60,7 @@ public:
     void selectAllNotes();
     void nudgeSelectedNotesPitch(int deltaNote);
     void nudgeSelectedNotesTime(int deltaTick);
+    void deleteSelectedTempoPoints();
     bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
     bool hasClipboardNotes() const { return !clipboard.empty(); }
