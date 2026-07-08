@@ -64,7 +64,11 @@ public:
     void deleteSelectedTempoPoints();
     bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
-    bool hasClipboardNotes() const { return clipboard.hasNotes(); }
+    void cutSelection();
+    void copySelection();
+    void paste(int atTick);
+    bool hasSelection() const { return !selectedNotes.empty() || !selectedTempoIndices.empty(); }
+    bool hasClipboardContent() const { return clipboard.hasNotes() || clipboard.hasTempoPoints(); }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
     bool hasNotesInActiveTrack() const;
 
@@ -180,6 +184,10 @@ private:
     bool isNoteSelected(const NoteRef& ref) const;
     void clearNoteSelection();
     void clearTempoSelection();
+    void copySelectedTempoPoints();
+    void cutSelectedTempoPoints();
+    void pasteTempoPoints(int atTick);
+    void deleteSelectedTempoPointsImpl(const juce::String& transactionName);
     void drawRubberBand(juce::Graphics& g);
     std::vector<NoteRef> findNotesInRect(const juce::Rectangle<int>& rect) const;
 

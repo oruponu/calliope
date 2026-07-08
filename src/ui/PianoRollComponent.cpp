@@ -743,6 +743,11 @@ void PianoRollComponent::deleteSelectedNotes()
 
 void PianoRollComponent::deleteSelectedTempoPoints()
 {
+    deleteSelectedTempoPointsImpl("Delete Tempo Changes");
+}
+
+void PianoRollComponent::deleteSelectedTempoPointsImpl(const juce::String& transactionName)
+{
     if (!sequence || selectedTempoIndices.empty())
         return;
 
@@ -763,7 +768,7 @@ void PianoRollComponent::deleteSelectedTempoPoints()
 
     if (undoManager)
     {
-        undoManager->beginNewTransaction("Delete Tempo Changes");
+        undoManager->beginNewTransaction(transactionName);
         undoManager->perform(new TempoDeleteAction(sequence, std::move(before), std::move(after)));
     }
     else
@@ -775,6 +780,112 @@ void PianoRollComponent::deleteSelectedTempoPoints()
     repaint();
     if (onTempoChanged)
         onTempoChanged();
+}
+
+void PianoRollComponent::copySelectedTempoPoints()
+{
+    if (!sequence || selectedTempoIndices.empty())
+        return;
+
+    const auto& changes = sequence->getTempoChanges();
+    const int count = static_cast<int>(changes.size());
+
+    std::vector<TempoChange> points;
+    for (int i : selectedTempoIndices)
+        if (i >= 0 && i < count)
+            points.push_back(changes[i]);
+
+    if (points.empty())
+        return;
+
+    const int minTick = points.front().tick;
+    for (auto& p : points)
+        p.tick -= minTick;
+
+    clipboard.setTempoPoints(std::move(points));
+}
+
+void PianoRollComponent::cutSelectedTempoPoints()
+{
+    if (!sequence || selectedTempoIndices.empty())
+        return;
+
+    copySelectedTempoPoints();
+    deleteSelectedTempoPointsImpl("Cut Tempo Changes");
+}
+
+void PianoRollComponent::pasteTempoPoints(int atTick)
+{
+    if (!sequence || !clipboard.hasTempoPoints())
+        return;
+
+    auto before = sequence->getTempoChanges();
+    auto after = before;
+
+    std::vector<int> pastedTicks;
+    for (const auto& p : clipboard.getTempoPoints())
+    {
+        const int tick = p.tick + atTick;
+        pastedTicks.push_back(tick);
+        auto it = std::ranges::find(after, tick, &TempoChange::tick);
+        if (it != after.end())
+            it->bpm = p.bpm;
+        else
+            after.push_back({tick, p.bpm});
+    }
+    std::ranges::sort(after, {}, &TempoChange::tick);
+
+    const bool changed = (after != before);
+    if (changed)
+    {
+        if (undoManager)
+        {
+            undoManager->beginNewTransaction("Paste Tempo Changes");
+            undoManager->perform(new TempoPasteAction(sequence, std::move(before), after));
+        }
+        else
+        {
+            sequence->setTempoChanges(after);
+        }
+    }
+
+    clearNoteSelection();
+    selectedTempoIndices.clear();
+    const auto& changes = sequence->getTempoChanges();
+    for (int t : pastedTicks)
+    {
+        auto it = std::ranges::find(changes, t, &TempoChange::tick);
+        if (it != changes.end())
+            selectedTempoIndices.insert(static_cast<int>(it - changes.begin()));
+    }
+
+    repaint();
+    if (changed && onTempoChanged)
+        onTempoChanged();
+}
+
+void PianoRollComponent::cutSelection()
+{
+    if (!selectedTempoIndices.empty())
+        cutSelectedTempoPoints();
+    else
+        cutSelectedNotes();
+}
+
+void PianoRollComponent::copySelection()
+{
+    if (!selectedTempoIndices.empty())
+        copySelectedTempoPoints();
+    else
+        copySelectedNotes();
+}
+
+void PianoRollComponent::paste(int atTick)
+{
+    if (clipboard.hasTempoPoints())
+        pasteTempoPoints(atTick);
+    else
+        pasteNotes(atTick);
 }
 
 void PianoRollComponent::clearNoteSelection()
