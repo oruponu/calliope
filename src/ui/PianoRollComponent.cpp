@@ -590,8 +590,6 @@ void PianoRollComponent::copySelectedNotes()
     if (!sequence || selectedNotes.empty())
         return;
 
-    clipboard.clear();
-
     int minTick = std::numeric_limits<int>::max();
     for (const auto& ref : selectedNotes)
     {
@@ -600,12 +598,14 @@ void PianoRollComponent::copySelectedNotes()
             minTick = note.startTick;
     }
 
+    std::vector<MidiNote> notes;
     for (const auto& ref : selectedNotes)
     {
         MidiNote note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
         note.startTick -= minTick;
-        clipboard.push_back(note);
+        notes.push_back(note);
     }
+    clipboard.setNotes(std::move(notes));
 }
 
 void PianoRollComponent::cutSelectedNotes()
@@ -819,11 +819,11 @@ bool PianoRollComponent::hasNotesInActiveTrack() const
 
 void PianoRollComponent::pasteNotes(int atTick)
 {
-    if (!sequence || clipboard.empty() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+    if (!sequence || !clipboard.hasNotes() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return;
 
     std::vector<MidiNote> notesToAdd;
-    for (const auto& note : clipboard)
+    for (const auto& note : clipboard.getNotes())
     {
         MidiNote n = note;
         n.startTick += atTick;

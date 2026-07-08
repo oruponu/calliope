@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../model/MidiSequence.h"
+#include "EditClipboard.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -63,7 +64,7 @@ public:
     void deleteSelectedTempoPoints();
     bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
-    bool hasClipboardNotes() const { return !clipboard.empty(); }
+    bool hasClipboardNotes() const { return clipboard.hasNotes(); }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
     bool hasNotesInActiveTrack() const;
 
@@ -225,7 +226,7 @@ private:
     juce::Point<int> rubberBandStart;
     juce::Rectangle<int> rubberBandRect;
 
-    std::vector<MidiNote> clipboard;
+    EditClipboard clipboard;
 
     MidiNote previewNote;
     bool isPreviewing = false;
