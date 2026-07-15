@@ -221,6 +221,7 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
 
     NoteRef target{activeTrackIndex, order[targetPos]};
     clearTempoSelection();
+    clearTimeSignatureSelection();
     selectedNotes.clear();
     selectedNotes.insert(target);
     selectedNote = target;
@@ -419,8 +420,21 @@ bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
 
 PianoRollComponent::~PianoRollComponent()
 {
+    closeTimeSignatureEditor();
     if (sequence != nullptr)
         sequence->removeListener(this);
+}
+
+void PianoRollComponent::closeTimeSignatureEditor()
+{
+    if (timeSigEditor != nullptr)
+        timeSigEditor->abandon();
+    if (timeSigCallout != nullptr)
+        timeSigCallout->dismiss();
+
+    isTimeSigEditing = false;
+    timeSigEditor = nullptr;
+    timeSigCallout = nullptr;
 }
 
 void PianoRollComponent::notesChanged(int)
@@ -442,6 +456,8 @@ void PianoRollComponent::timelineMetadataChanged()
 
 void PianoRollComponent::setSequence(MidiSequence* seq)
 {
+    closeTimeSignatureEditor();
+
     if (sequence != nullptr)
         sequence->removeListener(this);
     sequence = seq;
@@ -449,6 +465,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
         sequence->addListener(this);
 
     selectedTempoIndices.clear();
+    clearTimeSignatureSelection();
     isTempoRangeSelecting = false;
 
     contentBeats = 16;
@@ -490,7 +507,10 @@ void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>&
 void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
 {
     if (!notes.empty())
+    {
         clearTempoSelection();
+        clearTimeSignatureSelection();
+    }
     selectedNotes = notes;
     selectedNote = {};
     repaint();
@@ -850,6 +870,7 @@ void PianoRollComponent::pasteTempoPoints(int atTick)
     }
 
     clearNoteSelection();
+    clearTimeSignatureSelection();
     selectedTempoIndices.clear();
     const auto& changes = sequence->getTempoChanges();
     for (int t : pastedTicks)
@@ -904,12 +925,88 @@ void PianoRollComponent::clearTempoSelection()
     selectedTempoIndices.clear();
 }
 
+void PianoRollComponent::clearTimeSignatureSelection()
+{
+    selectedTimeSigIndex = -1;
+}
+
+void PianoRollComponent::openTimeSignatureEditor(int tick, int num, int den, bool isNew,
+                                                 juce::Rectangle<int> anchorInLocal)
+{
+    anchorInLocal.setX(std::max(anchorInLocal.getX(), getKeyboardLeft() + keyboardWidth));
+
+    isTimeSigEditing = true;
+    timeSigEditTick = tick;
+    timeSigDraftNum = num;
+    timeSigDraftDen = den;
+    timeSigEditIsNew = isNew;
+
+    auto content = std::make_unique<TimeSignatureEditor>(num, den);
+    timeSigEditor = content.get();
+    content->onDraftChanged = [this](int n, int d)
+    {
+        timeSigDraftNum = n;
+        timeSigDraftDen = d;
+        repaint();
+    };
+    content->onCommit = [this](int n, int d) { commitTimeSignatureEdit(n, d); };
+    content->onCancel = [this]() { cancelTimeSignatureEdit(); };
+
+    auto& box = juce::CallOutBox::launchAsynchronously(std::move(content), localAreaToGlobal(anchorInLocal), nullptr);
+    box.setDismissalMouseClicksAreAlwaysConsumed(true);
+    timeSigCallout = &box;
+    repaint();
+}
+
+void PianoRollComponent::commitTimeSignatureEdit(int num, int den)
+{
+    isTimeSigEditing = false;
+    timeSigEditor = nullptr;
+    timeSigCallout = nullptr;
+
+    if (!sequence)
+        return;
+
+    auto current = sequence->getTimeSignatureAt(timeSigEditTick);
+    if (num == current.numerator && den == current.denominator)
+    {
+        repaint();
+        return;
+    }
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction(timeSigEditIsNew ? "Add Time Signature Change" : "Edit Time Signature Change");
+        undoManager->perform(new TimeSignatureChangeAction(sequence, timeSigEditTick, num, den));
+    }
+    else
+    {
+        sequence->addTimeSignatureChange(timeSigEditTick, num, den);
+        sequence->notifyTimelineMetadataChanged();
+    }
+
+    const auto& changes = sequence->getTimeSignatureChanges();
+    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+        if (changes[i].tick == timeSigEditTick)
+            selectedTimeSigIndex = i;
+    repaint();
+}
+
+void PianoRollComponent::cancelTimeSignatureEdit()
+{
+    isTimeSigEditing = false;
+    timeSigEditor = nullptr;
+    timeSigCallout = nullptr;
+    repaint();
+}
+
 void PianoRollComponent::selectAllNotes()
 {
     if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return;
 
     clearTempoSelection();
+    clearTimeSignatureSelection();
     selectedNotes.clear();
     const auto& track = sequence->getTrack(activeTrackIndex);
     for (int i = 0; i < track.getNumNotes(); ++i)
@@ -942,6 +1039,7 @@ void PianoRollComponent::pasteNotes(int atTick)
     }
 
     clearTempoSelection();
+    clearTimeSignatureSelection();
     selectedNotes.clear();
 
     if (undoManager)
@@ -1049,6 +1147,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         if (pointIndex >= 0)
         {
             clearNoteSelection();
+            clearTimeSignatureSelection();
             if (e.mods.isShiftDown())
             {
                 if (selectedTempoIndices.count(pointIndex) > 0)
@@ -1093,6 +1192,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                     addedIndex = sequence->addTempoChange(tempoTick, tempoBpm);
                 }
                 clearNoteSelection();
+                clearTimeSignatureSelection();
                 selectedTempoIndices.clear();
                 selectedTempoIndices.insert(addedIndex);
                 repaint();
@@ -1106,6 +1206,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         if (e.y >= tBandTop && e.y < tBandTop + tempoTrackHeight && e.x >= getKeyboardLeft() + keyboardWidth)
         {
             clearNoteSelection();
+            clearTimeSignatureSelection();
             isTempoRangeSelecting = true;
             tempoSelectStartX = e.x;
             tempoSelectCurrentX = e.x;
@@ -1115,6 +1216,28 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             repaint();
             return;
         }
+
+        int tsIndex = hitTestTimeSignaturePoint(e.x, e.y);
+        if (tsIndex >= 0)
+        {
+            if (selectedTimeSigIndex == tsIndex && !isTimeSigEditing)
+            {
+                const auto& ts = sequence->getTimeSignatureChanges()[static_cast<size_t>(tsIndex)];
+                openTimeSignatureEditor(ts.tick, ts.numerator, ts.denominator, false, timeSignatureLabelRect(tsIndex));
+            }
+            else if (selectedTimeSigIndex != tsIndex)
+            {
+                clearNoteSelection();
+                clearTempoSelection();
+                selectedTimeSigIndex = tsIndex;
+                repaint();
+            }
+            return;
+        }
+
+        int tsBandTop = getRulerTop() + loopBarHeight + rulerHeight + tempoTrackHeight;
+        if (e.y >= tsBandTop && e.y < tsBandTop + timeSignatureTrackHeight && e.x >= getKeyboardLeft() + keyboardWidth)
+            return;
     }
 
     if (e.y < getRulerTop() + gridTopOffset)
@@ -1132,6 +1255,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
     }
 
     clearTempoSelection();
+    clearTimeSignatureSelection();
 
     auto hit = hitTestNote(e.x, e.y);
 
@@ -1292,6 +1416,43 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             repaint();
         }
     }
+}
+
+void PianoRollComponent::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    if (!sequence || e.mods.isRightButtonDown() || isTimeSigEditing)
+        return;
+
+    int tsTop = getRulerTop() + loopBarHeight + rulerHeight + tempoTrackHeight;
+    if (e.y < tsTop || e.y >= tsTop + timeSignatureTrackHeight || e.x < getKeyboardLeft() + keyboardWidth)
+        return;
+
+    if (hitTestTimeSignaturePoint(e.x, e.y) >= 0)
+        return;
+
+    int barStart = sequence->barStartToTick(sequence->tickToBarBeatTick(std::max(0, xToTick(e.x))).bar);
+
+    const auto& changes = sequence->getTimeSignatureChanges();
+    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+    {
+        if (changes[i].tick == barStart)
+        {
+            clearNoteSelection();
+            clearTempoSelection();
+            selectedTimeSigIndex = i;
+            repaint();
+            openTimeSignatureEditor(changes[static_cast<size_t>(i)].tick, changes[static_cast<size_t>(i)].numerator,
+                                    changes[static_cast<size_t>(i)].denominator, false, timeSignatureLabelRect(i));
+            return;
+        }
+    }
+
+    clearNoteSelection();
+    clearTempoSelection();
+    clearTimeSignatureSelection();
+    auto effective = sequence->getTimeSignatureAt(barStart);
+    juce::Rectangle<int> anchor{tickToX(barStart), tsTop, 40, timeSignatureTrackHeight};
+    openTimeSignatureEditor(barStart, effective.numerator, effective.denominator, true, anchor);
 }
 
 void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
@@ -1989,6 +2150,39 @@ int PianoRollComponent::hitTestTempoPoint(int x, int y) const
     return -1;
 }
 
+juce::Rectangle<int> PianoRollComponent::timeSignatureLabelRect(int index) const
+{
+    int tsTop = getRulerTop() + loopBarHeight + rulerHeight + tempoTrackHeight;
+    const auto& changes = sequence->getTimeSignatureChanges();
+    const auto& ts = changes[static_cast<size_t>(index)];
+    int x = tickToX(ts.tick);
+    int textX = (index == 0 && ts.tick == 0) ? getKeyboardLeft() + keyboardWidth + 4 : x + 4;
+    return {textX, tsTop, 40, timeSignatureTrackHeight};
+}
+
+int PianoRollComponent::hitTestTimeSignaturePoint(int x, int y) const
+{
+    if (!sequence)
+        return -1;
+
+    int tsTop = getRulerTop() + loopBarHeight + rulerHeight + tempoTrackHeight;
+    if (y < tsTop || y >= tsTop + timeSignatureTrackHeight)
+        return -1;
+
+    if (x < getKeyboardLeft() + keyboardWidth)
+        return -1;
+
+    const auto& changes = sequence->getTimeSignatureChanges();
+    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+    {
+        if (tickToX(changes[static_cast<size_t>(i)].tick) + 4 < getKeyboardLeft() - 40)
+            continue;
+        if (timeSignatureLabelRect(i).contains(x, y))
+            return i;
+    }
+    return -1;
+}
+
 void PianoRollComponent::drawTempoTrack(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -2188,14 +2382,39 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
 
             if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
             {
-                g.setColour(tsColour);
+                bool selected = (static_cast<int>(i) == selectedTimeSigIndex);
+                bool editingThis = isTimeSigEditing && !timeSigEditIsNew && tsChanges[i].tick == timeSigEditTick;
+                auto labelRect = timeSignatureLabelRect(static_cast<int>(i));
+                if (selected || editingThis)
+                {
+                    g.setColour(surface::selection);
+                    g.fillRoundedRectangle(labelRect.reduced(0, 2).toFloat(), radius::r1);
+                }
+                g.setColour(selected || editingThis ? tsColour.brighter(0.5f) : tsColour);
                 g.setFont(font::sans(font::sizeSM));
-                juce::String label =
-                    juce::String(tsChanges[i].numerator) + "/" + juce::String(tsChanges[i].denominator);
-                int textX = (i == 0 && tsChanges[i].tick == 0) ? kbLeft + keyboardWidth + 4 : x + 4;
-                g.drawText(label, textX, tsTop, 40, timeSignatureTrackHeight, juce::Justification::centredLeft);
+                int labelNum = editingThis ? timeSigDraftNum : tsChanges[i].numerator;
+                int labelDen = editingThis ? timeSigDraftDen : tsChanges[i].denominator;
+                juce::String label = juce::String(labelNum) + "/" + juce::String(labelDen);
+                g.drawText(label, labelRect, juce::Justification::centredLeft);
             }
         }
+    }
+
+    if (isTimeSigEditing && timeSigEditIsNew)
+    {
+        juce::Colour draftColour = track::teal.withAlpha(0.6f);
+        int x = tickToX(timeSigEditTick);
+        if (x >= visibleLeft && x <= visibleRight)
+        {
+            g.setColour(draftColour.withAlpha(0.4f));
+            g.drawVerticalLine(x, static_cast<float>(tsTop + 2),
+                               static_cast<float>(tsTop + timeSignatureTrackHeight - 2));
+        }
+        int textX = std::max(x + 4, kbLeft + keyboardWidth + 4);
+        g.setColour(draftColour);
+        g.setFont(font::sans(font::sizeSM));
+        juce::String label = juce::String(timeSigDraftNum) + "/" + juce::String(timeSigDraftDen);
+        g.drawText(label, textX, tsTop, 40, timeSignatureTrackHeight, juce::Justification::centredLeft);
     }
 
     float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);

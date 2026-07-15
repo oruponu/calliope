@@ -2,6 +2,7 @@
 
 #include "../model/MidiSequence.h"
 #include "EditClipboard.h"
+#include "TimeSignatureEditor.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -77,6 +78,7 @@ public:
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseMove(const juce::MouseEvent& e) override;
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override;
+    void mouseDoubleClick(const juce::MouseEvent& e) override;
     void modifierKeysChanged(const juce::ModifierKeys& modifiers) override;
     bool keyPressed(const juce::KeyPress& key) override;
 
@@ -188,6 +190,13 @@ private:
     void cutSelectedTempoPoints();
     void pasteTempoPoints(int atTick);
     void deleteSelectedTempoPointsImpl(const juce::String& transactionName);
+    int hitTestTimeSignaturePoint(int x, int y) const;
+    juce::Rectangle<int> timeSignatureLabelRect(int index) const;
+    void clearTimeSignatureSelection();
+    void openTimeSignatureEditor(int tick, int num, int den, bool isNew, juce::Rectangle<int> anchorInLocal);
+    void commitTimeSignatureEdit(int num, int den);
+    void cancelTimeSignatureEdit();
+    void closeTimeSignatureEditor();
     void drawRubberBand(juce::Graphics& g);
     std::vector<NoteRef> findNotesInRect(const juce::Rectangle<int>& rect) const;
 
@@ -263,6 +272,14 @@ private:
     std::vector<TempoChange> tempoDragBefore;
     std::vector<int> tempoDragGroup;
 
+    int selectedTimeSigIndex = -1;
+    bool isTimeSigEditing = false;
+    int timeSigEditTick = 0;
+    int timeSigDraftNum = 4;
+    int timeSigDraftDen = 4;
+    bool timeSigEditIsNew = false;
+    juce::Component::SafePointer<juce::CallOutBox> timeSigCallout;
+    juce::Component::SafePointer<TimeSignatureEditor> timeSigEditor;
     std::set<int> selectedTempoIndices;
     bool isTempoRangeSelecting = false;
     int tempoSelectStartX = 0;
