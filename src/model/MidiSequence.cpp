@@ -1,6 +1,7 @@
 #include "MidiSequence.h"
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <ranges>
 
 namespace
@@ -174,6 +175,42 @@ void MidiSequence::addTimeSignatureChange(int tick, int num, int den)
         int barsFromPrev = bars[i] - bars[i - 1];
         timeSignatureChanges[i].tick = timeSignatureChanges[i - 1].tick + barsFromPrev * ticksPerBar;
     }
+}
+
+std::vector<TimeSignatureChange>
+MidiSequence::buildTimeSignatureChangesAfterMove(const std::vector<TimeSignatureChange>& before, int movedIndex,
+                                                 int targetTick, int ppq)
+{
+    if (movedIndex <= 0 || movedIndex >= static_cast<int>(before.size()))
+        return before;
+    const auto moved = static_cast<size_t>(movedIndex);
+
+    std::vector<int> bars(before.size());
+    bars[0] = 1;
+    for (size_t i = 1; i < before.size(); ++i)
+    {
+        int ticksPerBar = ppq * 4 / before[i - 1].denominator * before[i - 1].numerator;
+        bars[i] = bars[i - 1] + (before[i].tick - before[i - 1].tick) / ticksPerBar;
+    }
+
+    const auto& prev = before[moved - 1];
+    int barWidth = ppq * 4 / prev.denominator * prev.numerator;
+    int k = static_cast<int>(std::lround(static_cast<double>(targetTick - prev.tick) / barWidth));
+
+    if (moved + 1 < before.size())
+        k = std::min(k, bars[moved + 1] - bars[moved - 1] - 1);
+    k = std::max(1, k);
+
+    auto result = before;
+    result[moved].tick = prev.tick + k * barWidth;
+    bars[moved] = bars[moved - 1] + k;
+
+    for (size_t i = moved + 1; i < result.size(); ++i)
+    {
+        int ticksPerBar = ppq * 4 / result[i - 1].denominator * result[i - 1].numerator;
+        result[i].tick = result[i - 1].tick + (bars[i] - bars[i - 1]) * ticksPerBar;
+    }
+    return result;
 }
 
 KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const

@@ -280,6 +280,11 @@ private:
     bool timeSigEditIsNew = false;
     juce::Component::SafePointer<juce::CallOutBox> timeSigCallout;
     juce::Component::SafePointer<TimeSignatureEditor> timeSigEditor;
+    bool isTimeSigPointDragging = false;
+    int timeSigDragIndex = -1;
+    bool timeSigDragMoved = false;
+    std::vector<TimeSignatureChange> timeSigDragBefore;
+    int timeSigDragGrabOffset = 0;
     std::set<int> selectedTempoIndices;
     bool isTempoRangeSelecting = false;
     int tempoSelectStartX = 0;
