@@ -1220,18 +1220,11 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         int tsIndex = hitTestTimeSignaturePoint(e.x, e.y);
         if (tsIndex >= 0)
         {
-            if (selectedTimeSigIndex == tsIndex && !isTimeSigEditing)
-            {
-                const auto& ts = sequence->getTimeSignatureChanges()[static_cast<size_t>(tsIndex)];
-                openTimeSignatureEditor(ts.tick, ts.numerator, ts.denominator, false, timeSignatureLabelRect(tsIndex));
-            }
-            else if (selectedTimeSigIndex != tsIndex)
-            {
-                clearNoteSelection();
-                clearTempoSelection();
-                selectedTimeSigIndex = tsIndex;
-                repaint();
-            }
+            timeSigDragBefore = sequence->getTimeSignatureChanges();
+            timeSigDragIndex = tsIndex;
+            isTimeSigPointDragging = true;
+            timeSigDragMoved = false;
+            timeSigDragGrabOffset = xToTick(e.x) - timeSigDragBefore[static_cast<size_t>(tsIndex)].tick;
             return;
         }
 
@@ -1541,6 +1534,22 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
+    if (isTimeSigPointDragging)
+    {
+        if (timeSigDragIndex < 0 || timeSigDragIndex >= static_cast<int>(timeSigDragBefore.size()))
+            return;
+
+        auto changes = MidiSequence::buildTimeSignatureChangesAfterMove(timeSigDragBefore, timeSigDragIndex,
+                                                                        xToTick(e.x) - timeSigDragGrabOffset,
+                                                                        sequence->getTicksPerQuarterNote());
+        if (changes[static_cast<size_t>(timeSigDragIndex)].tick !=
+            timeSigDragBefore[static_cast<size_t>(timeSigDragIndex)].tick)
+            timeSigDragMoved = true;
+        sequence->setTimeSignatureChanges(std::move(changes));
+        repaint();
+        return;
+    }
+
     if (isTempoRangeSelecting)
     {
         tempoSelectCurrentX = e.x;
@@ -1702,6 +1711,61 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
     {
         isTempoRangeSelecting = false;
         tempoSelectBase.clear();
+        repaint();
+        return;
+    }
+
+    if (isTimeSigPointDragging)
+    {
+        isTimeSigPointDragging = false;
+        int draggedIndex = timeSigDragIndex;
+        timeSigDragIndex = -1;
+
+        const auto& changes = sequence->getTimeSignatureChanges();
+        bool validIndex = draggedIndex >= 0 && draggedIndex < static_cast<int>(changes.size()) &&
+                          draggedIndex < static_cast<int>(timeSigDragBefore.size());
+        bool movedFinal = validIndex && changes[static_cast<size_t>(draggedIndex)].tick !=
+                                            timeSigDragBefore[static_cast<size_t>(draggedIndex)].tick;
+
+        if (movedFinal)
+        {
+            if (undoManager)
+            {
+                undoManager->beginNewTransaction("Move Time Signature Change");
+                undoManager->perform(new TimeSignatureMoveAction(sequence, timeSigDragBefore, changes));
+            }
+            else
+            {
+                sequence->notifyTimelineMetadataChanged();
+            }
+            clearNoteSelection();
+            clearTempoSelection();
+            selectedTimeSigIndex = draggedIndex;
+        }
+        else if (validIndex && !timeSigDragMoved)
+        {
+            if (selectedTimeSigIndex == draggedIndex && !isTimeSigEditing)
+            {
+                const auto& ts = changes[static_cast<size_t>(draggedIndex)];
+                openTimeSignatureEditor(ts.tick, ts.numerator, ts.denominator, false,
+                                        timeSignatureLabelRect(draggedIndex));
+            }
+            else if (selectedTimeSigIndex != draggedIndex)
+            {
+                clearNoteSelection();
+                clearTempoSelection();
+                selectedTimeSigIndex = draggedIndex;
+            }
+        }
+        else if (validIndex)
+        {
+            clearNoteSelection();
+            clearTempoSelection();
+            selectedTimeSigIndex = draggedIndex;
+        }
+
+        timeSigDragBefore.clear();
+        timeSigDragMoved = false;
         repaint();
         return;
     }
