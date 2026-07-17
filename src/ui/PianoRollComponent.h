@@ -141,6 +141,7 @@ private:
     void drawTempoTrack(juce::Graphics& g);
     void drawTempoRangeSelection(juce::Graphics& g);
     void drawTimeSignatureTrack(juce::Graphics& g);
+    void drawTimeSignatureRangeSelection(juce::Graphics& g);
     void drawKeySignatureTrack(juce::Graphics& g);
     void drawChordTrack(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
@@ -272,7 +273,7 @@ private:
     std::vector<TempoChange> tempoDragBefore;
     std::vector<int> tempoDragGroup;
 
-    int selectedTimeSigIndex = -1;
+    std::set<int> selectedTimeSigIndices;
     bool isTimeSigEditing = false;
     int timeSigEditTick = 0;
     int timeSigDraftNum = 4;
@@ -285,6 +286,10 @@ private:
     bool timeSigDragMoved = false;
     std::vector<TimeSignatureChange> timeSigDragBefore;
     int timeSigDragGrabOffset = 0;
+    bool isTimeSigRangeSelecting = false;
+    int timeSigSelectStartX = 0;
+    int timeSigSelectCurrentX = 0;
+    std::set<int> timeSigSelectBase;
     std::set<int> selectedTempoIndices;
     bool isTempoRangeSelecting = false;
     int tempoSelectStartX = 0;

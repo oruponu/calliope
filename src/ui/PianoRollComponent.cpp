@@ -467,6 +467,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     selectedTempoIndices.clear();
     clearTimeSignatureSelection();
     isTempoRangeSelecting = false;
+    isTimeSigRangeSelecting = false;
 
     contentBeats = 16;
     if (sequence && sequence->getNumTracks() > 0)
@@ -927,7 +928,7 @@ void PianoRollComponent::clearTempoSelection()
 
 void PianoRollComponent::clearTimeSignatureSelection()
 {
-    selectedTimeSigIndex = -1;
+    selectedTimeSigIndices.clear();
 }
 
 void PianoRollComponent::openTimeSignatureEditor(int tick, int num, int den, bool isNew,
@@ -988,7 +989,7 @@ void PianoRollComponent::commitTimeSignatureEdit(int num, int den)
     const auto& changes = sequence->getTimeSignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
         if (changes[i].tick == timeSigEditTick)
-            selectedTimeSigIndex = i;
+            selectedTimeSigIndices = {i};
     repaint();
 }
 
@@ -1220,6 +1221,18 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         int tsIndex = hitTestTimeSignaturePoint(e.x, e.y);
         if (tsIndex >= 0)
         {
+            if (e.mods.isShiftDown())
+            {
+                clearNoteSelection();
+                clearTempoSelection();
+                if (selectedTimeSigIndices.count(tsIndex) > 0)
+                    selectedTimeSigIndices.erase(tsIndex);
+                else
+                    selectedTimeSigIndices.insert(tsIndex);
+                repaint();
+                return;
+            }
+
             timeSigDragBefore = sequence->getTimeSignatureChanges();
             timeSigDragIndex = tsIndex;
             isTimeSigPointDragging = true;
@@ -1230,7 +1243,18 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 
         int tsBandTop = getRulerTop() + loopBarHeight + rulerHeight + tempoTrackHeight;
         if (e.y >= tsBandTop && e.y < tsBandTop + timeSignatureTrackHeight && e.x >= getKeyboardLeft() + keyboardWidth)
+        {
+            clearNoteSelection();
+            clearTempoSelection();
+            isTimeSigRangeSelecting = true;
+            timeSigSelectStartX = e.x;
+            timeSigSelectCurrentX = e.x;
+            timeSigSelectBase = e.mods.isShiftDown() ? selectedTimeSigIndices : std::set<int>{};
+            if (!e.mods.isShiftDown())
+                selectedTimeSigIndices.clear();
+            repaint();
             return;
+        }
     }
 
     if (e.y < getRulerTop() + gridTopOffset)
@@ -1423,6 +1447,9 @@ void PianoRollComponent::mouseDoubleClick(const juce::MouseEvent& e)
     if (hitTestTimeSignaturePoint(e.x, e.y) >= 0)
         return;
 
+    isTimeSigRangeSelecting = false;
+    timeSigSelectBase.clear();
+
     int barStart = sequence->barStartToTick(sequence->tickToBarBeatTick(std::max(0, xToTick(e.x))).bar);
 
     const auto& changes = sequence->getTimeSignatureChanges();
@@ -1432,7 +1459,7 @@ void PianoRollComponent::mouseDoubleClick(const juce::MouseEvent& e)
         {
             clearNoteSelection();
             clearTempoSelection();
-            selectedTimeSigIndex = i;
+            selectedTimeSigIndices = {i};
             repaint();
             openTimeSignatureEditor(changes[static_cast<size_t>(i)].tick, changes[static_cast<size_t>(i)].numerator,
                                     changes[static_cast<size_t>(i)].denominator, false, timeSignatureLabelRect(i));
@@ -1563,6 +1590,24 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         for (int i = 0; i < static_cast<int>(changes.size()); ++i)
             if (changes[i].tick >= tickLo && changes[i].tick <= tickHi)
                 selectedTempoIndices.insert(i);
+
+        repaint();
+        return;
+    }
+
+    if (isTimeSigRangeSelecting)
+    {
+        timeSigSelectCurrentX = e.x;
+        int lo = std::min(timeSigSelectStartX, timeSigSelectCurrentX);
+        int hi = std::max(timeSigSelectStartX, timeSigSelectCurrentX);
+        int tickLo = xToTick(lo);
+        int tickHi = xToTick(hi);
+
+        selectedTimeSigIndices = timeSigSelectBase;
+        const auto& changes = sequence->getTimeSignatureChanges();
+        for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+            if (changes[static_cast<size_t>(i)].tick >= tickLo && changes[static_cast<size_t>(i)].tick <= tickHi)
+                selectedTimeSigIndices.insert(i);
 
         repaint();
         return;
@@ -1740,32 +1785,42 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
             }
             clearNoteSelection();
             clearTempoSelection();
-            selectedTimeSigIndex = draggedIndex;
+            selectedTimeSigIndices = {draggedIndex};
         }
         else if (validIndex && !timeSigDragMoved)
         {
-            if (selectedTimeSigIndex == draggedIndex && !isTimeSigEditing)
+            const bool soleSelection =
+                selectedTimeSigIndices.size() == 1 && selectedTimeSigIndices.count(draggedIndex) > 0;
+            if (soleSelection && !isTimeSigEditing)
             {
                 const auto& ts = changes[static_cast<size_t>(draggedIndex)];
                 openTimeSignatureEditor(ts.tick, ts.numerator, ts.denominator, false,
                                         timeSignatureLabelRect(draggedIndex));
             }
-            else if (selectedTimeSigIndex != draggedIndex)
+            else if (!soleSelection)
             {
                 clearNoteSelection();
                 clearTempoSelection();
-                selectedTimeSigIndex = draggedIndex;
+                selectedTimeSigIndices = {draggedIndex};
             }
         }
         else if (validIndex)
         {
             clearNoteSelection();
             clearTempoSelection();
-            selectedTimeSigIndex = draggedIndex;
+            selectedTimeSigIndices = {draggedIndex};
         }
 
         timeSigDragBefore.clear();
         timeSigDragMoved = false;
+        repaint();
+        return;
+    }
+
+    if (isTimeSigRangeSelecting)
+    {
+        isTimeSigRangeSelecting = false;
+        timeSigSelectBase.clear();
         repaint();
         return;
     }
@@ -2446,7 +2501,7 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
 
             if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
             {
-                bool selected = (static_cast<int>(i) == selectedTimeSigIndex);
+                bool selected = selectedTimeSigIndices.count(static_cast<int>(i)) > 0;
                 bool editingThis = isTimeSigEditing && !timeSigEditIsNew && tsChanges[i].tick == timeSigEditTick;
                 auto labelRect = timeSignatureLabelRect(static_cast<int>(i));
                 if (selected || editingThis)
@@ -2488,6 +2543,8 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
         g.drawLine(phX, static_cast<float>(tsTop), phX, static_cast<float>(tsTop + timeSignatureTrackHeight), 1.0f);
     }
 
+    drawTimeSignatureRangeSelection(g);
+
     drawLoopOverlay(g, tsTop, timeSignatureTrackHeight, 0.12f);
 
     g.restoreState();
@@ -2504,6 +2561,26 @@ void PianoRollComponent::drawTimeSignatureTrack(juce::Graphics& g)
     g.setColour(border::strong);
     g.drawHorizontalLine(tsTop + timeSignatureTrackHeight - 1, static_cast<float>(kbLeft),
                          static_cast<float>(getWidth()));
+}
+
+void PianoRollComponent::drawTimeSignatureRangeSelection(juce::Graphics& g)
+{
+    using namespace calliope::theme;
+    if (!isTimeSigRangeSelecting)
+        return;
+
+    int tsTop = getRulerTop() + loopBarHeight + rulerHeight + tempoTrackHeight;
+    int lo = std::min(timeSigSelectStartX, timeSigSelectCurrentX);
+    int hi = std::max(timeSigSelectStartX, timeSigSelectCurrentX);
+    if (hi <= lo)
+        return;
+
+    juce::Rectangle<float> band(static_cast<float>(lo), static_cast<float>(tsTop), static_cast<float>(hi - lo),
+                                static_cast<float>(timeSignatureTrackHeight));
+    g.setColour(track::teal.withAlpha(0.15f));
+    g.fillRect(band);
+    g.setColour(track::teal.withAlpha(0.6f));
+    g.drawRect(band, 1.0f);
 }
 
 void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
