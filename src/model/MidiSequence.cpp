@@ -252,6 +252,46 @@ MidiSequence::buildTimeSignatureChangesAfterMove(const std::vector<TimeSignature
     return rebuildFromFirstMoving(shiftedBars(delta));
 }
 
+std::vector<TimeSignatureChange>
+MidiSequence::buildTimeSignatureChangesAfterDelete(const std::vector<TimeSignatureChange>& before,
+                                                   const std::set<int>& deletedIndices, int ppq)
+{
+    if (before.empty())
+        return before;
+
+    std::vector<int> bars(before.size());
+    bars[0] = 1;
+    for (size_t i = 1; i < before.size(); ++i)
+    {
+        int ticksPerBar = ppq * 4 / before[i - 1].denominator * before[i - 1].numerator;
+        bars[i] = bars[i - 1] + (before[i].tick - before[i - 1].tick) / ticksPerBar;
+    }
+
+    std::vector<TimeSignatureChange> result;
+    std::vector<int> resultBars;
+    result.reserve(before.size());
+    resultBars.reserve(before.size());
+    for (size_t i = 0; i < before.size(); ++i)
+    {
+        const bool remove = i > 0 && deletedIndices.count(static_cast<int>(i)) > 0;
+        if (!remove)
+        {
+            result.push_back(before[i]);
+            resultBars.push_back(bars[i]);
+        }
+    }
+
+    if (result.size() == before.size())
+        return before;
+
+    for (size_t i = 1; i < result.size(); ++i)
+    {
+        int ticksPerBar = ppq * 4 / result[i - 1].denominator * result[i - 1].numerator;
+        result[i].tick = result[i - 1].tick + (resultBars[i] - resultBars[i - 1]) * ticksPerBar;
+    }
+    return result;
+}
+
 KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
 {
     auto reversed = std::views::reverse(keySignatureChanges);

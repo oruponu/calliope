@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MidiTrack.h"
+#include <set>
 #include <string>
 #include <vector>
 
@@ -113,6 +114,10 @@ public:
     static std::vector<TimeSignatureChange>
     buildTimeSignatureChangesAfterMove(const std::vector<TimeSignatureChange>& before,
                                        const std::vector<int>& movedIndices, int anchorIndex, int targetTick, int ppq);
+
+    static std::vector<TimeSignatureChange>
+    buildTimeSignatureChangesAfterDelete(const std::vector<TimeSignatureChange>& before,
+                                         const std::set<int>& deletedIndices, int ppq);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
