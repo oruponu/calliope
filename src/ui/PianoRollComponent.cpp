@@ -1087,8 +1087,9 @@ void PianoRollComponent::commitTimeSignatureEdit(int num, int den)
     if (!sequence)
         return;
 
-    auto current = sequence->getTimeSignatureAt(timeSigEditTick);
-    if (num == current.numerator && den == current.denominator)
+    const auto& existing = sequence->getTimeSignatureChanges();
+    auto atTick = std::ranges::find(existing, timeSigEditTick, &TimeSignatureChange::tick);
+    if (atTick != existing.end() && num == atTick->numerator && den == atTick->denominator)
     {
         repaint();
         return;
