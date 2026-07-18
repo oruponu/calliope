@@ -63,6 +63,7 @@ public:
     void nudgeSelectedNotesPitch(int deltaNote);
     void nudgeSelectedNotesTime(int deltaTick);
     void deleteSelectedTempoPoints();
+    void deleteSelectedTimeSignatures();
     bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
     void cutSelection();

@@ -590,6 +590,37 @@ private:
     std::vector<TimeSignatureChange> after;
 };
 
+class TimeSignatureDeleteAction : public juce::UndoableAction
+{
+public:
+    TimeSignatureDeleteAction(MidiSequence* seq, std::vector<TimeSignatureChange> before,
+                              std::vector<TimeSignatureChange> after)
+        : sequence(seq), before(std::move(before)), after(std::move(after))
+    {
+    }
+
+    bool perform() override
+    {
+        sequence->setTimeSignatureChanges(after);
+        sequence->notifyTimelineMetadataChanged();
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->setTimeSignatureChanges(before);
+        sequence->notifyTimelineMetadataChanged();
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    std::vector<TimeSignatureChange> before;
+    std::vector<TimeSignatureChange> after;
+};
+
 class KeySignatureChangeAction : public juce::UndoableAction
 {
 public:

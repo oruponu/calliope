@@ -52,6 +52,11 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
             deleteSelectedTempoPoints();
             return true;
         }
+        if (!selectedTimeSigIndices.empty())
+        {
+            deleteSelectedTimeSignatures();
+            return true;
+        }
         if (selectedNotes.empty())
             return false;
         deleteSelectedNotes();
@@ -929,6 +934,32 @@ void PianoRollComponent::clearTempoSelection()
 void PianoRollComponent::clearTimeSignatureSelection()
 {
     selectedTimeSigIndices.clear();
+}
+
+void PianoRollComponent::deleteSelectedTimeSignatures()
+{
+    if (!sequence || selectedTimeSigIndices.empty())
+        return;
+
+    auto before = sequence->getTimeSignatureChanges();
+    auto after = MidiSequence::buildTimeSignatureChangesAfterDelete(before, selectedTimeSigIndices,
+                                                                    sequence->getTicksPerQuarterNote());
+    if (after.size() == before.size())
+        return;
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction("Delete Time Signature Changes");
+        undoManager->perform(new TimeSignatureDeleteAction(sequence, std::move(before), std::move(after)));
+    }
+    else
+    {
+        sequence->setTimeSignatureChanges(std::move(after));
+        sequence->notifyTimelineMetadataChanged();
+    }
+
+    clearTimeSignatureSelection();
+    repaint();
 }
 
 void PianoRollComponent::openTimeSignatureEditor(int tick, int num, int den, bool isNew,
