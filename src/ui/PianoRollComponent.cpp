@@ -895,6 +895,8 @@ void PianoRollComponent::cutSelection()
 {
     if (!selectedTempoIndices.empty())
         cutSelectedTempoPoints();
+    else if (!selectedTimeSigIndices.empty())
+        cutSelectedTimeSignatures();
     else
         cutSelectedNotes();
 }
@@ -903,6 +905,8 @@ void PianoRollComponent::copySelection()
 {
     if (!selectedTempoIndices.empty())
         copySelectedTempoPoints();
+    else if (!selectedTimeSigIndices.empty())
+        copySelectedTimeSignatures();
     else
         copySelectedNotes();
 }
@@ -911,6 +915,8 @@ void PianoRollComponent::paste(int atTick)
 {
     if (clipboard.hasTempoPoints())
         pasteTempoPoints(atTick);
+    else if (clipboard.hasTimeSignatures())
+        pasteTimeSignatures(atTick);
     else
         pasteNotes(atTick);
 }
@@ -938,6 +944,11 @@ void PianoRollComponent::clearTimeSignatureSelection()
 
 void PianoRollComponent::deleteSelectedTimeSignatures()
 {
+    deleteSelectedTimeSignaturesImpl("Delete Time Signature Changes");
+}
+
+void PianoRollComponent::deleteSelectedTimeSignaturesImpl(const juce::String& transactionName)
+{
     if (!sequence || selectedTimeSigIndices.empty())
         return;
 
@@ -949,7 +960,7 @@ void PianoRollComponent::deleteSelectedTimeSignatures()
 
     if (undoManager)
     {
-        undoManager->beginNewTransaction("Delete Time Signature Changes");
+        undoManager->beginNewTransaction(transactionName);
         undoManager->perform(new TimeSignatureDeleteAction(sequence, std::move(before), std::move(after)));
     }
     else
@@ -959,6 +970,83 @@ void PianoRollComponent::deleteSelectedTimeSignatures()
     }
 
     clearTimeSignatureSelection();
+    repaint();
+}
+
+void PianoRollComponent::copySelectedTimeSignatures()
+{
+    if (!sequence || selectedTimeSigIndices.empty())
+        return;
+
+    const auto& changes = sequence->getTimeSignatureChanges();
+    const int count = static_cast<int>(changes.size());
+
+    std::vector<RelativeTimeSignature> items;
+    for (int i : selectedTimeSigIndices)
+        if (i >= 0 && i < count)
+            items.push_back(
+                {sequence->tickToBarBeatTick(changes[i].tick).bar, changes[i].numerator, changes[i].denominator});
+
+    if (items.empty())
+        return;
+
+    const int firstBar = items.front().barOffset;
+    for (auto& item : items)
+        item.barOffset -= firstBar;
+
+    clipboard.setTimeSignatures(std::move(items));
+}
+
+void PianoRollComponent::cutSelectedTimeSignatures()
+{
+    if (!sequence || selectedTimeSigIndices.empty())
+        return;
+
+    copySelectedTimeSignatures();
+    deleteSelectedTimeSignaturesImpl("Cut Time Signature Changes");
+}
+
+void PianoRollComponent::pasteTimeSignatures(int atTick)
+{
+    if (!sequence || !clipboard.hasTimeSignatures())
+        return;
+
+    const int anchorBar = sequence->tickToBarBeatTick(std::max(0, atTick)).bar;
+    auto before = sequence->getTimeSignatureChanges();
+    auto after = MidiSequence::buildTimeSignatureChangesAfterPaste(before, clipboard.getTimeSignatures(), anchorBar,
+                                                                   sequence->getTicksPerQuarterNote());
+
+    std::vector<int> pastedBars;
+    for (const auto& item : clipboard.getTimeSignatures())
+        pastedBars.push_back(anchorBar + item.barOffset);
+
+    const bool changed = (after != before);
+    if (changed)
+    {
+        if (undoManager)
+        {
+            undoManager->beginNewTransaction("Paste Time Signature Changes");
+            undoManager->perform(new TimeSignaturePasteAction(sequence, std::move(before), after));
+        }
+        else
+        {
+            sequence->setTimeSignatureChanges(after);
+            sequence->notifyTimelineMetadataChanged();
+        }
+    }
+
+    clearNoteSelection();
+    clearTempoSelection();
+    selectedTimeSigIndices.clear();
+    const auto& changes = sequence->getTimeSignatureChanges();
+    for (int b : pastedBars)
+    {
+        const int t = sequence->barStartToTick(b);
+        auto it = std::ranges::find(changes, t, &TimeSignatureChange::tick);
+        if (it != changes.end())
+            selectedTimeSigIndices.insert(static_cast<int>(it - changes.begin()));
+    }
+
     repaint();
 }
 

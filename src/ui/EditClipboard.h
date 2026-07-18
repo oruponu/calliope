@@ -11,6 +11,7 @@ class EditClipboard
 public:
     bool hasNotes() const { return std::holds_alternative<std::vector<MidiNote>>(content); }
     bool hasTempoPoints() const { return std::holds_alternative<std::vector<TempoChange>>(content); }
+    bool hasTimeSignatures() const { return std::holds_alternative<std::vector<RelativeTimeSignature>>(content); }
 
     void setNotes(std::vector<MidiNote> notes)
     {
@@ -26,6 +27,14 @@ public:
             content = std::monostate{};
         else
             content = std::move(points);
+    }
+
+    void setTimeSignatures(std::vector<RelativeTimeSignature> items)
+    {
+        if (items.empty())
+            content = std::monostate{};
+        else
+            content = std::move(items);
     }
 
     const std::vector<MidiNote>& getNotes() const
@@ -44,6 +53,15 @@ public:
         return empty;
     }
 
+    const std::vector<RelativeTimeSignature>& getTimeSignatures() const
+    {
+        if (const auto* items = std::get_if<std::vector<RelativeTimeSignature>>(&content))
+            return *items;
+        static const std::vector<RelativeTimeSignature> empty;
+        return empty;
+    }
+
 private:
-    std::variant<std::monostate, std::vector<MidiNote>, std::vector<TempoChange>> content;
+    std::variant<std::monostate, std::vector<MidiNote>, std::vector<TempoChange>, std::vector<RelativeTimeSignature>>
+        content;
 };
