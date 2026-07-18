@@ -286,6 +286,7 @@ private:
     bool timeSigDragMoved = false;
     std::vector<TimeSignatureChange> timeSigDragBefore;
     int timeSigDragGrabOffset = 0;
+    std::vector<int> timeSigDragGroup;
     bool isTimeSigRangeSelecting = false;
     int timeSigSelectStartX = 0;
     int timeSigSelectCurrentX = 0;
