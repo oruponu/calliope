@@ -17,6 +17,14 @@ struct TimeSignatureChange
     int tick;
     int numerator;
     int denominator;
+    bool operator==(const TimeSignatureChange&) const = default;
+};
+
+struct RelativeTimeSignature
+{
+    int barOffset;
+    int numerator;
+    int denominator;
 };
 
 struct KeySignatureChange
@@ -118,6 +126,10 @@ public:
     static std::vector<TimeSignatureChange>
     buildTimeSignatureChangesAfterDelete(const std::vector<TimeSignatureChange>& before,
                                          const std::set<int>& deletedIndices, int ppq);
+
+    static std::vector<TimeSignatureChange>
+    buildTimeSignatureChangesAfterPaste(const std::vector<TimeSignatureChange>& before,
+                                        const std::vector<RelativeTimeSignature>& items, int anchorBar, int ppq);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);

@@ -292,6 +292,51 @@ MidiSequence::buildTimeSignatureChangesAfterDelete(const std::vector<TimeSignatu
     return result;
 }
 
+std::vector<TimeSignatureChange>
+MidiSequence::buildTimeSignatureChangesAfterPaste(const std::vector<TimeSignatureChange>& before,
+                                                  const std::vector<RelativeTimeSignature>& items, int anchorBar,
+                                                  int ppq)
+{
+    if (before.empty() || items.empty())
+        return before;
+
+    std::vector<int> bars(before.size());
+    bars[0] = 1;
+    for (size_t i = 1; i < before.size(); ++i)
+    {
+        int ticksPerBar = ppq * 4 / before[i - 1].denominator * before[i - 1].numerator;
+        bars[i] = bars[i - 1] + (before[i].tick - before[i - 1].tick) / ticksPerBar;
+    }
+
+    auto result = before;
+    auto resultBars = bars;
+    for (const auto& item : items)
+    {
+        const int bar = anchorBar + item.barOffset;
+        if (bar < 1)
+            continue;
+        auto it = std::ranges::lower_bound(resultBars, bar);
+        const auto pos = it - resultBars.begin();
+        if (it != resultBars.end() && *it == bar)
+        {
+            result[static_cast<size_t>(pos)].numerator = item.numerator;
+            result[static_cast<size_t>(pos)].denominator = item.denominator;
+        }
+        else
+        {
+            result.insert(result.begin() + pos, {0, item.numerator, item.denominator});
+            resultBars.insert(it, bar);
+        }
+    }
+
+    for (size_t i = 1; i < result.size(); ++i)
+    {
+        int ticksPerBar = ppq * 4 / result[i - 1].denominator * result[i - 1].numerator;
+        result[i].tick = result[i - 1].tick + (resultBars[i] - resultBars[i - 1]) * ticksPerBar;
+    }
+    return result;
+}
+
 KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
 {
     auto reversed = std::views::reverse(keySignatureChanges);

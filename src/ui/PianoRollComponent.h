@@ -69,8 +69,14 @@ public:
     void cutSelection();
     void copySelection();
     void paste(int atTick);
-    bool hasSelection() const { return !selectedNotes.empty() || !selectedTempoIndices.empty(); }
-    bool hasClipboardContent() const { return clipboard.hasNotes() || clipboard.hasTempoPoints(); }
+    bool hasSelection() const
+    {
+        return !selectedNotes.empty() || !selectedTempoIndices.empty() || !selectedTimeSigIndices.empty();
+    }
+    bool hasClipboardContent() const
+    {
+        return clipboard.hasNotes() || clipboard.hasTempoPoints() || clipboard.hasTimeSignatures();
+    }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
     bool hasNotesInActiveTrack() const;
 
@@ -195,6 +201,10 @@ private:
     int hitTestTimeSignaturePoint(int x, int y) const;
     juce::Rectangle<int> timeSignatureLabelRect(int index) const;
     void clearTimeSignatureSelection();
+    void copySelectedTimeSignatures();
+    void cutSelectedTimeSignatures();
+    void pasteTimeSignatures(int atTick);
+    void deleteSelectedTimeSignaturesImpl(const juce::String& transactionName);
     void openTimeSignatureEditor(int tick, int num, int den, bool isNew, juce::Rectangle<int> anchorInLocal);
     void commitTimeSignatureEdit(int num, int den);
     void cancelTimeSignatureEdit();
