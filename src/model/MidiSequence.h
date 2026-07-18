@@ -110,8 +110,9 @@ public:
     void setTimeSignatureChanges(std::vector<TimeSignatureChange> changes);
     void setKeySignatureChanges(std::vector<KeySignatureChange> changes);
 
-    static std::vector<TimeSignatureChange> buildTimeSignatureChangesAfterMove(
-        const std::vector<TimeSignatureChange>& before, int movedIndex, int targetTick, int ppq);
+    static std::vector<TimeSignatureChange>
+    buildTimeSignatureChangesAfterMove(const std::vector<TimeSignatureChange>& before,
+                                       const std::vector<int>& movedIndices, int anchorIndex, int targetTick, int ppq);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);

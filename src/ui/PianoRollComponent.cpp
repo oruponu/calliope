@@ -1238,6 +1238,11 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             isTimeSigPointDragging = true;
             timeSigDragMoved = false;
             timeSigDragGrabOffset = xToTick(e.x) - timeSigDragBefore[static_cast<size_t>(tsIndex)].tick;
+
+            if (selectedTimeSigIndices.count(tsIndex) > 0 && selectedTimeSigIndices.size() > 1)
+                timeSigDragGroup.assign(selectedTimeSigIndices.begin(), selectedTimeSigIndices.end());
+            else
+                timeSigDragGroup = {tsIndex};
             return;
         }
 
@@ -1566,9 +1571,9 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         if (timeSigDragIndex < 0 || timeSigDragIndex >= static_cast<int>(timeSigDragBefore.size()))
             return;
 
-        auto changes = MidiSequence::buildTimeSignatureChangesAfterMove(timeSigDragBefore, timeSigDragIndex,
-                                                                        xToTick(e.x) - timeSigDragGrabOffset,
-                                                                        sequence->getTicksPerQuarterNote());
+        auto changes = MidiSequence::buildTimeSignatureChangesAfterMove(
+            timeSigDragBefore, timeSigDragGroup, timeSigDragIndex, xToTick(e.x) - timeSigDragGrabOffset,
+            sequence->getTicksPerQuarterNote());
         if (changes[static_cast<size_t>(timeSigDragIndex)].tick !=
             timeSigDragBefore[static_cast<size_t>(timeSigDragIndex)].tick)
             timeSigDragMoved = true;
@@ -1785,7 +1790,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
             }
             clearNoteSelection();
             clearTempoSelection();
-            selectedTimeSigIndices = {draggedIndex};
+            selectedTimeSigIndices = std::set<int>(timeSigDragGroup.begin(), timeSigDragGroup.end());
         }
         else if (validIndex && !timeSigDragMoved)
         {
@@ -1812,6 +1817,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         }
 
         timeSigDragBefore.clear();
+        timeSigDragGroup.clear();
         timeSigDragMoved = false;
         repaint();
         return;

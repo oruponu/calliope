@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <limits>
 #include <ranges>
 
 namespace
@@ -178,12 +179,24 @@ void MidiSequence::addTimeSignatureChange(int tick, int num, int den)
 }
 
 std::vector<TimeSignatureChange>
-MidiSequence::buildTimeSignatureChangesAfterMove(const std::vector<TimeSignatureChange>& before, int movedIndex,
-                                                 int targetTick, int ppq)
+MidiSequence::buildTimeSignatureChangesAfterMove(const std::vector<TimeSignatureChange>& before,
+                                                 const std::vector<int>& movedIndices, int anchorIndex, int targetTick,
+                                                 int ppq)
 {
-    if (movedIndex <= 0 || movedIndex >= static_cast<int>(before.size()))
+    const int count = static_cast<int>(before.size());
+    if (anchorIndex <= 0 || anchorIndex >= count)
         return before;
-    const auto moved = static_cast<size_t>(movedIndex);
+
+    std::vector<bool> isMoving(before.size(), false);
+    int firstMoving = count;
+    for (int i : movedIndices)
+        if (i >= 1 && i < count)
+        {
+            isMoving[static_cast<size_t>(i)] = true;
+            firstMoving = std::min(firstMoving, i);
+        }
+    if (!isMoving[static_cast<size_t>(anchorIndex)])
+        return before;
 
     std::vector<int> bars(before.size());
     bars[0] = 1;
@@ -193,24 +206,50 @@ MidiSequence::buildTimeSignatureChangesAfterMove(const std::vector<TimeSignature
         bars[i] = bars[i - 1] + (before[i].tick - before[i - 1].tick) / ticksPerBar;
     }
 
-    const auto& prev = before[moved - 1];
-    int barWidth = ppq * 4 / prev.denominator * prev.numerator;
-    int k = static_cast<int>(std::lround(static_cast<double>(targetTick - prev.tick) / barWidth));
-
-    if (moved + 1 < before.size())
-        k = std::min(k, bars[moved + 1] - bars[moved - 1] - 1);
-    k = std::max(1, k);
-
-    auto result = before;
-    result[moved].tick = prev.tick + k * barWidth;
-    bars[moved] = bars[moved - 1] + k;
-
-    for (size_t i = moved + 1; i < result.size(); ++i)
+    auto rebuildFromFirstMoving = [&](const std::vector<int>& barNumbers)
     {
-        int ticksPerBar = ppq * 4 / result[i - 1].denominator * result[i - 1].numerator;
-        result[i].tick = result[i - 1].tick + (bars[i] - bars[i - 1]) * ticksPerBar;
+        auto result = before;
+        for (size_t i = static_cast<size_t>(firstMoving); i < result.size(); ++i)
+        {
+            int ticksPerBar = ppq * 4 / result[i - 1].denominator * result[i - 1].numerator;
+            result[i].tick = result[i - 1].tick + (barNumbers[i] - barNumbers[i - 1]) * ticksPerBar;
+        }
+        return result;
+    };
+    auto shiftedBars = [&](int delta)
+    {
+        auto barNumbers = bars;
+        for (size_t i = 0; i < barNumbers.size(); ++i)
+            if (isMoving[i])
+                barNumbers[i] += delta;
+        return barNumbers;
+    };
+
+    auto base = rebuildFromFirstMoving(bars);
+    const int anchorTick0 = base[static_cast<size_t>(anchorIndex)].tick;
+    const int slope = rebuildFromFirstMoving(shiftedBars(1))[static_cast<size_t>(anchorIndex)].tick - anchorTick0;
+    if (slope <= 0)
+        return before;
+
+    int delta = static_cast<int>(std::floor((targetTick - anchorTick0) / static_cast<double>(slope) + 0.5));
+
+    int deltaLo = std::numeric_limits<int>::min();
+    int deltaHi = std::numeric_limits<int>::max();
+    for (int i = 0; i + 1 < count; ++i)
+    {
+        bool aMoving = isMoving[static_cast<size_t>(i)];
+        bool bMoving = isMoving[static_cast<size_t>(i + 1)];
+        int gapBars = bars[static_cast<size_t>(i + 1)] - bars[static_cast<size_t>(i)];
+        if (bMoving && !aMoving)
+            deltaLo = std::max(deltaLo, 1 - gapBars);
+        else if (aMoving && !bMoving)
+            deltaHi = std::min(deltaHi, gapBars - 1);
     }
-    return result;
+    delta = (deltaLo > deltaHi) ? 0 : std::clamp(delta, deltaLo, deltaHi);
+
+    if (delta == 0)
+        return base;
+    return rebuildFromFirstMoving(shiftedBars(delta));
 }
 
 KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
