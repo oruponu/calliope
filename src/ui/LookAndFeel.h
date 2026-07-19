@@ -20,6 +20,7 @@ public:
                               bool isMouseOverButton, bool isButtonDown) override;
 
     void drawPopupMenuBackground(juce::Graphics&, int width, int height) override;
+    void drawCallOutBoxBackground(juce::CallOutBox&, juce::Graphics&, const juce::Path&, juce::Image&) override;
     void getIdealPopupMenuItemSize(const juce::String& text, bool isSeparator, int standardMenuItemHeight,
                                    int& idealWidth, int& idealHeight) override;
     void drawPopupMenuItem(juce::Graphics&, const juce::Rectangle<int>&, bool isSeparator, bool isActive,

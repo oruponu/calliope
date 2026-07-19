@@ -139,6 +139,28 @@ void LookAndFeel::drawPopupMenuBackground(Graphics& g, int w, int h)
     g.drawRect(0, 0, w, h, 1);
 }
 
+void LookAndFeel::drawCallOutBoxBackground(CallOutBox& box, Graphics& g, const Path& path, Image& cachedImage)
+{
+    if (cachedImage.isNull())
+    {
+        cachedImage = {Image::ARGB, box.getWidth(), box.getHeight(), true,
+                       *g.getInternalContext().getPreferredImageTypeForTemporaryImages()};
+        cachedImage.setBackupEnabled(false);
+
+        Graphics g2(cachedImage);
+        t::shadow::level1().drawForPath(g2, path);
+    }
+
+    g.setColour(Colours::black);
+    g.drawImageAt(cachedImage, 0, 0);
+
+    g.setColour(t::surface::surface3);
+    g.fillPath(path);
+
+    g.setColour(t::border::normal);
+    g.strokePath(path, PathStrokeType(1.0f));
+}
+
 void LookAndFeel::getIdealPopupMenuItemSize(const String& text, bool isSeparator, int /*standardMenuItemHeight*/,
                                             int& idealWidth, int& idealHeight)
 {
