@@ -1,4 +1,4 @@
-#include "plugin/PluginManagementController.h"
+#include "ui/plugin/PluginManagementController.h"
 #include "AppProperties.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
