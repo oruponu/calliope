@@ -30,7 +30,6 @@ target_sources(Calliope PRIVATE
     src/io/MidiFileIO.cpp
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp
-    src/plugin/PluginManagementController.cpp
     src/plugin/VstPluginHost.cpp
     src/ui/EventListComponent.cpp
     src/ui/TrackListComponent.cpp
@@ -39,6 +38,7 @@ target_sources(Calliope PRIVATE
     src/ui/pianoroll/ControllerLaneComponent.cpp
     src/ui/pianoroll/PianoRollComponent.cpp
     src/ui/pianoroll/TimeSignatureEditor.cpp
+    src/ui/plugin/PluginManagementController.cpp
     src/ui/theme/LookAndFeel.cpp
     src/ui/transport/TransportBarComponent.cpp
 )
