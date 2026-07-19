@@ -1,5 +1,4 @@
 #include "plugin/PluginManagementController.h"
-
 #include "AppProperties.h"
 #include "audio/VstPluginHost.h"
 #include "document/Document.h"
