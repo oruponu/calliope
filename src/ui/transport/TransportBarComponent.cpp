@@ -2,8 +2,10 @@
 
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
-#include "model/UndoActions.h"
 #include "ui/theme/Theme.h"
+#include "undo/KeySignatureActions.h"
+#include "undo/TempoActions.h"
+#include "undo/TimeSignatureActions.h"
 
 TransportBarComponent::TransportBarComponent(Document& documentRef, PlaybackEngine& playbackEngineRef)
     : document(documentRef), playbackEngine(playbackEngineRef)
