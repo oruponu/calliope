@@ -1061,7 +1061,7 @@ void PianoRollComponent::openTimeSignatureEditor(int tick, int num, int den, boo
     timeSigDraftDen = den;
     timeSigEditIsNew = isNew;
 
-    auto content = std::make_unique<TimeSignatureEditor>(num, den);
+    auto content = std::make_unique<TimeSignatureEditor>(num, den, isNew);
     timeSigEditor = content.get();
     content->onDraftChanged = [this](int n, int d)
     {

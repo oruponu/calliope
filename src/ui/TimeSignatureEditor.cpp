@@ -1,8 +1,9 @@
 #include "TimeSignatureEditor.h"
 #include "Theme.h"
 
-TimeSignatureEditor::TimeSignatureEditor(int numerator, int denominator)
-    : draftNum(clampNumerator(numerator)), draftDen(snapDenominator(denominator))
+TimeSignatureEditor::TimeSignatureEditor(int numerator, int denominator, bool startNumeratorEdit)
+    : draftNum(clampNumerator(numerator)), draftDen(snapDenominator(denominator)),
+      startNumeratorEdit(startNumeratorEdit)
 {
     using namespace calliope::theme;
 
@@ -104,13 +105,20 @@ bool TimeSignatureEditor::keyPressed(const juce::KeyPress& key)
 
 void TimeSignatureEditor::parentHierarchyChanged()
 {
-    if (isShowing())
-        juce::MessageManager::callAsync(
-            [safe = juce::Component::SafePointer<TimeSignatureEditor>(this)]()
-            {
-                if (safe != nullptr)
-                    safe->grabKeyboardFocus();
-            });
+    if (!isShowing() || !initialFocusPending)
+        return;
+
+    initialFocusPending = false;
+    juce::MessageManager::callAsync(
+        [safe = juce::Component::SafePointer<TimeSignatureEditor>(this)]()
+        {
+            if (safe == nullptr)
+                return;
+            if (safe->startNumeratorEdit)
+                safe->numLabel.showEditor();
+            else
+                safe->grabKeyboardFocus();
+        });
 }
 
 int TimeSignatureEditor::clampNumerator(int value)
