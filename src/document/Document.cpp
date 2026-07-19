@@ -1,5 +1,4 @@
 #include "document/Document.h"
-
 #include "io/MidiFileIO.h"
 
 void Document::newDocument()

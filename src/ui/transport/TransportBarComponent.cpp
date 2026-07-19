@@ -1,5 +1,4 @@
 #include "ui/transport/TransportBarComponent.h"
-
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
 #include "ui/theme/Theme.h"

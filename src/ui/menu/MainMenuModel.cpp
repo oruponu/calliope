@@ -1,5 +1,4 @@
 #include "ui/menu/MainMenuModel.h"
-
 #include "AppProperties.h"
 #include "audio/MidiDeviceOutput.h"
 #include "plugin/PluginManagementController.h"
