@@ -1,9 +1,9 @@
-#include "MainMenuModel.h"
+#include "ui/menu/MainMenuModel.h"
 
-#include "../../AppProperties.h"
-#include "../../audio/MidiDeviceOutput.h"
-#include "../../plugin/PluginManagementController.h"
-#include "../commands/AppCommands.h"
+#include "AppProperties.h"
+#include "audio/MidiDeviceOutput.h"
+#include "plugin/PluginManagementController.h"
+#include "ui/commands/AppCommands.h"
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <utility>
 

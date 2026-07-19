@@ -1,6 +1,6 @@
-#include "ControllerLaneComponent.h"
-#include "../model/UndoActions.h"
-#include "TrackColours.h"
+#include "ui/ControllerLaneComponent.h"
+#include "model/UndoActions.h"
+#include "ui/TrackColours.h"
 #include <algorithm>
 
 namespace

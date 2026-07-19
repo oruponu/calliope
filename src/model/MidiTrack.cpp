@@ -1,4 +1,4 @@
-#include "MidiTrack.h"
+#include "model/MidiTrack.h"
 #include <algorithm>
 
 void MidiTrack::addNote(const MidiNote& note)

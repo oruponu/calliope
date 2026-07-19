@@ -1,4 +1,4 @@
-#include "MidiSequence.h"
+#include "model/MidiSequence.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>

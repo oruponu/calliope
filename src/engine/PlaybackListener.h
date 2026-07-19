@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../model/MidiEvent.h"
-#include "../model/MidiNote.h"
-#include "PlaybackSnapshot.h"
+#include "engine/PlaybackSnapshot.h"
+#include "model/MidiEvent.h"
+#include "model/MidiNote.h"
 
 class PlaybackListener
 {

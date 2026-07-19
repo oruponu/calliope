@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../engine/PlaybackListener.h"
+#include "engine/PlaybackListener.h"
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
 #include <mutex>

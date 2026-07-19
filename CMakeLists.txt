@@ -43,6 +43,8 @@ target_sources(Calliope PRIVATE
     src/io/MidiFileIO.cpp
 )
 
+target_include_directories(Calliope PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 target_compile_features(Calliope PRIVATE cxx_std_20)
 
 target_compile_definitions(Calliope PRIVATE

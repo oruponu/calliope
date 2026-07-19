@@ -1,5 +1,5 @@
-#include "VstPluginHost.h"
-#include "../model/MidiTrack.h"
+#include "audio/VstPluginHost.h"
+#include "model/MidiTrack.h"
 
 namespace
 {

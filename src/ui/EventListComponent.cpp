@@ -1,5 +1,5 @@
-#include "EventListComponent.h"
-#include "TrackColours.h"
+#include "ui/EventListComponent.h"
+#include "ui/TrackColours.h"
 #include <algorithm>
 
 namespace

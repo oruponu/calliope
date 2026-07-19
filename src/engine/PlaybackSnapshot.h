@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../model/MidiEvent.h"
-#include "../model/MidiNote.h"
-#include "../model/MidiSequence.h"
-#include "../model/MidiTrack.h"
+#include "model/MidiEvent.h"
+#include "model/MidiNote.h"
+#include "model/MidiSequence.h"
+#include "model/MidiTrack.h"
 #include <vector>
 
 struct PlaybackTrackContext
