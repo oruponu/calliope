@@ -7,7 +7,7 @@
 class TimeSignatureEditor : public juce::Component
 {
 public:
-    TimeSignatureEditor(int numerator, int denominator);
+    TimeSignatureEditor(int numerator, int denominator, bool startNumeratorEdit);
     ~TimeSignatureEditor() override;
 
     std::function<void(int num, int den)> onDraftChanged;
@@ -30,7 +30,9 @@ private:
 
     int draftNum;
     int draftDen;
+    bool startNumeratorEdit;
     bool finalized = false;
+    bool initialFocusPending = true;
 
     WheelLabel numLabel, denLabel;
     juce::Label slashLabel;
