@@ -23,7 +23,6 @@ target_sources(Calliope PRIVATE
     src/Main.cpp
     src/MainComponent.cpp
     src/audio/MidiDeviceOutput.cpp
-    src/audio/VstPluginHost.cpp
     src/document/Document.cpp
     src/engine/PlaybackEngine.cpp
     src/engine/PlaybackProcessor.cpp
@@ -32,6 +31,7 @@ target_sources(Calliope PRIVATE
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp
     src/plugin/PluginManagementController.cpp
+    src/plugin/VstPluginHost.cpp
     src/ui/EventListComponent.cpp
     src/ui/TrackListComponent.cpp
     src/ui/commands/AppCommands.cpp
