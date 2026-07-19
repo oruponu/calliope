@@ -1,8 +1,8 @@
 #include "MainComponent.h"
 #include "AppProperties.h"
 #include "model/UndoActions.h"
-#include "ui/Theme.h"
 #include "ui/commands/AppCommands.h"
+#include "ui/theme/Theme.h"
 
 namespace
 {

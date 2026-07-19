@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui/WheelLabel.h"
+#include "ui/widgets/WheelLabel.h"
 #include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
 

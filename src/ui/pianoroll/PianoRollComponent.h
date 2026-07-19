@@ -1,8 +1,8 @@
 #pragma once
 
 #include "model/MidiSequence.h"
-#include "ui/EditClipboard.h"
-#include "ui/TimeSignatureEditor.h"
+#include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/TimeSignatureEditor.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>

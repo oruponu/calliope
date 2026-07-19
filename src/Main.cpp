@@ -1,6 +1,6 @@
 #include "AppProperties.h"
 #include "MainComponent.h"
-#include "ui/LookAndFeel.h"
+#include "ui/theme/LookAndFeel.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
 class CalliopeApplication : public juce::JUCEApplication
