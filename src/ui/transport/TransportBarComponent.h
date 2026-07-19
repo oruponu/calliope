@@ -1,8 +1,8 @@
 #pragma once
 
 #include "model/MidiSequence.h"
-#include "ui/TransportButton.h"
-#include "ui/WheelLabel.h"
+#include "ui/transport/TransportButton.h"
+#include "ui/widgets/WheelLabel.h"
 #include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
 

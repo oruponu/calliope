@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui/Theme.h"
+#include "ui/theme/Theme.h"
 #include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
 

@@ -31,15 +31,15 @@ target_sources(Calliope PRIVATE
     src/engine/PlaybackProcessor.cpp
     src/audio/MidiDeviceOutput.cpp
     src/audio/VstPluginHost.cpp
-    src/ui/PianoRollComponent.cpp
-    src/ui/TrackListComponent.cpp
-    src/ui/ControllerLaneComponent.cpp
     src/ui/EventListComponent.cpp
-    src/ui/TransportBarComponent.cpp
-    src/ui/TimeSignatureEditor.cpp
-    src/ui/LookAndFeel.cpp
+    src/ui/TrackListComponent.cpp
     src/ui/commands/AppCommands.cpp
     src/ui/menu/MainMenuModel.cpp
+    src/ui/pianoroll/ControllerLaneComponent.cpp
+    src/ui/pianoroll/PianoRollComponent.cpp
+    src/ui/pianoroll/TimeSignatureEditor.cpp
+    src/ui/theme/LookAndFeel.cpp
+    src/ui/transport/TransportBarComponent.cpp
     src/io/MidiFileIO.cpp
 )
 

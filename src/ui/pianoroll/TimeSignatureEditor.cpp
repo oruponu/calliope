@@ -1,5 +1,5 @@
-#include "ui/TimeSignatureEditor.h"
-#include "ui/Theme.h"
+#include "ui/pianoroll/TimeSignatureEditor.h"
+#include "ui/theme/Theme.h"
 
 TimeSignatureEditor::TimeSignatureEditor(int numerator, int denominator, bool startNumeratorEdit)
     : draftNum(clampNumerator(numerator)), draftDen(snapDenominator(denominator)),

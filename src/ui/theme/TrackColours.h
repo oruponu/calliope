@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui/Theme.h"
+#include "ui/theme/Theme.h"
 #include <juce_graphics/juce_graphics.h>
 
 namespace TrackColours

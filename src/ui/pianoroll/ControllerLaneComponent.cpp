@@ -1,6 +1,6 @@
-#include "ui/ControllerLaneComponent.h"
+#include "ui/pianoroll/ControllerLaneComponent.h"
 #include "model/UndoActions.h"
-#include "ui/TrackColours.h"
+#include "ui/theme/TrackColours.h"
 #include <algorithm>
 
 namespace

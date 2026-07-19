@@ -1,6 +1,6 @@
-#include "ui/LookAndFeel.h"
+#include "ui/theme/LookAndFeel.h"
 #include "BinaryData.h"
-#include "ui/Theme.h"
+#include "ui/theme/Theme.h"
 
 namespace calliope
 {
