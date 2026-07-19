@@ -3,29 +3,6 @@
 
 namespace
 {
-class EditorWindow : public juce::DocumentWindow
-{
-public:
-    EditorWindow(const juce::String& title, juce::AudioProcessorEditor* editor, std::function<void()> onClose)
-        : DocumentWindow(title, juce::Colours::black, DocumentWindow::closeButton), closeCallback(std::move(onClose))
-    {
-        setUsingNativeTitleBar(true);
-        setContentOwned(editor, true);
-        setResizable(editor->isResizable(), false);
-        centreWithSize(getWidth(), getHeight());
-        setVisible(true);
-    }
-
-    void closeButtonPressed() override
-    {
-        if (closeCallback)
-            juce::MessageManager::callAsync(closeCallback);
-    }
-
-private:
-    std::function<void()> closeCallback;
-};
-
 class MidiSourceProcessor : public juce::AudioProcessor
 {
 public:
@@ -139,7 +116,8 @@ void VstPluginHost::detachPlugin(int trackIndex)
     if (it == pluginNodes.end())
         return;
 
-    editorWindows.erase(trackIndex);
+    if (onPluginDetached)
+        onPluginDetached(trackIndex);
     midiCollectors.erase(trackIndex);
 
     if (auto sourceIt = midiSourceNodes.find(trackIndex); sourceIt != midiSourceNodes.end())
@@ -164,13 +142,8 @@ void VstPluginHost::detachAllPlugins()
 
 void VstPluginHost::renumberTrackIndices(int from, int delta)
 {
-    for (auto it = editorWindows.begin(); it != editorWindows.end();)
-    {
-        if (it->first >= from)
-            it = editorWindows.erase(it);
-        else
-            ++it;
-    }
+    if (onTrackIndicesRenumbered)
+        onTrackIndicesRenumbered(from, delta);
 
     auto shiftMap = [from, delta](auto& map)
     {
@@ -188,35 +161,20 @@ void VstPluginHost::renumberTrackIndices(int from, int delta)
     shiftMap(midiCollectors);
 }
 
-void VstPluginHost::showEditor(int trackIndex)
+juce::AudioProcessor* VstPluginHost::getPluginProcessor(int trackIndex) const
 {
-    if (auto it = editorWindows.find(trackIndex); it != editorWindows.end())
-    {
-        it->second->toFront(true);
-        return;
-    }
-
     if (graph == nullptr)
-        return;
+        return nullptr;
 
     auto it = pluginNodes.find(trackIndex);
     if (it == pluginNodes.end())
-        return;
+        return nullptr;
 
     auto* node = graph->getNodeForId(it->second);
     if (node == nullptr)
-        return;
+        return nullptr;
 
-    auto* processor = node->getProcessor();
-    if (processor == nullptr)
-        return;
-
-    auto* editor = processor->createEditorIfNeeded();
-    if (editor == nullptr)
-        return;
-
-    editorWindows[trackIndex] = std::make_unique<EditorWindow>(processor->getName(), editor, [this, trackIndex]()
-                                                               { editorWindows.erase(trackIndex); });
+    return node->getProcessor();
 }
 
 juce::String VstPluginHost::getPluginName(int trackIndex) const

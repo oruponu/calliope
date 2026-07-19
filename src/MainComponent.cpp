@@ -130,7 +130,7 @@ MainComponent::MainComponent()
         playbackEngine.rebuildSnapshot();
     };
     trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
-    trackList.onEditorButtonClicked = [this](int trackIndex) { pluginHost.showEditor(trackIndex); };
+    trackList.onEditorButtonClicked = [this](int trackIndex) { editorController.showEditor(trackIndex); };
     trackList.onChannelLabelClicked = [this](int trackIndex)
     {
         int currentCh = document.getSequence().getTrack(trackIndex).getChannel();

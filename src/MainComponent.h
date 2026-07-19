@@ -12,6 +12,7 @@
 #include "ui/pianoroll/ControllerLaneViewport.h"
 #include "ui/pianoroll/PianoRollComponent.h"
 #include "ui/pianoroll/PianoRollViewport.h"
+#include "ui/plugin/PluginEditorController.h"
 #include "ui/plugin/PluginManagementController.h"
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
@@ -78,6 +79,7 @@ private:
     juce::AudioProcessorPlayer audioPlayer;
     VstPluginHost pluginHost;
     PluginManagementController pluginController{pluginHost, document, playbackEngine, [this] { stopPlayback(); }};
+    PluginEditorController editorController{pluginHost};
 
     TransportBarComponent transportBar{document, playbackEngine};
 
