@@ -1,6 +1,8 @@
 #include "ui/pianoroll/PianoRollComponent.h"
-#include "model/UndoActions.h"
 #include "ui/theme/TrackColours.h"
+#include "undo/NoteActions.h"
+#include "undo/TempoActions.h"
+#include "undo/TimeSignatureActions.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
