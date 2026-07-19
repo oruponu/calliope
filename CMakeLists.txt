@@ -22,15 +22,16 @@ juce_add_binary_data(CalliopeData
 target_sources(Calliope PRIVATE
     src/Main.cpp
     src/MainComponent.cpp
-    src/plugin/PluginManagementController.cpp
-    src/document/Document.cpp
-    src/model/MidiTrack.cpp
-    src/model/MidiSequence.cpp
-    src/engine/PlaybackEngine.cpp
-    src/engine/PlaybackSnapshot.cpp
-    src/engine/PlaybackProcessor.cpp
     src/audio/MidiDeviceOutput.cpp
     src/audio/VstPluginHost.cpp
+    src/document/Document.cpp
+    src/engine/PlaybackEngine.cpp
+    src/engine/PlaybackProcessor.cpp
+    src/engine/PlaybackSnapshot.cpp
+    src/io/MidiFileIO.cpp
+    src/model/MidiSequence.cpp
+    src/model/MidiTrack.cpp
+    src/plugin/PluginManagementController.cpp
     src/ui/EventListComponent.cpp
     src/ui/TrackListComponent.cpp
     src/ui/commands/AppCommands.cpp
@@ -40,7 +41,6 @@ target_sources(Calliope PRIVATE
     src/ui/pianoroll/TimeSignatureEditor.cpp
     src/ui/theme/LookAndFeel.cpp
     src/ui/transport/TransportBarComponent.cpp
-    src/io/MidiFileIO.cpp
 )
 
 target_include_directories(Calliope PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
