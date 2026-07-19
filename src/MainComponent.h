@@ -1,11 +1,11 @@
 #pragma once
 
 #include "audio/MidiDeviceOutput.h"
-#include "audio/VstPluginHost.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
 #include "model/MidiSequence.h"
 #include "plugin/PluginManagementController.h"
+#include "plugin/VstPluginHost.h"
 #include "ui/EventListComponent.h"
 #include "ui/TrackListComponent.h"
 #include "ui/menu/MainMenuModel.h"

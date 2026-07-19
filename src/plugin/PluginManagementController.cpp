@@ -1,9 +1,9 @@
 #include "plugin/PluginManagementController.h"
 #include "AppProperties.h"
-#include "audio/VstPluginHost.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
 #include "model/MidiTrack.h"
+#include "plugin/VstPluginHost.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <utility>
 
