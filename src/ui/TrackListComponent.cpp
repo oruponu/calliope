@@ -1,5 +1,5 @@
-#include "TrackListComponent.h"
-#include "TrackColours.h"
+#include "ui/TrackListComponent.h"
+#include "ui/TrackColours.h"
 
 namespace
 {

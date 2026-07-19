@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../model/MidiSequence.h"
-#include "PlaybackListener.h"
-#include "PlaybackProcessor.h"
-#include "PlaybackSnapshot.h"
+#include "engine/PlaybackListener.h"
+#include "engine/PlaybackProcessor.h"
+#include "engine/PlaybackSnapshot.h"
+#include "model/MidiSequence.h"
 #include <atomic>
 #include <cstdint>
 #include <juce_events/juce_events.h>

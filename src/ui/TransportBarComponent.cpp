@@ -1,9 +1,9 @@
-#include "TransportBarComponent.h"
+#include "ui/TransportBarComponent.h"
 
-#include "../document/Document.h"
-#include "../engine/PlaybackEngine.h"
-#include "../model/UndoActions.h"
-#include "Theme.h"
+#include "document/Document.h"
+#include "engine/PlaybackEngine.h"
+#include "model/UndoActions.h"
+#include "ui/Theme.h"
 
 TransportBarComponent::TransportBarComponent(Document& documentRef, PlaybackEngine& playbackEngineRef)
     : document(documentRef), playbackEngine(playbackEngineRef)

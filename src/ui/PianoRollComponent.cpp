@@ -1,6 +1,6 @@
-#include "PianoRollComponent.h"
-#include "../model/UndoActions.h"
-#include "TrackColours.h"
+#include "ui/PianoRollComponent.h"
+#include "model/UndoActions.h"
+#include "ui/TrackColours.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>

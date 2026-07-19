@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../model/MidiSequence.h"
+#include "model/MidiSequence.h"
 #include <algorithm>
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>

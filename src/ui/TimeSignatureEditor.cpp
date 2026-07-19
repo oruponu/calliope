@@ -1,5 +1,5 @@
-#include "TimeSignatureEditor.h"
-#include "Theme.h"
+#include "ui/TimeSignatureEditor.h"
+#include "ui/Theme.h"
 
 TimeSignatureEditor::TimeSignatureEditor(int numerator, int denominator, bool startNumeratorEdit)
     : draftNum(clampNumerator(numerator)), draftDen(snapDenominator(denominator)),

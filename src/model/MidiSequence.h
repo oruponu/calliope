@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MidiTrack.h"
+#include "model/MidiTrack.h"
 #include <set>
 #include <string>
 #include <vector>

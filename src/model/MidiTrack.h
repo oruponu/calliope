@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MidiEvent.h"
-#include "MidiNote.h"
+#include "model/MidiEvent.h"
+#include "model/MidiNote.h"
 #include <string>
 #include <vector>
 

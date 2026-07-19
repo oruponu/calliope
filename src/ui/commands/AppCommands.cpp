@@ -1,4 +1,4 @@
-#include "AppCommands.h"
+#include "ui/commands/AppCommands.h"
 
 void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
