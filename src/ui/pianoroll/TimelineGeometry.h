@@ -13,7 +13,6 @@ public:
 
     int getTicksPerQuarterNote() const { return ppq; }
     int getBeatWidth() const { return beatWidth; }
-    int getQuantizeDenominator() const { return quantizeDenominator; }
     int timelineStartX() const { return startX; }
 
     int tickToX(int tick) const
