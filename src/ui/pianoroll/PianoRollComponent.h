@@ -3,6 +3,7 @@
 #include "model/MidiSequence.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/TimeSignatureEditor.h"
+#include "ui/pianoroll/TimelineGeometry.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -185,6 +186,7 @@ private:
     static bool isBlackKey(int noteNumber);
     static juce::String getNoteName(int noteNumber);
 
+    TimelineGeometry geometry{keyboardWidth};
     MidiSequence* sequence = nullptr;
     juce::UndoManager* undoManager = nullptr;
     double playheadTick = 0.0;

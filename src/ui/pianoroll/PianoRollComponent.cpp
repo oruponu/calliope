@@ -468,6 +468,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     if (sequence != nullptr)
         sequence->removeListener(this);
     sequence = seq;
+    geometry.setTicksPerQuarterNote(sequence != nullptr ? sequence->getTicksPerQuarterNote() : 0);
     if (sequence != nullptr)
         sequence->addListener(this);
 
@@ -3227,29 +3228,17 @@ int PianoRollComponent::noteToY(int noteNumber) const
 
 int PianoRollComponent::tickToX(int tick) const
 {
-    if (!sequence)
-        return keyboardWidth;
-
-    double beatsFromTick = static_cast<double>(tick) / sequence->getTicksPerQuarterNote();
-    return keyboardWidth + static_cast<int>(beatsFromTick * beatWidth);
+    return geometry.tickToX(tick);
 }
 
 int PianoRollComponent::tickToWidth(int durationTicks) const
 {
-    if (!sequence)
-        return 0;
-
-    double beats = static_cast<double>(durationTicks) / sequence->getTicksPerQuarterNote();
-    return static_cast<int>(beats * beatWidth);
+    return geometry.tickToWidth(durationTicks);
 }
 
 int PianoRollComponent::xToTick(int x) const
 {
-    if (!sequence)
-        return 0;
-
-    double beats = static_cast<double>(x - keyboardWidth) / beatWidth;
-    return static_cast<int>(beats * sequence->getTicksPerQuarterNote());
+    return geometry.xToTick(x);
 }
 
 int PianoRollComponent::yToNote(int y) const
@@ -3305,27 +3294,18 @@ int PianoRollComponent::keyboardNoteAtPosition(int x, int y) const
 
 int PianoRollComponent::roundTickToGrid(int tick) const
 {
-    if (!sequence)
-        return ((tick + snapTicks / 2) / snapTicks) * snapTicks;
-
-    int ppq = sequence->getTicksPerQuarterNote();
-    int grid = ppq * 4 / quantizeDenominator;
-    return ((tick + grid / 2) / grid) * grid;
+    return geometry.roundTickToGrid(tick);
 }
 
 int PianoRollComponent::floorTickToGrid(int tick) const
 {
-    if (!sequence)
-        return (tick / snapTicks) * snapTicks;
-
-    int ppq = sequence->getTicksPerQuarterNote();
-    int grid = ppq * 4 / quantizeDenominator;
-    return (tick / grid) * grid;
+    return geometry.floorTickToGrid(tick);
 }
 
 void PianoRollComponent::setQuantizeDenominator(int denom)
 {
     quantizeDenominator = denom;
+    geometry.setQuantizeDenominator(denom);
     repaint();
 }
 
@@ -3389,6 +3369,7 @@ void PianoRollComponent::drawTrackGridLines(juce::Graphics& g, int visibleLeft, 
 void PianoRollComponent::setBeatWidth(int w)
 {
     beatWidth = juce::jlimit(minBeatWidth, maxBeatWidth, w);
+    geometry.setBeatWidth(beatWidth);
     updateSize();
     repaint();
     if (onZoomChanged)
