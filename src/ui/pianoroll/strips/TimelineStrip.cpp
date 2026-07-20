@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include "ui/theme/Theme.h"
+#include <algorithm>
 
 TimelineStrip::TimelineStrip(const TimelineGeometry& geometryRef, const juce::String& labelText)
     : geometry(geometryRef), label(labelText)
@@ -58,6 +59,21 @@ float TimelineStrip::playheadX() const
                               playheadTick / sequence->getTicksPerQuarterNote() * geometry.getBeatWidth());
 }
 
+void TimelineStrip::drawLabelColumn(juce::Graphics& g)
+{
+    using namespace calliope::theme;
+    if (label.isNotEmpty())
+    {
+        g.setColour(text::t3);
+        g.setFont(font::sans(font::sizeXS));
+        g.drawText(label, viewLeftX + 4, 0, labelWidth() - 8, getHeight(), juce::Justification::centredLeft);
+    }
+    g.setColour(border::normal);
+    g.drawVerticalLine(viewLeftX + labelWidth() - 1, 0.0f, static_cast<float>(getHeight()));
+    g.setColour(border::strong);
+    g.drawHorizontalLine(getHeight() - 1, static_cast<float>(viewLeftX), static_cast<float>(getWidth()));
+}
+
 void TimelineStrip::drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha)
 {
     using namespace calliope::theme;
@@ -75,4 +91,63 @@ void TimelineStrip::drawLoopOverlay(juce::Graphics& g, int top, int height, floa
     g.setColour(loopEnabled ? accent::base.withAlpha(0.7f) : text::t4);
     g.drawVerticalLine(static_cast<int>(lx1), fTop, fBottom);
     g.drawVerticalLine(static_cast<int>(lx2), fTop, fBottom);
+}
+
+void TimelineStrip::drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top, float bottom)
+{
+    using namespace calliope::theme;
+    if (sequence == nullptr)
+        return;
+
+    int ppq = sequence->getTicksPerQuarterNote();
+    int quantizeGrid = geometry.gridTicks();
+    int totalTicks = geometry.xToTick(getWidth());
+    int tick = 0;
+
+    while (tick < totalTicks)
+    {
+        auto ts = sequence->getTimeSignatureAt(tick);
+        int ticksPerBeat = ppq * 4 / ts.denominator;
+        int beatsInBar = ts.numerator;
+        int barEndTick = tick + beatsInBar * ticksPerBeat;
+
+        if (geometry.tickToX(tick) > visibleRight)
+            break;
+
+        if (geometry.tickToX(barEndTick) < visibleLeft)
+        {
+            tick = barEndTick;
+            continue;
+        }
+
+        int subdivisionsPerBeat = std::max(1, ticksPerBeat / quantizeGrid);
+
+        for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
+        {
+            int beatTick = tick + beat * ticksPerBeat;
+
+            for (int sub = 0; sub < subdivisionsPerBeat; ++sub)
+            {
+                int subTick = beatTick + sub * quantizeGrid;
+                int x = geometry.tickToX(subTick);
+                if (x > visibleRight)
+                    break;
+                if (x < visibleLeft)
+                    continue;
+
+                if (sub == 0)
+                {
+                    bool isBar = (beat == 0);
+                    g.setColour(isBar ? border::strong : border::normal);
+                }
+                else
+                {
+                    g.setColour(border::soft);
+                }
+                g.drawVerticalLine(x, top, bottom);
+            }
+        }
+
+        tick = barEndTick;
+    }
 }
