@@ -430,11 +430,26 @@ PianoRollComponent::PianoRollComponent()
     addAndMakeVisible(loopStrip);
     loopStrip.onLoopRegionChanged = [this](int startTick, int endTick)
     {
-        loopStartTick = startTick;
-        loopEndTick = endTick;
-        repaint();
+        setLoopRegion(loopEnabled, startTick, endTick);
         if (onLoopRegionChanged)
             onLoopRegionChanged(startTick, endTick);
+    };
+    addAndMakeVisible(ruler);
+    ruler.onSeek = [this](int tick)
+    {
+        setPlayheadTick(tick);
+        if (onPlayheadMoved)
+            onPlayheadMoved(tick);
+    };
+    ruler.onWheelZoom = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
+    {
+        if (onRulerWheel)
+            onRulerWheel(e, w);
+    };
+    ruler.onDragZoom = [this](const juce::MouseEvent& e, int deltaY)
+    {
+        if (onRulerDrag)
+            onRulerDrag(e, deltaY);
     };
 }
 
@@ -468,11 +483,14 @@ void PianoRollComponent::updateStripPositions()
 
     loopStrip.setBounds(0, viewY, getWidth(), LoopStrip::height);
     loopStrip.setViewLeftX(viewX);
+    ruler.setBounds(0, viewY + LoopStrip::height, getWidth(), RulerStrip::height);
+    ruler.setViewLeftX(viewX);
 }
 
 void PianoRollComponent::repaintStrips()
 {
     loopStrip.repaint();
+    ruler.repaint();
 }
 
 void PianoRollComponent::closeTimeSignatureEditor()
@@ -513,6 +531,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     sequence = seq;
     geometry.setTicksPerQuarterNote(sequence != nullptr ? sequence->getTicksPerQuarterNote() : 0);
     loopStrip.setSequence(seq);
+    ruler.setSequence(seq);
     if (sequence != nullptr)
         sequence->addListener(this);
 
@@ -610,7 +629,7 @@ void PianoRollComponent::modifierKeysChanged(const juce::ModifierKeys& modifiers
 
     toolSwapActive = modifierDown;
 
-    if (dragMode != DragMode::None || isCreatingNote || isKeyboardDragging || isRulerDragging)
+    if (dragMode != DragMode::None || isCreatingNote || isKeyboardDragging)
         return;
 
     updateEffectiveEditMode();
@@ -1254,6 +1273,7 @@ void PianoRollComponent::setPlayheadTick(double tick)
     repaint(oldX - margin, 0, margin * 2 + 2, h);
     repaint(newX - margin, 0, margin * 2 + 2, h);
     loopStrip.setPlayheadTick(tick);
+    ruler.setPlayheadTick(tick);
 }
 
 void PianoRollComponent::paint(juce::Graphics& g)
@@ -1271,7 +1291,6 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawTimeSignatureTrack(g);
     drawKeySignatureTrack(g);
     drawChordTrack(g);
-    drawRuler(g);
 }
 
 void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
@@ -1281,22 +1300,6 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 
     toolSwapActive = e.mods.isCommandDown();
     updateEffectiveEditMode();
-
-    if (e.y < getRulerTop() + loopStripHeight + rulerHeight)
-    {
-        if (e.x >= getKeyboardLeft() + keyboardWidth)
-        {
-            int tick = roundTickToGrid(xToTick(e.x));
-            setPlayheadTick(std::max(0, tick));
-            repaint();
-            if (onPlayheadMoved)
-                onPlayheadMoved(static_cast<int>(playheadTick));
-            isRulerDragging = true;
-            rulerDragStartY = e.y;
-            lastRulerDragY = e.y;
-        }
-        return;
-    }
 
     if (!e.mods.isRightButtonDown())
     {
@@ -1757,20 +1760,6 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
-    if (isRulerDragging)
-    {
-        if (std::abs(e.y - rulerDragStartY) < 5)
-        {
-            lastRulerDragY = e.y;
-            return;
-        }
-        int deltaY = e.y - lastRulerDragY;
-        lastRulerDragY = e.y;
-        if (deltaY != 0 && onRulerDrag)
-            onRulerDrag(e, deltaY);
-        return;
-    }
-
     if (dragMode == DragMode::RubberBand)
     {
         auto current = e.getPosition();
@@ -1857,8 +1846,6 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
     stopNotePreview();
     isKeyboardDragging = false;
-
-    isRulerDragging = false;
 
     if (isTempoPointDragging)
     {
@@ -2087,16 +2074,6 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
     }
 }
 
-void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
-{
-    if (e.y >= getRulerTop() + loopStripHeight && e.y < getRulerTop() + loopStripHeight + rulerHeight && onRulerWheel)
-    {
-        onRulerWheel(e, w);
-        return;
-    }
-    Component::mouseWheelMove(e, w);
-}
-
 void PianoRollComponent::drawKeyboard(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -2182,111 +2159,6 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
     g.setColour(border::normal);
     g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(clip.getY()),
                        static_cast<float>(clip.getBottom()));
-}
-
-void PianoRollComponent::drawRuler(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    if (!sequence)
-        return;
-
-    int hTop = getRulerTop() + loopStripHeight;
-    int kbLeft = getKeyboardLeft();
-
-    auto clip = g.getClipBounds();
-    int visibleLeft = clip.getX();
-    int visibleRight = clip.getRight();
-
-    g.setColour(border::normal);
-    g.fillRect(kbLeft, hTop, getWidth() - kbLeft, rulerHeight);
-
-    g.saveState();
-    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
-
-    int ppq = sequence->getTicksPerQuarterNote();
-    int quantizeGrid = ppq * 4 / quantizeDenominator;
-    int totalTicks = xToTick(getWidth());
-    int tick = 0;
-    int barNumber = 1;
-
-    while (tick < totalTicks)
-    {
-        auto ts = sequence->getTimeSignatureAt(tick);
-        int ticksPerBeat = ppq * 4 / ts.denominator;
-        int beatsInBar = ts.numerator;
-        int barEndTick = tick + beatsInBar * ticksPerBeat;
-
-        if (tickToX(tick) > visibleRight)
-            break;
-
-        if (tickToX(barEndTick) < visibleLeft)
-        {
-            tick = barEndTick;
-            barNumber++;
-            continue;
-        }
-
-        int subdivisionsPerBeat = std::max(1, ticksPerBeat / quantizeGrid);
-
-        for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
-        {
-            int beatTick = tick + beat * ticksPerBeat;
-
-            for (int sub = 0; sub < subdivisionsPerBeat; ++sub)
-            {
-                int subTick = beatTick + sub * quantizeGrid;
-                int x = tickToX(subTick);
-                if (x > visibleRight)
-                    break;
-                if (x < visibleLeft - 30)
-                    continue;
-
-                if (sub == 0)
-                {
-                    bool isBar = (beat == 0);
-                    g.setColour(isBar ? border::strong : border::normal);
-                    g.drawVerticalLine(x, static_cast<float>(hTop), static_cast<float>(hTop + rulerHeight));
-
-                    if (isBar)
-                    {
-                        g.setColour(text::t2);
-                        g.setFont(font::sans(font::sizeSM));
-                        g.drawText(juce::String(barNumber), x + 4, hTop + 2, 30, rulerHeight - 4,
-                                   juce::Justification::centredLeft);
-                    }
-                }
-                else
-                {
-                    g.setColour(border::soft);
-                    int tickH = rulerHeight / 3;
-                    g.drawVerticalLine(x, static_cast<float>(hTop + rulerHeight - tickH),
-                                       static_cast<float>(hTop + rulerHeight));
-                }
-            }
-        }
-
-        tick = barEndTick;
-        barNumber++;
-    }
-
-    float phX = sequence
-                    ? static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth)
-                    : static_cast<float>(keyboardWidth);
-    if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
-    {
-        g.setColour(text::t1);
-        g.drawLine(phX, static_cast<float>(hTop), phX, static_cast<float>(hTop + rulerHeight), 1.0f);
-    }
-
-    drawLoopOverlay(g, hTop, rulerHeight, 0.35f);
-
-    g.restoreState();
-
-    g.setColour(border::normal);
-    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(hTop), static_cast<float>(hTop + rulerHeight));
-
-    g.setColour(border::strong);
-    g.drawHorizontalLine(hTop + rulerHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
 }
 
 float PianoRollComponent::tempoBpmToY(double bpm) const
@@ -3128,6 +3000,7 @@ void PianoRollComponent::setLoopRegion(bool enabled, int startTick, int endTick)
     loopEndTick = endTick;
     repaint();
     loopStrip.setLoopRegion(enabled, startTick, endTick);
+    ruler.setLoopRegion(enabled, startTick, endTick);
 }
 
 void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
