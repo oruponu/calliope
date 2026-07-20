@@ -4,6 +4,7 @@
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/TimeSignatureEditor.h"
 #include "ui/pianoroll/TimelineGeometry.h"
+#include "ui/pianoroll/strips/LoopStrip.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -13,6 +14,7 @@
 class PianoRollComponent : public juce::Component, public MidiSequence::Listener, private juce::Timer
 {
 public:
+    PianoRollComponent();
     ~PianoRollComponent() override;
 
     enum class EditMode
@@ -39,6 +41,8 @@ public:
     std::function<void(int startTick, int endTick)> onLoopRegionChanged;
     std::function<void()> onTempoChanged;
     void paint(juce::Graphics& g) override;
+    void resized() override;
+    void moved() override;
 
     std::function<void(int tick)> onPlayheadMoved;
     std::function<void()> onNotesChanged;
@@ -95,13 +99,13 @@ public:
     static constexpr int defaultBeatWidth = 80;
     static constexpr int totalNotes = 128;
     static constexpr int snapTicks = 480;
-    static constexpr int loopBarHeight = 14;
+    static constexpr int loopStripHeight = LoopStrip::height;
     static constexpr int rulerHeight = 24;
     static constexpr int tempoTrackHeight = 48;
     static constexpr int timeSignatureTrackHeight = 24;
     static constexpr int keySignatureTrackHeight = 24;
     static constexpr int chordTrackHeight = 24;
-    static constexpr int gridTopOffset = loopBarHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight +
+    static constexpr int gridTopOffset = loopStripHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight +
                                          keySignatureTrackHeight + chordTrackHeight;
     static constexpr int resizeEdgeWidth = 6;
 
@@ -134,6 +138,8 @@ private:
     void tracksChanged() override;
     void tempoChanged() override;
     void timelineMetadataChanged() override;
+    void updateStripPositions();
+    void repaintStrips();
 
     enum class DragMode
     {
@@ -144,7 +150,6 @@ private:
     };
 
     void drawKeyboard(juce::Graphics& g);
-    void drawLoopBar(juce::Graphics& g);
     void drawRuler(juce::Graphics& g);
     void drawTempoTrack(juce::Graphics& g);
     void drawTempoRangeSelection(juce::Graphics& g);
@@ -258,6 +263,7 @@ private:
     juce::Rectangle<int> rubberBandRect;
 
     EditClipboard clipboard;
+    LoopStrip loopStrip{geometry};
 
     MidiNote previewNote;
     bool isPreviewing = false;
@@ -277,8 +283,6 @@ private:
     bool loopEnabled = false;
     int loopStartTick = 0;
     int loopEndTick = 0;
-    bool isLoopDragging = false;
-    int loopDragStartTick = 0;
 
     bool isTempoPointDragging = false;
     int tempoDragIndex = -1;
