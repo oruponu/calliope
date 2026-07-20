@@ -470,6 +470,7 @@ PianoRollComponent::PianoRollComponent()
     };
     timeSigStrip.onTimelineMetadataChanged = [this] { repaint(); };
     addAndMakeVisible(keyStrip);
+    addAndMakeVisible(chordStrip);
 }
 
 PianoRollComponent::~PianoRollComponent()
@@ -512,6 +513,11 @@ void PianoRollComponent::updateStripPositions()
         0, viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height + TimeSignatureStrip::height,
         getWidth(), KeySignatureStrip::height);
     keyStrip.setViewLeftX(viewX);
+    chordStrip.setBounds(0,
+                         viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height +
+                             TimeSignatureStrip::height + KeySignatureStrip::height,
+                         getWidth(), ChordStrip::height);
+    chordStrip.setViewLeftX(viewX);
 }
 
 void PianoRollComponent::repaintStrips()
@@ -521,6 +527,7 @@ void PianoRollComponent::repaintStrips()
     tempoStrip.repaint();
     timeSigStrip.repaint();
     keyStrip.repaint();
+    chordStrip.repaint();
 }
 
 void PianoRollComponent::notesChanged(int)
@@ -547,6 +554,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     tempoStrip.setSequence(seq);
     timeSigStrip.setSequence(seq);
     keyStrip.setSequence(seq);
+    chordStrip.setSequence(seq);
     if (sequence != nullptr)
         sequence->addListener(this);
 
@@ -1006,6 +1014,7 @@ void PianoRollComponent::setPlayheadTick(double tick)
     tempoStrip.setPlayheadTick(tick);
     timeSigStrip.setPlayheadTick(tick);
     keyStrip.setPlayheadTick(tick);
+    chordStrip.setPlayheadTick(tick);
 }
 
 void PianoRollComponent::paint(juce::Graphics& g)
@@ -1019,7 +1028,6 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawRubberBand(g);
     drawPlayhead(g);
     drawKeyboard(g);
-    drawChordTrack(g);
 }
 
 void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
@@ -1511,90 +1519,6 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
                        static_cast<float>(clip.getBottom()));
 }
 
-void PianoRollComponent::drawChordTrack(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    if (!sequence)
-        return;
-
-    int hTop = getRulerTop();
-    int ctTop =
-        hTop + loopStripHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight + keySignatureTrackHeight;
-    int kbLeft = getKeyboardLeft();
-
-    auto clip = g.getClipBounds();
-    int visibleLeft = clip.getX();
-    int visibleRight = clip.getRight();
-
-    g.setColour(surface::surface2);
-    g.fillRect(kbLeft, ctTop, getWidth() - kbLeft, chordTrackHeight);
-
-    g.saveState();
-    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
-
-    drawTrackGridLines(g, visibleLeft, visibleRight, static_cast<float>(ctTop),
-                       static_cast<float>(ctTop + chordTrackHeight));
-
-    const auto& chordChanges = sequence->getChordChanges();
-    if (!chordChanges.empty())
-    {
-        juce::Colour chordColour = track::violet;
-        int barY = ctTop + 3;
-        int barH = chordTrackHeight - 6;
-
-        for (size_t i = 0; i < chordChanges.size(); ++i)
-        {
-            auto label = MidiSequence::chordToString(chordChanges[i]);
-            if (label.empty())
-                continue;
-
-            int x = tickToX(chordChanges[i].tick);
-            int nextX =
-                (i + 1 < chordChanges.size()) ? tickToX(chordChanges[i + 1].tick) : tickToX(xToTick(getWidth()));
-
-            if (x > visibleRight || nextX < visibleLeft)
-                continue;
-
-            g.setColour(chordColour.withAlpha(0.15f));
-            g.fillRect(x, barY, nextX - x, barH);
-            g.setColour(chordColour.withAlpha(0.5f));
-            g.drawRect(x, barY, nextX - x, barH, 1);
-
-            int textX = x + 4;
-            int textWidth = nextX - textX - 2;
-            if (textWidth > 8)
-            {
-                g.setColour(chordColour);
-                g.setFont(font::sans(font::sizeSM));
-                g.drawText(juce::String(label), textX, ctTop, textWidth, chordTrackHeight,
-                           juce::Justification::centredLeft);
-            }
-        }
-    }
-
-    float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
-    if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
-    {
-        g.setColour(text::t1);
-        g.drawLine(phX, static_cast<float>(ctTop), phX, static_cast<float>(ctTop + chordTrackHeight), 1.0f);
-    }
-
-    drawLoopOverlay(g, ctTop, chordTrackHeight, 0.12f);
-
-    g.restoreState();
-
-    g.setColour(text::t3);
-    g.setFont(font::sans(font::sizeXS));
-    g.drawText("Chord", kbLeft + 4, ctTop, keyboardWidth - 8, chordTrackHeight, juce::Justification::centredLeft);
-
-    g.setColour(border::normal);
-    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(ctTop),
-                       static_cast<float>(ctTop + chordTrackHeight));
-
-    g.setColour(border::strong);
-    g.drawHorizontalLine(ctTop + chordTrackHeight - 1, static_cast<float>(kbLeft), static_cast<float>(getWidth()));
-}
-
 void PianoRollComponent::drawGrid(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -1876,6 +1800,7 @@ void PianoRollComponent::setLoopRegion(bool enabled, int startTick, int endTick)
     tempoStrip.setLoopRegion(enabled, startTick, endTick);
     timeSigStrip.setLoopRegion(enabled, startTick, endTick);
     keyStrip.setLoopRegion(enabled, startTick, endTick);
+    chordStrip.setLoopRegion(enabled, startTick, endTick);
 }
 
 void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
@@ -1901,25 +1826,6 @@ void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
     g.setColour(loopEnabled ? accent::base.withAlpha(0.7f) : text::t4);
     g.drawVerticalLine(static_cast<int>(x1), gridTop, bottom);
     g.drawVerticalLine(static_cast<int>(x2), gridTop, bottom);
-}
-
-void PianoRollComponent::drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha)
-{
-    using namespace calliope::theme;
-    if (loopEndTick <= loopStartTick)
-        return;
-
-    float lx1 = static_cast<float>(tickToX(loopStartTick));
-    float lx2 = static_cast<float>(tickToX(loopEndTick));
-    float fTop = static_cast<float>(top);
-    float fBottom = static_cast<float>(top + height);
-
-    g.setColour(loopEnabled ? accent::base.withAlpha(fillAlpha) : surface::hover);
-    g.fillRect(lx1, fTop, lx2 - lx1, static_cast<float>(height));
-
-    g.setColour(loopEnabled ? accent::base.withAlpha(0.7f) : text::t4);
-    g.drawVerticalLine(static_cast<int>(lx1), fTop, fBottom);
-    g.drawVerticalLine(static_cast<int>(lx2), fTop, fBottom);
 }
 
 void PianoRollComponent::updateSize()
@@ -2023,63 +1929,6 @@ void PianoRollComponent::setQuantizeDenominator(int denom)
     geometry.setQuantizeDenominator(denom);
     repaintStrips();
     repaint();
-}
-
-void PianoRollComponent::drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top,
-                                            float bottom)
-{
-    using namespace calliope::theme;
-    int ppq = sequence->getTicksPerQuarterNote();
-    int quantizeGrid = ppq * 4 / quantizeDenominator;
-    int totalTicks = xToTick(getWidth());
-    int tick = 0;
-
-    while (tick < totalTicks)
-    {
-        auto ts = sequence->getTimeSignatureAt(tick);
-        int ticksPerBeat = ppq * 4 / ts.denominator;
-        int beatsInBar = ts.numerator;
-        int barEndTick = tick + beatsInBar * ticksPerBeat;
-
-        if (tickToX(tick) > visibleRight)
-            break;
-
-        if (tickToX(barEndTick) < visibleLeft)
-        {
-            tick = barEndTick;
-            continue;
-        }
-
-        int subdivisionsPerBeat = std::max(1, ticksPerBeat / quantizeGrid);
-
-        for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
-        {
-            int beatTick = tick + beat * ticksPerBeat;
-
-            for (int sub = 0; sub < subdivisionsPerBeat; ++sub)
-            {
-                int subTick = beatTick + sub * quantizeGrid;
-                int x = tickToX(subTick);
-                if (x > visibleRight)
-                    break;
-                if (x < visibleLeft)
-                    continue;
-
-                if (sub == 0)
-                {
-                    bool isBar = (beat == 0);
-                    g.setColour(isBar ? border::strong : border::normal);
-                }
-                else
-                {
-                    g.setColour(border::soft);
-                }
-                g.drawVerticalLine(x, top, bottom);
-            }
-        }
-
-        tick = barEndTick;
-    }
 }
 
 void PianoRollComponent::setBeatWidth(int w)
