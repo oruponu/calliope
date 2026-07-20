@@ -6,6 +6,7 @@
 #include "ui/pianoroll/TimelineGeometry.h"
 #include "ui/pianoroll/strips/LoopStrip.h"
 #include "ui/pianoroll/strips/RulerStrip.h"
+#include "ui/pianoroll/strips/TempoTrackStrip.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -77,7 +78,7 @@ public:
     void paste(int atTick);
     bool hasSelection() const
     {
-        return !selectedNotes.empty() || !selectedTempoIndices.empty() || !selectedTimeSigIndices.empty();
+        return !selectedNotes.empty() || tempoStrip.hasSelection() || !selectedTimeSigIndices.empty();
     }
     bool hasClipboardContent() const
     {
@@ -101,7 +102,7 @@ public:
     static constexpr int snapTicks = 480;
     static constexpr int loopStripHeight = LoopStrip::height;
     static constexpr int rulerHeight = RulerStrip::height;
-    static constexpr int tempoTrackHeight = 48;
+    static constexpr int tempoTrackHeight = TempoTrackStrip::height;
     static constexpr int timeSignatureTrackHeight = 24;
     static constexpr int keySignatureTrackHeight = 24;
     static constexpr int chordTrackHeight = 24;
@@ -136,7 +137,6 @@ public:
 private:
     void notesChanged(int trackIndex) override;
     void tracksChanged() override;
-    void tempoChanged() override;
     void timelineMetadataChanged() override;
     void updateStripPositions();
     void repaintStrips();
@@ -150,8 +150,6 @@ private:
     };
 
     void drawKeyboard(juce::Graphics& g);
-    void drawTempoTrack(juce::Graphics& g);
-    void drawTempoRangeSelection(juce::Graphics& g);
     void drawTimeSignatureTrack(juce::Graphics& g);
     void drawTimeSignatureRangeSelection(juce::Graphics& g);
     void drawKeySignatureTrack(juce::Graphics& g);
@@ -167,11 +165,6 @@ private:
     int tickToWidth(int durationTicks) const;
     int roundTickToGrid(int tick) const;
     int floorTickToGrid(int tick) const;
-
-    float tempoBpmToY(double bpm) const;
-    double tempoYToBpm(int y) const;
-    bool hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const;
-    int hitTestTempoPoint(int x, int y) const;
 
     enum class ResizeEdge
     {
@@ -200,10 +193,6 @@ private:
     bool isNoteSelected(const NoteRef& ref) const;
     void clearNoteSelection();
     void clearTempoSelection();
-    void copySelectedTempoPoints();
-    void cutSelectedTempoPoints();
-    void pasteTempoPoints(int atTick);
-    void deleteSelectedTempoPointsImpl(const juce::String& transactionName);
     int hitTestTimeSignaturePoint(int x, int y) const;
     juce::Rectangle<int> timeSignatureLabelRect(int index) const;
     void clearTimeSignatureSelection();
@@ -264,6 +253,7 @@ private:
     EditClipboard clipboard;
     LoopStrip loopStrip{geometry};
     RulerStrip ruler{geometry};
+    TempoTrackStrip tempoStrip{geometry, clipboard};
 
     MidiNote previewNote;
     bool isPreviewing = false;
@@ -279,12 +269,6 @@ private:
     bool loopEnabled = false;
     int loopStartTick = 0;
     int loopEndTick = 0;
-
-    bool isTempoPointDragging = false;
-    int tempoDragIndex = -1;
-    bool tempoDragMoved = false;
-    std::vector<TempoChange> tempoDragBefore;
-    std::vector<int> tempoDragGroup;
 
     std::set<int> selectedTimeSigIndices;
     bool isTimeSigEditing = false;
@@ -304,9 +288,4 @@ private:
     int timeSigSelectStartX = 0;
     int timeSigSelectCurrentX = 0;
     std::set<int> timeSigSelectBase;
-    std::set<int> selectedTempoIndices;
-    bool isTempoRangeSelecting = false;
-    int tempoSelectStartX = 0;
-    int tempoSelectCurrentX = 0;
-    std::set<int> tempoSelectBase;
 };
