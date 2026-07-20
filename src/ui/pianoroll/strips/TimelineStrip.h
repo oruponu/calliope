@@ -18,6 +18,7 @@ public:
 protected:
     int labelWidth() const { return geometry.timelineStartX(); }
     float playheadX() const;
+    void drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha);
 
     const TimelineGeometry& geometry;
     MidiSequence* sequence = nullptr;

@@ -5,6 +5,7 @@
 #include "ui/pianoroll/TimeSignatureEditor.h"
 #include "ui/pianoroll/TimelineGeometry.h"
 #include "ui/pianoroll/strips/LoopStrip.h"
+#include "ui/pianoroll/strips/RulerStrip.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -89,7 +90,6 @@ public:
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseMove(const juce::MouseEvent& e) override;
-    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
     void modifierKeysChanged(const juce::ModifierKeys& modifiers) override;
     bool keyPressed(const juce::KeyPress& key) override;
@@ -100,7 +100,7 @@ public:
     static constexpr int totalNotes = 128;
     static constexpr int snapTicks = 480;
     static constexpr int loopStripHeight = LoopStrip::height;
-    static constexpr int rulerHeight = 24;
+    static constexpr int rulerHeight = RulerStrip::height;
     static constexpr int tempoTrackHeight = 48;
     static constexpr int timeSignatureTrackHeight = 24;
     static constexpr int keySignatureTrackHeight = 24;
@@ -150,7 +150,6 @@ private:
     };
 
     void drawKeyboard(juce::Graphics& g);
-    void drawRuler(juce::Graphics& g);
     void drawTempoTrack(juce::Graphics& g);
     void drawTempoRangeSelection(juce::Graphics& g);
     void drawTimeSignatureTrack(juce::Graphics& g);
@@ -264,6 +263,7 @@ private:
 
     EditClipboard clipboard;
     LoopStrip loopStrip{geometry};
+    RulerStrip ruler{geometry};
 
     MidiNote previewNote;
     bool isPreviewing = false;
@@ -273,10 +273,6 @@ private:
     static constexpr int previewHoldMs = 300;
 
     bool isKeyboardDragging = false;
-
-    bool isRulerDragging = false;
-    int rulerDragStartY = 0;
-    int lastRulerDragY = 0;
 
     int quantizeDenominator = 4;
 

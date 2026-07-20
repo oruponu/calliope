@@ -39,6 +39,7 @@ target_sources(Calliope PRIVATE
     src/ui/pianoroll/PianoRollComponent.cpp
     src/ui/pianoroll/TimeSignatureEditor.cpp
     src/ui/pianoroll/strips/LoopStrip.cpp
+    src/ui/pianoroll/strips/RulerStrip.cpp
     src/ui/pianoroll/strips/TimelineStrip.cpp
     src/ui/plugin/PluginEditorController.cpp
     src/ui/plugin/PluginManagementController.cpp

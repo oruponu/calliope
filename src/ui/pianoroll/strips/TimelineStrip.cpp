@@ -1,4 +1,5 @@
 #include "ui/pianoroll/strips/TimelineStrip.h"
+#include "ui/theme/Theme.h"
 
 TimelineStrip::TimelineStrip(const TimelineGeometry& geometryRef, const juce::String& labelText)
     : geometry(geometryRef), label(labelText)
@@ -55,4 +56,23 @@ float TimelineStrip::playheadX() const
         return static_cast<float>(geometry.timelineStartX());
     return static_cast<float>(geometry.timelineStartX() +
                               playheadTick / sequence->getTicksPerQuarterNote() * geometry.getBeatWidth());
+}
+
+void TimelineStrip::drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha)
+{
+    using namespace calliope::theme;
+    if (loopEndTick <= loopStartTick)
+        return;
+
+    float lx1 = static_cast<float>(geometry.tickToX(loopStartTick));
+    float lx2 = static_cast<float>(geometry.tickToX(loopEndTick));
+    float fTop = static_cast<float>(top);
+    float fBottom = static_cast<float>(top + height);
+
+    g.setColour(loopEnabled ? accent::base.withAlpha(fillAlpha) : surface::hover);
+    g.fillRect(lx1, fTop, lx2 - lx1, static_cast<float>(height));
+
+    g.setColour(loopEnabled ? accent::base.withAlpha(0.7f) : text::t4);
+    g.drawVerticalLine(static_cast<int>(lx1), fTop, fBottom);
+    g.drawVerticalLine(static_cast<int>(lx2), fTop, fBottom);
 }
