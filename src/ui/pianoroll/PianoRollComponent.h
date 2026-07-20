@@ -2,11 +2,11 @@
 
 #include "model/MidiSequence.h"
 #include "ui/pianoroll/EditClipboard.h"
-#include "ui/pianoroll/TimeSignatureEditor.h"
 #include "ui/pianoroll/TimelineGeometry.h"
 #include "ui/pianoroll/strips/LoopStrip.h"
 #include "ui/pianoroll/strips/RulerStrip.h"
 #include "ui/pianoroll/strips/TempoTrackStrip.h"
+#include "ui/pianoroll/strips/TimeSignatureStrip.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -78,7 +78,7 @@ public:
     void paste(int atTick);
     bool hasSelection() const
     {
-        return !selectedNotes.empty() || tempoStrip.hasSelection() || !selectedTimeSigIndices.empty();
+        return !selectedNotes.empty() || tempoStrip.hasSelection() || timeSigStrip.hasSelection();
     }
     bool hasClipboardContent() const
     {
@@ -91,7 +91,6 @@ public:
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseMove(const juce::MouseEvent& e) override;
-    void mouseDoubleClick(const juce::MouseEvent& e) override;
     void modifierKeysChanged(const juce::ModifierKeys& modifiers) override;
     bool keyPressed(const juce::KeyPress& key) override;
 
@@ -103,7 +102,7 @@ public:
     static constexpr int loopStripHeight = LoopStrip::height;
     static constexpr int rulerHeight = RulerStrip::height;
     static constexpr int tempoTrackHeight = TempoTrackStrip::height;
-    static constexpr int timeSignatureTrackHeight = 24;
+    static constexpr int timeSignatureTrackHeight = TimeSignatureStrip::height;
     static constexpr int keySignatureTrackHeight = 24;
     static constexpr int chordTrackHeight = 24;
     static constexpr int gridTopOffset = loopStripHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight +
@@ -150,8 +149,6 @@ private:
     };
 
     void drawKeyboard(juce::Graphics& g);
-    void drawTimeSignatureTrack(juce::Graphics& g);
-    void drawTimeSignatureRangeSelection(juce::Graphics& g);
     void drawKeySignatureTrack(juce::Graphics& g);
     void drawChordTrack(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
@@ -193,17 +190,7 @@ private:
     bool isNoteSelected(const NoteRef& ref) const;
     void clearNoteSelection();
     void clearTempoSelection();
-    int hitTestTimeSignaturePoint(int x, int y) const;
-    juce::Rectangle<int> timeSignatureLabelRect(int index) const;
     void clearTimeSignatureSelection();
-    void copySelectedTimeSignatures();
-    void cutSelectedTimeSignatures();
-    void pasteTimeSignatures(int atTick);
-    void deleteSelectedTimeSignaturesImpl(const juce::String& transactionName);
-    void openTimeSignatureEditor(int tick, int num, int den, bool isNew, juce::Rectangle<int> anchorInLocal);
-    void commitTimeSignatureEdit(int num, int den);
-    void cancelTimeSignatureEdit();
-    void closeTimeSignatureEditor();
     void drawRubberBand(juce::Graphics& g);
     std::vector<NoteRef> findNotesInRect(const juce::Rectangle<int>& rect) const;
 
@@ -254,6 +241,7 @@ private:
     LoopStrip loopStrip{geometry};
     RulerStrip ruler{geometry};
     TempoTrackStrip tempoStrip{geometry, clipboard};
+    TimeSignatureStrip timeSigStrip{geometry, clipboard};
 
     MidiNote previewNote;
     bool isPreviewing = false;
@@ -269,23 +257,4 @@ private:
     bool loopEnabled = false;
     int loopStartTick = 0;
     int loopEndTick = 0;
-
-    std::set<int> selectedTimeSigIndices;
-    bool isTimeSigEditing = false;
-    int timeSigEditTick = 0;
-    int timeSigDraftNum = 4;
-    int timeSigDraftDen = 4;
-    bool timeSigEditIsNew = false;
-    juce::Component::SafePointer<juce::CallOutBox> timeSigCallout;
-    juce::Component::SafePointer<TimeSignatureEditor> timeSigEditor;
-    bool isTimeSigPointDragging = false;
-    int timeSigDragIndex = -1;
-    bool timeSigDragMoved = false;
-    std::vector<TimeSignatureChange> timeSigDragBefore;
-    int timeSigDragGrabOffset = 0;
-    std::vector<int> timeSigDragGroup;
-    bool isTimeSigRangeSelecting = false;
-    int timeSigSelectStartX = 0;
-    int timeSigSelectCurrentX = 0;
-    std::set<int> timeSigSelectBase;
 };

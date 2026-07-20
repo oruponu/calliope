@@ -1,4 +1,4 @@
-#include "ui/pianoroll/TimeSignatureEditor.h"
+#include "ui/pianoroll/strips/TimeSignatureEditor.h"
 #include "ui/theme/Theme.h"
 
 TimeSignatureEditor::TimeSignatureEditor(int numerator, int denominator, bool startNumeratorEdit)
