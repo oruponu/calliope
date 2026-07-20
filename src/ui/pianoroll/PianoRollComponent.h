@@ -3,6 +3,7 @@
 #include "model/MidiSequence.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/TimelineGeometry.h"
+#include "ui/pianoroll/strips/ChordStrip.h"
 #include "ui/pianoroll/strips/KeySignatureStrip.h"
 #include "ui/pianoroll/strips/LoopStrip.h"
 #include "ui/pianoroll/strips/RulerStrip.h"
@@ -105,7 +106,7 @@ public:
     static constexpr int tempoTrackHeight = TempoTrackStrip::height;
     static constexpr int timeSignatureTrackHeight = TimeSignatureStrip::height;
     static constexpr int keySignatureTrackHeight = KeySignatureStrip::height;
-    static constexpr int chordTrackHeight = 24;
+    static constexpr int chordTrackHeight = ChordStrip::height;
     static constexpr int gridTopOffset = loopStripHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight +
                                          keySignatureTrackHeight + chordTrackHeight;
     static constexpr int resizeEdgeWidth = 6;
@@ -150,14 +151,11 @@ private:
     };
 
     void drawKeyboard(juce::Graphics& g);
-    void drawChordTrack(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
     void drawMoveGhosts(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
-    void drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha);
-    void drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top, float bottom);
 
     int tickToWidth(int durationTicks) const;
     int roundTickToGrid(int tick) const;
@@ -243,6 +241,7 @@ private:
     TempoTrackStrip tempoStrip{geometry, clipboard};
     TimeSignatureStrip timeSigStrip{geometry, clipboard};
     KeySignatureStrip keyStrip{geometry};
+    ChordStrip chordStrip{geometry};
 
     MidiNote previewNote;
     bool isPreviewing = false;
