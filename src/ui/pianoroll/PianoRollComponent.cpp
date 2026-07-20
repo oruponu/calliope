@@ -469,6 +469,7 @@ PianoRollComponent::PianoRollComponent()
         repaint();
     };
     timeSigStrip.onTimelineMetadataChanged = [this] { repaint(); };
+    addAndMakeVisible(keyStrip);
 }
 
 PianoRollComponent::~PianoRollComponent()
@@ -507,6 +508,10 @@ void PianoRollComponent::updateStripPositions()
     timeSigStrip.setBounds(0, viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height, getWidth(),
                            TimeSignatureStrip::height);
     timeSigStrip.setViewLeftX(viewX);
+    keyStrip.setBounds(
+        0, viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height + TimeSignatureStrip::height,
+        getWidth(), KeySignatureStrip::height);
+    keyStrip.setViewLeftX(viewX);
 }
 
 void PianoRollComponent::repaintStrips()
@@ -515,6 +520,7 @@ void PianoRollComponent::repaintStrips()
     ruler.repaint();
     tempoStrip.repaint();
     timeSigStrip.repaint();
+    keyStrip.repaint();
 }
 
 void PianoRollComponent::notesChanged(int)
@@ -540,6 +546,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     ruler.setSequence(seq);
     tempoStrip.setSequence(seq);
     timeSigStrip.setSequence(seq);
+    keyStrip.setSequence(seq);
     if (sequence != nullptr)
         sequence->addListener(this);
 
@@ -998,6 +1005,7 @@ void PianoRollComponent::setPlayheadTick(double tick)
     ruler.setPlayheadTick(tick);
     tempoStrip.setPlayheadTick(tick);
     timeSigStrip.setPlayheadTick(tick);
+    keyStrip.setPlayheadTick(tick);
 }
 
 void PianoRollComponent::paint(juce::Graphics& g)
@@ -1011,7 +1019,6 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawRubberBand(g);
     drawPlayhead(g);
     drawKeyboard(g);
-    drawKeySignatureTrack(g);
     drawChordTrack(g);
 }
 
@@ -1504,95 +1511,6 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
                        static_cast<float>(clip.getBottom()));
 }
 
-void PianoRollComponent::drawKeySignatureTrack(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    if (!sequence)
-        return;
-
-    int hTop = getRulerTop();
-    int ksTop = hTop + loopStripHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight;
-    int kbLeft = getKeyboardLeft();
-
-    auto clip = g.getClipBounds();
-    int visibleLeft = clip.getX();
-    int visibleRight = clip.getRight();
-
-    g.setColour(surface::surface2);
-    g.fillRect(kbLeft, ksTop, getWidth() - kbLeft, keySignatureTrackHeight);
-
-    g.saveState();
-    g.reduceClipRegion(kbLeft + keyboardWidth, 0, getWidth(), getHeight());
-
-    drawTrackGridLines(g, visibleLeft, visibleRight, static_cast<float>(ksTop),
-                       static_cast<float>(ksTop + keySignatureTrackHeight));
-
-    const auto& ksChanges = sequence->getKeySignatureChanges();
-    if (ksChanges.empty())
-    {
-        g.setColour(track::sand);
-        g.setFont(font::sans(font::sizeSM));
-        g.drawText("C", kbLeft + keyboardWidth + 4, ksTop, 40, keySignatureTrackHeight,
-                   juce::Justification::centredLeft);
-    }
-    else
-    {
-        juce::Colour ksColour = track::sand;
-
-        for (size_t i = 0; i < ksChanges.size(); ++i)
-        {
-            int x = tickToX(ksChanges[i].tick);
-
-            if (x > visibleRight)
-                break;
-
-            int nextX = (i + 1 < ksChanges.size()) ? tickToX(ksChanges[i + 1].tick) : tickToX(xToTick(getWidth()));
-            if (nextX < visibleLeft)
-                continue;
-
-            if (i > 0 && x >= visibleLeft && x <= visibleRight)
-            {
-                g.setColour(ksColour.withAlpha(0.6f));
-                g.drawVerticalLine(x, static_cast<float>(ksTop + 2),
-                                   static_cast<float>(ksTop + keySignatureTrackHeight - 2));
-            }
-
-            if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
-            {
-                g.setColour(ksColour);
-                g.setFont(font::sans(font::sizeSM));
-                juce::String label =
-                    juce::String(MidiSequence::keySignatureToString(ksChanges[i].sharpsOrFlats, ksChanges[i].isMinor));
-                int textX = (i == 0 && ksChanges[i].tick == 0) ? kbLeft + keyboardWidth + 4 : x + 4;
-                g.drawText(label, textX, ksTop, 60, keySignatureTrackHeight, juce::Justification::centredLeft);
-            }
-        }
-    }
-
-    float phX = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
-    if (phX >= static_cast<float>(visibleLeft) - 1.0f && phX <= static_cast<float>(visibleRight) + 1.0f)
-    {
-        g.setColour(text::t1);
-        g.drawLine(phX, static_cast<float>(ksTop), phX, static_cast<float>(ksTop + keySignatureTrackHeight), 1.0f);
-    }
-
-    drawLoopOverlay(g, ksTop, keySignatureTrackHeight, 0.12f);
-
-    g.restoreState();
-
-    g.setColour(text::t3);
-    g.setFont(font::sans(font::sizeXS));
-    g.drawText("Key", kbLeft + 4, ksTop, keyboardWidth - 8, keySignatureTrackHeight, juce::Justification::centredLeft);
-
-    g.setColour(border::normal);
-    g.drawVerticalLine(kbLeft + keyboardWidth - 1, static_cast<float>(ksTop),
-                       static_cast<float>(ksTop + keySignatureTrackHeight));
-
-    g.setColour(border::strong);
-    g.drawHorizontalLine(ksTop + keySignatureTrackHeight - 1, static_cast<float>(kbLeft),
-                         static_cast<float>(getWidth()));
-}
-
 void PianoRollComponent::drawChordTrack(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -1957,6 +1875,7 @@ void PianoRollComponent::setLoopRegion(bool enabled, int startTick, int endTick)
     ruler.setLoopRegion(enabled, startTick, endTick);
     tempoStrip.setLoopRegion(enabled, startTick, endTick);
     timeSigStrip.setLoopRegion(enabled, startTick, endTick);
+    keyStrip.setLoopRegion(enabled, startTick, endTick);
 }
 
 void PianoRollComponent::drawLoopRegion(juce::Graphics& g)

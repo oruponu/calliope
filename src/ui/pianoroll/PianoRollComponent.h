@@ -3,6 +3,7 @@
 #include "model/MidiSequence.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/TimelineGeometry.h"
+#include "ui/pianoroll/strips/KeySignatureStrip.h"
 #include "ui/pianoroll/strips/LoopStrip.h"
 #include "ui/pianoroll/strips/RulerStrip.h"
 #include "ui/pianoroll/strips/TempoTrackStrip.h"
@@ -103,7 +104,7 @@ public:
     static constexpr int rulerHeight = RulerStrip::height;
     static constexpr int tempoTrackHeight = TempoTrackStrip::height;
     static constexpr int timeSignatureTrackHeight = TimeSignatureStrip::height;
-    static constexpr int keySignatureTrackHeight = 24;
+    static constexpr int keySignatureTrackHeight = KeySignatureStrip::height;
     static constexpr int chordTrackHeight = 24;
     static constexpr int gridTopOffset = loopStripHeight + rulerHeight + tempoTrackHeight + timeSignatureTrackHeight +
                                          keySignatureTrackHeight + chordTrackHeight;
@@ -149,7 +150,6 @@ private:
     };
 
     void drawKeyboard(juce::Graphics& g);
-    void drawKeySignatureTrack(juce::Graphics& g);
     void drawChordTrack(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
@@ -242,6 +242,7 @@ private:
     RulerStrip ruler{geometry};
     TempoTrackStrip tempoStrip{geometry, clipboard};
     TimeSignatureStrip timeSigStrip{geometry, clipboard};
+    KeySignatureStrip keyStrip{geometry};
 
     MidiNote previewNote;
     bool isPreviewing = false;
