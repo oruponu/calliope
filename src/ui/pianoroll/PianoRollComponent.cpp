@@ -227,6 +227,7 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
     NoteRef target{activeTrackIndex, order[targetPos]};
     clearTempoSelection();
     clearTimeSignatureSelection();
+    clearKeySignatureSelection();
     selectedNotes.clear();
     selectedNotes.insert(target);
     selectedNote = target;
@@ -454,6 +455,7 @@ PianoRollComponent::PianoRollComponent()
     {
         clearNoteSelection();
         timeSigStrip.clearTimeSignatureSelection();
+        keyStrip.clearKeySignatureSelection();
         repaint();
     };
     tempoStrip.onTempoChanged = [this]
@@ -466,10 +468,18 @@ PianoRollComponent::PianoRollComponent()
     {
         clearNoteSelection();
         tempoStrip.clearTempoSelection();
+        keyStrip.clearKeySignatureSelection();
         repaint();
     };
     timeSigStrip.onTimelineMetadataChanged = [this] { repaint(); };
     addAndMakeVisible(keyStrip);
+    keyStrip.onSelectionTaken = [this]
+    {
+        clearNoteSelection();
+        tempoStrip.clearTempoSelection();
+        timeSigStrip.clearTimeSignatureSelection();
+        repaint();
+    };
     addAndMakeVisible(chordStrip);
 }
 
@@ -584,6 +594,7 @@ void PianoRollComponent::setUndoManager(juce::UndoManager* um)
     undoManager = um;
     tempoStrip.setUndoManager(um);
     timeSigStrip.setUndoManager(um);
+    keyStrip.setUndoManager(um);
 }
 
 void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices)
@@ -602,6 +613,7 @@ void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
     {
         clearTempoSelection();
         clearTimeSignatureSelection();
+        clearKeySignatureSelection();
     }
     selectedNotes = notes;
     selectedNote = {};
@@ -884,6 +896,7 @@ void PianoRollComponent::paste(int atTick)
     {
         clearNoteSelection();
         clearTimeSignatureSelection();
+        clearKeySignatureSelection();
         tempoStrip.pasteTempoPoints(atTick);
         repaint();
     }
@@ -891,6 +904,7 @@ void PianoRollComponent::paste(int atTick)
     {
         clearNoteSelection();
         tempoStrip.clearTempoSelection();
+        clearKeySignatureSelection();
         timeSigStrip.pasteTimeSignatures(atTick);
         repaint();
     }
@@ -919,6 +933,11 @@ void PianoRollComponent::clearTimeSignatureSelection()
     timeSigStrip.clearTimeSignatureSelection();
 }
 
+void PianoRollComponent::clearKeySignatureSelection()
+{
+    keyStrip.clearKeySignatureSelection();
+}
+
 void PianoRollComponent::deleteSelectedTimeSignatures()
 {
     timeSigStrip.deleteSelectedTimeSignatures();
@@ -931,6 +950,7 @@ void PianoRollComponent::selectAllNotes()
 
     clearTempoSelection();
     clearTimeSignatureSelection();
+    clearKeySignatureSelection();
     selectedNotes.clear();
     const auto& track = sequence->getTrack(activeTrackIndex);
     for (int i = 0; i < track.getNumNotes(); ++i)
@@ -964,6 +984,7 @@ void PianoRollComponent::pasteNotes(int atTick)
 
     clearTempoSelection();
     clearTimeSignatureSelection();
+    clearKeySignatureSelection();
     selectedNotes.clear();
 
     if (undoManager)
@@ -1054,6 +1075,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 
     clearTempoSelection();
     clearTimeSignatureSelection();
+    clearKeySignatureSelection();
 
     auto hit = hitTestNote(e.x, e.y);
 

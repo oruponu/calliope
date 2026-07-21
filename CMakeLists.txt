@@ -38,6 +38,7 @@ target_sources(Calliope PRIVATE
     src/ui/pianoroll/ControllerLaneComponent.cpp
     src/ui/pianoroll/PianoRollComponent.cpp
     src/ui/pianoroll/strips/ChordStrip.cpp
+    src/ui/pianoroll/strips/KeySignatureEditor.cpp
     src/ui/pianoroll/strips/KeySignatureStrip.cpp
     src/ui/pianoroll/strips/LoopStrip.cpp
     src/ui/pianoroll/strips/RulerStrip.cpp
