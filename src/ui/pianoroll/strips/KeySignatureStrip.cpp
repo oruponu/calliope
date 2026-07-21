@@ -4,6 +4,15 @@
 #include <algorithm>
 #include <memory>
 
+namespace
+{
+bool keySignatureTicksEqual(const std::vector<KeySignatureChange>& a, const std::vector<KeySignatureChange>& b)
+{
+    return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+                      [](const KeySignatureChange& x, const KeySignatureChange& y) { return x.tick == y.tick; });
+}
+} // namespace
+
 KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef) : TimelineStrip(geometryRef, "Key") {}
 
 KeySignatureStrip::~KeySignatureStrip()
@@ -204,6 +213,11 @@ void KeySignatureStrip::mouseDown(const juce::MouseEvent& e)
         isKeySigPointDragging = true;
         keySigDragMoved = false;
         keySigDragGrabOffset = geometry.xToTick(e.x) - keySigDragBefore[static_cast<size_t>(ksIndex)].tick;
+
+        if (selectedKeySigIndices.count(ksIndex) > 0 && selectedKeySigIndices.size() > 1)
+            keySigDragGroup.assign(selectedKeySigIndices.begin(), selectedKeySigIndices.end());
+        else
+            keySigDragGroup = {ksIndex};
         return;
     }
 
@@ -232,10 +246,9 @@ void KeySignatureStrip::mouseDrag(const juce::MouseEvent& e)
         if (keySigDragIndex < 0 || keySigDragIndex >= static_cast<int>(keySigDragBefore.size()))
             return;
 
-        auto changes = sequence->buildKeySignatureChangesAfterMove(keySigDragBefore, keySigDragIndex,
+        auto changes = sequence->buildKeySignatureChangesAfterMove(keySigDragBefore, keySigDragGroup, keySigDragIndex,
                                                                    geometry.xToTick(e.x) - keySigDragGrabOffset);
-        if (changes[static_cast<size_t>(keySigDragIndex)].tick !=
-            keySigDragBefore[static_cast<size_t>(keySigDragIndex)].tick)
+        if (!keySignatureTicksEqual(changes, keySigDragBefore))
             keySigDragMoved = true;
         sequence->setKeySignatureChanges(std::move(changes));
         repaint();
@@ -272,8 +285,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
         const auto& changes = sequence->getKeySignatureChanges();
         bool validIndex = draggedIndex >= 0 && draggedIndex < static_cast<int>(changes.size()) &&
                           draggedIndex < static_cast<int>(keySigDragBefore.size());
-        bool movedFinal = validIndex && changes[static_cast<size_t>(draggedIndex)].tick !=
-                                            keySigDragBefore[static_cast<size_t>(draggedIndex)].tick;
+        bool movedFinal = validIndex && !keySignatureTicksEqual(changes, keySigDragBefore);
 
         if (movedFinal)
         {
@@ -288,7 +300,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
             }
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedKeySigIndices = {draggedIndex};
+            selectedKeySigIndices = std::set<int>(keySigDragGroup.begin(), keySigDragGroup.end());
         }
         else if (validIndex && !keySigDragMoved)
         {
@@ -315,6 +327,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
         }
 
         keySigDragBefore.clear();
+        keySigDragGroup.clear();
         keySigDragMoved = false;
         repaint();
         return;
