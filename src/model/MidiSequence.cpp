@@ -396,36 +396,68 @@ void MidiSequence::setKeySignatureChanges(std::vector<KeySignatureChange> change
 }
 
 std::vector<KeySignatureChange>
-MidiSequence::buildKeySignatureChangesAfterMove(const std::vector<KeySignatureChange>& before, int movedIndex,
+MidiSequence::buildKeySignatureChangesAfterMove(const std::vector<KeySignatureChange>& before,
+                                                const std::vector<int>& movedIndices, int anchorIndex,
                                                 int targetTick) const
 {
-    if (movedIndex < 0 || movedIndex >= static_cast<int>(before.size()))
+    const int count = static_cast<int>(before.size());
+    if (anchorIndex < 0 || anchorIndex >= count)
         return before;
 
-    int lowBar = 1;
-    if (movedIndex > 0)
-        lowBar = tickToBarBeatTick(before[static_cast<size_t>(movedIndex - 1)].tick).bar + 1;
+    std::vector<bool> isMoving(before.size(), false);
+    for (int i : movedIndices)
+        if (i >= 0 && i < count)
+            isMoving[static_cast<size_t>(i)] = true;
+    if (!isMoving[static_cast<size_t>(anchorIndex)])
+        return before;
 
-    int highBar = std::numeric_limits<int>::max();
-    if (movedIndex + 1 < static_cast<int>(before.size()))
+    std::vector<int> bars(before.size());
+    for (size_t i = 0; i < before.size(); ++i)
+        bars[i] = tickToBarBeatTick(before[i].tick).bar;
+
+    int prevMovingBar = -1;
+    for (int i = 0; i < count; ++i)
     {
-        int nextTick = before[static_cast<size_t>(movedIndex + 1)].tick;
-        int nextBar = tickToBarBeatTick(nextTick).bar;
-        highBar = barStartToTick(nextBar) == nextTick ? nextBar - 1 : nextBar;
+        if (!isMoving[static_cast<size_t>(i)])
+            continue;
+        if (bars[static_cast<size_t>(i)] == prevMovingBar)
+            return before;
+        prevMovingBar = bars[static_cast<size_t>(i)];
     }
 
-    if (lowBar > highBar)
-        return before;
+    int clampedTarget = std::max(0, targetTick);
+    int targetBar = tickToBarBeatTick(clampedTarget).bar;
+    int targetBarStart = barStartToTick(targetBar);
+    if (clampedTarget - targetBarStart >= barStartToTick(targetBar + 1) - clampedTarget)
+        ++targetBar;
+    int delta = targetBar - bars[static_cast<size_t>(anchorIndex)];
 
-    int clamped = std::max(0, targetTick);
-    int bar = tickToBarBeatTick(clamped).bar;
-    int barStart = barStartToTick(bar);
-    if (clamped - barStart >= barStartToTick(bar + 1) - clamped)
-        ++bar;
-    bar = std::clamp(bar, lowBar, highBar);
+    int deltaLo = std::numeric_limits<int>::min();
+    int deltaHi = std::numeric_limits<int>::max();
+    for (int i = 0; i < count; ++i)
+    {
+        if (!isMoving[static_cast<size_t>(i)])
+            continue;
+        if (i == 0)
+            deltaLo = std::max(deltaLo, 1 - bars[0]);
+        else if (!isMoving[static_cast<size_t>(i - 1)])
+            deltaLo = std::max(deltaLo, bars[static_cast<size_t>(i - 1)] + 1 - bars[static_cast<size_t>(i)]);
+        if (i + 1 < count && !isMoving[static_cast<size_t>(i + 1)])
+        {
+            int nextTick = before[static_cast<size_t>(i + 1)].tick;
+            int nextBar = bars[static_cast<size_t>(i + 1)];
+            int limit = barStartToTick(nextBar) == nextTick ? nextBar - 1 : nextBar;
+            deltaHi = std::min(deltaHi, limit - bars[static_cast<size_t>(i)]);
+        }
+    }
+    if (deltaLo > deltaHi)
+        return before;
+    delta = std::clamp(delta, deltaLo, deltaHi);
 
     auto result = before;
-    result[static_cast<size_t>(movedIndex)].tick = barStartToTick(bar);
+    for (int i = 0; i < count; ++i)
+        if (isMoving[static_cast<size_t>(i)])
+            result[static_cast<size_t>(i)].tick = barStartToTick(bars[static_cast<size_t>(i)] + delta);
     return result;
 }
 

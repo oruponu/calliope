@@ -54,6 +54,7 @@ private:
     bool keySigDragMoved = false;
     std::vector<KeySignatureChange> keySigDragBefore;
     int keySigDragGrabOffset = 0;
+    std::vector<int> keySigDragGroup;
     bool isKeySigRangeSelecting = false;
     int keySigSelectStartX = 0;
     int keySigSelectCurrentX = 0;
