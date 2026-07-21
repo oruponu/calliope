@@ -46,6 +46,38 @@ void KeySignatureStrip::clearKeySignatureSelection()
     repaint();
 }
 
+void KeySignatureStrip::deleteSelectedKeySignatures()
+{
+    if (!sequence || selectedKeySigIndices.empty())
+        return;
+
+    auto before = sequence->getKeySignatureChanges();
+    const int count = static_cast<int>(before.size());
+
+    std::vector<KeySignatureChange> after;
+    after.reserve(before.size());
+    for (int i = 0; i < count; ++i)
+        if (selectedKeySigIndices.count(i) == 0)
+            after.push_back(before[static_cast<size_t>(i)]);
+
+    if (after.size() == before.size())
+        return;
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction("Delete Key Signature Changes");
+        undoManager->perform(new KeySignatureDeleteAction(sequence, std::move(before), std::move(after)));
+    }
+    else
+    {
+        sequence->setKeySignatureChanges(std::move(after));
+        sequence->notifyTimelineMetadataChanged();
+    }
+
+    clearKeySignatureSelection();
+    repaint();
+}
+
 juce::Rectangle<int> KeySignatureStrip::keySignatureLabelRect(int index) const
 {
     const auto& changes = sequence->getKeySignatureChanges();
