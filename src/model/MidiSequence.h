@@ -131,6 +131,9 @@ public:
     buildTimeSignatureChangesAfterPaste(const std::vector<TimeSignatureChange>& before,
                                         const std::vector<RelativeTimeSignature>& items, int anchorBar, int ppq);
 
+    std::vector<KeySignatureChange> buildKeySignatureChangesAfterMove(const std::vector<KeySignatureChange>& before,
+                                                                      int movedIndex, int targetTick) const;
+
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
     static bool keySignatureFromString(const std::string& text, int& sharpsOrFlats, bool& isMinor);

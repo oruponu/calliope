@@ -3,6 +3,7 @@
 #include "ui/pianoroll/strips/KeySignatureEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
+#include <vector>
 
 class KeySignatureStrip : public TimelineStrip
 {
@@ -21,6 +22,8 @@ public:
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
@@ -44,4 +47,9 @@ private:
     bool keySigEditIsNew = false;
     juce::Component::SafePointer<juce::CallOutBox> keySigCallout;
     juce::Component::SafePointer<KeySignatureEditor> keySigEditor;
+    bool isKeySigPointDragging = false;
+    int keySigDragIndex = -1;
+    bool keySigDragMoved = false;
+    std::vector<KeySignatureChange> keySigDragBefore;
+    int keySigDragGrabOffset = 0;
 };
