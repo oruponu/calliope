@@ -12,6 +12,7 @@ public:
     bool hasNotes() const { return std::holds_alternative<std::vector<MidiNote>>(content); }
     bool hasTempoPoints() const { return std::holds_alternative<std::vector<TempoChange>>(content); }
     bool hasTimeSignatures() const { return std::holds_alternative<std::vector<RelativeTimeSignature>>(content); }
+    bool hasKeySignatures() const { return std::holds_alternative<std::vector<RelativeKeySignature>>(content); }
 
     void setNotes(std::vector<MidiNote> notes)
     {
@@ -30,6 +31,14 @@ public:
     }
 
     void setTimeSignatures(std::vector<RelativeTimeSignature> items)
+    {
+        if (items.empty())
+            content = std::monostate{};
+        else
+            content = std::move(items);
+    }
+
+    void setKeySignatures(std::vector<RelativeKeySignature> items)
     {
         if (items.empty())
             content = std::monostate{};
@@ -61,7 +70,16 @@ public:
         return empty;
     }
 
+    const std::vector<RelativeKeySignature>& getKeySignatures() const
+    {
+        if (const auto* items = std::get_if<std::vector<RelativeKeySignature>>(&content))
+            return *items;
+        static const std::vector<RelativeKeySignature> empty;
+        return empty;
+    }
+
 private:
-    std::variant<std::monostate, std::vector<MidiNote>, std::vector<TempoChange>, std::vector<RelativeTimeSignature>>
+    std::variant<std::monostate, std::vector<MidiNote>, std::vector<TempoChange>, std::vector<RelativeTimeSignature>,
+                 std::vector<RelativeKeySignature>>
         content;
 };

@@ -32,6 +32,14 @@ struct KeySignatureChange
     int tick;
     int sharpsOrFlats; // -7..+7 (negative=flats, positive=sharps)
     bool isMinor;
+    bool operator==(const KeySignatureChange&) const = default;
+};
+
+struct RelativeKeySignature
+{
+    int barOffset;
+    int sharpsOrFlats;
+    bool isMinor;
 };
 
 struct ChordChange

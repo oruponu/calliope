@@ -13,7 +13,10 @@ bool keySignatureTicksEqual(const std::vector<KeySignatureChange>& a, const std:
 }
 } // namespace
 
-KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef) : TimelineStrip(geometryRef, "Key") {}
+KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef)
+    : TimelineStrip(geometryRef, "Key"), clipboard(clipboardRef)
+{
+}
 
 KeySignatureStrip::~KeySignatureStrip()
 {
@@ -48,6 +51,11 @@ void KeySignatureStrip::clearKeySignatureSelection()
 
 void KeySignatureStrip::deleteSelectedKeySignatures()
 {
+    deleteSelectedKeySignaturesImpl("Delete Key Signature Changes");
+}
+
+void KeySignatureStrip::deleteSelectedKeySignaturesImpl(const juce::String& transactionName)
+{
     if (!sequence || selectedKeySigIndices.empty())
         return;
 
@@ -65,7 +73,7 @@ void KeySignatureStrip::deleteSelectedKeySignatures()
 
     if (undoManager)
     {
-        undoManager->beginNewTransaction("Delete Key Signature Changes");
+        undoManager->beginNewTransaction(transactionName);
         undoManager->perform(new KeySignatureDeleteAction(sequence, std::move(before), std::move(after)));
     }
     else
@@ -75,6 +83,91 @@ void KeySignatureStrip::deleteSelectedKeySignatures()
     }
 
     clearKeySignatureSelection();
+    repaint();
+}
+
+void KeySignatureStrip::copySelectedKeySignatures()
+{
+    if (!sequence || selectedKeySigIndices.empty())
+        return;
+
+    const auto& changes = sequence->getKeySignatureChanges();
+    const int count = static_cast<int>(changes.size());
+
+    std::vector<RelativeKeySignature> items;
+    for (int i : selectedKeySigIndices)
+        if (i >= 0 && i < count)
+            items.push_back(
+                {sequence->tickToBarBeatTick(changes[i].tick).bar, changes[i].sharpsOrFlats, changes[i].isMinor});
+
+    if (items.empty())
+        return;
+
+    const int firstBar = items.front().barOffset;
+    for (auto& item : items)
+        item.barOffset -= firstBar;
+
+    clipboard.setKeySignatures(std::move(items));
+}
+
+void KeySignatureStrip::cutSelectedKeySignatures()
+{
+    if (!sequence || selectedKeySigIndices.empty())
+        return;
+
+    copySelectedKeySignatures();
+    deleteSelectedKeySignaturesImpl("Cut Key Signature Changes");
+}
+
+void KeySignatureStrip::pasteKeySignatures(int atTick)
+{
+    if (!sequence || !clipboard.hasKeySignatures())
+        return;
+
+    const int anchorBar = sequence->tickToBarBeatTick(std::max(0, atTick)).bar;
+    auto before = sequence->getKeySignatureChanges();
+    auto after = before;
+
+    std::vector<int> pastedTicks;
+    for (const auto& item : clipboard.getKeySignatures())
+    {
+        const int tick = sequence->barStartToTick(anchorBar + item.barOffset);
+        pastedTicks.push_back(tick);
+        auto it = std::ranges::find(after, tick, &KeySignatureChange::tick);
+        if (it != after.end())
+        {
+            it->sharpsOrFlats = item.sharpsOrFlats;
+            it->isMinor = item.isMinor;
+        }
+        else
+            after.push_back({tick, item.sharpsOrFlats, item.isMinor});
+    }
+    std::ranges::sort(after, {}, &KeySignatureChange::tick);
+
+    const bool changed = (after != before);
+    if (changed)
+    {
+        if (undoManager)
+        {
+            undoManager->beginNewTransaction("Paste Key Signature Changes");
+            undoManager->perform(new KeySignaturePasteAction(sequence, std::move(before), after));
+        }
+        else
+        {
+            sequence->setKeySignatureChanges(after);
+            sequence->notifyTimelineMetadataChanged();
+        }
+    }
+
+    selectedKeySigIndices.clear();
+    const auto& changes = sequence->getKeySignatureChanges();
+    for (int t : pastedTicks)
+    {
+        auto it = std::ranges::find(changes, t, &KeySignatureChange::tick);
+        if (it != changes.end())
+            selectedKeySigIndices.insert(static_cast<int>(it - changes.begin()));
+    }
+
     repaint();
 }
 

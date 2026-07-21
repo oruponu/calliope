@@ -81,11 +81,13 @@ public:
     void paste(int atTick);
     bool hasSelection() const
     {
-        return !selectedNotes.empty() || tempoStrip.hasSelection() || timeSigStrip.hasSelection();
+        return !selectedNotes.empty() || tempoStrip.hasSelection() || timeSigStrip.hasSelection() ||
+               keyStrip.hasSelection();
     }
     bool hasClipboardContent() const
     {
-        return clipboard.hasNotes() || clipboard.hasTempoPoints() || clipboard.hasTimeSignatures();
+        return clipboard.hasNotes() || clipboard.hasTempoPoints() || clipboard.hasTimeSignatures() ||
+               clipboard.hasKeySignatures();
     }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
     bool hasNotesInActiveTrack() const;
@@ -242,7 +244,7 @@ private:
     RulerStrip ruler{geometry};
     TempoTrackStrip tempoStrip{geometry, clipboard};
     TimeSignatureStrip timeSigStrip{geometry, clipboard};
-    KeySignatureStrip keyStrip{geometry};
+    KeySignatureStrip keyStrip{geometry, clipboard};
     ChordStrip chordStrip{geometry};
 
     MidiNote previewNote;
