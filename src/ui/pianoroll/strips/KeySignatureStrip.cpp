@@ -20,19 +20,20 @@ void KeySignatureStrip::setSequence(MidiSequence* seq)
 {
     closeKeySignatureEditor();
     clearKeySignatureSelection();
+    isKeySigRangeSelecting = false;
     TimelineStrip::setSequence(seq);
 }
 
 bool KeySignatureStrip::hasSelection() const
 {
-    return selectedKeySigIndex >= 0;
+    return !selectedKeySigIndices.empty();
 }
 
 void KeySignatureStrip::clearKeySignatureSelection()
 {
-    if (selectedKeySigIndex < 0)
+    if (selectedKeySigIndices.empty())
         return;
-    selectedKeySigIndex = -1;
+    selectedKeySigIndices.clear();
     repaint();
 }
 
@@ -108,7 +109,7 @@ void KeySignatureStrip::paint(juce::Graphics& g)
 
         if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
         {
-            bool selected = selectedKeySigIndex == static_cast<int>(i);
+            bool selected = selectedKeySigIndices.count(static_cast<int>(i)) > 0;
             bool editingThis = isKeySigEditing && !keySigEditIsNew && ksChanges[i].tick == keySigEditTick;
             auto labelRect = keySignatureLabelRect(static_cast<int>(i));
             if (selected || editingThis)
@@ -148,11 +149,32 @@ void KeySignatureStrip::paint(juce::Graphics& g)
         g.drawLine(phX, 0.0f, phX, static_cast<float>(getHeight()), 1.0f);
     }
 
+    drawKeySignatureRangeSelection(g);
+
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 
     g.restoreState();
 
     drawLabelColumn(g);
+}
+
+void KeySignatureStrip::drawKeySignatureRangeSelection(juce::Graphics& g)
+{
+    using namespace calliope::theme;
+    if (!isKeySigRangeSelecting)
+        return;
+
+    int lo = std::min(keySigSelectStartX, keySigSelectCurrentX);
+    int hi = std::max(keySigSelectStartX, keySigSelectCurrentX);
+    if (hi <= lo)
+        return;
+
+    juce::Rectangle<float> band(static_cast<float>(lo), 0.0f, static_cast<float>(hi - lo),
+                                static_cast<float>(getHeight()));
+    g.setColour(track::sand.withAlpha(0.15f));
+    g.fillRect(band);
+    g.setColour(track::sand.withAlpha(0.6f));
+    g.drawRect(band, 1.0f);
 }
 
 void KeySignatureStrip::mouseDown(const juce::MouseEvent& e)
@@ -163,77 +185,148 @@ void KeySignatureStrip::mouseDown(const juce::MouseEvent& e)
         return;
 
     int ksIndex = hitTestKeySignaturePoint(e.x, e.y);
-    if (ksIndex < 0)
-        return;
+    if (ksIndex >= 0)
+    {
+        if (e.mods.isShiftDown())
+        {
+            if (onSelectionTaken)
+                onSelectionTaken();
+            if (selectedKeySigIndices.count(ksIndex) > 0)
+                selectedKeySigIndices.erase(ksIndex);
+            else
+                selectedKeySigIndices.insert(ksIndex);
+            repaint();
+            return;
+        }
 
-    keySigDragBefore = sequence->getKeySignatureChanges();
-    keySigDragIndex = ksIndex;
-    isKeySigPointDragging = true;
-    keySigDragMoved = false;
-    keySigDragGrabOffset = geometry.xToTick(e.x) - keySigDragBefore[static_cast<size_t>(ksIndex)].tick;
+        keySigDragBefore = sequence->getKeySignatureChanges();
+        keySigDragIndex = ksIndex;
+        isKeySigPointDragging = true;
+        keySigDragMoved = false;
+        keySigDragGrabOffset = geometry.xToTick(e.x) - keySigDragBefore[static_cast<size_t>(ksIndex)].tick;
+        return;
+    }
+
+    if (e.y >= 0 && e.y < getHeight() && e.x >= viewLeftX + labelWidth())
+    {
+        if (onSelectionTaken)
+            onSelectionTaken();
+        isKeySigRangeSelecting = true;
+        keySigSelectStartX = e.x;
+        keySigSelectCurrentX = e.x;
+        keySigSelectBase = e.mods.isShiftDown() ? selectedKeySigIndices : std::set<int>{};
+        if (!e.mods.isShiftDown())
+            selectedKeySigIndices.clear();
+        repaint();
+        return;
+    }
 }
 
 void KeySignatureStrip::mouseDrag(const juce::MouseEvent& e)
 {
-    if (sequence == nullptr || !isKeySigPointDragging)
-        return;
-    if (keySigDragIndex < 0 || keySigDragIndex >= static_cast<int>(keySigDragBefore.size()))
+    if (sequence == nullptr)
         return;
 
-    auto changes = sequence->buildKeySignatureChangesAfterMove(keySigDragBefore, keySigDragIndex,
-                                                               geometry.xToTick(e.x) - keySigDragGrabOffset);
-    if (changes[static_cast<size_t>(keySigDragIndex)].tick !=
-        keySigDragBefore[static_cast<size_t>(keySigDragIndex)].tick)
-        keySigDragMoved = true;
-    sequence->setKeySignatureChanges(std::move(changes));
-    repaint();
+    if (isKeySigPointDragging)
+    {
+        if (keySigDragIndex < 0 || keySigDragIndex >= static_cast<int>(keySigDragBefore.size()))
+            return;
+
+        auto changes = sequence->buildKeySignatureChangesAfterMove(keySigDragBefore, keySigDragIndex,
+                                                                   geometry.xToTick(e.x) - keySigDragGrabOffset);
+        if (changes[static_cast<size_t>(keySigDragIndex)].tick !=
+            keySigDragBefore[static_cast<size_t>(keySigDragIndex)].tick)
+            keySigDragMoved = true;
+        sequence->setKeySignatureChanges(std::move(changes));
+        repaint();
+        return;
+    }
+
+    if (isKeySigRangeSelecting)
+    {
+        keySigSelectCurrentX = e.x;
+        int lo = std::min(keySigSelectStartX, keySigSelectCurrentX);
+        int hi = std::max(keySigSelectStartX, keySigSelectCurrentX);
+        int tickLo = geometry.xToTick(lo);
+        int tickHi = geometry.xToTick(hi);
+
+        selectedKeySigIndices = keySigSelectBase;
+        const auto& changes = sequence->getKeySignatureChanges();
+        for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+            if (changes[static_cast<size_t>(i)].tick >= tickLo && changes[static_cast<size_t>(i)].tick <= tickHi)
+                selectedKeySigIndices.insert(i);
+
+        repaint();
+        return;
+    }
 }
 
 void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
 {
-    if (!isKeySigPointDragging)
+    if (isKeySigPointDragging)
+    {
+        isKeySigPointDragging = false;
+        int draggedIndex = keySigDragIndex;
+        keySigDragIndex = -1;
+
+        const auto& changes = sequence->getKeySignatureChanges();
+        bool validIndex = draggedIndex >= 0 && draggedIndex < static_cast<int>(changes.size()) &&
+                          draggedIndex < static_cast<int>(keySigDragBefore.size());
+        bool movedFinal = validIndex && changes[static_cast<size_t>(draggedIndex)].tick !=
+                                            keySigDragBefore[static_cast<size_t>(draggedIndex)].tick;
+
+        if (movedFinal)
+        {
+            if (undoManager)
+            {
+                undoManager->beginNewTransaction("Move Key Signature Change");
+                undoManager->perform(new KeySignatureMoveAction(sequence, keySigDragBefore, changes));
+            }
+            else
+            {
+                sequence->notifyTimelineMetadataChanged();
+            }
+            if (onSelectionTaken)
+                onSelectionTaken();
+            selectedKeySigIndices = {draggedIndex};
+        }
+        else if (validIndex && !keySigDragMoved)
+        {
+            const bool soleSelection =
+                selectedKeySigIndices.size() == 1 && selectedKeySigIndices.count(draggedIndex) > 0;
+            if (soleSelection && !isKeySigEditing)
+            {
+                const auto& ks = changes[static_cast<size_t>(draggedIndex)];
+                openKeySignatureEditor(ks.tick, ks.sharpsOrFlats, ks.isMinor, false,
+                                       keySignatureLabelRect(draggedIndex));
+            }
+            else if (!soleSelection)
+            {
+                if (onSelectionTaken)
+                    onSelectionTaken();
+                selectedKeySigIndices = {draggedIndex};
+            }
+        }
+        else if (validIndex)
+        {
+            if (onSelectionTaken)
+                onSelectionTaken();
+            selectedKeySigIndices = {draggedIndex};
+        }
+
+        keySigDragBefore.clear();
+        keySigDragMoved = false;
+        repaint();
         return;
-
-    isKeySigPointDragging = false;
-    int draggedIndex = keySigDragIndex;
-    keySigDragIndex = -1;
-
-    const auto& changes = sequence->getKeySignatureChanges();
-    bool validIndex = draggedIndex >= 0 && draggedIndex < static_cast<int>(changes.size()) &&
-                      draggedIndex < static_cast<int>(keySigDragBefore.size());
-    bool movedFinal = validIndex && changes[static_cast<size_t>(draggedIndex)].tick !=
-                                        keySigDragBefore[static_cast<size_t>(draggedIndex)].tick;
-
-    if (movedFinal)
-    {
-        if (undoManager)
-        {
-            undoManager->beginNewTransaction("Move Key Signature Change");
-            undoManager->perform(new KeySignatureMoveAction(sequence, keySigDragBefore, changes));
-        }
-        else
-        {
-            sequence->notifyTimelineMetadataChanged();
-        }
-        if (onSelectionTaken)
-            onSelectionTaken();
-        selectedKeySigIndex = draggedIndex;
-    }
-    else if (validIndex && !keySigDragMoved && selectedKeySigIndex == draggedIndex && !isKeySigEditing)
-    {
-        const auto& ks = changes[static_cast<size_t>(draggedIndex)];
-        openKeySignatureEditor(ks.tick, ks.sharpsOrFlats, ks.isMinor, false, keySignatureLabelRect(draggedIndex));
-    }
-    else if (validIndex)
-    {
-        if (onSelectionTaken)
-            onSelectionTaken();
-        selectedKeySigIndex = draggedIndex;
     }
 
-    keySigDragBefore.clear();
-    keySigDragMoved = false;
-    repaint();
+    if (isKeySigRangeSelecting)
+    {
+        isKeySigRangeSelecting = false;
+        keySigSelectBase.clear();
+        repaint();
+        return;
+    }
 }
 
 void KeySignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
@@ -247,6 +340,9 @@ void KeySignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
     if (hitTestKeySignaturePoint(e.x, e.y) >= 0)
         return;
 
+    isKeySigRangeSelecting = false;
+    keySigSelectBase.clear();
+
     int barStart = sequence->barStartToTick(sequence->tickToBarBeatTick(std::max(0, geometry.xToTick(e.x))).bar);
 
     const auto& changes = sequence->getKeySignatureChanges();
@@ -256,7 +352,7 @@ void KeySignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedKeySigIndex = i;
+            selectedKeySigIndices = {i};
             repaint();
             openKeySignatureEditor(barStart, changes[static_cast<size_t>(i)].sharpsOrFlats,
                                    changes[static_cast<size_t>(i)].isMinor, false, keySignatureLabelRect(i));
@@ -331,7 +427,7 @@ void KeySignatureStrip::commitKeySignatureEdit(int sharpsOrFlats, bool isMinor)
     const auto& changes = sequence->getKeySignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
         if (changes[static_cast<size_t>(i)].tick == keySigEditTick)
-            selectedKeySigIndex = i;
+            selectedKeySigIndices = {i};
     repaint();
 }
 
