@@ -166,16 +166,73 @@ void KeySignatureStrip::mouseDown(const juce::MouseEvent& e)
     if (ksIndex < 0)
         return;
 
-    if (selectedKeySigIndex == ksIndex && !isKeySigEditing)
-    {
-        const auto& ks = sequence->getKeySignatureChanges()[static_cast<size_t>(ksIndex)];
-        openKeySignatureEditor(ks.tick, ks.sharpsOrFlats, ks.isMinor, false, keySignatureLabelRect(ksIndex));
+    keySigDragBefore = sequence->getKeySignatureChanges();
+    keySigDragIndex = ksIndex;
+    isKeySigPointDragging = true;
+    keySigDragMoved = false;
+    keySigDragGrabOffset = geometry.xToTick(e.x) - keySigDragBefore[static_cast<size_t>(ksIndex)].tick;
+}
+
+void KeySignatureStrip::mouseDrag(const juce::MouseEvent& e)
+{
+    if (sequence == nullptr || !isKeySigPointDragging)
         return;
+    if (keySigDragIndex < 0 || keySigDragIndex >= static_cast<int>(keySigDragBefore.size()))
+        return;
+
+    auto changes = sequence->buildKeySignatureChangesAfterMove(keySigDragBefore, keySigDragIndex,
+                                                               geometry.xToTick(e.x) - keySigDragGrabOffset);
+    if (changes[static_cast<size_t>(keySigDragIndex)].tick !=
+        keySigDragBefore[static_cast<size_t>(keySigDragIndex)].tick)
+        keySigDragMoved = true;
+    sequence->setKeySignatureChanges(std::move(changes));
+    repaint();
+}
+
+void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
+{
+    if (!isKeySigPointDragging)
+        return;
+
+    isKeySigPointDragging = false;
+    int draggedIndex = keySigDragIndex;
+    keySigDragIndex = -1;
+
+    const auto& changes = sequence->getKeySignatureChanges();
+    bool validIndex = draggedIndex >= 0 && draggedIndex < static_cast<int>(changes.size()) &&
+                      draggedIndex < static_cast<int>(keySigDragBefore.size());
+    bool movedFinal = validIndex && changes[static_cast<size_t>(draggedIndex)].tick !=
+                                        keySigDragBefore[static_cast<size_t>(draggedIndex)].tick;
+
+    if (movedFinal)
+    {
+        if (undoManager)
+        {
+            undoManager->beginNewTransaction("Move Key Signature Change");
+            undoManager->perform(new KeySignatureMoveAction(sequence, keySigDragBefore, changes));
+        }
+        else
+        {
+            sequence->notifyTimelineMetadataChanged();
+        }
+        if (onSelectionTaken)
+            onSelectionTaken();
+        selectedKeySigIndex = draggedIndex;
+    }
+    else if (validIndex && !keySigDragMoved && selectedKeySigIndex == draggedIndex && !isKeySigEditing)
+    {
+        const auto& ks = changes[static_cast<size_t>(draggedIndex)];
+        openKeySignatureEditor(ks.tick, ks.sharpsOrFlats, ks.isMinor, false, keySignatureLabelRect(draggedIndex));
+    }
+    else if (validIndex)
+    {
+        if (onSelectionTaken)
+            onSelectionTaken();
+        selectedKeySigIndex = draggedIndex;
     }
 
-    if (onSelectionTaken)
-        onSelectionTaken();
-    selectedKeySigIndex = ksIndex;
+    keySigDragBefore.clear();
+    keySigDragMoved = false;
     repaint();
 }
 

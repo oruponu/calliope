@@ -395,6 +395,40 @@ void MidiSequence::setKeySignatureChanges(std::vector<KeySignatureChange> change
     keySignatureChanges = std::move(changes);
 }
 
+std::vector<KeySignatureChange>
+MidiSequence::buildKeySignatureChangesAfterMove(const std::vector<KeySignatureChange>& before, int movedIndex,
+                                                int targetTick) const
+{
+    if (movedIndex < 0 || movedIndex >= static_cast<int>(before.size()))
+        return before;
+
+    int lowBar = 1;
+    if (movedIndex > 0)
+        lowBar = tickToBarBeatTick(before[static_cast<size_t>(movedIndex - 1)].tick).bar + 1;
+
+    int highBar = std::numeric_limits<int>::max();
+    if (movedIndex + 1 < static_cast<int>(before.size()))
+    {
+        int nextTick = before[static_cast<size_t>(movedIndex + 1)].tick;
+        int nextBar = tickToBarBeatTick(nextTick).bar;
+        highBar = barStartToTick(nextBar) == nextTick ? nextBar - 1 : nextBar;
+    }
+
+    if (lowBar > highBar)
+        return before;
+
+    int clamped = std::max(0, targetTick);
+    int bar = tickToBarBeatTick(clamped).bar;
+    int barStart = barStartToTick(bar);
+    if (clamped - barStart >= barStartToTick(bar + 1) - clamped)
+        ++bar;
+    bar = std::clamp(bar, lowBar, highBar);
+
+    auto result = before;
+    result[static_cast<size_t>(movedIndex)].tick = barStartToTick(bar);
+    return result;
+}
+
 void MidiSequence::addChordChange(int tick, int chordRoot, int chordType, int bassRoot, int bassType)
 {
     for (auto& cc : chordChanges)
