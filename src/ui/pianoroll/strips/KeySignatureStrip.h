@@ -20,6 +20,7 @@ public:
     void setSequence(MidiSequence* seq) override;
     bool hasSelection() const;
     void clearKeySignatureSelection();
+    void deleteSelectedKeySignatures();
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;

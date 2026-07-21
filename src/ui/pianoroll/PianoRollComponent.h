@@ -73,6 +73,7 @@ public:
     void nudgeSelectedNotesTime(int deltaTick);
     void deleteSelectedTempoPoints();
     void deleteSelectedTimeSignatures();
+    void deleteSelectedKeySignatures();
     bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
     void cutSelection();
