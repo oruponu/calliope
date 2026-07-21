@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/strips/KeySignatureEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
@@ -11,7 +12,7 @@ class KeySignatureStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    explicit KeySignatureStrip(const TimelineGeometry& geometryRef);
+    KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef);
     ~KeySignatureStrip() override;
 
     std::function<void()> onSelectionTaken;
@@ -21,6 +22,9 @@ public:
     bool hasSelection() const;
     void clearKeySignatureSelection();
     void deleteSelectedKeySignatures();
+    void copySelectedKeySignatures();
+    void cutSelectedKeySignatures();
+    void pasteKeySignatures(int atTick);
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
@@ -34,12 +38,14 @@ private:
     int hitTestKeySignaturePoint(int x, int y) const;
     juce::Rectangle<int> keySignatureLabelRect(int index) const;
     void drawKeySignatureRangeSelection(juce::Graphics& g);
+    void deleteSelectedKeySignaturesImpl(const juce::String& transactionName);
     void openKeySignatureEditor(int tick, int sharpsOrFlats, bool isMinor, bool isNew,
                                 juce::Rectangle<int> anchorInLocal);
     void commitKeySignatureEdit(int sharpsOrFlats, bool isMinor);
     void cancelKeySignatureEdit();
     void closeKeySignatureEditor();
 
+    EditClipboard& clipboard;
     juce::UndoManager* undoManager = nullptr;
 
     std::set<int> selectedKeySigIndices;

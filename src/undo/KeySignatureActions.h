@@ -98,3 +98,34 @@ private:
     std::vector<KeySignatureChange> before;
     std::vector<KeySignatureChange> after;
 };
+
+class KeySignaturePasteAction : public juce::UndoableAction
+{
+public:
+    KeySignaturePasteAction(MidiSequence* seq, std::vector<KeySignatureChange> before,
+                            std::vector<KeySignatureChange> after)
+        : sequence(seq), before(std::move(before)), after(std::move(after))
+    {
+    }
+
+    bool perform() override
+    {
+        sequence->setKeySignatureChanges(after);
+        sequence->notifyTimelineMetadataChanged();
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->setKeySignatureChanges(before);
+        sequence->notifyTimelineMetadataChanged();
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    std::vector<KeySignatureChange> before;
+    std::vector<KeySignatureChange> after;
+};

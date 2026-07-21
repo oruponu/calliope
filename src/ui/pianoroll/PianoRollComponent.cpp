@@ -881,6 +881,8 @@ void PianoRollComponent::cutSelection()
         tempoStrip.cutSelectedTempoPoints();
     else if (timeSigStrip.hasSelection())
         timeSigStrip.cutSelectedTimeSignatures();
+    else if (keyStrip.hasSelection())
+        keyStrip.cutSelectedKeySignatures();
     else
         cutSelectedNotes();
 }
@@ -891,6 +893,8 @@ void PianoRollComponent::copySelection()
         tempoStrip.copySelectedTempoPoints();
     else if (timeSigStrip.hasSelection())
         timeSigStrip.copySelectedTimeSignatures();
+    else if (keyStrip.hasSelection())
+        keyStrip.copySelectedKeySignatures();
     else
         copySelectedNotes();
 }
@@ -911,6 +915,14 @@ void PianoRollComponent::paste(int atTick)
         tempoStrip.clearTempoSelection();
         clearKeySignatureSelection();
         timeSigStrip.pasteTimeSignatures(atTick);
+        repaint();
+    }
+    else if (clipboard.hasKeySignatures())
+    {
+        clearNoteSelection();
+        tempoStrip.clearTempoSelection();
+        clearTimeSignatureSelection();
+        keyStrip.pasteKeySignatures(atTick);
         repaint();
     }
     else
