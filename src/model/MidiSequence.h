@@ -51,6 +51,13 @@ struct ChordChange
     int bassType;  // same as chordType, 0x7F=none
 };
 
+enum class ChordSpelling
+{
+    Sharp,
+    Flat,
+    Mixed
+};
+
 struct BarBeatTick
 {
     int bar;  // 1-based
@@ -126,6 +133,7 @@ public:
     void setTempoChanges(std::vector<TempoChange> changes);
     void setTimeSignatureChanges(std::vector<TimeSignatureChange> changes);
     void setKeySignatureChanges(std::vector<KeySignatureChange> changes);
+    void setChordChanges(std::vector<ChordChange> changes);
 
     static std::vector<TimeSignatureChange>
     buildTimeSignatureChangesAfterMove(const std::vector<TimeSignatureChange>& before,
@@ -147,6 +155,20 @@ public:
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
     static bool keySignatureFromString(const std::string& text, int& sharpsOrFlats, bool& isMinor);
     static std::string chordToString(const ChordChange& chord);
+
+    static constexpr int chordNone = 0x7F;
+    static constexpr int chordTypeCount = 34;
+
+    static std::string chordRootToString(int root);
+    static bool chordRootFromString(const std::string& text, int& root);
+    static std::string chordTypeToString(int type);
+    static bool chordTypeFromString(const std::string& text, int& type);
+    static int chordRootToSemitone(int root);
+    static int semitoneToChordRoot(int semitone, ChordSpelling spelling);
+    static ChordSpelling chordSpellingForKeySignature(int sharpsOrFlats);
+    static int normalizeChordRoot(int root);
+    static int normalizeChordType(int type);
+    static int normalizeChordBassRoot(int bassRoot);
 
     double ticksToSeconds(int ticks) const;
     int secondsToTicks(double seconds) const;

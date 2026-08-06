@@ -233,6 +233,7 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
     clearTempoSelection();
     clearTimeSignatureSelection();
     clearKeySignatureSelection();
+    clearChordSelection();
     selectedNotes.clear();
     selectedNotes.insert(target);
     selectedNote = target;
@@ -461,6 +462,7 @@ PianoRollComponent::PianoRollComponent()
         clearNoteSelection();
         timeSigStrip.clearTimeSignatureSelection();
         keyStrip.clearKeySignatureSelection();
+        chordStrip.clearChordSelection();
         repaint();
     };
     tempoStrip.onTempoChanged = [this]
@@ -474,6 +476,7 @@ PianoRollComponent::PianoRollComponent()
         clearNoteSelection();
         tempoStrip.clearTempoSelection();
         keyStrip.clearKeySignatureSelection();
+        chordStrip.clearChordSelection();
         repaint();
     };
     timeSigStrip.onTimelineMetadataChanged = [this] { repaint(); };
@@ -483,9 +486,18 @@ PianoRollComponent::PianoRollComponent()
         clearNoteSelection();
         tempoStrip.clearTempoSelection();
         timeSigStrip.clearTimeSignatureSelection();
+        chordStrip.clearChordSelection();
         repaint();
     };
     addAndMakeVisible(chordStrip);
+    chordStrip.onSelectionTaken = [this]
+    {
+        clearNoteSelection();
+        tempoStrip.clearTempoSelection();
+        timeSigStrip.clearTimeSignatureSelection();
+        keyStrip.clearKeySignatureSelection();
+        repaint();
+    };
 }
 
 PianoRollComponent::~PianoRollComponent()
@@ -600,6 +612,7 @@ void PianoRollComponent::setUndoManager(juce::UndoManager* um)
     tempoStrip.setUndoManager(um);
     timeSigStrip.setUndoManager(um);
     keyStrip.setUndoManager(um);
+    chordStrip.setUndoManager(um);
 }
 
 void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices)
@@ -619,6 +632,7 @@ void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
         clearTempoSelection();
         clearTimeSignatureSelection();
         clearKeySignatureSelection();
+        clearChordSelection();
     }
     selectedNotes = notes;
     selectedNote = {};
@@ -906,6 +920,7 @@ void PianoRollComponent::paste(int atTick)
         clearNoteSelection();
         clearTimeSignatureSelection();
         clearKeySignatureSelection();
+        clearChordSelection();
         tempoStrip.pasteTempoPoints(atTick);
         repaint();
     }
@@ -914,6 +929,7 @@ void PianoRollComponent::paste(int atTick)
         clearNoteSelection();
         tempoStrip.clearTempoSelection();
         clearKeySignatureSelection();
+        clearChordSelection();
         timeSigStrip.pasteTimeSignatures(atTick);
         repaint();
     }
@@ -922,6 +938,7 @@ void PianoRollComponent::paste(int atTick)
         clearNoteSelection();
         tempoStrip.clearTempoSelection();
         clearTimeSignatureSelection();
+        clearChordSelection();
         keyStrip.pasteKeySignatures(atTick);
         repaint();
     }
@@ -955,6 +972,11 @@ void PianoRollComponent::clearKeySignatureSelection()
     keyStrip.clearKeySignatureSelection();
 }
 
+void PianoRollComponent::clearChordSelection()
+{
+    chordStrip.clearChordSelection();
+}
+
 void PianoRollComponent::deleteSelectedTimeSignatures()
 {
     timeSigStrip.deleteSelectedTimeSignatures();
@@ -973,6 +995,7 @@ void PianoRollComponent::selectAllNotes()
     clearTempoSelection();
     clearTimeSignatureSelection();
     clearKeySignatureSelection();
+    clearChordSelection();
     selectedNotes.clear();
     const auto& track = sequence->getTrack(activeTrackIndex);
     for (int i = 0; i < track.getNumNotes(); ++i)
@@ -1007,6 +1030,7 @@ void PianoRollComponent::pasteNotes(int atTick)
     clearTempoSelection();
     clearTimeSignatureSelection();
     clearKeySignatureSelection();
+    clearChordSelection();
     selectedNotes.clear();
 
     if (undoManager)
@@ -1098,6 +1122,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
     clearTempoSelection();
     clearTimeSignatureSelection();
     clearKeySignatureSelection();
+    clearChordSelection();
 
     auto hit = hitTestNote(e.x, e.y);
 

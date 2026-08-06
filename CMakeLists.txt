@@ -37,6 +37,7 @@ target_sources(Calliope PRIVATE
     src/ui/menu/MainMenuModel.cpp
     src/ui/pianoroll/ControllerLaneComponent.cpp
     src/ui/pianoroll/PianoRollComponent.cpp
+    src/ui/pianoroll/strips/ChordEditor.cpp
     src/ui/pianoroll/strips/ChordStrip.cpp
     src/ui/pianoroll/strips/KeySignatureEditor.cpp
     src/ui/pianoroll/strips/KeySignatureStrip.cpp
