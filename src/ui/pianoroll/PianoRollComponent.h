@@ -193,6 +193,7 @@ private:
     void clearTempoSelection();
     void clearTimeSignatureSelection();
     void clearKeySignatureSelection();
+    void clearChordSelection();
     void drawRubberBand(juce::Graphics& g);
     std::vector<NoteRef> findNotesInRect(const juce::Rectangle<int>& rect) const;
 
