@@ -55,15 +55,7 @@ juce::Rectangle<int> ChordStrip::chordDraftSpanRect() const
         return {};
 
     int x = geometry.tickToX(chordEditTick);
-    int nextX = geometry.tickToX(geometry.xToTick(getWidth()));
-    for (const auto& cc : sequence->getChordChanges())
-    {
-        if (cc.tick > chordEditTick)
-        {
-            nextX = geometry.tickToX(cc.tick);
-            break;
-        }
-    }
+    int nextX = geometry.tickToX(chordEditEndTick);
     return {x, spanTop, nextX - x, spanHeight()};
 }
 
@@ -213,26 +205,22 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
     if (e.y < 0 || e.y >= getHeight() || e.x < viewLeftX + labelWidth())
         return;
 
-    const int floorTick = geometry.floorTickToGrid(std::max(0, geometry.xToTick(e.x)));
-    const int grid = geometry.gridTicks();
-
-    const auto& changes = sequence->getChordChanges();
-    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+    int index = hitTestChordSpan(e.x, e.y);
+    if (index >= 0)
     {
-        const auto& cc = changes[static_cast<size_t>(i)];
-        if (cc.tick < floorTick || cc.tick >= floorTick + grid)
-            continue;
-        if (MidiSequence::chordToString(cc).empty())
-            continue;
-
+        const auto& cc = sequence->getChordChanges()[static_cast<size_t>(index)];
         if (onSelectionTaken)
             onSelectionTaken();
-        selectedChordIndex = i;
+        selectedChordIndex = index;
         repaint();
-        openChordEditor(cc.tick, cc.chordRoot, cc.chordType, cc.bassRoot, false,
-                        {chordSpanRect(i).getX() + 4, 0, 40, getHeight()});
+        openChordEditor(cc.tick, 0, cc.chordRoot, cc.chordType, cc.bassRoot, false,
+                        {chordSpanRect(index).getX() + 4, 0, 40, getHeight()});
         return;
     }
+
+    auto [startTick, endTick] = sequence->chordAddSpanAt(std::max(0, geometry.xToTick(e.x)));
+    if (endTick <= startTick)
+        return;
 
     if (onSelectionTaken)
         onSelectionTaken();
@@ -241,10 +229,11 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
     int root = 0x31;
     int type = 0;
     int bassRoot = MidiSequence::chordNone;
+    const auto& changes = sequence->getChordChanges();
     for (int i = static_cast<int>(changes.size()) - 1; i >= 0; --i)
     {
         const auto& cc = changes[static_cast<size_t>(i)];
-        if (cc.tick >= floorTick)
+        if (cc.tick >= startTick)
             continue;
         if (MidiSequence::chordToString(cc).empty())
             continue;
@@ -254,10 +243,11 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
         break;
     }
 
-    openChordEditor(floorTick, root, type, bassRoot, true, {geometry.tickToX(floorTick) + 4, 0, 40, getHeight()});
+    openChordEditor(startTick, endTick, root, type, bassRoot, true,
+                    {geometry.tickToX(startTick) + 4, 0, 40, getHeight()});
 }
 
-void ChordStrip::openChordEditor(int tick, int chordRoot, int chordType, int bassRoot, bool isNew,
+void ChordStrip::openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                                  juce::Rectangle<int> anchorInLocal)
 {
     anchorInLocal.setX(std::max(anchorInLocal.getX(), viewLeftX + labelWidth()));
@@ -268,6 +258,7 @@ void ChordStrip::openChordEditor(int tick, int chordRoot, int chordType, int bas
 
     isChordEditing = true;
     chordEditTick = tick;
+    chordEditEndTick = endTick;
     chordDraftRoot = chordRoot;
     chordDraftType = chordType;
     chordDraftBassRoot = bassRoot;
@@ -303,24 +294,43 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
 
     const int bassType = (bassRoot == MidiSequence::chordNone) ? MidiSequence::chordNone : chordType;
 
-    const auto& existing = sequence->getChordChanges();
-    auto atTick = std::ranges::find(existing, chordEditTick, &ChordChange::tick);
-    if (atTick != existing.end() && atTick->chordRoot == chordRoot && atTick->chordType == chordType &&
-        atTick->bassRoot == bassRoot)
+    if (chordEditIsNew)
     {
-        repaint();
-        return;
-    }
-
-    if (undoManager)
-    {
-        undoManager->beginNewTransaction(chordEditIsNew ? "Add Chord" : "Edit Chord");
-        undoManager->perform(new ChordChangeAction(sequence, chordEditTick, chordRoot, chordType, bassRoot, bassType));
+        auto after = MidiSequence::buildChordChangesAfterAdd(
+            sequence->getChordChanges(), chordEditTick, chordEditEndTick, chordRoot, chordType, bassRoot, bassType);
+        if (undoManager)
+        {
+            undoManager->beginNewTransaction("Add Chord");
+            undoManager->perform(new ChordAddAction(sequence, sequence->getChordChanges(), std::move(after)));
+        }
+        else
+        {
+            sequence->setChordChanges(std::move(after));
+            sequence->notifyTimelineMetadataChanged();
+        }
     }
     else
     {
-        sequence->addChordChange(chordEditTick, chordRoot, chordType, bassRoot, bassType);
-        sequence->notifyTimelineMetadataChanged();
+        const auto& existing = sequence->getChordChanges();
+        auto atTick = std::ranges::find(existing, chordEditTick, &ChordChange::tick);
+        if (atTick != existing.end() && atTick->chordRoot == chordRoot && atTick->chordType == chordType &&
+            atTick->bassRoot == bassRoot)
+        {
+            repaint();
+            return;
+        }
+
+        if (undoManager)
+        {
+            undoManager->beginNewTransaction("Edit Chord");
+            undoManager->perform(
+                new ChordChangeAction(sequence, chordEditTick, chordRoot, chordType, bassRoot, bassType));
+        }
+        else
+        {
+            sequence->addChordChange(chordEditTick, chordRoot, chordType, bassRoot, bassType);
+            sequence->notifyTimelineMetadataChanged();
+        }
     }
 
     const auto& changes = sequence->getChordChanges();

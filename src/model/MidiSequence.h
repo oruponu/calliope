@@ -3,6 +3,7 @@
 #include "model/MidiTrack.h"
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 struct TempoChange
@@ -150,6 +151,12 @@ public:
     std::vector<KeySignatureChange> buildKeySignatureChangesAfterMove(const std::vector<KeySignatureChange>& before,
                                                                       const std::vector<int>& movedIndices,
                                                                       int anchorIndex, int targetTick) const;
+
+    std::pair<int, int> chordAddSpanAt(int tick) const;
+
+    static std::vector<ChordChange> buildChordChangesAfterAdd(const std::vector<ChordChange>& before, int startTick,
+                                                              int endTick, int chordRoot, int chordType, int bassRoot,
+                                                              int bassType);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);

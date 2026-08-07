@@ -31,7 +31,7 @@ private:
     juce::Rectangle<int> chordSpanRect(int index) const;
     juce::Rectangle<int> chordDraftSpanRect() const;
     int hitTestChordSpan(int x, int y) const;
-    void openChordEditor(int tick, int chordRoot, int chordType, int bassRoot, bool isNew,
+    void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                          juce::Rectangle<int> anchorInLocal);
     void commitChordEdit(int chordRoot, int chordType, int bassRoot);
     void cancelChordEdit();
@@ -42,6 +42,7 @@ private:
     int selectedChordIndex = -1;
     bool isChordEditing = false;
     int chordEditTick = 0;
+    int chordEditEndTick = 0;
     int chordDraftRoot = 0;
     int chordDraftType = 0;
     int chordDraftBassRoot = 0;
