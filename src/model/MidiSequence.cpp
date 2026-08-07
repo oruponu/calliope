@@ -498,6 +498,75 @@ void MidiSequence::addChordChange(int tick, int chordRoot, int chordType, int ba
     std::ranges::sort(chordChanges, {}, &ChordChange::tick);
 }
 
+std::pair<int, int> MidiSequence::chordAddSpanAt(int tick) const
+{
+    if (tick < 0)
+        return {0, 0};
+
+    int governing = -1;
+    for (int i = 0; i < static_cast<int>(chordChanges.size()); ++i)
+    {
+        if (chordChanges[static_cast<size_t>(i)].tick > tick)
+            break;
+        governing = i;
+    }
+
+    if (governing >= 0 && !chordToString(chordChanges[static_cast<size_t>(governing)]).empty())
+        return {0, 0};
+
+    const int bar = tickToBarBeatTick(tick).bar;
+    const int barStart = barStartToTick(bar);
+    const int nextBarStart = barStartToTick(bar + 1);
+
+    int start = barStart;
+    if (governing >= 0)
+        start = std::max(chordChanges[static_cast<size_t>(governing)].tick, barStart);
+
+    int end = nextBarStart;
+    for (const auto& cc : chordChanges)
+    {
+        if (cc.tick > start)
+        {
+            end = std::min(end, cc.tick);
+            break;
+        }
+    }
+
+    return {start, end};
+}
+
+std::vector<ChordChange> MidiSequence::buildChordChangesAfterAdd(const std::vector<ChordChange>& before, int startTick,
+                                                                 int endTick, int chordRoot, int chordType,
+                                                                 int bassRoot, int bassType)
+{
+    if (endTick <= startTick)
+        return before;
+
+    auto changes = before;
+
+    auto upsert = [&changes](const ChordChange& entry)
+    {
+        for (auto& cc : changes)
+        {
+            if (cc.tick == entry.tick)
+            {
+                cc = entry;
+                return;
+            }
+        }
+        changes.push_back(entry);
+        std::ranges::sort(changes, {}, &ChordChange::tick);
+    };
+
+    upsert({startTick, chordRoot, chordType, bassRoot, bassType});
+
+    auto next = std::ranges::find_if(changes, [startTick](const ChordChange& cc) { return cc.tick > startTick; });
+    if (next == changes.end() || next->tick > endTick)
+        upsert({endTick, chordNone, chordTypeCount, chordNone, chordNone});
+
+    return changes;
+}
+
 std::string MidiSequence::chordRootToString(int root)
 {
     int noteIndex = root & 0x0F;
