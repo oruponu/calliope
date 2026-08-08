@@ -3,6 +3,7 @@
 #include "ui/pianoroll/strips/ChordEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
+#include <vector>
 
 class ChordStrip : public TimelineStrip
 {
@@ -20,17 +21,22 @@ public:
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
+    void mouseMove(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
     void timelineMetadataChanged() override { repaint(); }
 
     static constexpr int spanTop = 3;
+    static constexpr int resizeEdgeWidth = 6;
     int spanHeight() const { return getHeight() - spanTop * 2; }
 
     juce::Rectangle<int> chordSpanRect(int index) const;
     juce::Rectangle<int> chordDraftSpanRect() const;
     int hitTestChordSpan(int x, int y) const;
+    int hitTestChordResizeEdge(int x, int y) const;
     void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                          juce::Rectangle<int> anchorInLocal);
     void commitChordEdit(int chordRoot, int chordType, int bassRoot);
@@ -50,4 +56,8 @@ private:
     ChordSpelling chordEditSpelling = ChordSpelling::Mixed;
     juce::Component::SafePointer<juce::CallOutBox> chordCallout;
     juce::Component::SafePointer<ChordEditor> chordEditor;
+    bool isChordResizing = false;
+    int chordResizeIndex = -1;
+    std::vector<ChordChange> chordResizeBefore;
+    int chordResizeGrabOffset = 0;
 };
