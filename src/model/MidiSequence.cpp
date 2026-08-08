@@ -567,6 +567,60 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterAdd(const std::vect
     return changes;
 }
 
+std::vector<ChordChange> MidiSequence::buildChordChangesAfterResize(const std::vector<ChordChange>& before,
+                                                                    int chordIndex, int targetEndTick, int gridTicks)
+{
+    if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()) || gridTicks <= 0)
+        return before;
+    if (chordToString(before[static_cast<size_t>(chordIndex)]).empty())
+        return before;
+
+    const int chordTick = before[static_cast<size_t>(chordIndex)].tick;
+    int end = ((std::max(0, targetEndTick) + gridTicks / 2) / gridTicks) * gridTicks;
+    const int minEnd = (chordTick / gridTicks) * gridTicks + gridTicks;
+    end = std::max(end, minEnd);
+
+    auto changes = before;
+    const size_t nextIndex = static_cast<size_t>(chordIndex) + 1;
+
+    if (nextIndex >= changes.size())
+    {
+        changes.insert(changes.begin() + static_cast<std::ptrdiff_t>(nextIndex),
+                       {end, chordNone, chordTypeCount, chordNone, chordNone});
+        return changes;
+    }
+
+    if (!chordToString(changes[nextIndex]).empty())
+    {
+        const int nextTick = changes[nextIndex].tick;
+        end = std::min(end, nextTick);
+        if (end == nextTick)
+            return before;
+        changes.insert(changes.begin() + static_cast<std::ptrdiff_t>(nextIndex),
+                       {end, chordNone, chordTypeCount, chordNone, chordNone});
+        return changes;
+    }
+
+    const int terminatorTick = changes[nextIndex].tick;
+    const size_t afterIndex = nextIndex + 1;
+    if (afterIndex < changes.size() && !chordToString(changes[afterIndex]).empty() && end >= changes[afterIndex].tick)
+    {
+        changes.erase(changes.begin() + static_cast<std::ptrdiff_t>(nextIndex));
+        return changes;
+    }
+    if (afterIndex < changes.size())
+    {
+        const int maxEnd = ((changes[afterIndex].tick - 1) / gridTicks) * gridTicks;
+        if (maxEnd < minEnd)
+            return before;
+        end = std::min(end, maxEnd);
+    }
+    if (end == terminatorTick)
+        return before;
+    changes[nextIndex].tick = end;
+    return changes;
+}
+
 std::string MidiSequence::chordRootToString(int root)
 {
     int noteIndex = root & 0x0F;

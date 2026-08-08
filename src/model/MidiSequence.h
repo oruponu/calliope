@@ -157,6 +157,8 @@ public:
     static std::vector<ChordChange> buildChordChangesAfterAdd(const std::vector<ChordChange>& before, int startTick,
                                                               int endTick, int chordRoot, int chordType, int bassRoot,
                                                               int bassType);
+    static std::vector<ChordChange> buildChordChangesAfterResize(const std::vector<ChordChange>& before, int chordIndex,
+                                                                 int targetEndTick, int gridTicks);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
