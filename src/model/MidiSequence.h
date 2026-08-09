@@ -162,6 +162,9 @@ public:
                                                                  int targetEndTick, int gridTicks);
     static std::vector<ChordChange> buildChordChangesAfterMove(const std::vector<ChordChange>& before, int chordIndex,
                                                                int targetTick, int gridTicks);
+    static std::vector<ChordChange> buildChordChangesAfterStartResize(const std::vector<ChordChange>& before,
+                                                                      int chordIndex, int targetStartTick,
+                                                                      int gridTicks);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);

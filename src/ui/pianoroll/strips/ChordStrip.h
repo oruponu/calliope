@@ -3,6 +3,7 @@
 #include "ui/pianoroll/strips/ChordEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
+#include <utility>
 #include <vector>
 
 class ChordStrip : public TimelineStrip
@@ -31,12 +32,19 @@ private:
 
     static constexpr int spanTop = 3;
     static constexpr int resizeEdgeWidth = 6;
+
+    enum class ResizeEdge
+    {
+        None,
+        Left,
+        Right
+    };
     int spanHeight() const { return getHeight() - spanTop * 2; }
 
     juce::Rectangle<int> chordSpanRect(int index) const;
     juce::Rectangle<int> chordDraftSpanRect() const;
     int hitTestChordSpan(int x, int y) const;
-    int hitTestChordResizeEdge(int x, int y) const;
+    std::pair<int, ResizeEdge> hitTestChordEdge(int x, int y) const;
     void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                          juce::Rectangle<int> anchorInLocal);
     void commitChordEdit(int chordRoot, int chordType, int bassRoot);
@@ -64,4 +72,8 @@ private:
     int chordMoveIndex = -1;
     std::vector<ChordChange> chordMoveBefore;
     int chordMoveGrabOffset = 0;
+    bool isChordStartResizing = false;
+    int chordStartResizeIndex = -1;
+    std::vector<ChordChange> chordStartResizeBefore;
+    int chordStartResizeGrabOffset = 0;
 };

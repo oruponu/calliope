@@ -697,6 +697,61 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vec
     return changes;
 }
 
+std::vector<ChordChange> MidiSequence::buildChordChangesAfterStartResize(const std::vector<ChordChange>& before,
+                                                                         int chordIndex, int targetStartTick,
+                                                                         int gridTicks)
+{
+    if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()) || gridTicks <= 0)
+        return before;
+    if (chordToString(before[static_cast<size_t>(chordIndex)]).empty())
+        return before;
+
+    const size_t bodyIndex = static_cast<size_t>(chordIndex);
+    const ChordChange body = before[bodyIndex];
+    const int target = std::max(0, targetStartTick);
+    if (target == body.tick)
+        return before;
+
+    int newTick = ((target + gridTicks / 2) / gridTicks) * gridTicks;
+    if (target > body.tick)
+    {
+        if (newTick < body.tick)
+            newTick = (body.tick / gridTicks) * gridTicks + gridTicks;
+        if (bodyIndex + 1 < before.size())
+            newTick = std::min(newTick, ((before[bodyIndex + 1].tick - 1) / gridTicks) * gridTicks);
+        if (newTick <= body.tick)
+            return before;
+    }
+    else
+    {
+        if (newTick > body.tick)
+            newTick = ((body.tick - 1) / gridTicks) * gridTicks;
+        if (newTick >= body.tick)
+            return before;
+    }
+
+    auto changes = before;
+    changes.erase(changes.begin() + static_cast<std::ptrdiff_t>(bodyIndex));
+
+    if (newTick > body.tick)
+    {
+        if (bodyIndex > 0 && !chordToString(before[bodyIndex - 1]).empty())
+            changes.push_back({body.tick, chordNone, chordTypeCount, chordNone, chordNone});
+    }
+    else
+    {
+        const int oldTick = body.tick;
+        std::erase_if(changes,
+                      [newTick, oldTick](const ChordChange& cc) { return cc.tick >= newTick && cc.tick < oldTick; });
+    }
+
+    ChordChange moved = body;
+    moved.tick = newTick;
+    changes.push_back(moved);
+    std::ranges::sort(changes, {}, &ChordChange::tick);
+    return changes;
+}
+
 std::string MidiSequence::chordRootToString(int root)
 {
     int noteIndex = root & 0x0F;
