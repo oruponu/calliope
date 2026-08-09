@@ -240,6 +240,17 @@ void ChordStrip::mouseDown(const juce::MouseEvent& e)
     if (edgeIndex >= 0 && edgeKind == ResizeEdge::Right)
     {
         const auto& changes = sequence->getChordChanges();
+        const bool joined = edgeIndex + 1 < static_cast<int>(changes.size()) &&
+                            !MidiSequence::chordToString(changes[static_cast<size_t>(edgeIndex) + 1]).empty();
+        if (joined)
+        {
+            chordStartResizeBefore = changes;
+            chordStartResizeIndex = edgeIndex + 1;
+            isChordStartResizing = true;
+            chordStartResizeGrabOffset = geometry.xToTick(e.x) - changes[static_cast<size_t>(edgeIndex) + 1].tick;
+            return;
+        }
+
         chordResizeBefore = changes;
         chordResizeIndex = edgeIndex;
         isChordResizing = true;

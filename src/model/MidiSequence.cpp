@@ -733,12 +733,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterStartResize(const s
     auto changes = before;
     changes.erase(changes.begin() + static_cast<std::ptrdiff_t>(bodyIndex));
 
-    if (newTick > body.tick)
-    {
-        if (bodyIndex > 0 && !chordToString(before[bodyIndex - 1]).empty())
-            changes.push_back({body.tick, chordNone, chordTypeCount, chordNone, chordNone});
-    }
-    else
+    if (newTick < body.tick)
     {
         const int oldTick = body.tick;
         std::erase_if(changes,
