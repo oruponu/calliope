@@ -3,6 +3,7 @@
 #include "ui/pianoroll/strips/ChordEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -45,6 +46,7 @@ private:
     juce::Rectangle<int> chordDraftSpanRect() const;
     int hitTestChordSpan(int x, int y) const;
     std::pair<int, ResizeEdge> hitTestChordEdge(int x, int y) const;
+    void drawChordRangeSelection(juce::Graphics& g);
     void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                          juce::Rectangle<int> anchorInLocal);
     void commitChordEdit(int chordRoot, int chordType, int bassRoot);
@@ -53,7 +55,7 @@ private:
 
     juce::UndoManager* undoManager = nullptr;
 
-    int selectedChordIndex = -1;
+    std::set<int> selectedChordIndices;
     bool isChordEditing = false;
     int chordEditTick = 0;
     int chordEditEndTick = 0;
@@ -76,4 +78,9 @@ private:
     int chordStartResizeIndex = -1;
     std::vector<ChordChange> chordStartResizeBefore;
     int chordStartResizeGrabOffset = 0;
+    bool isChordRangeSelecting = false;
+    int chordSelectStartX = 0;
+    int chordSelectCurrentX = 0;
+    std::set<int> chordSelectBase;
+    int chordRangeToggleIndex = -1;
 };
