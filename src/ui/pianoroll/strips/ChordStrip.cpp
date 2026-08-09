@@ -5,19 +5,6 @@
 #include <cstdlib>
 #include <memory>
 
-namespace
-{
-bool chordTicksEqual(const std::vector<ChordChange>& a, const std::vector<ChordChange>& b)
-{
-    if (a.size() != b.size())
-        return false;
-    for (size_t i = 0; i < a.size(); ++i)
-        if (a[i].tick != b[i].tick)
-            return false;
-    return true;
-}
-} // namespace
-
 ChordStrip::ChordStrip(const TimelineGeometry& geometryRef) : TimelineStrip(geometryRef, "Chord") {}
 
 ChordStrip::~ChordStrip()
@@ -244,10 +231,11 @@ void ChordStrip::mouseDown(const juce::MouseEvent& e)
     if (index < 0)
         return;
 
-    if (onSelectionTaken)
-        onSelectionTaken();
-    selectedChordIndex = index;
-    repaint();
+    const auto& changes = sequence->getChordChanges();
+    chordMoveBefore = changes;
+    chordMoveIndex = index;
+    isChordMoving = true;
+    chordMoveGrabOffset = geometry.xToTick(e.x) - changes[static_cast<size_t>(index)].tick;
 }
 
 void ChordStrip::mouseMove(const juce::MouseEvent& e)
@@ -258,64 +246,132 @@ void ChordStrip::mouseMove(const juce::MouseEvent& e)
 
 void ChordStrip::mouseDrag(const juce::MouseEvent& e)
 {
-    if (!sequence || !isChordResizing)
-        return;
-    if (chordResizeIndex < 0 || chordResizeIndex >= static_cast<int>(chordResizeBefore.size()))
+    if (!sequence || !e.mouseWasDraggedSinceMouseDown())
         return;
 
-    sequence->setChordChanges(MidiSequence::buildChordChangesAfterResize(
-        chordResizeBefore, chordResizeIndex, geometry.xToTick(e.x) - chordResizeGrabOffset, geometry.gridTicks()));
-    repaint();
+    if (isChordResizing)
+    {
+        if (chordResizeIndex < 0 || chordResizeIndex >= static_cast<int>(chordResizeBefore.size()))
+            return;
+
+        sequence->setChordChanges(MidiSequence::buildChordChangesAfterResize(
+            chordResizeBefore, chordResizeIndex, geometry.xToTick(e.x) - chordResizeGrabOffset, geometry.gridTicks()));
+        repaint();
+        return;
+    }
+
+    if (isChordMoving)
+    {
+        if (chordMoveIndex < 0 || chordMoveIndex >= static_cast<int>(chordMoveBefore.size()))
+            return;
+
+        sequence->setChordChanges(MidiSequence::buildChordChangesAfterMove(
+            chordMoveBefore, chordMoveIndex, geometry.xToTick(e.x) - chordMoveGrabOffset, geometry.gridTicks()));
+        repaint();
+    }
 }
 
 void ChordStrip::mouseUp(const juce::MouseEvent& e)
 {
-    if (!isChordResizing)
-        return;
-
-    isChordResizing = false;
-    const int resizedIndex = chordResizeIndex;
-    chordResizeIndex = -1;
-
-    if (!sequence)
+    if (isChordResizing)
     {
-        chordResizeBefore.clear();
-        return;
-    }
+        isChordResizing = false;
+        const int resizedIndex = chordResizeIndex;
+        chordResizeIndex = -1;
 
-    const auto& changes = sequence->getChordChanges();
-    const bool validIndex = resizedIndex >= 0 && resizedIndex < static_cast<int>(chordResizeBefore.size()) &&
-                            resizedIndex < static_cast<int>(changes.size());
-    const bool resized = validIndex && !chordTicksEqual(changes, chordResizeBefore);
-
-    if (resized)
-    {
-        if (undoManager)
+        if (!sequence)
         {
-            undoManager->beginNewTransaction("Resize Chord");
-            undoManager->perform(new ChordResizeAction(sequence, chordResizeBefore, changes));
+            chordResizeBefore.clear();
+            return;
         }
-        else
+
+        const auto& changes = sequence->getChordChanges();
+        const bool validIndex = resizedIndex >= 0 && resizedIndex < static_cast<int>(chordResizeBefore.size()) &&
+                                resizedIndex < static_cast<int>(changes.size());
+        const bool resized = validIndex && changes != chordResizeBefore;
+
+        if (resized)
         {
-            sequence->notifyTimelineMetadataChanged();
+            if (undoManager)
+            {
+                undoManager->beginNewTransaction("Resize Chord");
+                undoManager->perform(new ChordResizeAction(sequence, chordResizeBefore, changes));
+            }
+            else
+            {
+                sequence->notifyTimelineMetadataChanged();
+            }
         }
-        if (onSelectionTaken)
-            onSelectionTaken();
-        selectedChordIndex = resizedIndex;
-    }
-    else if (validIndex)
-    {
-        int index = hitTestChordSpan(e.x, e.y);
-        if (index >= 0)
+
+        if (validIndex)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedChordIndex = index;
+            selectedChordIndex = resizedIndex;
         }
+
+        chordResizeBefore.clear();
+        repaint();
+        return;
     }
 
-    chordResizeBefore.clear();
-    repaint();
+    if (isChordMoving)
+    {
+        isChordMoving = false;
+        const int movedIndex = chordMoveIndex;
+        chordMoveIndex = -1;
+
+        if (!sequence)
+        {
+            chordMoveBefore.clear();
+            return;
+        }
+
+        if (movedIndex < 0 || movedIndex >= static_cast<int>(chordMoveBefore.size()))
+        {
+            chordMoveBefore.clear();
+            repaint();
+            return;
+        }
+
+        if (e.mouseWasDraggedSinceMouseDown())
+            sequence->setChordChanges(MidiSequence::buildChordChangesAfterMove(
+                chordMoveBefore, movedIndex, geometry.xToTick(e.x) - chordMoveGrabOffset, geometry.gridTicks()));
+
+        const auto& changes = sequence->getChordChanges();
+        if (changes != chordMoveBefore)
+        {
+            const int landedTick = geometry.roundTickToGrid(std::max(0, geometry.xToTick(e.x) - chordMoveGrabOffset));
+            int landedIndex = -1;
+            for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+                if (changes[static_cast<size_t>(i)].tick == landedTick &&
+                    !MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
+                    landedIndex = i;
+
+            if (undoManager)
+            {
+                undoManager->beginNewTransaction("Move Chord");
+                undoManager->perform(new ChordMoveAction(sequence, chordMoveBefore, changes));
+            }
+            else
+            {
+                sequence->notifyTimelineMetadataChanged();
+            }
+
+            if (onSelectionTaken)
+                onSelectionTaken();
+            selectedChordIndex = landedIndex;
+        }
+        else
+        {
+            if (onSelectionTaken)
+                onSelectionTaken();
+            selectedChordIndex = movedIndex;
+        }
+
+        chordMoveBefore.clear();
+        repaint();
+    }
 }
 
 void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
@@ -329,6 +385,9 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
     isChordResizing = false;
     chordResizeIndex = -1;
     chordResizeBefore.clear();
+    isChordMoving = false;
+    chordMoveIndex = -1;
+    chordMoveBefore.clear();
 
     int index = hitTestChordSpan(e.x, e.y);
     if (index >= 0)

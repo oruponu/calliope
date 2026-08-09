@@ -60,4 +60,8 @@ private:
     int chordResizeIndex = -1;
     std::vector<ChordChange> chordResizeBefore;
     int chordResizeGrabOffset = 0;
+    bool isChordMoving = false;
+    int chordMoveIndex = -1;
+    std::vector<ChordChange> chordMoveBefore;
+    int chordMoveGrabOffset = 0;
 };
