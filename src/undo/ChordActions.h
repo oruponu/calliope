@@ -98,3 +98,33 @@ private:
     std::vector<ChordChange> before;
     std::vector<ChordChange> after;
 };
+
+class ChordMoveAction : public juce::UndoableAction
+{
+public:
+    ChordMoveAction(MidiSequence* seq, std::vector<ChordChange> before, std::vector<ChordChange> after)
+        : sequence(seq), before(std::move(before)), after(std::move(after))
+    {
+    }
+
+    bool perform() override
+    {
+        sequence->setChordChanges(after);
+        sequence->notifyTimelineMetadataChanged();
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->setChordChanges(before);
+        sequence->notifyTimelineMetadataChanged();
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    std::vector<ChordChange> before;
+    std::vector<ChordChange> after;
+};

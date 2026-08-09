@@ -50,6 +50,7 @@ struct ChordChange
     int chordType; // XF format: 0-34
     int bassRoot;  // same as chordRoot, 0x7F=none
     int bassType;  // same as chordType, 0x7F=none
+    bool operator==(const ChordChange&) const = default;
 };
 
 enum class ChordSpelling
@@ -159,6 +160,8 @@ public:
                                                               int bassType);
     static std::vector<ChordChange> buildChordChangesAfterResize(const std::vector<ChordChange>& before, int chordIndex,
                                                                  int targetEndTick, int gridTicks);
+    static std::vector<ChordChange> buildChordChangesAfterMove(const std::vector<ChordChange>& before, int chordIndex,
+                                                               int targetTick, int gridTicks);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);
