@@ -622,67 +622,135 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterResize(const std::v
 }
 
 std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vector<ChordChange>& before,
-                                                                  int chordIndex, int targetTick, int gridTicks)
+                                                                  const std::vector<int>& movedIndices, int anchorIndex,
+                                                                  int targetTick, int gridTicks)
 {
-    if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()) || gridTicks <= 0)
-        return before;
-    if (chordToString(before[static_cast<size_t>(chordIndex)]).empty())
+    if (gridTicks <= 0)
         return before;
 
-    const size_t bodyIndex = static_cast<size_t>(chordIndex);
-    const ChordChange body = before[bodyIndex];
-    const int newTick = ((std::max(0, targetTick) + gridTicks / 2) / gridTicks) * gridTicks;
-    if (newTick == body.tick)
+    std::vector<int> moving;
+    for (int i : movedIndices)
+        if (i >= 0 && i < static_cast<int>(before.size()) && !chordToString(before[static_cast<size_t>(i)]).empty())
+            moving.push_back(i);
+    std::ranges::sort(moving);
+    moving.erase(std::unique(moving.begin(), moving.end()), moving.end());
+    if (moving.empty() || !std::ranges::binary_search(moving, anchorIndex))
         return before;
 
-    const bool hasNext = bodyIndex + 1 < before.size();
-    const bool hasTerminator = hasNext && chordToString(before[bodyIndex + 1]).empty();
+    const int anchorTick = before[static_cast<size_t>(anchorIndex)].tick;
+    const int snapped = ((std::max(0, targetTick) + gridTicks / 2) / gridTicks) * gridTicks;
+    const int delta = std::max(snapped - anchorTick, -before[static_cast<size_t>(moving.front())].tick);
+    if (delta == 0)
+        return before;
 
-    auto changes = before;
-    changes.erase(changes.begin() + static_cast<std::ptrdiff_t>(bodyIndex),
-                  changes.begin() + static_cast<std::ptrdiff_t>(bodyIndex + (hasTerminator ? 2u : 1u)));
+    struct MovedContent
+    {
+        ChordChange body{};
+        bool open = false;
+        bool hasTerminator = false;
+        ChordChange terminator{};
+        int length = 0;
+    };
+    std::vector<MovedContent> contents;
+    std::vector<bool> removed(before.size(), false);
+    for (int i : moving)
+    {
+        MovedContent mc;
+        mc.body = before[static_cast<size_t>(i)];
+        removed[static_cast<size_t>(i)] = true;
+        const size_t n = static_cast<size_t>(i) + 1;
+        if (n >= before.size())
+        {
+            mc.open = true;
+        }
+        else
+        {
+            mc.length = before[n].tick - mc.body.tick;
+            mc.hasTerminator = chordToString(before[n]).empty();
+            if (mc.hasTerminator)
+            {
+                mc.terminator = before[n];
+                removed[n] = true;
+            }
+        }
+        contents.push_back(mc);
+    }
 
-    if (newTick > body.tick && bodyIndex > 0 && !chordToString(before[bodyIndex - 1]).empty())
-        changes.push_back({body.tick, chordNone, chordTypeCount, chordNone, chordNone});
+    std::vector<ChordChange> changes;
+    for (size_t i = 0; i < before.size(); ++i)
+        if (!removed[i])
+            changes.push_back(before[i]);
+
+    for (int i : moving)
+    {
+        const size_t p = static_cast<size_t>(i);
+        if (p > 0 && !removed[p - 1] && !chordToString(before[p - 1]).empty())
+            changes.push_back({before[p].tick, chordNone, chordTypeCount, chordNone, chordNone});
+    }
     std::ranges::sort(changes, {}, &ChordChange::tick);
 
-    ChordChange moved = body;
-    moved.tick = newTick;
-
-    if (!hasNext)
+    for (size_t k = 0; k < contents.size();)
     {
-        std::erase_if(changes, [newTick](const ChordChange& cc) { return cc.tick == newTick; });
-        changes.push_back(moved);
-        std::ranges::sort(changes, {}, &ChordChange::tick);
-        return changes;
-    }
-
-    const int endTick = newTick + (before[bodyIndex + 1].tick - body.tick);
-
-    bool tailFound = false;
-    ChordChange tail{};
-    for (size_t i = 0; i < changes.size(); ++i)
-    {
-        const auto& cc = changes[i];
-        if (cc.tick < newTick || cc.tick >= endTick || chordToString(cc).empty())
-            continue;
-        tailFound = (i + 1 >= changes.size()) || changes[i + 1].tick > endTick;
-        tail = cc;
-    }
-
-    std::erase_if(changes,
-                  [newTick, endTick](const ChordChange& cc) { return cc.tick >= newTick && cc.tick < endTick; });
-
-    if (tailFound)
-    {
-        tail.tick = endTick;
-        changes.push_back(tail);
-    }
-    else if (!std::ranges::any_of(changes, [endTick](const ChordChange& cc) { return cc.tick == endTick; }))
-    {
-        if (hasTerminator)
+        if (contents[k].open)
         {
-            ChordChange terminator = before[bodyIndex + 1];
+            ++k;
+            continue;
+        }
+        size_t last = k;
+        while (!contents[last].hasTerminator && last + 1 < contents.size() && !contents[last + 1].open &&
+               moving[last + 1] == moving[last] + 1)
+            ++last;
+
+        const int startTick = contents[k].body.tick + delta;
+        const int endTick = contents[last].body.tick + contents[last].length + delta;
+
+        bool tailFound = false;
+        ChordChange tail{};
+        for (size_t i = 0; i < before.size(); ++i)
+        {
+            const auto& cc = before[i];
+            if (removed[i] || cc.tick < startTick || cc.tick >= endTick || chordToString(cc).empty())
+                continue;
+            tailFound = (i + 1 >= before.size()) || before[i + 1].tick > endTick;
+            tail = cc;
+        }
+        std::erase_if(changes, [startTick, endTick](const ChordChange& cc)
+                      { return cc.tick >= startTick && cc.tick < endTick; });
+        if (tailFound)
+        {
+            tail.tick = endTick;
+            changes.push_back(tail);
+            std::ranges::sort(changes, {}, &ChordChange::tick);
+        }
+        k = last + 1;
+    }
+
+    for (const auto& mc : contents)
+    {
+        if (!mc.open)
+            continue;
+        const int newTick = mc.body.tick + delta;
+        std::erase_if(changes, [newTick](const ChordChange& cc) { return cc.tick == newTick; });
+    }
+
+    for (const auto& mc : contents)
+    {
+        ChordChange moved = mc.body;
+        moved.tick = mc.body.tick + delta;
+        changes.push_back(moved);
+    }
+    std::ranges::sort(changes, {}, &ChordChange::tick);
+
+    for (const auto& mc : contents)
+    {
+        if (mc.open)
+            continue;
+        const int endTick = mc.body.tick + mc.length + delta;
+        if (std::ranges::any_of(changes, [endTick](const ChordChange& cc) { return cc.tick == endTick; }))
+            continue;
+        if (mc.hasTerminator)
+        {
+            ChordChange terminator = mc.terminator;
             terminator.tick = endTick;
             changes.push_back(terminator);
         }
@@ -691,10 +759,17 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vec
             changes.push_back({endTick, chordNone, chordTypeCount, chordNone, chordNone});
         }
     }
-
-    changes.push_back(moved);
     std::ranges::sort(changes, {}, &ChordChange::tick);
-    return changes;
+
+    std::vector<ChordChange> result;
+    result.reserve(changes.size());
+    for (const auto& cc : changes)
+    {
+        if (chordToString(cc).empty() && (result.empty() || chordToString(result.back()).empty()))
+            continue;
+        result.push_back(cc);
+    }
+    return result;
 }
 
 std::vector<ChordChange> MidiSequence::buildChordChangesAfterStartResize(const std::vector<ChordChange>& before,
