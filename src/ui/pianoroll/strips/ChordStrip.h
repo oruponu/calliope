@@ -47,6 +47,7 @@ private:
     int hitTestChordSpan(int x, int y) const;
     std::pair<int, ResizeEdge> hitTestChordEdge(int x, int y) const;
     void drawChordRangeSelection(juce::Graphics& g);
+    void selectMovedChords(int anchorIndex, int cursorTick);
     void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                          juce::Rectangle<int> anchorInLocal);
     void commitChordEdit(int chordRoot, int chordType, int bassRoot);
@@ -74,6 +75,7 @@ private:
     int chordMoveIndex = -1;
     std::vector<ChordChange> chordMoveBefore;
     int chordMoveGrabOffset = 0;
+    std::vector<int> chordMoveGroup;
     bool isChordStartResizing = false;
     int chordStartResizeIndex = -1;
     std::vector<ChordChange> chordStartResizeBefore;

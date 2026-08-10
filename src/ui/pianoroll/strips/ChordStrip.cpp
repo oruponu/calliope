@@ -332,6 +332,10 @@ void ChordStrip::mouseDown(const juce::MouseEvent& e)
     chordMoveIndex = index;
     isChordMoving = true;
     chordMoveGrabOffset = geometry.xToTick(e.x) - changes[static_cast<size_t>(index)].tick;
+    if (selectedChordIndices.count(index) > 0 && selectedChordIndices.size() > 1)
+        chordMoveGroup.assign(selectedChordIndices.begin(), selectedChordIndices.end());
+    else
+        chordMoveGroup = {index};
 }
 
 void ChordStrip::mouseMove(const juce::MouseEvent& e)
@@ -339,6 +343,33 @@ void ChordStrip::mouseMove(const juce::MouseEvent& e)
     setMouseCursor(!e.mods.isShiftDown() && hitTestChordEdge(e.x, e.y).first >= 0
                        ? juce::MouseCursor::LeftRightResizeCursor
                        : juce::MouseCursor::NormalCursor);
+}
+
+void ChordStrip::selectMovedChords(int anchorIndex, int cursorTick)
+{
+    const auto& changes = sequence->getChordChanges();
+    const int landedTick = geometry.roundTickToGrid(std::max(0, cursorTick));
+    int delta = landedTick - chordMoveBefore[static_cast<size_t>(anchorIndex)].tick;
+    for (int g : chordMoveGroup)
+    {
+        if (g < 0 || g >= static_cast<int>(chordMoveBefore.size()) ||
+            MidiSequence::chordToString(chordMoveBefore[static_cast<size_t>(g)]).empty())
+            continue;
+        delta = std::max(delta, -chordMoveBefore[static_cast<size_t>(g)].tick);
+        break;
+    }
+    selectedChordIndices.clear();
+    for (int g : chordMoveGroup)
+    {
+        if (g < 0 || g >= static_cast<int>(chordMoveBefore.size()) ||
+            MidiSequence::chordToString(chordMoveBefore[static_cast<size_t>(g)]).empty())
+            continue;
+        const int target = chordMoveBefore[static_cast<size_t>(g)].tick + delta;
+        for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+            if (changes[static_cast<size_t>(i)].tick == target &&
+                !MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
+                selectedChordIndices.insert(i);
+    }
 }
 
 void ChordStrip::mouseDrag(const juce::MouseEvent& e)
@@ -375,7 +406,9 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
             return;
 
         sequence->setChordChanges(MidiSequence::buildChordChangesAfterMove(
-            chordMoveBefore, chordMoveIndex, geometry.xToTick(e.x) - chordMoveGrabOffset, geometry.gridTicks()));
+            chordMoveBefore, chordMoveGroup, chordMoveIndex, geometry.xToTick(e.x) - chordMoveGrabOffset,
+            geometry.gridTicks()));
+        selectMovedChords(chordMoveIndex, geometry.xToTick(e.x) - chordMoveGrabOffset);
         repaint();
         return;
     }
@@ -518,30 +551,26 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         if (!sequence)
         {
             chordMoveBefore.clear();
+            chordMoveGroup.clear();
             return;
         }
 
         if (movedIndex < 0 || movedIndex >= static_cast<int>(chordMoveBefore.size()))
         {
             chordMoveBefore.clear();
+            chordMoveGroup.clear();
             repaint();
             return;
         }
 
         if (e.mouseWasDraggedSinceMouseDown())
             sequence->setChordChanges(MidiSequence::buildChordChangesAfterMove(
-                chordMoveBefore, movedIndex, geometry.xToTick(e.x) - chordMoveGrabOffset, geometry.gridTicks()));
+                chordMoveBefore, chordMoveGroup, movedIndex, geometry.xToTick(e.x) - chordMoveGrabOffset,
+                geometry.gridTicks()));
 
         const auto& changes = sequence->getChordChanges();
         if (changes != chordMoveBefore)
         {
-            const int landedTick = geometry.roundTickToGrid(std::max(0, geometry.xToTick(e.x) - chordMoveGrabOffset));
-            int landedIndex = -1;
-            for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-                if (changes[static_cast<size_t>(i)].tick == landedTick &&
-                    !MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
-                    landedIndex = i;
-
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Move Chord");
@@ -554,9 +583,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
 
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedChordIndices.clear();
-            if (landedIndex >= 0)
-                selectedChordIndices.insert(landedIndex);
+            selectMovedChords(movedIndex, geometry.xToTick(e.x) - chordMoveGrabOffset);
         }
         else
         {
@@ -566,6 +593,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         }
 
         chordMoveBefore.clear();
+        chordMoveGroup.clear();
         repaint();
         return;
     }
@@ -602,6 +630,7 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
     isChordMoving = false;
     chordMoveIndex = -1;
     chordMoveBefore.clear();
+    chordMoveGroup.clear();
     isChordStartResizing = false;
     chordStartResizeIndex = -1;
     chordStartResizeBefore.clear();

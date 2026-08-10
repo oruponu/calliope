@@ -160,7 +160,8 @@ public:
                                                               int bassType);
     static std::vector<ChordChange> buildChordChangesAfterResize(const std::vector<ChordChange>& before, int chordIndex,
                                                                  int targetEndTick, int gridTicks);
-    static std::vector<ChordChange> buildChordChangesAfterMove(const std::vector<ChordChange>& before, int chordIndex,
+    static std::vector<ChordChange> buildChordChangesAfterMove(const std::vector<ChordChange>& before,
+                                                               const std::vector<int>& movedIndices, int anchorIndex,
                                                                int targetTick, int gridTicks);
     static std::vector<ChordChange> buildChordChangesAfterStartResize(const std::vector<ChordChange>& before,
                                                                       int chordIndex, int targetStartTick,
