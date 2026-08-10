@@ -867,6 +867,93 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterDelete(const std::v
     return result;
 }
 
+std::vector<ChordChange> MidiSequence::buildChordChangesAfterPaste(const std::vector<ChordChange>& before,
+                                                                   const std::vector<RelativeChord>& items,
+                                                                   int anchorTick)
+{
+    std::vector<RelativeChord> sorted;
+    for (const auto& item : items)
+        if (item.tickOffset >= 0 && item.length >= 0)
+            sorted.push_back(item);
+    std::ranges::sort(sorted, {}, &RelativeChord::tickOffset);
+    sorted.erase(std::unique(sorted.begin(), sorted.end(), [](const RelativeChord& a, const RelativeChord& b)
+                             { return a.tickOffset == b.tickOffset; }),
+                 sorted.end());
+    if (sorted.empty())
+        return before;
+
+    auto changes = before;
+
+    for (size_t k = 0; k < sorted.size();)
+    {
+        if (sorted[k].length == 0)
+        {
+            ++k;
+            continue;
+        }
+        size_t last = k;
+        while (last + 1 < sorted.size() && sorted[last + 1].length != 0 &&
+               sorted[last].tickOffset + sorted[last].length == sorted[last + 1].tickOffset)
+            ++last;
+
+        const int startTick = anchorTick + sorted[k].tickOffset;
+        const int endTick = anchorTick + sorted[last].tickOffset + sorted[last].length;
+
+        bool tailFound = false;
+        ChordChange tail{};
+        for (size_t i = 0; i < before.size(); ++i)
+        {
+            const auto& cc = before[i];
+            if (cc.tick < startTick || cc.tick >= endTick || chordToString(cc).empty())
+                continue;
+            tailFound = (i + 1 >= before.size()) || before[i + 1].tick > endTick;
+            tail = cc;
+        }
+        std::erase_if(changes, [startTick, endTick](const ChordChange& cc)
+                      { return cc.tick >= startTick && cc.tick < endTick; });
+        if (tailFound)
+        {
+            tail.tick = endTick;
+            changes.push_back(tail);
+            std::ranges::sort(changes, {}, &ChordChange::tick);
+        }
+        k = last + 1;
+    }
+
+    for (const auto& item : sorted)
+    {
+        if (item.length != 0)
+            continue;
+        const int newTick = anchorTick + item.tickOffset;
+        std::erase_if(changes, [newTick](const ChordChange& cc) { return cc.tick == newTick; });
+    }
+
+    for (const auto& item : sorted)
+        changes.push_back({anchorTick + item.tickOffset, item.chordRoot, item.chordType, item.bassRoot, item.bassType});
+    std::ranges::sort(changes, {}, &ChordChange::tick);
+
+    for (const auto& item : sorted)
+    {
+        if (item.length == 0)
+            continue;
+        const int endTick = anchorTick + item.tickOffset + item.length;
+        if (std::ranges::any_of(changes, [endTick](const ChordChange& cc) { return cc.tick == endTick; }))
+            continue;
+        changes.push_back({endTick, chordNone, chordTypeCount, chordNone, chordNone});
+    }
+    std::ranges::sort(changes, {}, &ChordChange::tick);
+
+    std::vector<ChordChange> result;
+    result.reserve(changes.size());
+    for (const auto& cc : changes)
+    {
+        if (chordToString(cc).empty() && (result.empty() || chordToString(result.back()).empty()))
+            continue;
+        result.push_back(cc);
+    }
+    return result;
+}
+
 std::string MidiSequence::chordRootToString(int root)
 {
     int noteIndex = root & 0x0F;

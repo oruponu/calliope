@@ -53,6 +53,16 @@ struct ChordChange
     bool operator==(const ChordChange&) const = default;
 };
 
+struct RelativeChord
+{
+    int tickOffset;
+    int length;
+    int chordRoot;
+    int chordType;
+    int bassRoot;
+    int bassType;
+};
+
 enum class ChordSpelling
 {
     Sharp,
@@ -168,6 +178,9 @@ public:
                                                                       int gridTicks);
     static std::vector<ChordChange> buildChordChangesAfterDelete(const std::vector<ChordChange>& before,
                                                                  const std::vector<int>& deletedIndices);
+    static std::vector<ChordChange> buildChordChangesAfterPaste(const std::vector<ChordChange>& before,
+                                                                const std::vector<RelativeChord>& items,
+                                                                int anchorTick);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);

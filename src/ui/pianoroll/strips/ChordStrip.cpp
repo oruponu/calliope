@@ -5,7 +5,10 @@
 #include <cstdlib>
 #include <memory>
 
-ChordStrip::ChordStrip(const TimelineGeometry& geometryRef) : TimelineStrip(geometryRef, "Chord") {}
+ChordStrip::ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef)
+    : TimelineStrip(geometryRef, "Chord"), clipboard(clipboardRef)
+{
+}
 
 ChordStrip::~ChordStrip()
 {
@@ -42,6 +45,11 @@ bool ChordStrip::hasSelection() const
 
 void ChordStrip::deleteSelectedChords()
 {
+    deleteSelectedChordsImpl("Delete Chords");
+}
+
+void ChordStrip::deleteSelectedChordsImpl(const juce::String& transactionName)
+{
     if (!sequence || selectedChordIndices.empty())
         return;
 
@@ -53,7 +61,7 @@ void ChordStrip::deleteSelectedChords()
 
     if (undoManager)
     {
-        undoManager->beginNewTransaction("Delete Chords");
+        undoManager->beginNewTransaction(transactionName);
         undoManager->perform(new ChordDeleteAction(sequence, std::move(before), std::move(after)));
     }
     else
@@ -63,6 +71,80 @@ void ChordStrip::deleteSelectedChords()
     }
 
     clearChordSelection();
+    repaint();
+}
+
+void ChordStrip::copySelectedChords()
+{
+    if (!sequence || selectedChordIndices.empty())
+        return;
+
+    const auto& changes = sequence->getChordChanges();
+    const int count = static_cast<int>(changes.size());
+
+    std::vector<RelativeChord> items;
+    int baseTick = -1;
+    for (int i : selectedChordIndices)
+    {
+        if (i < 0 || i >= count || MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
+            continue;
+        const auto& cc = changes[static_cast<size_t>(i)];
+        if (baseTick < 0)
+            baseTick = cc.tick;
+        const int length = (i + 1 < count) ? changes[static_cast<size_t>(i) + 1].tick - cc.tick : 0;
+        items.push_back({cc.tick - baseTick, length, cc.chordRoot, cc.chordType, cc.bassRoot, cc.bassType});
+    }
+
+    if (items.empty())
+        return;
+
+    clipboard.setChords(std::move(items));
+}
+
+void ChordStrip::cutSelectedChords()
+{
+    if (!sequence || selectedChordIndices.empty())
+        return;
+
+    copySelectedChords();
+    deleteSelectedChordsImpl("Cut Chords");
+}
+
+void ChordStrip::pasteChords(int atTick)
+{
+    if (!sequence || !clipboard.hasChords())
+        return;
+
+    const int anchorTick = geometry.floorTickToGrid(std::max(0, atTick));
+    auto before = sequence->getChordChanges();
+    auto after = MidiSequence::buildChordChangesAfterPaste(before, clipboard.getChords(), anchorTick);
+
+    const bool changed = (after != before);
+    if (changed)
+    {
+        if (undoManager)
+        {
+            undoManager->beginNewTransaction("Paste Chords");
+            undoManager->perform(new ChordPasteAction(sequence, std::move(before), after));
+        }
+        else
+        {
+            sequence->setChordChanges(after);
+            sequence->notifyTimelineMetadataChanged();
+        }
+    }
+
+    selectedChordIndices.clear();
+    const auto& changes = sequence->getChordChanges();
+    for (const auto& item : clipboard.getChords())
+    {
+        const int target = anchorTick + item.tickOffset;
+        for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+            if (changes[static_cast<size_t>(i)].tick == target &&
+                !MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
+                selectedChordIndices.insert(i);
+    }
+
     repaint();
 }
 
