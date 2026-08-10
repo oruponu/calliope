@@ -822,6 +822,51 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterStartResize(const s
     return changes;
 }
 
+std::vector<ChordChange> MidiSequence::buildChordChangesAfterDelete(const std::vector<ChordChange>& before,
+                                                                    const std::vector<int>& deletedIndices)
+{
+    std::vector<int> deleting;
+    for (int i : deletedIndices)
+        if (i >= 0 && i < static_cast<int>(before.size()) && !chordToString(before[static_cast<size_t>(i)]).empty())
+            deleting.push_back(i);
+    std::ranges::sort(deleting);
+    deleting.erase(std::unique(deleting.begin(), deleting.end()), deleting.end());
+    if (deleting.empty())
+        return before;
+
+    std::vector<bool> removed(before.size(), false);
+    for (int i : deleting)
+    {
+        removed[static_cast<size_t>(i)] = true;
+        const size_t n = static_cast<size_t>(i) + 1;
+        if (n < before.size() && chordToString(before[n]).empty())
+            removed[n] = true;
+    }
+
+    std::vector<ChordChange> changes;
+    for (size_t i = 0; i < before.size(); ++i)
+        if (!removed[i])
+            changes.push_back(before[i]);
+
+    for (int i : deleting)
+    {
+        const size_t p = static_cast<size_t>(i);
+        if (p > 0 && !removed[p - 1] && !chordToString(before[p - 1]).empty())
+            changes.push_back({before[p].tick, chordNone, chordTypeCount, chordNone, chordNone});
+    }
+    std::ranges::sort(changes, {}, &ChordChange::tick);
+
+    std::vector<ChordChange> result;
+    result.reserve(changes.size());
+    for (const auto& cc : changes)
+    {
+        if (chordToString(cc).empty() && (result.empty() || chordToString(result.back()).empty()))
+            continue;
+        result.push_back(cc);
+    }
+    return result;
+}
+
 std::string MidiSequence::chordRootToString(int root)
 {
     int noteIndex = root & 0x0F;

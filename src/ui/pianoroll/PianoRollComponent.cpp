@@ -62,6 +62,11 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
             deleteSelectedKeySignatures();
             return true;
         }
+        if (chordStrip.hasSelection())
+        {
+            deleteSelectedChords();
+            return true;
+        }
         if (selectedNotes.empty())
             return false;
         deleteSelectedNotes();
@@ -985,6 +990,11 @@ void PianoRollComponent::deleteSelectedTimeSignatures()
 void PianoRollComponent::deleteSelectedKeySignatures()
 {
     keyStrip.deleteSelectedKeySignatures();
+}
+
+void PianoRollComponent::deleteSelectedChords()
+{
+    chordStrip.deleteSelectedChords();
 }
 
 void PianoRollComponent::selectAllNotes()

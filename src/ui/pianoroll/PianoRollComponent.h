@@ -74,6 +74,7 @@ public:
     void deleteSelectedTempoPoints();
     void deleteSelectedTimeSignatures();
     void deleteSelectedKeySignatures();
+    void deleteSelectedChords();
     bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
     void cutSelection();
