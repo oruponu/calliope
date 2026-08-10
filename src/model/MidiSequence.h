@@ -166,6 +166,8 @@ public:
     static std::vector<ChordChange> buildChordChangesAfterStartResize(const std::vector<ChordChange>& before,
                                                                       int chordIndex, int targetStartTick,
                                                                       int gridTicks);
+    static std::vector<ChordChange> buildChordChangesAfterDelete(const std::vector<ChordChange>& before,
+                                                                 const std::vector<int>& deletedIndices);
 
     static int normalizeSharpsOrFlats(int sharpsOrFlats);
     static std::string keySignatureToString(int sharpsOrFlats, bool isMinor);

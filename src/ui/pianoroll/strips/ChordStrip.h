@@ -20,6 +20,8 @@ public:
     void setUndoManager(juce::UndoManager* um);
     void setSequence(MidiSequence* seq) override;
     void clearChordSelection();
+    bool hasSelection() const;
+    void deleteSelectedChords();
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;

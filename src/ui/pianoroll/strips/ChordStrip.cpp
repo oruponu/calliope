@@ -35,6 +35,37 @@ void ChordStrip::clearChordSelection()
     repaint();
 }
 
+bool ChordStrip::hasSelection() const
+{
+    return !selectedChordIndices.empty();
+}
+
+void ChordStrip::deleteSelectedChords()
+{
+    if (!sequence || selectedChordIndices.empty())
+        return;
+
+    auto before = sequence->getChordChanges();
+    auto after = MidiSequence::buildChordChangesAfterDelete(
+        before, std::vector<int>(selectedChordIndices.begin(), selectedChordIndices.end()));
+    if (after == before)
+        return;
+
+    if (undoManager)
+    {
+        undoManager->beginNewTransaction("Delete Chords");
+        undoManager->perform(new ChordDeleteAction(sequence, std::move(before), std::move(after)));
+    }
+    else
+    {
+        sequence->setChordChanges(std::move(after));
+        sequence->notifyTimelineMetadataChanged();
+    }
+
+    clearChordSelection();
+    repaint();
+}
+
 juce::Rectangle<int> ChordStrip::chordSpanRect(int index) const
 {
     if (!sequence)
