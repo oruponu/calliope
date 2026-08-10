@@ -83,12 +83,12 @@ public:
     bool hasSelection() const
     {
         return !selectedNotes.empty() || tempoStrip.hasSelection() || timeSigStrip.hasSelection() ||
-               keyStrip.hasSelection();
+               keyStrip.hasSelection() || chordStrip.hasSelection();
     }
     bool hasClipboardContent() const
     {
         return clipboard.hasNotes() || clipboard.hasTempoPoints() || clipboard.hasTimeSignatures() ||
-               clipboard.hasKeySignatures();
+               clipboard.hasKeySignatures() || clipboard.hasChords();
     }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
     bool hasNotesInActiveTrack() const;
@@ -247,7 +247,7 @@ private:
     TempoTrackStrip tempoStrip{geometry, clipboard};
     TimeSignatureStrip timeSigStrip{geometry, clipboard};
     KeySignatureStrip keyStrip{geometry, clipboard};
-    ChordStrip chordStrip{geometry};
+    ChordStrip chordStrip{geometry, clipboard};
 
     MidiNote previewNote;
     bool isPreviewing = false;

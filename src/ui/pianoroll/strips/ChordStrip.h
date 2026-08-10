@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/strips/ChordEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
@@ -12,7 +13,7 @@ class ChordStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    explicit ChordStrip(const TimelineGeometry& geometryRef);
+    ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef);
     ~ChordStrip() override;
 
     std::function<void()> onSelectionTaken;
@@ -22,6 +23,9 @@ public:
     void clearChordSelection();
     bool hasSelection() const;
     void deleteSelectedChords();
+    void copySelectedChords();
+    void cutSelectedChords();
+    void pasteChords(int atTick);
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
@@ -50,6 +54,7 @@ private:
     std::pair<int, ResizeEdge> hitTestChordEdge(int x, int y) const;
     void drawChordRangeSelection(juce::Graphics& g);
     void selectMovedChords(int anchorIndex, int cursorTick);
+    void deleteSelectedChordsImpl(const juce::String& transactionName);
     void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                          juce::Rectangle<int> anchorInLocal);
     void commitChordEdit(int chordRoot, int chordType, int bassRoot);
@@ -57,6 +62,7 @@ private:
     void closeChordEditor();
 
     juce::UndoManager* undoManager = nullptr;
+    EditClipboard& clipboard;
 
     std::set<int> selectedChordIndices;
     bool isChordEditing = false;
