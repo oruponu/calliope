@@ -575,50 +575,70 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterResize(const std::v
     if (chordToString(before[static_cast<size_t>(chordIndex)]).empty())
         return before;
 
-    const int chordTick = before[static_cast<size_t>(chordIndex)].tick;
+    const size_t bodyIndex = static_cast<size_t>(chordIndex);
+    const int chordTick = before[bodyIndex].tick;
     int end = ((std::max(0, targetEndTick) + gridTicks / 2) / gridTicks) * gridTicks;
     const int minEnd = (chordTick / gridTicks) * gridTicks + gridTicks;
     end = std::max(end, minEnd);
 
     auto changes = before;
-    const size_t nextIndex = static_cast<size_t>(chordIndex) + 1;
+    const size_t nextIndex = bodyIndex + 1;
 
-    if (nextIndex >= changes.size())
+    bool rolled = false;
+    if (nextIndex < before.size())
     {
-        changes.insert(changes.begin() + static_cast<std::ptrdiff_t>(nextIndex),
-                       {end, chordNone, chordTypeCount, chordNone, chordNone});
-        return changes;
-    }
-
-    if (!chordToString(changes[nextIndex]).empty())
-    {
-        const int nextTick = changes[nextIndex].tick;
-        end = std::min(end, nextTick);
-        if (end == nextTick)
+        if (end == before[nextIndex].tick)
             return before;
-        changes.insert(changes.begin() + static_cast<std::ptrdiff_t>(nextIndex),
-                       {end, chordNone, chordTypeCount, chordNone, chordNone});
-        return changes;
+        if (!chordToString(before[nextIndex]).empty() && end < before[nextIndex].tick)
+        {
+            changes[nextIndex].tick = end;
+            rolled = true;
+        }
     }
 
-    const int terminatorTick = changes[nextIndex].tick;
-    const size_t afterIndex = nextIndex + 1;
-    if (afterIndex < changes.size() && !chordToString(changes[afterIndex]).empty() && end >= changes[afterIndex].tick)
+    if (!rolled)
     {
-        changes.erase(changes.begin() + static_cast<std::ptrdiff_t>(nextIndex));
-        return changes;
+        ChordChange terminator{end, chordNone, chordTypeCount, chordNone, chordNone};
+        if (nextIndex < before.size() && chordToString(before[nextIndex]).empty())
+        {
+            terminator = before[nextIndex];
+            terminator.tick = end;
+        }
+
+        bool tailFound = false;
+        ChordChange tail{};
+        for (size_t i = nextIndex; i < before.size(); ++i)
+        {
+            const auto& cc = before[i];
+            if (cc.tick >= end || chordToString(cc).empty())
+                continue;
+            tailFound = (i + 1 >= before.size()) || before[i + 1].tick > end;
+            tail = cc;
+        }
+
+        std::erase_if(changes,
+                      [chordTick, end](const ChordChange& cc) { return cc.tick > chordTick && cc.tick < end; });
+        if (tailFound)
+        {
+            tail.tick = end;
+            changes.push_back(tail);
+        }
+        else if (std::ranges::none_of(changes, [end](const ChordChange& cc) { return cc.tick == end; }))
+        {
+            changes.push_back(terminator);
+        }
+        std::ranges::sort(changes, {}, &ChordChange::tick);
     }
-    if (afterIndex < changes.size())
+
+    std::vector<ChordChange> result;
+    result.reserve(changes.size());
+    for (const auto& cc : changes)
     {
-        const int maxEnd = ((changes[afterIndex].tick - 1) / gridTicks) * gridTicks;
-        if (maxEnd < minEnd)
-            return before;
-        end = std::min(end, maxEnd);
+        if (chordToString(cc).empty() && (result.empty() || chordToString(result.back()).empty()))
+            continue;
+        result.push_back(cc);
     }
-    if (end == terminatorTick)
-        return before;
-    changes[nextIndex].tick = end;
-    return changes;
+    return result;
 }
 
 std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vector<ChordChange>& before,

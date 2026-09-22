@@ -52,6 +52,10 @@ private:
     juce::Rectangle<int> chordDraftSpanRect() const;
     int hitTestChordSpan(int x, int y) const;
     std::pair<int, ResizeEdge> hitTestChordEdge(int x, int y) const;
+    bool isJointChordEdge(int index, ResizeEdge edge) const;
+    void beginChordEdgeDrag(const std::vector<ChordChange>& changes, int index, ResizeEdge edge, int grabX);
+    void switchJointChordEdge(int x, int grabX);
+    void remapSelectionAfterResize(const std::vector<ChordChange>& before, int draggedIndex, ResizeEdge edge);
     void drawChordRangeSelection(juce::Graphics& g);
     void selectMovedChords(int anchorIndex, int cursorTick);
     void deleteSelectedChordsImpl(const juce::String& transactionName);
@@ -88,6 +92,11 @@ private:
     int chordStartResizeIndex = -1;
     std::vector<ChordChange> chordStartResizeBefore;
     int chordStartResizeGrabOffset = 0;
+    bool isChordJointDragging = false;
+    int chordJointLeftIndex = -1;
+    ResizeEdge chordJointEdge = ResizeEdge::None;
+    std::vector<ChordChange> chordJointBefore;
+    std::set<int> chordEdgeSelectionBefore;
     bool isChordRangeSelecting = false;
     int chordSelectStartX = 0;
     int chordSelectCurrentX = 0;

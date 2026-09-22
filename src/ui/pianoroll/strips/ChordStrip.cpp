@@ -2,8 +2,23 @@
 #include "ui/theme/Theme.h"
 #include "undo/ChordActions.h"
 #include <algorithm>
+#include <climits>
 #include <cstdlib>
 #include <memory>
+
+namespace
+{
+int chordSpanEnd(const std::vector<ChordChange>& changes, size_t index)
+{
+    return index + 1 < changes.size() ? changes[index + 1].tick : INT_MAX;
+}
+
+bool isSameChord(const ChordChange& a, const ChordChange& b)
+{
+    return a.chordRoot == b.chordRoot && a.chordType == b.chordType && a.bassRoot == b.bassRoot &&
+           a.bassType == b.bassType;
+}
+} // namespace
 
 ChordStrip::ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef)
     : TimelineStrip(geometryRef, "Chord"), clipboard(clipboardRef)
@@ -242,6 +257,88 @@ std::pair<int, ChordStrip::ResizeEdge> ChordStrip::hitTestChordEdge(int x, int y
     return {best, bestEdge};
 }
 
+bool ChordStrip::isJointChordEdge(int index, ResizeEdge edge) const
+{
+    const auto& changes = sequence->getChordChanges();
+    const int neighbor = edge == ResizeEdge::Right ? index + 1 : index - 1;
+    return neighbor >= 0 && neighbor < static_cast<int>(changes.size()) &&
+           !MidiSequence::chordToString(changes[static_cast<size_t>(neighbor)]).empty();
+}
+
+void ChordStrip::beginChordEdgeDrag(const std::vector<ChordChange>& changes, int index, ResizeEdge edge, int grabX)
+{
+    if (edge == ResizeEdge::Right)
+    {
+        chordResizeBefore = changes;
+        chordResizeIndex = index;
+        isChordResizing = true;
+        chordResizeGrabOffset = 0;
+        if (index + 1 < static_cast<int>(changes.size()))
+            chordResizeGrabOffset = geometry.xToTick(grabX) - changes[static_cast<size_t>(index) + 1].tick;
+        return;
+    }
+
+    chordStartResizeBefore = changes;
+    chordStartResizeIndex = index;
+    isChordStartResizing = true;
+    chordStartResizeGrabOffset = geometry.xToTick(grabX) - changes[static_cast<size_t>(index)].tick;
+}
+
+void ChordStrip::remapSelectionAfterResize(const std::vector<ChordChange>& before, int draggedIndex, ResizeEdge edge)
+{
+    const auto& after = sequence->getChordChanges();
+    const size_t dragged = static_cast<size_t>(draggedIndex);
+
+    int draggedAfter = -1;
+    for (size_t j = 0; j < after.size(); ++j)
+    {
+        if (MidiSequence::chordToString(after[j]).empty())
+            continue;
+        const bool matched = edge == ResizeEdge::Right ? after[j].tick == before[dragged].tick
+                                                       : chordSpanEnd(after, j) == chordSpanEnd(before, dragged);
+        if (matched)
+        {
+            draggedAfter = static_cast<int>(j);
+            break;
+        }
+    }
+
+    selectedChordIndices.clear();
+    for (int i : chordEdgeSelectionBefore)
+    {
+        if (i < 0 || i >= static_cast<int>(before.size()))
+            continue;
+        const size_t bi = static_cast<size_t>(i);
+        if (i == draggedIndex)
+        {
+            if (draggedAfter >= 0)
+                selectedChordIndices.insert(draggedAfter);
+            continue;
+        }
+        for (size_t j = 0; j < after.size(); ++j)
+        {
+            if (static_cast<int>(j) == draggedAfter || MidiSequence::chordToString(after[j]).empty() ||
+                !isSameChord(after[j], before[bi]))
+                continue;
+            if (after[j].tick < chordSpanEnd(before, bi) && chordSpanEnd(after, j) > before[bi].tick)
+            {
+                selectedChordIndices.insert(static_cast<int>(j));
+                break;
+            }
+        }
+    }
+}
+
+void ChordStrip::switchJointChordEdge(int x, int grabX)
+{
+    const int dx = x - grabX;
+    const ResizeEdge edge = dx > 0 ? ResizeEdge::Right : dx < 0 ? ResizeEdge::Left : chordJointEdge;
+    isChordResizing = false;
+    isChordStartResizing = false;
+    beginChordEdgeDrag(chordJointBefore, edge == ResizeEdge::Right ? chordJointLeftIndex : chordJointLeftIndex + 1,
+                       edge, grabX);
+}
+
 void ChordStrip::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -390,35 +487,19 @@ void ChordStrip::mouseDown(const juce::MouseEvent& e)
     }
 
     auto [edgeIndex, edgeKind] = hitTestChordEdge(e.x, e.y);
-    if (edgeIndex >= 0 && edgeKind == ResizeEdge::Right)
+    if (edgeIndex >= 0 && edgeKind != ResizeEdge::None)
     {
-        const auto& changes = sequence->getChordChanges();
-        const bool joined = edgeIndex + 1 < static_cast<int>(changes.size()) &&
-                            !MidiSequence::chordToString(changes[static_cast<size_t>(edgeIndex) + 1]).empty();
-        if (joined)
+        chordEdgeSelectionBefore = selectedChordIndices;
+        if (isJointChordEdge(edgeIndex, edgeKind))
         {
-            chordStartResizeBefore = changes;
-            chordStartResizeIndex = edgeIndex + 1;
-            isChordStartResizing = true;
-            chordStartResizeGrabOffset = geometry.xToTick(e.x) - changes[static_cast<size_t>(edgeIndex) + 1].tick;
+            isChordJointDragging = true;
+            chordJointBefore = sequence->getChordChanges();
+            chordJointLeftIndex = edgeKind == ResizeEdge::Right ? edgeIndex : edgeIndex - 1;
+            chordJointEdge = edgeKind;
+            switchJointChordEdge(e.x, e.x);
             return;
         }
-
-        chordResizeBefore = changes;
-        chordResizeIndex = edgeIndex;
-        isChordResizing = true;
-        chordResizeGrabOffset = 0;
-        if (edgeIndex + 1 < static_cast<int>(changes.size()))
-            chordResizeGrabOffset = geometry.xToTick(e.x) - changes[static_cast<size_t>(edgeIndex) + 1].tick;
-        return;
-    }
-    if (edgeIndex >= 0 && edgeKind == ResizeEdge::Left)
-    {
-        const auto& changes = sequence->getChordChanges();
-        chordStartResizeBefore = changes;
-        chordStartResizeIndex = edgeIndex;
-        isChordStartResizing = true;
-        chordStartResizeGrabOffset = geometry.xToTick(e.x) - changes[static_cast<size_t>(edgeIndex)].tick;
+        beginChordEdgeDrag(sequence->getChordChanges(), edgeIndex, edgeKind, e.x);
         return;
     }
 
@@ -490,6 +571,9 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
     if (!sequence || !e.mouseWasDraggedSinceMouseDown())
         return;
 
+    if (isChordJointDragging)
+        switchJointChordEdge(e.x, e.getMouseDownX());
+
     if (isChordResizing)
     {
         if (chordResizeIndex < 0 || chordResizeIndex >= static_cast<int>(chordResizeBefore.size()))
@@ -497,6 +581,7 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
 
         sequence->setChordChanges(MidiSequence::buildChordChangesAfterResize(
             chordResizeBefore, chordResizeIndex, geometry.xToTick(e.x) - chordResizeGrabOffset, geometry.gridTicks()));
+        remapSelectionAfterResize(chordResizeBefore, chordResizeIndex, ResizeEdge::Right);
         repaint();
         return;
     }
@@ -509,6 +594,7 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
         sequence->setChordChanges(MidiSequence::buildChordChangesAfterStartResize(
             chordStartResizeBefore, chordStartResizeIndex, geometry.xToTick(e.x) - chordStartResizeGrabOffset,
             geometry.gridTicks()));
+        remapSelectionAfterResize(chordStartResizeBefore, chordStartResizeIndex, ResizeEdge::Left);
         repaint();
         return;
     }
@@ -551,6 +637,13 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
 
 void ChordStrip::mouseUp(const juce::MouseEvent& e)
 {
+    if (isChordJointDragging)
+    {
+        isChordJointDragging = false;
+        switchJointChordEdge(e.x, e.getMouseDownX());
+        chordJointBefore.clear();
+    }
+
     if (isChordResizing)
     {
         isChordResizing = false;
@@ -563,9 +656,12 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
             return;
         }
 
+        const bool validIndex = resizedIndex >= 0 && resizedIndex < static_cast<int>(chordResizeBefore.size());
+        if (validIndex && e.mouseWasDraggedSinceMouseDown())
+            sequence->setChordChanges(MidiSequence::buildChordChangesAfterResize(
+                chordResizeBefore, resizedIndex, geometry.xToTick(e.x) - chordResizeGrabOffset, geometry.gridTicks()));
+
         const auto& changes = sequence->getChordChanges();
-        const bool validIndex = resizedIndex >= 0 && resizedIndex < static_cast<int>(chordResizeBefore.size()) &&
-                                resizedIndex < static_cast<int>(changes.size());
         const bool resized = validIndex && changes != chordResizeBefore;
 
         if (resized)
@@ -581,13 +677,18 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
             }
         }
 
-        if (validIndex)
+        if (validIndex && e.mouseWasDraggedSinceMouseDown())
+        {
+            remapSelectionAfterResize(chordResizeBefore, resizedIndex, ResizeEdge::Right);
+        }
+        else if (validIndex)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
             selectedChordIndices = {resizedIndex};
         }
 
+        chordEdgeSelectionBefore.clear();
         chordResizeBefore.clear();
         repaint();
         return;
@@ -620,15 +721,6 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const auto& changes = sequence->getChordChanges();
         if (changes != chordStartResizeBefore)
         {
-            int landedIndex = static_cast<int>(changes.size()) - 1;
-            if (movedIndex + 1 < static_cast<int>(chordStartResizeBefore.size()))
-            {
-                const int endTick = chordStartResizeBefore[static_cast<size_t>(movedIndex) + 1].tick;
-                for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-                    if (changes[static_cast<size_t>(i)].tick == endTick)
-                        landedIndex = i - 1;
-            }
-
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Resize Chord");
@@ -638,10 +730,11 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
             {
                 sequence->notifyTimelineMetadataChanged();
             }
+        }
 
-            if (onSelectionTaken)
-                onSelectionTaken();
-            selectedChordIndices = {landedIndex};
+        if (e.mouseWasDraggedSinceMouseDown())
+        {
+            remapSelectionAfterResize(chordStartResizeBefore, movedIndex, ResizeEdge::Left);
         }
         else
         {
@@ -650,6 +743,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
             selectedChordIndices = {movedIndex};
         }
 
+        chordEdgeSelectionBefore.clear();
         chordStartResizeBefore.clear();
         repaint();
         return;
