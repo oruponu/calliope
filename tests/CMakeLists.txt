@@ -1,6 +1,13 @@
 add_executable(CalliopeTests
+    ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
+)
+
+target_sources(CalliopeTests PRIVATE
+    engine/PlaybackProcessorTests.cpp
+    engine/PlaybackSnapshotTests.cpp
 )
 
 target_include_directories(CalliopeTests PRIVATE
