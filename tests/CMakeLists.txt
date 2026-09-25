@@ -8,6 +8,7 @@ add_executable(CalliopeTests
 target_sources(CalliopeTests PRIVATE
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp
+    model/BarBeatTickTests.cpp
     model/ChordAddSpanTests.cpp
     model/ChordAddTests.cpp
     model/ChordDeleteTests.cpp
