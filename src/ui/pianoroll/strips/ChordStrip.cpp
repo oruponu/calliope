@@ -21,19 +21,15 @@ bool isSameChord(const ChordChange& a, const ChordChange& b)
 }
 } // namespace
 
-ChordStrip::ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef)
-    : TimelineStrip(geometryRef, "Chord"), clipboard(clipboardRef)
+ChordStrip::ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
+                       juce::UndoManager& undoManagerRef)
+    : TimelineStrip(geometryRef, "Chord"), undoManager(undoManagerRef), clipboard(clipboardRef)
 {
 }
 
 ChordStrip::~ChordStrip()
 {
     closeChordEditor();
-}
-
-void ChordStrip::setUndoManager(juce::UndoManager* um)
-{
-    undoManager = um;
 }
 
 void ChordStrip::setSequence(MidiSequence* seq)
@@ -75,16 +71,8 @@ void ChordStrip::deleteSelectedChordsImpl(const juce::String& transactionName)
     if (after == before)
         return;
 
-    if (undoManager)
-    {
-        undoManager->beginNewTransaction(transactionName);
-        undoManager->perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), std::move(after)));
-    }
-    else
-    {
-        sequence->setChordChanges(std::move(after));
-        sequence->notifyTimelineMetadataChanged();
-    }
+    undoManager.beginNewTransaction(transactionName);
+    undoManager.perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), std::move(after)));
 
     clearChordSelection();
     repaint();
@@ -138,16 +126,8 @@ void ChordStrip::pasteChords(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        if (undoManager)
-        {
-            undoManager->beginNewTransaction("Paste Chords");
-            undoManager->perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), after));
-        }
-        else
-        {
-            sequence->setChordChanges(after);
-            sequence->notifyTimelineMetadataChanged();
-        }
+        undoManager.beginNewTransaction("Paste Chords");
+        undoManager.perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), after));
     }
 
     selectedChordIndices.clear();
@@ -667,15 +647,8 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
 
         if (resized)
         {
-            if (undoManager)
-            {
-                undoManager->beginNewTransaction("Resize Chord");
-                undoManager->perform(new ReplaceListAction<ChordChange>(sequence, chordResizeBefore, changes));
-            }
-            else
-            {
-                sequence->notifyTimelineMetadataChanged();
-            }
+            undoManager.beginNewTransaction("Resize Chord");
+            undoManager.perform(new ReplaceListAction<ChordChange>(sequence, chordResizeBefore, changes));
         }
 
         if (validIndex && e.mouseWasDraggedSinceMouseDown())
@@ -722,15 +695,8 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const auto& changes = sequence->getChordChanges();
         if (changes != chordStartResizeBefore)
         {
-            if (undoManager)
-            {
-                undoManager->beginNewTransaction("Resize Chord");
-                undoManager->perform(new ReplaceListAction<ChordChange>(sequence, chordStartResizeBefore, changes));
-            }
-            else
-            {
-                sequence->notifyTimelineMetadataChanged();
-            }
+            undoManager.beginNewTransaction("Resize Chord");
+            undoManager.perform(new ReplaceListAction<ChordChange>(sequence, chordStartResizeBefore, changes));
         }
 
         if (e.mouseWasDraggedSinceMouseDown())
@@ -779,15 +745,8 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const auto& changes = sequence->getChordChanges();
         if (changes != chordMoveBefore)
         {
-            if (undoManager)
-            {
-                undoManager->beginNewTransaction("Move Chord");
-                undoManager->perform(new ReplaceListAction<ChordChange>(sequence, chordMoveBefore, changes));
-            }
-            else
-            {
-                sequence->notifyTimelineMetadataChanged();
-            }
+            undoManager.beginNewTransaction("Move Chord");
+            undoManager.perform(new ReplaceListAction<ChordChange>(sequence, chordMoveBefore, changes));
 
             if (onSelectionTaken)
                 onSelectionTaken();
@@ -939,17 +898,9 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
     {
         auto after = MidiSequence::buildChordChangesAfterAdd(
             sequence->getChordChanges(), chordEditTick, chordEditEndTick, chordRoot, chordType, bassRoot, bassType);
-        if (undoManager)
-        {
-            undoManager->beginNewTransaction("Add Chord");
-            undoManager->perform(
-                new ReplaceListAction<ChordChange>(sequence, sequence->getChordChanges(), std::move(after)));
-        }
-        else
-        {
-            sequence->setChordChanges(std::move(after));
-            sequence->notifyTimelineMetadataChanged();
-        }
+        undoManager.beginNewTransaction("Add Chord");
+        undoManager.perform(
+            new ReplaceListAction<ChordChange>(sequence, sequence->getChordChanges(), std::move(after)));
     }
     else
     {
@@ -962,17 +913,8 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
             return;
         }
 
-        if (undoManager)
-        {
-            undoManager->beginNewTransaction("Edit Chord");
-            undoManager->perform(
-                new ChordChangeAction(sequence, chordEditTick, chordRoot, chordType, bassRoot, bassType));
-        }
-        else
-        {
-            sequence->addChordChange(chordEditTick, chordRoot, chordType, bassRoot, bassType);
-            sequence->notifyTimelineMetadataChanged();
-        }
+        undoManager.beginNewTransaction("Edit Chord");
+        undoManager.perform(new ChordChangeAction(sequence, chordEditTick, chordRoot, chordType, bassRoot, bassType));
     }
 
     const auto& changes = sequence->getChordChanges();

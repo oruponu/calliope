@@ -12,13 +12,13 @@ class TimeSignatureStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef);
+    TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
+                       juce::UndoManager& undoManagerRef);
     ~TimeSignatureStrip() override;
 
     std::function<void()> onSelectionTaken;
     std::function<void()> onTimelineMetadataChanged;
 
-    void setUndoManager(juce::UndoManager* um);
     void setSequence(MidiSequence* seq) override;
     bool hasSelection() const;
     void clearTimeSignatureSelection();
@@ -46,7 +46,7 @@ private:
     void closeTimeSignatureEditor();
 
     EditClipboard& clipboard;
-    juce::UndoManager* undoManager = nullptr;
+    juce::UndoManager& undoManager;
 
     std::set<int> selectedTimeSigIndices;
     bool isTimeSigEditing = false;

@@ -5,19 +5,15 @@
 #include <algorithm>
 #include <memory>
 
-TimeSignatureStrip::TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef)
-    : TimelineStrip(geometryRef, "Time Sig"), clipboard(clipboardRef)
+TimeSignatureStrip::TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
+                                       juce::UndoManager& undoManagerRef)
+    : TimelineStrip(geometryRef, "Time Sig"), clipboard(clipboardRef), undoManager(undoManagerRef)
 {
 }
 
 TimeSignatureStrip::~TimeSignatureStrip()
 {
     closeTimeSignatureEditor();
-}
-
-void TimeSignatureStrip::setUndoManager(juce::UndoManager* um)
-{
-    undoManager = um;
 }
 
 void TimeSignatureStrip::setSequence(MidiSequence* seq)
@@ -57,16 +53,8 @@ void TimeSignatureStrip::deleteSelectedTimeSignaturesImpl(const juce::String& tr
     if (after.size() == before.size())
         return;
 
-    if (undoManager)
-    {
-        undoManager->beginNewTransaction(transactionName);
-        undoManager->perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), std::move(after)));
-    }
-    else
-    {
-        sequence->setTimeSignatureChanges(std::move(after));
-        sequence->notifyTimelineMetadataChanged();
-    }
+    undoManager.beginNewTransaction(transactionName);
+    undoManager.perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), std::move(after)));
 
     clearTimeSignatureSelection();
     repaint();
@@ -122,16 +110,8 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        if (undoManager)
-        {
-            undoManager->beginNewTransaction("Paste Time Signature Changes");
-            undoManager->perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), after));
-        }
-        else
-        {
-            sequence->setTimeSignatureChanges(after);
-            sequence->notifyTimelineMetadataChanged();
-        }
+        undoManager.beginNewTransaction("Paste Time Signature Changes");
+        undoManager.perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), after));
     }
 
     selectedTimeSigIndices.clear();
@@ -404,15 +384,8 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
 
         if (movedFinal)
         {
-            if (undoManager)
-            {
-                undoManager->beginNewTransaction("Move Time Signature Change");
-                undoManager->perform(new ReplaceListAction<TimeSignatureChange>(sequence, timeSigDragBefore, changes));
-            }
-            else
-            {
-                sequence->notifyTimelineMetadataChanged();
-            }
+            undoManager.beginNewTransaction("Move Time Signature Change");
+            undoManager.perform(new ReplaceListAction<TimeSignatureChange>(sequence, timeSigDragBefore, changes));
             if (onSelectionTaken)
                 onSelectionTaken();
             selectedTimeSigIndices = std::set<int>(timeSigDragGroup.begin(), timeSigDragGroup.end());
@@ -541,16 +514,8 @@ void TimeSignatureStrip::commitTimeSignatureEdit(int num, int den)
         return;
     }
 
-    if (undoManager)
-    {
-        undoManager->beginNewTransaction(timeSigEditIsNew ? "Add Time Signature Change" : "Edit Time Signature Change");
-        undoManager->perform(new TimeSignatureChangeAction(sequence, timeSigEditTick, num, den));
-    }
-    else
-    {
-        sequence->addTimeSignatureChange(timeSigEditTick, num, den);
-        sequence->notifyTimelineMetadataChanged();
-    }
+    undoManager.beginNewTransaction(timeSigEditIsNew ? "Add Time Signature Change" : "Edit Time Signature Change");
+    undoManager.perform(new TimeSignatureChangeAction(sequence, timeSigEditTick, num, den));
 
     const auto& changes = sequence->getTimeSignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)

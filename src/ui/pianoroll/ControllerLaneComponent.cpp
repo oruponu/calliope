@@ -95,11 +95,6 @@ void ControllerLaneComponent::setSequence(MidiSequence* seq)
     repaint();
 }
 
-void ControllerLaneComponent::setUndoManager(juce::UndoManager* um)
-{
-    undoManager = um;
-}
-
 void ControllerLaneComponent::setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices)
 {
     activeTrackIndex = activeIndex;
@@ -732,7 +727,7 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
 
 void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
 {
-    if (isDragging && undoManager && sequence && activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks())
+    if (isDragging && sequence && activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks())
     {
         auto& track = sequence->getTrack(activeTrackIndex);
         std::vector<VelocityChange> changes;
@@ -743,8 +738,8 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
         }
         if (!changes.empty())
         {
-            undoManager->beginNewTransaction("Edit Velocity");
-            undoManager->perform(new VelocityEditAction(sequence, activeTrackIndex, std::move(changes)));
+            undoManager.beginNewTransaction("Edit Velocity");
+            undoManager.perform(new VelocityEditAction(sequence, activeTrackIndex, std::move(changes)));
         }
     }
 
