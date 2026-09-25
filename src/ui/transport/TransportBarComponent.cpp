@@ -1,6 +1,7 @@
 #include "ui/transport/TransportBarComponent.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
+#include "notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
 #include "undo/KeySignatureActions.h"
 #include "undo/TempoActions.h"
@@ -345,7 +346,7 @@ void TransportBarComponent::commitKeySignatureEdit()
 {
     int sharpsOrFlats = 0;
     bool isMinor = false;
-    if (MidiSequence::keySignatureFromString(keyValueLabel.getText().toStdString(), sharpsOrFlats, isMinor))
+    if (KeySignatureName::fromString(keyValueLabel.getText().toStdString(), sharpsOrFlats, isMinor))
         setKeySignatureAtPlayhead(sharpsOrFlats, isMinor);
     else
         updateDisplay();
@@ -376,7 +377,7 @@ void TransportBarComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool is
             break;
         }
 
-    sharpsOrFlats = MidiSequence::normalizeSharpsOrFlats(sharpsOrFlats);
+    sharpsOrFlats = KeySignatureName::normalizeSharpsOrFlats(sharpsOrFlats);
     if (hasActiveKey && sharpsOrFlats == ks.sharpsOrFlats && isMinor == ks.isMinor)
     {
         updateDisplay();
@@ -413,8 +414,7 @@ void TransportBarComponent::updateDisplay()
         else
         {
             auto ks = document.getSequence().getKeySignatureAt(tick);
-            keyValueLabel.setText(MidiSequence::keySignatureToString(ks.sharpsOrFlats, ks.isMinor),
-                                  juce::dontSendNotification);
+            keyValueLabel.setText(KeySignatureName::toString(ks.sharpsOrFlats, ks.isMinor), juce::dontSendNotification);
         }
     }
 

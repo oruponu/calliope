@@ -30,6 +30,8 @@ target_sources(Calliope PRIVATE
     src/io/MidiFileIO.cpp
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp
+    src/notation/ChordSymbol.cpp
+    src/notation/KeySignatureName.cpp
     src/plugin/VstPluginHost.cpp
     src/ui/EventListComponent.cpp
     src/ui/TrackListComponent.cpp

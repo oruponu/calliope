@@ -2,8 +2,8 @@
 #include "ui/theme/Theme.h"
 
 ChordEditor::ChordEditor(int chordRoot, int chordType, int bassRoot, ChordSpelling spelling, bool startRootEdit)
-    : draftRoot(MidiSequence::normalizeChordRoot(chordRoot)), draftType(MidiSequence::normalizeChordType(chordType)),
-      draftBassRoot(MidiSequence::normalizeChordBassRoot(bassRoot)), spelling(spelling), startRootEdit(startRootEdit)
+    : draftRoot(ChordSymbol::normalizeRoot(chordRoot)), draftType(ChordSymbol::normalizeType(chordType)),
+      draftBassRoot(ChordSymbol::normalizeBassRoot(bassRoot)), spelling(spelling), startRootEdit(startRootEdit)
 {
     using namespace calliope::theme;
 
@@ -53,7 +53,7 @@ ChordEditor::ChordEditor(int chordRoot, int chordType, int bassRoot, ChordSpelli
     rootLabel.onTextChange = [this]()
     {
         int root = 0;
-        if (MidiSequence::chordRootFromString(rootLabel.getText().toStdString(), root))
+        if (ChordSymbol::rootFromString(rootLabel.getText().toStdString(), root))
             setDraft(root, draftType, draftBassRoot);
         else
             refreshLabels();
@@ -61,7 +61,7 @@ ChordEditor::ChordEditor(int chordRoot, int chordType, int bassRoot, ChordSpelli
     typeLabel.onTextChange = [this]()
     {
         int type = 0;
-        if (MidiSequence::chordTypeFromString(typeLabel.getText().toStdString(), type))
+        if (ChordSymbol::typeFromString(typeLabel.getText().toStdString(), type))
             setDraft(draftRoot, type, draftBassRoot);
         else
             refreshLabels();
@@ -71,11 +71,11 @@ ChordEditor::ChordEditor(int chordRoot, int chordType, int bassRoot, ChordSpelli
         auto text = bassLabel.getText().trim();
         if (text.isEmpty() || text == "-")
         {
-            setDraft(draftRoot, draftType, MidiSequence::chordNone);
+            setDraft(draftRoot, draftType, ChordChange::none);
             return;
         }
         int root = 0;
-        if (MidiSequence::chordRootFromString(text.toStdString(), root))
+        if (ChordSymbol::rootFromString(text.toStdString(), root))
             setDraft(draftRoot, draftType, root);
         else
             refreshLabels();
@@ -157,9 +157,9 @@ void ChordEditor::parentHierarchyChanged()
 
 void ChordEditor::setDraft(int chordRoot, int chordType, int bassRoot)
 {
-    chordRoot = MidiSequence::normalizeChordRoot(chordRoot);
-    chordType = MidiSequence::normalizeChordType(chordType);
-    bassRoot = MidiSequence::normalizeChordBassRoot(bassRoot);
+    chordRoot = ChordSymbol::normalizeRoot(chordRoot);
+    chordType = ChordSymbol::normalizeType(chordType);
+    bassRoot = ChordSymbol::normalizeBassRoot(bassRoot);
     bool changed = (chordRoot != draftRoot || chordType != draftType || bassRoot != draftBassRoot);
     draftRoot = chordRoot;
     draftType = chordType;
@@ -171,37 +171,35 @@ void ChordEditor::setDraft(int chordRoot, int chordType, int bassRoot)
 
 void ChordEditor::nudgeRoot(int direction)
 {
-    int semitone = MidiSequence::chordRootToSemitone(draftRoot);
+    int semitone = ChordSymbol::rootToSemitone(draftRoot);
     if (semitone < 0)
         semitone = 0;
-    setDraft(MidiSequence::semitoneToChordRoot(semitone + direction, spelling), draftType, draftBassRoot);
+    setDraft(ChordSymbol::semitoneToRoot(semitone + direction, spelling), draftType, draftBassRoot);
 }
 
 void ChordEditor::nudgeType(int direction)
 {
-    setDraft(draftRoot, juce::jlimit(0, MidiSequence::chordTypeCount - 1, draftType + direction), draftBassRoot);
+    setDraft(draftRoot, juce::jlimit(0, ChordChange::typeCount - 1, draftType + direction), draftBassRoot);
 }
 
 void ChordEditor::nudgeBass(int direction)
 {
     int step = 0;
-    if (draftBassRoot != MidiSequence::chordNone)
+    if (draftBassRoot != ChordChange::none)
     {
-        int semitone = MidiSequence::chordRootToSemitone(draftBassRoot);
+        int semitone = ChordSymbol::rootToSemitone(draftBassRoot);
         step = semitone < 0 ? 0 : semitone + 1;
     }
     step = ((step + direction) % 13 + 13) % 13;
-    setDraft(draftRoot, draftType,
-             step == 0 ? MidiSequence::chordNone : MidiSequence::semitoneToChordRoot(step - 1, spelling));
+    setDraft(draftRoot, draftType, step == 0 ? ChordChange::none : ChordSymbol::semitoneToRoot(step - 1, spelling));
 }
 
 void ChordEditor::refreshLabels()
 {
-    rootLabel.setText(juce::String(MidiSequence::chordRootToString(draftRoot)), juce::dontSendNotification);
-    typeLabel.setText(juce::String(MidiSequence::chordTypeToString(draftType)), juce::dontSendNotification);
-    bassLabel.setText(draftBassRoot == MidiSequence::chordNone
-                          ? juce::String("-")
-                          : juce::String(MidiSequence::chordRootToString(draftBassRoot)),
+    rootLabel.setText(juce::String(ChordSymbol::rootToString(draftRoot)), juce::dontSendNotification);
+    typeLabel.setText(juce::String(ChordSymbol::typeToString(draftType)), juce::dontSendNotification);
+    bassLabel.setText(draftBassRoot == ChordChange::none ? juce::String("-")
+                                                         : juce::String(ChordSymbol::rootToString(draftBassRoot)),
                       juce::dontSendNotification);
 }
 

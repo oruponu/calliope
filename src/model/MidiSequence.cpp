@@ -1,31 +1,12 @@
 #include "model/MidiSequence.h"
+#include "notation/KeySignatureName.h"
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <limits>
 #include <ranges>
 
 namespace
 {
-const char* const majorKeys[] = {"Cb", "Gb", "Db", "Ab", "Eb", "Bb", "F", "C", "G", "D", "A", "E", "B", "F#", "C#"};
-const char* const minorKeys[] = {"Abm", "Ebm", "Bbm", "Fm",  "Cm",  "Gm",  "Dm", "Am",
-                                 "Em",  "Bm",  "F#m", "C#m", "G#m", "D#m", "A#m"};
-
-const char* const chordNoteNames[] = {"", "C", "D", "E", "F", "G", "A", "B"};
-const char* const chordAccidentals[] = {"bbb", "bb", "b", "", "#", "##", "###"};
-const char* const chordTypeNames[] = {
-    "",      "6",     "M7",     "M7(#11)", "add9",   "M7(9)", "6(9)", "aug", "m",     "m6",   "m7",   "m7b5",
-    "madd9", "m7(9)", "m7(11)", "mM7",     "mM7(9)", "dim",   "dim7", "7",   "7sus4", "7b5",  "7(9)", "7(#11)",
-    "7(13)", "7(b9)", "7(b13)", "7(#9)",   "M7aug",  "7aug",  "1+8",  "5",   "sus4",  "sus2", ""};
-
-// semitone of each XF note index 1-7 (C, D, E, F, G, A, B)
-constexpr int chordNoteSemitones[] = {-1, 0, 2, 4, 5, 7, 9, 11};
-
-// XF root nibbles per semitone
-constexpr int sharpRoots[] = {0x31, 0x41, 0x32, 0x42, 0x33, 0x34, 0x44, 0x35, 0x45, 0x36, 0x46, 0x37};
-constexpr int flatRoots[] = {0x31, 0x22, 0x32, 0x23, 0x33, 0x34, 0x25, 0x35, 0x26, 0x36, 0x27, 0x37};
-constexpr int mixedRoots[] = {0x31, 0x41, 0x32, 0x23, 0x33, 0x34, 0x44, 0x35, 0x26, 0x36, 0x27, 0x37};
-
 // tick counts converted back from seconds can land just below an integer (e.g. 1920.9999999)
 // when one tick is not a binary-exact number of seconds; absorb that before truncating
 int floorTicks(double ticks)
@@ -376,18 +357,9 @@ const std::vector<ChordChange>& MidiSequence::getChordChanges() const
     return chordChanges;
 }
 
-int MidiSequence::normalizeSharpsOrFlats(int sharpsOrFlats)
-{
-    if (sharpsOrFlats == 7)
-        return -5;
-    if (sharpsOrFlats == -7)
-        return 5;
-    return sharpsOrFlats;
-}
-
 void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor)
 {
-    sharpsOrFlats = normalizeSharpsOrFlats(sharpsOrFlats);
+    sharpsOrFlats = KeySignatureName::normalizeSharpsOrFlats(sharpsOrFlats);
 
     for (auto& ks : keySignatureChanges)
     {
@@ -518,7 +490,7 @@ std::pair<int, int> MidiSequence::chordAddSpanAt(int tick) const
         governing = i;
     }
 
-    if (governing >= 0 && !chordToString(chordChanges[static_cast<size_t>(governing)]).empty())
+    if (governing >= 0 && !chordChanges[static_cast<size_t>(governing)].isNoChord())
         return {0, 0};
 
     const int bar = tickToBarBeatTick(tick).bar;
@@ -569,7 +541,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterAdd(const std::vect
 
     auto next = std::ranges::find_if(changes, [startTick](const ChordChange& cc) { return cc.tick > startTick; });
     if (next == changes.end() || next->tick > endTick)
-        upsert({endTick, chordNone, chordTypeCount, chordNone, chordNone});
+        upsert(ChordChange::noChord(endTick));
 
     return changes;
 }
@@ -579,7 +551,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterResize(const std::v
 {
     if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()) || gridTicks <= 0)
         return before;
-    if (chordToString(before[static_cast<size_t>(chordIndex)]).empty())
+    if (before[static_cast<size_t>(chordIndex)].isNoChord())
         return before;
 
     const size_t bodyIndex = static_cast<size_t>(chordIndex);
@@ -596,7 +568,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterResize(const std::v
     {
         if (end == before[nextIndex].tick)
             return before;
-        if (!chordToString(before[nextIndex]).empty() && end < before[nextIndex].tick)
+        if (!before[nextIndex].isNoChord() && end < before[nextIndex].tick)
         {
             changes[nextIndex].tick = end;
             rolled = true;
@@ -605,8 +577,8 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterResize(const std::v
 
     if (!rolled)
     {
-        ChordChange terminator{end, chordNone, chordTypeCount, chordNone, chordNone};
-        if (nextIndex < before.size() && chordToString(before[nextIndex]).empty())
+        ChordChange terminator = ChordChange::noChord(end);
+        if (nextIndex < before.size() && before[nextIndex].isNoChord())
         {
             terminator = before[nextIndex];
             terminator.tick = end;
@@ -617,7 +589,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterResize(const std::v
         for (size_t i = nextIndex; i < before.size(); ++i)
         {
             const auto& cc = before[i];
-            if (cc.tick >= end || chordToString(cc).empty())
+            if (cc.tick >= end || cc.isNoChord())
                 continue;
             tailFound = (i + 1 >= before.size()) || before[i + 1].tick > end;
             tail = cc;
@@ -641,7 +613,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterResize(const std::v
     result.reserve(changes.size());
     for (const auto& cc : changes)
     {
-        if (chordToString(cc).empty() && (result.empty() || chordToString(result.back()).empty()))
+        if (cc.isNoChord() && (result.empty() || result.back().isNoChord()))
             continue;
         result.push_back(cc);
     }
@@ -657,7 +629,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vec
 
     std::vector<int> moving;
     for (int i : movedIndices)
-        if (i >= 0 && i < static_cast<int>(before.size()) && !chordToString(before[static_cast<size_t>(i)]).empty())
+        if (i >= 0 && i < static_cast<int>(before.size()) && !before[static_cast<size_t>(i)].isNoChord())
             moving.push_back(i);
     std::ranges::sort(moving);
     moving.erase(std::unique(moving.begin(), moving.end()), moving.end());
@@ -693,7 +665,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vec
         else
         {
             mc.length = before[n].tick - mc.body.tick;
-            mc.hasTerminator = chordToString(before[n]).empty();
+            mc.hasTerminator = before[n].isNoChord();
             if (mc.hasTerminator)
             {
                 mc.terminator = before[n];
@@ -711,8 +683,8 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vec
     for (int i : moving)
     {
         const size_t p = static_cast<size_t>(i);
-        if (p > 0 && !removed[p - 1] && !chordToString(before[p - 1]).empty())
-            changes.push_back({before[p].tick, chordNone, chordTypeCount, chordNone, chordNone});
+        if (p > 0 && !removed[p - 1] && !before[p - 1].isNoChord())
+            changes.push_back(ChordChange::noChord(before[p].tick));
     }
     std::ranges::sort(changes, {}, &ChordChange::tick);
 
@@ -736,7 +708,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vec
         for (size_t i = 0; i < before.size(); ++i)
         {
             const auto& cc = before[i];
-            if (removed[i] || cc.tick < startTick || cc.tick >= endTick || chordToString(cc).empty())
+            if (removed[i] || cc.tick < startTick || cc.tick >= endTick || cc.isNoChord())
                 continue;
             tailFound = (i + 1 >= before.size()) || before[i + 1].tick > endTick;
             tail = cc;
@@ -783,7 +755,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vec
         }
         else
         {
-            changes.push_back({endTick, chordNone, chordTypeCount, chordNone, chordNone});
+            changes.push_back(ChordChange::noChord(endTick));
         }
     }
     std::ranges::sort(changes, {}, &ChordChange::tick);
@@ -792,7 +764,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterMove(const std::vec
     result.reserve(changes.size());
     for (const auto& cc : changes)
     {
-        if (chordToString(cc).empty() && (result.empty() || chordToString(result.back()).empty()))
+        if (cc.isNoChord() && (result.empty() || result.back().isNoChord()))
             continue;
         result.push_back(cc);
     }
@@ -805,7 +777,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterStartResize(const s
 {
     if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()) || gridTicks <= 0)
         return before;
-    if (chordToString(before[static_cast<size_t>(chordIndex)]).empty())
+    if (before[static_cast<size_t>(chordIndex)].isNoChord())
         return before;
 
     const size_t bodyIndex = static_cast<size_t>(chordIndex);
@@ -854,7 +826,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterDelete(const std::v
 {
     std::vector<int> deleting;
     for (int i : deletedIndices)
-        if (i >= 0 && i < static_cast<int>(before.size()) && !chordToString(before[static_cast<size_t>(i)]).empty())
+        if (i >= 0 && i < static_cast<int>(before.size()) && !before[static_cast<size_t>(i)].isNoChord())
             deleting.push_back(i);
     std::ranges::sort(deleting);
     deleting.erase(std::unique(deleting.begin(), deleting.end()), deleting.end());
@@ -866,7 +838,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterDelete(const std::v
     {
         removed[static_cast<size_t>(i)] = true;
         const size_t n = static_cast<size_t>(i) + 1;
-        if (n < before.size() && chordToString(before[n]).empty())
+        if (n < before.size() && before[n].isNoChord())
             removed[n] = true;
     }
 
@@ -878,8 +850,8 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterDelete(const std::v
     for (int i : deleting)
     {
         const size_t p = static_cast<size_t>(i);
-        if (p > 0 && !removed[p - 1] && !chordToString(before[p - 1]).empty())
-            changes.push_back({before[p].tick, chordNone, chordTypeCount, chordNone, chordNone});
+        if (p > 0 && !removed[p - 1] && !before[p - 1].isNoChord())
+            changes.push_back(ChordChange::noChord(before[p].tick));
     }
     std::ranges::sort(changes, {}, &ChordChange::tick);
 
@@ -887,7 +859,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterDelete(const std::v
     result.reserve(changes.size());
     for (const auto& cc : changes)
     {
-        if (chordToString(cc).empty() && (result.empty() || chordToString(result.back()).empty()))
+        if (cc.isNoChord() && (result.empty() || result.back().isNoChord()))
             continue;
         result.push_back(cc);
     }
@@ -931,7 +903,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterPaste(const std::ve
         for (size_t i = 0; i < before.size(); ++i)
         {
             const auto& cc = before[i];
-            if (cc.tick < startTick || cc.tick >= endTick || chordToString(cc).empty())
+            if (cc.tick < startTick || cc.tick >= endTick || cc.isNoChord())
                 continue;
             tailFound = (i + 1 >= before.size()) || before[i + 1].tick > endTick;
             tail = cc;
@@ -966,7 +938,7 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterPaste(const std::ve
         const int endTick = anchorTick + item.tickOffset + item.length;
         if (std::ranges::any_of(changes, [endTick](const ChordChange& cc) { return cc.tick == endTick; }))
             continue;
-        changes.push_back({endTick, chordNone, chordTypeCount, chordNone, chordNone});
+        changes.push_back(ChordChange::noChord(endTick));
     }
     std::ranges::sort(changes, {}, &ChordChange::tick);
 
@@ -974,223 +946,11 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterPaste(const std::ve
     result.reserve(changes.size());
     for (const auto& cc : changes)
     {
-        if (chordToString(cc).empty() && (result.empty() || chordToString(result.back()).empty()))
+        if (cc.isNoChord() && (result.empty() || result.back().isNoChord()))
             continue;
         result.push_back(cc);
     }
     return result;
-}
-
-std::string MidiSequence::chordRootToString(int root)
-{
-    int noteIndex = root & 0x0F;
-    int accIndex = (root >> 4) & 0x07;
-    if (root == chordNone || noteIndex < 1 || noteIndex > 7 || accIndex > 6)
-        return {};
-
-    std::string result = chordNoteNames[noteIndex];
-    result += chordAccidentals[accIndex];
-    return result;
-}
-
-bool MidiSequence::chordRootFromString(const std::string& text, int& root)
-{
-    std::string s;
-    for (char c : text)
-        if (!std::isspace(static_cast<unsigned char>(c)))
-            s += c;
-
-    if (s.empty())
-        return false;
-
-    s[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(s[0])));
-    for (size_t i = 1; i < s.size(); ++i)
-        s[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(s[i])));
-
-    int noteIndex = 0;
-    for (int i = 1; i <= 7; ++i)
-        if (chordNoteNames[i][0] == s[0])
-            noteIndex = i;
-    if (noteIndex == 0)
-        return false;
-
-    int sharps = 0;
-    int flats = 0;
-    for (size_t i = 1; i < s.size(); ++i)
-    {
-        if (s[i] == '#')
-            ++sharps;
-        else if (s[i] == 'b')
-            ++flats;
-        else
-            return false;
-    }
-    if ((sharps > 0 && flats > 0) || sharps > 3 || flats > 3)
-        return false;
-
-    root = ((3 + sharps - flats) << 4) | noteIndex;
-    return true;
-}
-
-std::string MidiSequence::chordTypeToString(int type)
-{
-    if (type < 0 || type >= chordTypeCount)
-        return {};
-
-    return chordTypeNames[type];
-}
-
-bool MidiSequence::chordTypeFromString(const std::string& text, int& type)
-{
-    std::string s;
-    for (char c : text)
-        if (!std::isspace(static_cast<unsigned char>(c)))
-            s += c;
-
-    for (int i = 0; i < chordTypeCount; ++i)
-    {
-        if (s == chordTypeNames[i])
-        {
-            type = i;
-            return true;
-        }
-    }
-    return false;
-}
-
-int MidiSequence::chordRootToSemitone(int root)
-{
-    int noteIndex = root & 0x0F;
-    int accIndex = (root >> 4) & 0x07;
-    if (root == chordNone || noteIndex < 1 || noteIndex > 7 || accIndex > 6)
-        return -1;
-
-    int semitone = (chordNoteSemitones[noteIndex] + accIndex - 3) % 12;
-    return semitone < 0 ? semitone + 12 : semitone;
-}
-
-int MidiSequence::semitoneToChordRoot(int semitone, ChordSpelling spelling)
-{
-    semitone = ((semitone % 12) + 12) % 12;
-    if (spelling == ChordSpelling::Sharp)
-        return sharpRoots[semitone];
-    if (spelling == ChordSpelling::Flat)
-        return flatRoots[semitone];
-    return mixedRoots[semitone];
-}
-
-ChordSpelling MidiSequence::chordSpellingForKeySignature(int sharpsOrFlats)
-{
-    if (sharpsOrFlats > 0)
-        return ChordSpelling::Sharp;
-    if (sharpsOrFlats < 0)
-        return ChordSpelling::Flat;
-    return ChordSpelling::Mixed;
-}
-
-int MidiSequence::normalizeChordRoot(int root)
-{
-    return chordRootToString(root).empty() ? 0x31 : root;
-}
-
-int MidiSequence::normalizeChordType(int type)
-{
-    return (type < 0 || type >= chordTypeCount) ? 0 : type;
-}
-
-int MidiSequence::normalizeChordBassRoot(int bassRoot)
-{
-    return chordRootToString(bassRoot).empty() ? chordNone : bassRoot;
-}
-
-std::string MidiSequence::chordToString(const ChordChange& chord)
-{
-    int noteIndex = chord.chordRoot & 0x0F;
-
-    // No Chord: root=0x7F or noteIndex=0 or chordType=34(cc)
-    if (chord.chordRoot == chordNone || noteIndex == 0 || chord.chordType == chordTypeCount)
-        return {};
-
-    std::string result = chordRootToString(chord.chordRoot);
-    if (result.empty())
-        return "--";
-
-    result += chordTypeToString(chord.chordType);
-
-    std::string bassText = chordRootToString(chord.bassRoot);
-    if (!bassText.empty())
-    {
-        result += "/";
-        result += bassText;
-    }
-
-    return result;
-}
-
-std::string MidiSequence::keySignatureToString(int sharpsOrFlats, bool isMinor)
-{
-    int index = sharpsOrFlats + 7;
-    if (index < 0 || index > 14)
-        return "--";
-
-    return isMinor ? minorKeys[index] : majorKeys[index];
-}
-
-bool MidiSequence::keySignatureFromString(const std::string& text, int& sharpsOrFlats, bool& isMinor)
-{
-    std::string s;
-    for (char c : text)
-        if (!std::isspace(static_cast<unsigned char>(c)))
-            s += c;
-
-    if (s.empty())
-        return false;
-
-    s[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(s[0])));
-    for (size_t i = 1; i < s.size(); ++i)
-        s[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(s[i])));
-
-    for (int i = 0; i < 15; ++i)
-    {
-        if (s == majorKeys[i])
-        {
-            sharpsOrFlats = i - 7;
-            isMinor = false;
-            return true;
-        }
-        if (s == minorKeys[i])
-        {
-            sharpsOrFlats = i - 7;
-            isMinor = true;
-            return true;
-        }
-    }
-
-    struct Alias
-    {
-        const char* name;
-        int sharpsOrFlats;
-        bool isMinor;
-    };
-    static const Alias aliases[] = {
-        {"D#", -3, false}, // → Eb
-        {"G#", -4, false}, // → Ab
-        {"A#", -2, false}, // → Bb
-        {"Dbm", 4, true},  // → C#m
-        {"Gbm", 3, true},  // → F#m
-    };
-
-    for (const auto& a : aliases)
-    {
-        if (s == a.name)
-        {
-            sharpsOrFlats = a.sharpsOrFlats;
-            isMinor = a.isMinor;
-            return true;
-        }
-    }
-
-    return false;
 }
 
 double MidiSequence::ticksToSeconds(int ticks) const

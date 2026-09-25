@@ -19,7 +19,7 @@ Key parse(const std::string& text)
 {
     int sharpsOrFlats = 0;
     bool isMinor = false;
-    if (!MidiSequence::keySignatureFromString(text, sharpsOrFlats, isMinor))
+    if (!KeySignatureName::fromString(text, sharpsOrFlats, isMinor))
         return rejected;
     return {sharpsOrFlats, isMinor};
 }
@@ -27,8 +27,8 @@ Key parse(const std::string& text)
 
 TEST_CASE("seven sharps or flats are normalized to the simpler spelling", "[notation][keysig]")
 {
-    CHECK(MidiSequence::normalizeSharpsOrFlats(7) == -5);
-    CHECK(MidiSequence::normalizeSharpsOrFlats(-7) == 5);
+    CHECK(KeySignatureName::normalizeSharpsOrFlats(7) == -5);
+    CHECK(KeySignatureName::normalizeSharpsOrFlats(-7) == 5);
 }
 
 TEST_CASE("other sharps or flats are unchanged", "[notation][keysig]")
@@ -36,7 +36,7 @@ TEST_CASE("other sharps or flats are unchanged", "[notation][keysig]")
     for (int sf = -6; sf <= 6; ++sf)
     {
         CAPTURE(sf);
-        CHECK(MidiSequence::normalizeSharpsOrFlats(sf) == sf);
+        CHECK(KeySignatureName::normalizeSharpsOrFlats(sf) == sf);
     }
 }
 
@@ -45,15 +45,15 @@ TEST_CASE("every key signature has a name", "[notation][keysig]")
     for (int sf = -7; sf <= 7; ++sf)
     {
         CAPTURE(sf);
-        CHECK(MidiSequence::keySignatureToString(sf, false) == majorNames[static_cast<size_t>(sf + 7)]);
-        CHECK(MidiSequence::keySignatureToString(sf, true) == minorNames[static_cast<size_t>(sf + 7)]);
+        CHECK(KeySignatureName::toString(sf, false) == majorNames[static_cast<size_t>(sf + 7)]);
+        CHECK(KeySignatureName::toString(sf, true) == minorNames[static_cast<size_t>(sf + 7)]);
     }
 }
 
 TEST_CASE("out-of-range key signatures have no name", "[notation][keysig]")
 {
-    CHECK(MidiSequence::keySignatureToString(8, false) == "--");
-    CHECK(MidiSequence::keySignatureToString(-8, true) == "--");
+    CHECK(KeySignatureName::toString(8, false) == "--");
+    CHECK(KeySignatureName::toString(-8, true) == "--");
 }
 
 TEST_CASE("canonical names are parsed", "[notation][keysig]")
@@ -97,7 +97,7 @@ TEST_CASE("key signature names round-trip", "[notation][keysig]")
         for (bool isMinor : {false, true})
         {
             CAPTURE(sf, isMinor);
-            CHECK(parse(MidiSequence::keySignatureToString(sf, isMinor)) == Key{sf, isMinor});
+            CHECK(parse(KeySignatureName::toString(sf, isMinor)) == Key{sf, isMinor});
         }
 }
 

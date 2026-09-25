@@ -1,3 +1,4 @@
+#include "model/MidiSequence.h"
 #include "support/TempoTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>

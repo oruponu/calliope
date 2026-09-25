@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
+#include "notation/ChordSymbol.h"
 #include "ui/widgets/WheelLabel.h"
 #include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>

@@ -1,9 +1,9 @@
 #include "ui/pianoroll/strips/KeySignatureEditor.h"
-#include "model/MidiSequence.h"
+#include "notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
 
 KeySignatureEditor::KeySignatureEditor(int sharpsOrFlats, bool isMinor, bool startTextEdit)
-    : draftSharpsOrFlats(MidiSequence::normalizeSharpsOrFlats(sharpsOrFlats)), draftIsMinor(isMinor),
+    : draftSharpsOrFlats(KeySignatureName::normalizeSharpsOrFlats(sharpsOrFlats)), draftIsMinor(isMinor),
       startTextEdit(startTextEdit)
 {
     using namespace calliope::theme;
@@ -38,7 +38,7 @@ KeySignatureEditor::KeySignatureEditor(int sharpsOrFlats, bool isMinor, bool sta
     {
         int sf = 0;
         bool minor = false;
-        if (MidiSequence::keySignatureFromString(keyLabel.getText().toStdString(), sf, minor))
+        if (KeySignatureName::fromString(keyLabel.getText().toStdString(), sf, minor))
             setDraft(sf, minor);
         else
             refreshLabel();
@@ -105,7 +105,7 @@ void KeySignatureEditor::parentHierarchyChanged()
 
 void KeySignatureEditor::setDraft(int sharpsOrFlats, bool isMinor)
 {
-    sharpsOrFlats = MidiSequence::normalizeSharpsOrFlats(sharpsOrFlats);
+    sharpsOrFlats = KeySignatureName::normalizeSharpsOrFlats(sharpsOrFlats);
     bool changed = (sharpsOrFlats != draftSharpsOrFlats || isMinor != draftIsMinor);
     draftSharpsOrFlats = sharpsOrFlats;
     draftIsMinor = isMinor;
@@ -123,7 +123,7 @@ void KeySignatureEditor::nudgeDraft(int direction)
 
 void KeySignatureEditor::refreshLabel()
 {
-    keyLabel.setText(juce::String(MidiSequence::keySignatureToString(draftSharpsOrFlats, draftIsMinor)),
+    keyLabel.setText(juce::String(KeySignatureName::toString(draftSharpsOrFlats, draftIsMinor)),
                      juce::dontSendNotification);
 }
 
