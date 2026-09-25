@@ -90,7 +90,7 @@ void ChordStrip::copySelectedChords()
     int baseTick = -1;
     for (int i : selectedChordIndices)
     {
-        if (i < 0 || i >= count || MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
+        if (i < 0 || i >= count || changes[static_cast<size_t>(i)].isNoChord())
             continue;
         const auto& cc = changes[static_cast<size_t>(i)];
         if (baseTick < 0)
@@ -136,8 +136,7 @@ void ChordStrip::pasteChords(int atTick)
     {
         const int target = anchorTick + item.tickOffset;
         for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-            if (changes[static_cast<size_t>(i)].tick == target &&
-                !MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
+            if (changes[static_cast<size_t>(i)].tick == target && !changes[static_cast<size_t>(i)].isNoChord())
                 selectedChordIndices.insert(i);
     }
 
@@ -152,7 +151,7 @@ juce::Rectangle<int> ChordStrip::chordSpanRect(int index) const
     const auto& changes = sequence->getChordChanges();
     if (index < 0 || index >= static_cast<int>(changes.size()))
         return {};
-    if (MidiSequence::chordToString(changes[static_cast<size_t>(index)]).empty())
+    if (changes[static_cast<size_t>(index)].isNoChord())
         return {};
 
     int x = geometry.tickToX(changes[static_cast<size_t>(index)].tick);
@@ -243,7 +242,7 @@ bool ChordStrip::isJointChordEdge(int index, ResizeEdge edge) const
     const auto& changes = sequence->getChordChanges();
     const int neighbor = edge == ResizeEdge::Right ? index + 1 : index - 1;
     return neighbor >= 0 && neighbor < static_cast<int>(changes.size()) &&
-           !MidiSequence::chordToString(changes[static_cast<size_t>(neighbor)]).empty();
+           !changes[static_cast<size_t>(neighbor)].isNoChord();
 }
 
 void ChordStrip::beginChordEdgeDrag(const std::vector<ChordChange>& changes, int index, ResizeEdge edge, int grabX)
@@ -273,7 +272,7 @@ void ChordStrip::remapSelectionAfterResize(const std::vector<ChordChange>& befor
     int draggedAfter = -1;
     for (size_t j = 0; j < after.size(); ++j)
     {
-        if (MidiSequence::chordToString(after[j]).empty())
+        if (after[j].isNoChord())
             continue;
         const bool matched = edge == ResizeEdge::Right ? after[j].tick == before[dragged].tick
                                                        : chordSpanEnd(after, j) == chordSpanEnd(before, dragged);
@@ -298,8 +297,7 @@ void ChordStrip::remapSelectionAfterResize(const std::vector<ChordChange>& befor
         }
         for (size_t j = 0; j < after.size(); ++j)
         {
-            if (static_cast<int>(j) == draggedAfter || MidiSequence::chordToString(after[j]).empty() ||
-                !isSameChord(after[j], before[bi]))
+            if (static_cast<int>(j) == draggedAfter || after[j].isNoChord() || !isSameChord(after[j], before[bi]))
                 continue;
             if (after[j].tick < chordSpanEnd(before, bi) && chordSpanEnd(after, j) > before[bi].tick)
             {
@@ -380,7 +378,7 @@ void ChordStrip::paint(juce::Graphics& g)
             }
             g.setColour(highlighted ? chordColour.brighter(0.5f) : chordColour);
             g.setFont(font::sans(font::sizeSM));
-            g.drawText(juce::String(MidiSequence::chordToString(displayed)), textX, 0, textWidth, getHeight(),
+            g.drawText(juce::String(ChordSymbol::toString(displayed)), textX, 0, textWidth, getHeight(),
                        juce::Justification::centredLeft);
         }
     }
@@ -399,11 +397,10 @@ void ChordStrip::paint(juce::Graphics& g)
             int textWidth = draftRect.getRight() - textX - 2;
             if (textWidth > 8)
             {
-                ChordChange draft{chordEditTick, chordDraftRoot, chordDraftType, chordDraftBassRoot,
-                                  MidiSequence::chordNone};
+                ChordChange draft{chordEditTick, chordDraftRoot, chordDraftType, chordDraftBassRoot, ChordChange::none};
                 g.setColour(chordColour.withAlpha(0.6f));
                 g.setFont(font::sans(font::sizeSM));
-                g.drawText(juce::String(MidiSequence::chordToString(draft)), textX, 0, textWidth, getHeight(),
+                g.drawText(juce::String(ChordSymbol::toString(draft)), textX, 0, textWidth, getHeight(),
                            juce::Justification::centredLeft);
             }
         }
@@ -528,7 +525,7 @@ void ChordStrip::selectMovedChords(int anchorIndex, int cursorTick)
     for (int g : chordMoveGroup)
     {
         if (g < 0 || g >= static_cast<int>(chordMoveBefore.size()) ||
-            MidiSequence::chordToString(chordMoveBefore[static_cast<size_t>(g)]).empty())
+            chordMoveBefore[static_cast<size_t>(g)].isNoChord())
             continue;
         delta = std::max(delta, -chordMoveBefore[static_cast<size_t>(g)].tick);
         break;
@@ -537,12 +534,11 @@ void ChordStrip::selectMovedChords(int anchorIndex, int cursorTick)
     for (int g : chordMoveGroup)
     {
         if (g < 0 || g >= static_cast<int>(chordMoveBefore.size()) ||
-            MidiSequence::chordToString(chordMoveBefore[static_cast<size_t>(g)]).empty())
+            chordMoveBefore[static_cast<size_t>(g)].isNoChord())
             continue;
         const int target = chordMoveBefore[static_cast<size_t>(g)].tick + delta;
         for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-            if (changes[static_cast<size_t>(i)].tick == target &&
-                !MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
+            if (changes[static_cast<size_t>(i)].tick == target && !changes[static_cast<size_t>(i)].isNoChord())
                 selectedChordIndices.insert(i);
     }
 }
@@ -605,7 +601,7 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
         const auto& changes = sequence->getChordChanges();
         for (int i = 0; i < static_cast<int>(changes.size()); ++i)
         {
-            if (MidiSequence::chordToString(changes[static_cast<size_t>(i)]).empty())
+            if (changes[static_cast<size_t>(i)].isNoChord())
                 continue;
             if (changes[static_cast<size_t>(i)].tick > tickHi)
                 continue;
@@ -828,14 +824,14 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
 
     int root = 0x31;
     int type = 0;
-    int bassRoot = MidiSequence::chordNone;
+    int bassRoot = ChordChange::none;
     const auto& changes = sequence->getChordChanges();
     for (int i = static_cast<int>(changes.size()) - 1; i >= 0; --i)
     {
         const auto& cc = changes[static_cast<size_t>(i)];
         if (cc.tick >= startTick)
             continue;
-        if (MidiSequence::chordToString(cc).empty())
+        if (cc.isNoChord())
             continue;
         root = cc.chordRoot;
         type = cc.chordType;
@@ -852,9 +848,9 @@ void ChordStrip::openChordEditor(int tick, int endTick, int chordRoot, int chord
 {
     anchorInLocal.setX(std::max(anchorInLocal.getX(), viewLeftX + labelWidth()));
 
-    chordRoot = MidiSequence::normalizeChordRoot(chordRoot);
-    chordType = MidiSequence::normalizeChordType(chordType);
-    bassRoot = MidiSequence::normalizeChordBassRoot(bassRoot);
+    chordRoot = ChordSymbol::normalizeRoot(chordRoot);
+    chordType = ChordSymbol::normalizeType(chordType);
+    bassRoot = ChordSymbol::normalizeBassRoot(bassRoot);
 
     isChordEditing = true;
     chordEditTick = tick;
@@ -863,7 +859,7 @@ void ChordStrip::openChordEditor(int tick, int endTick, int chordRoot, int chord
     chordDraftType = chordType;
     chordDraftBassRoot = bassRoot;
     chordEditIsNew = isNew;
-    chordEditSpelling = MidiSequence::chordSpellingForKeySignature(sequence->getKeySignatureAt(tick).sharpsOrFlats);
+    chordEditSpelling = ChordSymbol::spellingForKeySignature(sequence->getKeySignatureAt(tick).sharpsOrFlats);
 
     auto content = std::make_unique<ChordEditor>(chordRoot, chordType, bassRoot, chordEditSpelling, isNew);
     chordEditor = content.get();
@@ -892,7 +888,7 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
     if (!sequence)
         return;
 
-    const int bassType = (bassRoot == MidiSequence::chordNone) ? MidiSequence::chordNone : chordType;
+    const int bassType = (bassRoot == ChordChange::none) ? ChordChange::none : chordType;
 
     if (chordEditIsNew)
     {

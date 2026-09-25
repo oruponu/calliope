@@ -1,5 +1,6 @@
 #pragma once
 
+#include "notation/ChordSymbol.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/strips/ChordEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"

@@ -1,7 +1,7 @@
 #pragma once
 // IWYU pragma: always_keep
 
-#include "model/MidiSequence.h"
+#include "model/TempoChange.h"
 #include <catch2/catch_tostring.hpp>
 #include <format>
 #include <string>

@@ -1,4 +1,5 @@
 #include "ui/pianoroll/strips/KeySignatureStrip.h"
+#include "notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
 #include "undo/KeySignatureActions.h"
 #include "undo/ReplaceListAction.h"
@@ -236,7 +237,7 @@ void KeySignatureStrip::paint(juce::Graphics& g)
             g.setFont(font::sans(font::sizeSM));
             int sf = editingThis ? keySigDraftSharpsOrFlats : ksChanges[i].sharpsOrFlats;
             bool minor = editingThis ? keySigDraftIsMinor : ksChanges[i].isMinor;
-            juce::String labelText = juce::String(MidiSequence::keySignatureToString(sf, minor));
+            juce::String labelText = juce::String(KeySignatureName::toString(sf, minor));
             g.drawText(labelText, labelRect, juce::Justification::centredLeft);
         }
     }
@@ -253,8 +254,8 @@ void KeySignatureStrip::paint(juce::Graphics& g)
         int textX = std::max(x + 4, viewLeftX + labelWidth() + 4);
         g.setColour(draftColour);
         g.setFont(font::sans(font::sizeSM));
-        g.drawText(juce::String(MidiSequence::keySignatureToString(keySigDraftSharpsOrFlats, keySigDraftIsMinor)),
-                   textX, 0, 40, getHeight(), juce::Justification::centredLeft);
+        g.drawText(juce::String(KeySignatureName::toString(keySigDraftSharpsOrFlats, keySigDraftIsMinor)), textX, 0, 40,
+                   getHeight(), juce::Justification::centredLeft);
     }
 
     float phX = playheadX();
