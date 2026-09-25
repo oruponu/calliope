@@ -1,6 +1,7 @@
 #include "ui/pianoroll/strips/ChordStrip.h"
 #include "ui/theme/Theme.h"
 #include "undo/ChordActions.h"
+#include "undo/ReplaceListAction.h"
 #include <algorithm>
 #include <climits>
 #include <cstdlib>
@@ -77,7 +78,7 @@ void ChordStrip::deleteSelectedChordsImpl(const juce::String& transactionName)
     if (undoManager)
     {
         undoManager->beginNewTransaction(transactionName);
-        undoManager->perform(new ChordDeleteAction(sequence, std::move(before), std::move(after)));
+        undoManager->perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), std::move(after)));
     }
     else
     {
@@ -140,7 +141,7 @@ void ChordStrip::pasteChords(int atTick)
         if (undoManager)
         {
             undoManager->beginNewTransaction("Paste Chords");
-            undoManager->perform(new ChordPasteAction(sequence, std::move(before), after));
+            undoManager->perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), after));
         }
         else
         {
@@ -669,7 +670,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Resize Chord");
-                undoManager->perform(new ChordResizeAction(sequence, chordResizeBefore, changes));
+                undoManager->perform(new ReplaceListAction<ChordChange>(sequence, chordResizeBefore, changes));
             }
             else
             {
@@ -724,7 +725,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Resize Chord");
-                undoManager->perform(new ChordResizeAction(sequence, chordStartResizeBefore, changes));
+                undoManager->perform(new ReplaceListAction<ChordChange>(sequence, chordStartResizeBefore, changes));
             }
             else
             {
@@ -781,7 +782,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Move Chord");
-                undoManager->perform(new ChordMoveAction(sequence, chordMoveBefore, changes));
+                undoManager->perform(new ReplaceListAction<ChordChange>(sequence, chordMoveBefore, changes));
             }
             else
             {
@@ -941,7 +942,8 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
         if (undoManager)
         {
             undoManager->beginNewTransaction("Add Chord");
-            undoManager->perform(new ChordAddAction(sequence, sequence->getChordChanges(), std::move(after)));
+            undoManager->perform(
+                new ReplaceListAction<ChordChange>(sequence, sequence->getChordChanges(), std::move(after)));
         }
         else
         {

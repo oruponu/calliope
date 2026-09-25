@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/TempoTrackStrip.h"
 #include "ui/theme/Theme.h"
+#include "undo/ReplaceListAction.h"
 #include "undo/TempoActions.h"
 #include <algorithm>
 #include <cmath>
@@ -63,7 +64,7 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
     if (undoManager)
     {
         undoManager->beginNewTransaction(transactionName);
-        undoManager->perform(new TempoDeleteAction(sequence, std::move(before), std::move(after)));
+        undoManager->perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), std::move(after)));
     }
     else
     {
@@ -135,7 +136,7 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
         if (undoManager)
         {
             undoManager->beginNewTransaction("Paste Tempo Changes");
-            undoManager->perform(new TempoPasteAction(sequence, std::move(before), after));
+            undoManager->perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), after));
         }
         else
         {
@@ -534,7 +535,7 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Move Tempo Change");
-                undoManager->perform(new TempoMoveAction(sequence, tempoDragBefore, after));
+                undoManager->perform(new ReplaceListAction<TempoChange>(sequence, tempoDragBefore, after));
             }
             selectedTempoIndices = std::set<int>(tempoDragGroup.begin(), tempoDragGroup.end());
             if (onTempoChanged)
