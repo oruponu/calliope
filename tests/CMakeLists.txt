@@ -16,6 +16,7 @@ target_sources(CalliopeTests PRIVATE
     model/ChordPasteTests.cpp
     model/ChordResizeTests.cpp
     model/ChordStartResizeTests.cpp
+    model/ChordSymbolTests.cpp
     model/KeySignatureMoveTests.cpp
     model/KeySignatureNameTests.cpp
     model/TickSecondsTests.cpp
