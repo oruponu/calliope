@@ -82,8 +82,7 @@ TEST_CASE("getTempoAt returns last change at or before tick", "[engine][snapshot
 {
     MidiSequence seq;
     seq.addTrack();
-    seq.addTempoChange(0, 120.0);
-    seq.addTempoChange(960, 140.0);
+    seq.setTempoChanges({{0, 120.0}, {960, 140.0}});
 
     const auto snap = PlaybackSnapshot::build(seq);
     CHECK_THAT(snap.getTempoAt(0), WithinAbs(120.0, 1e-9));

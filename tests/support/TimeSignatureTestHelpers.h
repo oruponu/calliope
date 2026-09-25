@@ -1,5 +1,6 @@
 #pragma once
 
+#include "edit/TimeSignatureEdits.h"
 #include "model/MidiSequence.h"
 #include <catch2/catch_tostring.hpp>
 #include <initializer_list>

@@ -1,10 +1,11 @@
 #include "ui/pianoroll/strips/TempoTrackStrip.h"
+#include "edit/TempoEdits.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
-#include "undo/TempoActions.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
                                  juce::UndoManager& undoManagerRef)
@@ -384,11 +385,11 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
                                   [tempoTick](const TempoChange& tc) { return tc.tick == tempoTick; });
         if (!exists)
         {
-            int addedIndex = -1;
             undoManager.beginNewTransaction("Add Tempo Change");
-            auto* action = new TempoChangeAction(sequence, tempoTick, tempoBpm);
-            undoManager.perform(action);
-            addedIndex = action->getAddedIndex();
+            auto before = sequence->getTimeline().getTempoChanges();
+            auto after = before;
+            const int addedIndex = TempoEdits::add(after, tempoTick, tempoBpm);
+            undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), std::move(after)));
             if (onSelectionTaken)
                 onSelectionTaken();
             selectedTempoIndices.clear();

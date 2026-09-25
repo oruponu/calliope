@@ -1,7 +1,10 @@
 #pragma once
 
+#include "edit/ChordTrackEdits.h"
+#include "edit/KeySignatureEdits.h"
+#include "edit/TimeSignatureEdits.h"
 #include "model/MidiNote.h"
-#include "model/MidiSequence.h"
+#include "model/TempoChange.h"
 #include <utility>
 #include <variant>
 #include <vector>

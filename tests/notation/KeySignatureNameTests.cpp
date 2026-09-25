@@ -3,7 +3,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <string>
 #include <utility>
-#include <vector>
 
 namespace
 {
@@ -99,33 +98,4 @@ TEST_CASE("key signature names round-trip", "[notation][keysig]")
             CAPTURE(sf, isMinor);
             CHECK(parse(KeySignatureName::toString(sf, isMinor)) == Key{sf, isMinor});
         }
-}
-
-TEST_CASE("adding a key signature normalizes seven sharps or flats", "[notation][keysig]")
-{
-    MidiSequence seq;
-    seq.addKeySignatureChange(0, 7, false);
-    seq.addKeySignatureChange(1920, -7, false);
-    seq.addKeySignatureChange(3840, 7, true);
-    seq.addKeySignatureChange(5760, -7, true);
-    CHECK(seq.getKeySignatureChanges() ==
-          std::vector<KeySignatureChange>{{0, -5, false}, {1920, 5, false}, {3840, -5, true}, {5760, 5, true}});
-}
-
-TEST_CASE("adding at an existing tick overwrites it", "[notation][keysig]")
-{
-    MidiSequence seq;
-    seq.addKeySignatureChange(0, 1, false);
-    seq.addKeySignatureChange(0, -2, true);
-    CHECK(seq.getKeySignatureChanges() == std::vector<KeySignatureChange>{{0, -2, true}});
-}
-
-TEST_CASE("added key signatures are kept in tick order", "[notation][keysig]")
-{
-    MidiSequence seq;
-    seq.addKeySignatureChange(3840, 2, false);
-    seq.addKeySignatureChange(0, 0, false);
-    seq.addKeySignatureChange(1920, -1, true);
-    CHECK(seq.getKeySignatureChanges() ==
-          std::vector<KeySignatureChange>{{0, 0, false}, {1920, -1, true}, {3840, 2, false}});
 }

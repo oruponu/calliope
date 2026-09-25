@@ -1,6 +1,11 @@
 #include "io/MidiFileIO.h"
+#include "edit/ChordTrackEdits.h"
+#include "edit/KeySignatureEdits.h"
+#include "edit/TempoEdits.h"
+#include "edit/TimeSignatureEdits.h"
 #include <map>
 #include <set>
+#include <utility>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -274,6 +279,11 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
         ppq = TimelineMap::defaultTicksPerQuarterNote;
     sequence.setTicksPerQuarterNote(ppq);
 
+    auto tempoChanges = sequence.getTimeline().getTempoChanges();
+    auto timeSignatureChanges = sequence.getTimeline().getTimeSignatureChanges();
+    auto keySignatureChanges = sequence.getKeySignatureChanges();
+    auto chordChanges = sequence.getChordChanges();
+
     for (int t = 0; t < midiFile.getNumTracks(); ++t)
     {
         const auto* msgSeq = midiFile.getTrack(t);
@@ -284,21 +294,21 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
             {
                 double bpm = 60000000.0 / msg.getTempoSecondsPerQuarterNote() / 1000000.0;
                 int tick = static_cast<int>(msg.getTimeStamp());
-                sequence.addTempoChange(tick, bpm);
+                TempoEdits::add(tempoChanges, tick, bpm);
             }
             else if (msg.isTimeSignatureMetaEvent())
             {
                 int numerator, denominator;
                 msg.getTimeSignatureInfo(numerator, denominator);
                 int tick = static_cast<int>(msg.getTimeStamp());
-                sequence.addTimeSignatureChange(tick, numerator, denominator);
+                TimeSignatureEdits::add(timeSignatureChanges, tick, numerator, denominator, ppq);
             }
             else if (msg.isKeySignatureMetaEvent())
             {
                 int tick = static_cast<int>(msg.getTimeStamp());
                 int sf = msg.getKeySignatureNumberOfSharpsOrFlats();
                 bool isMinor = !msg.isKeySignatureMajorKey();
-                sequence.addKeySignatureChange(tick, sf, isMinor);
+                KeySignatureEdits::add(keySignatureChanges, tick, sf, isMinor);
             }
             else if (msg.getMetaEventType() == 0x7F)
             {
@@ -309,11 +319,16 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                     metaData[2] == 0x01)
                 {
                     int tick = static_cast<int>(msg.getTimeStamp());
-                    sequence.addChordChange(tick, metaData[3], metaData[4], metaData[5], metaData[6]);
+                    ChordTrackEdits::add(chordChanges, tick, metaData[3], metaData[4], metaData[5], metaData[6]);
                 }
             }
         }
     }
+
+    sequence.setTempoChanges(std::move(tempoChanges));
+    sequence.setTimeSignatureChanges(std::move(timeSignatureChanges));
+    sequence.setKeySignatureChanges(std::move(keySignatureChanges));
+    sequence.setChordChanges(std::move(chordChanges));
 
     if (format == 0)
     {

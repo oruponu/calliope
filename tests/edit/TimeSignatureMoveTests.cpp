@@ -13,7 +13,7 @@ std::vector<TimeSignatureChange> threeSections()
 std::vector<TimeSignatureChange> moveTo(const std::vector<TimeSignatureChange>& before, const std::vector<int>& moved,
                                         int anchor, int targetTick)
 {
-    return MidiSequence::buildTimeSignatureChangesAfterMove(before, moved, anchor, targetTick, ppq);
+    return TimeSignatureEdits::afterMove(before, moved, anchor, targetTick, ppq);
 }
 } // namespace
 

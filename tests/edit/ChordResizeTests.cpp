@@ -17,7 +17,7 @@ std::vector<ChordChange> joined()
 
 std::vector<ChordChange> resize(const std::vector<ChordChange>& before, int index, int targetEnd)
 {
-    return MidiSequence::buildChordChangesAfterResize(before, index, targetEnd, grid);
+    return ChordTrackEdits::afterResize(before, index, targetEnd, grid);
 }
 } // namespace
 
@@ -112,5 +112,5 @@ TEST_CASE("resize is a no-op in degenerate cases", "[chord][resize]")
     CHECK(resize(before, -1, 2880) == before);
     CHECK(resize(before, 4, 2880) == before);
     CHECK(resize(before, 1, 2880) == before);
-    CHECK(MidiSequence::buildChordChangesAfterResize(before, 0, 2880, 0) == before);
+    CHECK(ChordTrackEdits::afterResize(before, 0, 2880, 0) == before);
 }

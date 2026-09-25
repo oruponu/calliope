@@ -1,10 +1,11 @@
 #include "ui/pianoroll/strips/KeySignatureStrip.h"
+#include "edit/KeySignatureEdits.h"
 #include "notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
-#include "undo/KeySignatureActions.h"
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
 #include <memory>
+#include <utility>
 
 namespace
 {
@@ -353,8 +354,9 @@ void KeySignatureStrip::mouseDrag(const juce::MouseEvent& e)
         if (keySigDragIndex < 0 || keySigDragIndex >= static_cast<int>(keySigDragBefore.size()))
             return;
 
-        auto changes = sequence->buildKeySignatureChangesAfterMove(keySigDragBefore, keySigDragGroup, keySigDragIndex,
-                                                                   geometry.xToTick(e.x) - keySigDragGrabOffset);
+        auto changes =
+            KeySignatureEdits::afterMove(keySigDragBefore, keySigDragGroup, keySigDragIndex,
+                                         geometry.xToTick(e.x) - keySigDragGrabOffset, sequence->getTimeline());
         if (!keySignatureTicksEqual(changes, keySigDragBefore))
             keySigDragMoved = true;
         sequence->setKeySignatureChanges(std::move(changes));
@@ -528,7 +530,10 @@ void KeySignatureStrip::commitKeySignatureEdit(int sharpsOrFlats, bool isMinor)
     }
 
     undoManager.beginNewTransaction(keySigEditIsNew ? "Add Key Signature Change" : "Edit Key Signature Change");
-    undoManager.perform(new KeySignatureChangeAction(sequence, keySigEditTick, sharpsOrFlats, isMinor));
+    auto before = sequence->getKeySignatureChanges();
+    auto after = before;
+    KeySignatureEdits::add(after, keySigEditTick, sharpsOrFlats, isMinor);
+    undoManager.perform(new ReplaceListAction<KeySignatureChange>(sequence, std::move(before), std::move(after)));
 
     const auto& changes = sequence->getKeySignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)

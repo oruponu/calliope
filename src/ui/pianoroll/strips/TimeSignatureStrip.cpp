@@ -1,9 +1,10 @@
 #include "ui/pianoroll/strips/TimeSignatureStrip.h"
+#include "edit/TimeSignatureEdits.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
-#include "undo/TimeSignatureActions.h"
 #include <algorithm>
 #include <memory>
+#include <utility>
 
 TimeSignatureStrip::TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
                                        juce::UndoManager& undoManagerRef)
@@ -48,8 +49,8 @@ void TimeSignatureStrip::deleteSelectedTimeSignaturesImpl(const juce::String& tr
         return;
 
     auto before = sequence->getTimeline().getTimeSignatureChanges();
-    auto after = MidiSequence::buildTimeSignatureChangesAfterDelete(before, selectedTimeSigIndices,
-                                                                    sequence->getTimeline().getTicksPerQuarterNote());
+    auto after = TimeSignatureEdits::afterDelete(before, selectedTimeSigIndices,
+                                                 sequence->getTimeline().getTicksPerQuarterNote());
     if (after.size() == before.size())
         return;
 
@@ -100,8 +101,8 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
 
     const int anchorBar = sequence->getTimeline().tickToBarBeatTick(std::max(0, atTick)).bar;
     auto before = sequence->getTimeline().getTimeSignatureChanges();
-    auto after = MidiSequence::buildTimeSignatureChangesAfterPaste(before, clipboard.getTimeSignatures(), anchorBar,
-                                                                   sequence->getTimeline().getTicksPerQuarterNote());
+    auto after = TimeSignatureEdits::afterPaste(before, clipboard.getTimeSignatures(), anchorBar,
+                                                sequence->getTimeline().getTicksPerQuarterNote());
 
     std::vector<int> pastedBars;
     for (const auto& item : clipboard.getTimeSignatures())
@@ -336,9 +337,9 @@ void TimeSignatureStrip::mouseDrag(const juce::MouseEvent& e)
         if (timeSigDragIndex < 0 || timeSigDragIndex >= static_cast<int>(timeSigDragBefore.size()))
             return;
 
-        auto changes = MidiSequence::buildTimeSignatureChangesAfterMove(
-            timeSigDragBefore, timeSigDragGroup, timeSigDragIndex, geometry.xToTick(e.x) - timeSigDragGrabOffset,
-            sequence->getTimeline().getTicksPerQuarterNote());
+        auto changes = TimeSignatureEdits::afterMove(timeSigDragBefore, timeSigDragGroup, timeSigDragIndex,
+                                                     geometry.xToTick(e.x) - timeSigDragGrabOffset,
+                                                     sequence->getTimeline().getTicksPerQuarterNote());
         if (changes[static_cast<size_t>(timeSigDragIndex)].tick !=
             timeSigDragBefore[static_cast<size_t>(timeSigDragIndex)].tick)
             timeSigDragMoved = true;
@@ -516,7 +517,10 @@ void TimeSignatureStrip::commitTimeSignatureEdit(int num, int den)
     }
 
     undoManager.beginNewTransaction(timeSigEditIsNew ? "Add Time Signature Change" : "Edit Time Signature Change");
-    undoManager.perform(new TimeSignatureChangeAction(sequence, timeSigEditTick, num, den));
+    auto before = sequence->getTimeline().getTimeSignatureChanges();
+    auto after = before;
+    TimeSignatureEdits::add(after, timeSigEditTick, num, den, sequence->getTimeline().getTicksPerQuarterNote());
+    undoManager.perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), std::move(after)));
 
     const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
