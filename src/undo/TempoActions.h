@@ -11,7 +11,7 @@ public:
 
     bool perform() override
     {
-        before = sequence->getTempoChanges();
+        before = sequence->getTimeline().getTempoChanges();
         addedIndex = sequence->addTempoChange(tick, newBpm);
         sequence->notifyTempoChanged();
         return true;

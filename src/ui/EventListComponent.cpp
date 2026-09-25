@@ -325,7 +325,7 @@ void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int 
     const int lengthX = valueX - kColLength;
     const int eventWidth = lengthX - eventX;
 
-    auto bbt = sequence->tickToBarBeatTick(item.tick);
+    auto bbt = sequence->getTimeline().tickToBarBeatTick(item.tick);
 
     g.setColour(text::t1);
     g.setFont(font::sans(font::sizeSM));

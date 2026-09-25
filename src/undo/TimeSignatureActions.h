@@ -14,7 +14,7 @@ public:
 
     bool perform() override
     {
-        before = sequence->getTimeSignatureChanges();
+        before = sequence->getTimeline().getTimeSignatureChanges();
         sequence->addTimeSignatureChange(tick, numerator, denominator);
         sequence->notifyTimelineMetadataChanged();
         return true;

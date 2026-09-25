@@ -627,16 +627,16 @@ bool MainComponent::perform(const InvocationInfo& info)
     case AppCommands::prevBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
-        auto bbt = document.getSequence().tickToBarBeatTick(currentTick);
+        auto bbt = document.getSequence().getTimeline().tickToBarBeatTick(currentTick);
         int targetBar = juce::jmax(1, bbt.bar - 1);
-        transportBar.jumpToTick(document.getSequence().barStartToTick(targetBar));
+        transportBar.jumpToTick(document.getSequence().getTimeline().barStartToTick(targetBar));
         return true;
     }
     case AppCommands::nextBar:
     {
         int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
-        auto bbt = document.getSequence().tickToBarBeatTick(currentTick);
-        transportBar.jumpToTick(document.getSequence().barStartToTick(bbt.bar + 1));
+        auto bbt = document.getSequence().getTimeline().tickToBarBeatTick(currentTick);
+        transportBar.jumpToTick(document.getSequence().getTimeline().barStartToTick(bbt.bar + 1));
         return true;
     }
     case AppCommands::switchToEditTool:

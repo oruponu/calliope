@@ -95,12 +95,12 @@ juce::String decodeMetaText(const juce::MidiMessage& msg)
 bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
 {
     juce::MidiFile midiFile;
-    int ppq = sequence.getTicksPerQuarterNote();
+    int ppq = sequence.getTimeline().getTicksPerQuarterNote();
     midiFile.setTicksPerQuarterNote(ppq);
 
     juce::MidiMessageSequence tempoTrack;
 
-    for (const auto& tc : sequence.getTempoChanges())
+    for (const auto& tc : sequence.getTimeline().getTempoChanges())
     {
         int microsecondsPerBeat = static_cast<int>(60000000.0 / tc.bpm);
         auto tempoEvent = juce::MidiMessage::tempoMetaEvent(microsecondsPerBeat);
@@ -108,7 +108,7 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         tempoTrack.addEvent(tempoEvent);
     }
 
-    for (const auto& ts : sequence.getTimeSignatureChanges())
+    for (const auto& ts : sequence.getTimeline().getTimeSignatureChanges())
     {
         auto tsEvent = juce::MidiMessage::timeSignatureMetaEvent(ts.numerator, ts.denominator);
         tsEvent.setTimeStamp(ts.tick);
@@ -271,7 +271,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
 
     int ppq = midiFile.getTimeFormat();
     if (ppq <= 0)
-        ppq = MidiSequence::defaultTicksPerQuarterNote;
+        ppq = TimelineMap::defaultTicksPerQuarterNote;
     sequence.setTicksPerQuarterNote(ppq);
 
     for (int t = 0; t < midiFile.getNumTracks(); ++t)

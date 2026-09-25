@@ -125,7 +125,7 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
         {
             if (!selectedNotes.empty() && sequence)
             {
-                const int grid = sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator;
+                const int grid = sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator;
                 nudgeSelectedNotesTime(isRight ? grid : -grid);
             }
             return true;
@@ -546,7 +546,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     if (sequence != nullptr)
         sequence->removeListener(this);
     sequence = seq;
-    geometry.setTicksPerQuarterNote(sequence != nullptr ? sequence->getTicksPerQuarterNote() : 0);
+    geometry.setTicksPerQuarterNote(sequence != nullptr ? sequence->getTimeline().getTicksPerQuarterNote() : 0);
     loopStrip.setSequence(seq);
     ruler.setSequence(seq);
     tempoStrip.setSequence(seq);
@@ -570,7 +570,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
                     lastTick = end;
             }
         }
-        contentBeats = std::max(contentBeats, lastTick / sequence->getTicksPerQuarterNote() + 4);
+        contentBeats = std::max(contentBeats, lastTick / sequence->getTimeline().getTicksPerQuarterNote() + 4);
     }
 
     updateSize();
@@ -1001,7 +1001,7 @@ void PianoRollComponent::setPlayheadTick(double tick)
     {
         if (!sequence)
             return keyboardWidth;
-        return keyboardWidth + static_cast<int>(t / sequence->getTicksPerQuarterNote() * beatWidth);
+        return keyboardWidth + static_cast<int>(t / sequence->getTimeline().getTicksPerQuarterNote() * beatWidth);
     };
 
     int oldX = toX(playheadTick);
@@ -1096,7 +1096,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         if (noteNum < 0 || noteNum > 127)
             return;
 
-        int defaultDuration = sequence ? sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
+        int defaultDuration =
+            sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
         MidiNote newNote{noteNum, 100, tick, defaultDuration};
 
         undoManager.beginNewTransaction("Add Note");
@@ -1219,7 +1220,8 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         if (resizeTargets.empty())
             return;
 
-        int minDuration = sequence ? sequence->getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
+        int minDuration =
+            sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
         int currentTick = roundTickToGrid(xToTick(e.x));
 
         if (resizeEdge == ResizeEdge::Right)
@@ -1508,14 +1510,14 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
         g.drawHorizontalLine(y, static_cast<float>(gridLeft), static_cast<float>(gridRight));
     }
 
-    int ppq = sequence->getTicksPerQuarterNote();
+    int ppq = sequence->getTimeline().getTicksPerQuarterNote();
     int quantizeGrid = ppq * 4 / quantizeDenominator;
     int totalTicks = xToTick(getWidth());
     int tick = 0;
 
     while (tick < totalTicks)
     {
-        auto ts = sequence->getTimeSignatureAt(tick);
+        auto ts = sequence->getTimeline().getTimeSignatureAt(tick);
         int ticksPerBeat = ppq * 4 / ts.denominator;
         int beatsInBar = ts.numerator;
         int barEndTick = tick + beatsInBar * ticksPerBeat;
@@ -1737,7 +1739,8 @@ void PianoRollComponent::drawPlayhead(juce::Graphics& g)
     using namespace calliope::theme;
     if (!sequence)
         return;
-    float x = static_cast<float>(keyboardWidth + playheadTick / sequence->getTicksPerQuarterNote() * beatWidth);
+    float x =
+        static_cast<float>(keyboardWidth + playheadTick / sequence->getTimeline().getTicksPerQuarterNote() * beatWidth);
     auto clip = g.getClipBounds();
     if (x < static_cast<float>(clip.getX()) - 1.0f || x > static_cast<float>(clip.getRight()) + 1.0f)
         return;

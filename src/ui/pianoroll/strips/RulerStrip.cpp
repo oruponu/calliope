@@ -19,7 +19,7 @@ void RulerStrip::paint(juce::Graphics& g)
     g.saveState();
     g.reduceClipRegion(viewLeftX + labelWidth(), 0, getWidth(), getHeight());
 
-    int ppq = sequence->getTicksPerQuarterNote();
+    int ppq = sequence->getTimeline().getTicksPerQuarterNote();
     int quantizeGrid = geometry.gridTicks();
     int totalTicks = geometry.xToTick(getWidth());
     int tick = 0;
@@ -27,7 +27,7 @@ void RulerStrip::paint(juce::Graphics& g)
 
     while (tick < totalTicks)
     {
-        auto ts = sequence->getTimeSignatureAt(tick);
+        auto ts = sequence->getTimeline().getTimeSignatureAt(tick);
         int ticksPerBeat = ppq * 4 / ts.denominator;
         int beatsInBar = ts.numerator;
         int barEndTick = tick + beatsInBar * ticksPerBeat;
