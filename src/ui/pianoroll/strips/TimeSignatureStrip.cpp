@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/TimeSignatureStrip.h"
 #include "ui/theme/Theme.h"
+#include "undo/ReplaceListAction.h"
 #include "undo/TimeSignatureActions.h"
 #include <algorithm>
 #include <memory>
@@ -59,7 +60,7 @@ void TimeSignatureStrip::deleteSelectedTimeSignaturesImpl(const juce::String& tr
     if (undoManager)
     {
         undoManager->beginNewTransaction(transactionName);
-        undoManager->perform(new TimeSignatureDeleteAction(sequence, std::move(before), std::move(after)));
+        undoManager->perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), std::move(after)));
     }
     else
     {
@@ -124,7 +125,7 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
         if (undoManager)
         {
             undoManager->beginNewTransaction("Paste Time Signature Changes");
-            undoManager->perform(new TimeSignaturePasteAction(sequence, std::move(before), after));
+            undoManager->perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), after));
         }
         else
         {
@@ -406,7 +407,7 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Move Time Signature Change");
-                undoManager->perform(new TimeSignatureMoveAction(sequence, timeSigDragBefore, changes));
+                undoManager->perform(new ReplaceListAction<TimeSignatureChange>(sequence, timeSigDragBefore, changes));
             }
             else
             {

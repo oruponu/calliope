@@ -1,6 +1,7 @@
 #include "ui/pianoroll/strips/KeySignatureStrip.h"
 #include "ui/theme/Theme.h"
 #include "undo/KeySignatureActions.h"
+#include "undo/ReplaceListAction.h"
 #include <algorithm>
 #include <memory>
 
@@ -74,7 +75,7 @@ void KeySignatureStrip::deleteSelectedKeySignaturesImpl(const juce::String& tran
     if (undoManager)
     {
         undoManager->beginNewTransaction(transactionName);
-        undoManager->perform(new KeySignatureDeleteAction(sequence, std::move(before), std::move(after)));
+        undoManager->perform(new ReplaceListAction<KeySignatureChange>(sequence, std::move(before), std::move(after)));
     }
     else
     {
@@ -150,7 +151,7 @@ void KeySignatureStrip::pasteKeySignatures(int atTick)
         if (undoManager)
         {
             undoManager->beginNewTransaction("Paste Key Signature Changes");
-            undoManager->perform(new KeySignaturePasteAction(sequence, std::move(before), after));
+            undoManager->perform(new ReplaceListAction<KeySignatureChange>(sequence, std::move(before), after));
         }
         else
         {
@@ -417,7 +418,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
             if (undoManager)
             {
                 undoManager->beginNewTransaction("Move Key Signature Change");
-                undoManager->perform(new KeySignatureMoveAction(sequence, keySigDragBefore, changes));
+                undoManager->perform(new ReplaceListAction<KeySignatureChange>(sequence, keySigDragBefore, changes));
             }
             else
             {
