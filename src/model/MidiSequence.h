@@ -1,11 +1,9 @@
 #pragma once
 
-#include "model/BarBeatTick.h"
 #include "model/ChordChange.h"
 #include "model/KeySignatureChange.h"
 #include "model/MidiTrack.h"
-#include "model/TempoChange.h"
-#include "model/TimeSignatureChange.h"
+#include "model/TimelineMap.h"
 #include <set>
 #include <utility>
 #include <vector>
@@ -47,6 +45,7 @@ public:
         virtual void sequenceReset() {}
     };
 
+    MidiSequence() = default;
     MidiSequence(const MidiSequence&) = delete;
     MidiSequence& operator=(const MidiSequence&) = delete;
     MidiSequence(MidiSequence&&) = delete;
@@ -61,12 +60,6 @@ public:
     void notifyTimelineMetadataChanged();
     void notifySequenceReset();
 
-    static constexpr int defaultTicksPerQuarterNote = 480;
-    static constexpr double minBpm = 10.0;
-    static constexpr double maxBpm = 400.0;
-
-    MidiSequence();
-
     void clear();
 
     MidiTrack& addTrack();
@@ -78,31 +71,21 @@ public:
     int getNumTracks() const;
     bool isAnySolo() const;
 
-    void setBpm(double newBpm);
-    double getBpm() const;
-    int getTicksPerQuarterNote() const;
+    const TimelineMap& getTimeline() const;
     void setTicksPerQuarterNote(int ppq);
-
-    double getTempoAt(int tick) const;
-    TempoChange getTempoChangeAt(int tick) const;
-    TimeSignatureChange getTimeSignatureAt(int tick) const;
+    void setTempoChanges(std::vector<TempoChange> changes);
+    void setTimeSignatureChanges(std::vector<TimeSignatureChange> changes);
 
     KeySignatureChange getKeySignatureAt(int tick) const;
-
-    const std::vector<TempoChange>& getTempoChanges() const;
-    const std::vector<TimeSignatureChange>& getTimeSignatureChanges() const;
     const std::vector<KeySignatureChange>& getKeySignatureChanges() const;
+    void setKeySignatureChanges(std::vector<KeySignatureChange> changes);
     const std::vector<ChordChange>& getChordChanges() const;
+    void setChordChanges(std::vector<ChordChange> changes);
 
     int addTempoChange(int tick, double bpm);
     void addTimeSignatureChange(int tick, int num, int den);
     void addKeySignatureChange(int tick, int sharpsOrFlats, bool isMinor);
     void addChordChange(int tick, int chordRoot, int chordType, int bassRoot, int bassType);
-
-    void setTempoChanges(std::vector<TempoChange> changes);
-    void setTimeSignatureChanges(std::vector<TimeSignatureChange> changes);
-    void setKeySignatureChanges(std::vector<KeySignatureChange> changes);
-    void setChordChanges(std::vector<ChordChange> changes);
 
     static std::vector<TimeSignatureChange>
     buildTimeSignatureChangesAfterMove(const std::vector<TimeSignatureChange>& before,
@@ -139,19 +122,10 @@ public:
                                                                 const std::vector<RelativeChord>& items,
                                                                 int anchorTick);
 
-    double ticksToSeconds(int ticks) const;
-    int secondsToTicks(double seconds) const;
-
-    BarBeatTick tickToBarBeatTick(int tick) const;
-    int barStartToTick(int barNumber) const;
-    int barBeatTickToTick(int bar, int beat, int tickInBeat) const;
-
 private:
     std::vector<MidiTrack> tracks;
-    std::vector<TempoChange> tempoChanges;
-    std::vector<TimeSignatureChange> timeSignatureChanges;
+    TimelineMap timeline;
     std::vector<KeySignatureChange> keySignatureChanges;
     std::vector<ChordChange> chordChanges;
-    int ticksPerQuarterNote = defaultTicksPerQuarterNote;
     std::vector<Listener*> listeners;
 };

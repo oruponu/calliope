@@ -88,7 +88,7 @@ void ControllerLaneComponent::setSequence(MidiSequence* seq)
                     lastTick = end;
             }
         }
-        contentBeats = std::max(contentBeats, lastTick / sequence->getTicksPerQuarterNote() + 4);
+        contentBeats = std::max(contentBeats, lastTick / sequence->getTimeline().getTicksPerQuarterNote() + 4);
     }
 
     updateSize();
@@ -176,7 +176,7 @@ int ControllerLaneComponent::tickToX(int tick) const
     if (!sequence)
         return leftPanelWidth;
 
-    double beatsFromTick = static_cast<double>(tick) / sequence->getTicksPerQuarterNote();
+    double beatsFromTick = static_cast<double>(tick) / sequence->getTimeline().getTicksPerQuarterNote();
     return leftPanelWidth + static_cast<int>(beatsFromTick * beatWidth);
 }
 
@@ -186,7 +186,7 @@ int ControllerLaneComponent::xToTick(int x) const
         return 0;
 
     double beats = static_cast<double>(x - leftPanelWidth) / beatWidth;
-    return static_cast<int>(beats * sequence->getTicksPerQuarterNote());
+    return static_cast<int>(beats * sequence->getTimeline().getTicksPerQuarterNote());
 }
 
 int ControllerLaneComponent::getDrawAreaTop() const
@@ -329,7 +329,7 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
         }
     }
 
-    int ppq = sequence->getTicksPerQuarterNote();
+    int ppq = sequence->getTimeline().getTicksPerQuarterNote();
     int quantizeGrid = std::min(ppq, ppq * 4 / quantizeDenominator);
     int startTick = xToTick(std::max(visibleLeft, leftPanelWidth));
     int firstSub = std::max(0, startTick / quantizeGrid);
@@ -343,7 +343,7 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
         if (x < leftPanelWidth)
             continue;
 
-        auto bbt = sequence->tickToBarBeatTick(tick);
+        auto bbt = sequence->getTimeline().tickToBarBeatTick(tick);
 
         if (bbt.beat == 1 && bbt.tick == 0)
             g.setColour(border::strong);

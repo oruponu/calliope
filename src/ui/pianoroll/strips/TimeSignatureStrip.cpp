@@ -47,9 +47,9 @@ void TimeSignatureStrip::deleteSelectedTimeSignaturesImpl(const juce::String& tr
     if (!sequence || selectedTimeSigIndices.empty())
         return;
 
-    auto before = sequence->getTimeSignatureChanges();
+    auto before = sequence->getTimeline().getTimeSignatureChanges();
     auto after = MidiSequence::buildTimeSignatureChangesAfterDelete(before, selectedTimeSigIndices,
-                                                                    sequence->getTicksPerQuarterNote());
+                                                                    sequence->getTimeline().getTicksPerQuarterNote());
     if (after.size() == before.size())
         return;
 
@@ -65,14 +65,14 @@ void TimeSignatureStrip::copySelectedTimeSignatures()
     if (!sequence || selectedTimeSigIndices.empty())
         return;
 
-    const auto& changes = sequence->getTimeSignatureChanges();
+    const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     const int count = static_cast<int>(changes.size());
 
     std::vector<RelativeTimeSignature> items;
     for (int i : selectedTimeSigIndices)
         if (i >= 0 && i < count)
-            items.push_back(
-                {sequence->tickToBarBeatTick(changes[i].tick).bar, changes[i].numerator, changes[i].denominator});
+            items.push_back({sequence->getTimeline().tickToBarBeatTick(changes[i].tick).bar, changes[i].numerator,
+                             changes[i].denominator});
 
     if (items.empty())
         return;
@@ -98,10 +98,10 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
     if (!sequence || !clipboard.hasTimeSignatures())
         return;
 
-    const int anchorBar = sequence->tickToBarBeatTick(std::max(0, atTick)).bar;
-    auto before = sequence->getTimeSignatureChanges();
+    const int anchorBar = sequence->getTimeline().tickToBarBeatTick(std::max(0, atTick)).bar;
+    auto before = sequence->getTimeline().getTimeSignatureChanges();
     auto after = MidiSequence::buildTimeSignatureChangesAfterPaste(before, clipboard.getTimeSignatures(), anchorBar,
-                                                                   sequence->getTicksPerQuarterNote());
+                                                                   sequence->getTimeline().getTicksPerQuarterNote());
 
     std::vector<int> pastedBars;
     for (const auto& item : clipboard.getTimeSignatures())
@@ -115,10 +115,10 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
     }
 
     selectedTimeSigIndices.clear();
-    const auto& changes = sequence->getTimeSignatureChanges();
+    const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     for (int b : pastedBars)
     {
-        const int t = sequence->barStartToTick(b);
+        const int t = sequence->getTimeline().barStartToTick(b);
         auto it = std::ranges::find(changes, t, &TimeSignatureChange::tick);
         if (it != changes.end())
             selectedTimeSigIndices.insert(static_cast<int>(it - changes.begin()));
@@ -129,7 +129,7 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
 
 juce::Rectangle<int> TimeSignatureStrip::timeSignatureLabelRect(int index) const
 {
-    const auto& changes = sequence->getTimeSignatureChanges();
+    const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     const auto& ts = changes[static_cast<size_t>(index)];
     int x = geometry.tickToX(ts.tick);
     int textX = (index == 0 && ts.tick == 0) ? viewLeftX + labelWidth() + 4 : x + 4;
@@ -147,7 +147,7 @@ int TimeSignatureStrip::hitTestTimeSignaturePoint(int x, int y) const
     if (x < viewLeftX + labelWidth())
         return -1;
 
-    const auto& changes = sequence->getTimeSignatureChanges();
+    const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
     {
         if (geometry.tickToX(changes[static_cast<size_t>(i)].tick) + 4 < viewLeftX - 40)
@@ -176,7 +176,7 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
 
     drawTrackGridLines(g, visibleLeft, visibleRight, 0.0f, static_cast<float>(getHeight()));
 
-    const auto& tsChanges = sequence->getTimeSignatureChanges();
+    const auto& tsChanges = sequence->getTimeline().getTimeSignatureChanges();
     if (tsChanges.empty())
     {
         g.setColour(track::teal);
@@ -298,7 +298,7 @@ void TimeSignatureStrip::mouseDown(const juce::MouseEvent& e)
             return;
         }
 
-        timeSigDragBefore = sequence->getTimeSignatureChanges();
+        timeSigDragBefore = sequence->getTimeline().getTimeSignatureChanges();
         timeSigDragIndex = tsIndex;
         isTimeSigPointDragging = true;
         timeSigDragMoved = false;
@@ -338,7 +338,7 @@ void TimeSignatureStrip::mouseDrag(const juce::MouseEvent& e)
 
         auto changes = MidiSequence::buildTimeSignatureChangesAfterMove(
             timeSigDragBefore, timeSigDragGroup, timeSigDragIndex, geometry.xToTick(e.x) - timeSigDragGrabOffset,
-            sequence->getTicksPerQuarterNote());
+            sequence->getTimeline().getTicksPerQuarterNote());
         if (changes[static_cast<size_t>(timeSigDragIndex)].tick !=
             timeSigDragBefore[static_cast<size_t>(timeSigDragIndex)].tick)
             timeSigDragMoved = true;
@@ -358,7 +358,7 @@ void TimeSignatureStrip::mouseDrag(const juce::MouseEvent& e)
         int tickHi = geometry.xToTick(hi);
 
         selectedTimeSigIndices = timeSigSelectBase;
-        const auto& changes = sequence->getTimeSignatureChanges();
+        const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
         for (int i = 0; i < static_cast<int>(changes.size()); ++i)
             if (changes[static_cast<size_t>(i)].tick >= tickLo && changes[static_cast<size_t>(i)].tick <= tickHi)
                 selectedTimeSigIndices.insert(i);
@@ -376,7 +376,7 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
         int draggedIndex = timeSigDragIndex;
         timeSigDragIndex = -1;
 
-        const auto& changes = sequence->getTimeSignatureChanges();
+        const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
         bool validIndex = draggedIndex >= 0 && draggedIndex < static_cast<int>(changes.size()) &&
                           draggedIndex < static_cast<int>(timeSigDragBefore.size());
         bool movedFinal = validIndex && changes[static_cast<size_t>(draggedIndex)].tick !=
@@ -444,9 +444,10 @@ void TimeSignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
     isTimeSigRangeSelecting = false;
     timeSigSelectBase.clear();
 
-    int barStart = sequence->barStartToTick(sequence->tickToBarBeatTick(std::max(0, geometry.xToTick(e.x))).bar);
+    int barStart = sequence->getTimeline().barStartToTick(
+        sequence->getTimeline().tickToBarBeatTick(std::max(0, geometry.xToTick(e.x))).bar);
 
-    const auto& changes = sequence->getTimeSignatureChanges();
+    const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
     {
         if (changes[i].tick == barStart)
@@ -464,7 +465,7 @@ void TimeSignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
     if (onSelectionTaken)
         onSelectionTaken();
     clearTimeSignatureSelection();
-    auto effective = sequence->getTimeSignatureAt(barStart);
+    auto effective = sequence->getTimeline().getTimeSignatureAt(barStart);
     juce::Rectangle<int> anchor{geometry.tickToX(barStart), 0, 40, getHeight()};
     openTimeSignatureEditor(barStart, effective.numerator, effective.denominator, true, anchor);
 }
@@ -506,7 +507,7 @@ void TimeSignatureStrip::commitTimeSignatureEdit(int num, int den)
     if (!sequence)
         return;
 
-    const auto& existing = sequence->getTimeSignatureChanges();
+    const auto& existing = sequence->getTimeline().getTimeSignatureChanges();
     auto atTick = std::ranges::find(existing, timeSigEditTick, &TimeSignatureChange::tick);
     if (atTick != existing.end() && num == atTick->numerator && den == atTick->denominator)
     {
@@ -517,7 +518,7 @@ void TimeSignatureStrip::commitTimeSignatureEdit(int num, int den)
     undoManager.beginNewTransaction(timeSigEditIsNew ? "Add Time Signature Change" : "Edit Time Signature Change");
     undoManager.perform(new TimeSignatureChangeAction(sequence, timeSigEditTick, num, den));
 
-    const auto& changes = sequence->getTimeSignatureChanges();
+    const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
         if (changes[i].tick == timeSigEditTick)
             selectedTimeSigIndices = {i};

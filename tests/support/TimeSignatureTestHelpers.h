@@ -47,6 +47,11 @@ inline void setTimeSignatures(MidiSequence& sequence, std::initializer_list<BarS
 {
     sequence.setTimeSignatureChanges(timeSigs(entries));
 }
+
+inline void setTimeSignatures(TimelineMap& timeline, std::initializer_list<BarSignature> entries)
+{
+    timeline.setTimeSignatureChanges(timeSigs(entries));
+}
 } // namespace timesigtest
 
 namespace Catch

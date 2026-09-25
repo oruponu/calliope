@@ -5,32 +5,12 @@
 #include <limits>
 #include <ranges>
 
-namespace
-{
-// tick counts converted back from seconds can land just below an integer (e.g. 1920.9999999)
-// when one tick is not a binary-exact number of seconds; absorb that before truncating
-int floorTicks(double ticks)
-{
-    return static_cast<int>(std::floor(ticks + 1e-6));
-}
-} // namespace
-
-MidiSequence::MidiSequence()
-{
-    tempoChanges.push_back({0, 120.0});
-    timeSignatureChanges.push_back({0, 4, 4});
-}
-
 void MidiSequence::clear()
 {
     tracks.clear();
-    tempoChanges.clear();
-    tempoChanges.push_back({0, 120.0});
-    timeSignatureChanges.clear();
-    timeSignatureChanges.push_back({0, 4, 4});
+    timeline = TimelineMap{};
     keySignatureChanges.clear();
     chordChanges.clear();
-    ticksPerQuarterNote = defaultTicksPerQuarterNote;
 }
 
 MidiTrack& MidiSequence::addTrack()
@@ -69,87 +49,42 @@ bool MidiSequence::isAnySolo() const
     return std::ranges::any_of(tracks, [](const MidiTrack& track) { return track.isSolo(); });
 }
 
-void MidiSequence::setBpm(double newBpm)
-{
-    if (!tempoChanges.empty() && tempoChanges[0].tick == 0)
-        tempoChanges[0].bpm = newBpm;
-    else
-        tempoChanges.insert(tempoChanges.begin(), {0, newBpm});
-}
-
-double MidiSequence::getBpm() const
-{
-    if (!tempoChanges.empty() && tempoChanges[0].tick == 0)
-        return tempoChanges[0].bpm;
-    return 120.0;
-}
-
-int MidiSequence::getTicksPerQuarterNote() const
-{
-    return ticksPerQuarterNote;
-}
-
-void MidiSequence::setTicksPerQuarterNote(int ppq)
-{
-    ticksPerQuarterNote = ppq;
-}
-
-double MidiSequence::getTempoAt(int tick) const
-{
-    auto reversed = std::views::reverse(tempoChanges);
-    auto it = std::ranges::find_if(reversed, [tick](const TempoChange& tc) { return tc.tick <= tick; });
-    return it != reversed.end() ? it->bpm : 120.0;
-}
-
-TempoChange MidiSequence::getTempoChangeAt(int tick) const
-{
-    auto reversed = std::views::reverse(tempoChanges);
-    auto it = std::ranges::find_if(reversed, [tick](const TempoChange& tc) { return tc.tick <= tick; });
-    return it != reversed.end() ? *it : TempoChange{0, 120.0};
-}
-
-TimeSignatureChange MidiSequence::getTimeSignatureAt(int tick) const
-{
-    auto reversed = std::views::reverse(timeSignatureChanges);
-    auto it = std::ranges::find_if(reversed, [tick](const TimeSignatureChange& ts) { return ts.tick <= tick; });
-    return it != reversed.end() ? *it : TimeSignatureChange{0, 4, 4};
-}
-
-const std::vector<TempoChange>& MidiSequence::getTempoChanges() const
-{
-    return tempoChanges;
-}
-
-const std::vector<TimeSignatureChange>& MidiSequence::getTimeSignatureChanges() const
-{
-    return timeSignatureChanges;
-}
-
 int MidiSequence::addTempoChange(int tick, double bpm)
 {
-    for (size_t i = 0; i < tempoChanges.size(); ++i)
+    auto changes = timeline.getTempoChanges();
+    int index = -1;
+    for (size_t i = 0; i < changes.size(); ++i)
     {
-        if (tempoChanges[i].tick == tick)
+        if (changes[i].tick == tick)
         {
-            tempoChanges[i].bpm = bpm;
-            return static_cast<int>(i);
+            changes[i].bpm = bpm;
+            index = static_cast<int>(i);
+            break;
         }
     }
-    tempoChanges.push_back({tick, bpm});
-    std::ranges::sort(tempoChanges, {}, &TempoChange::tick);
-    auto it = std::ranges::find(tempoChanges, tick, &TempoChange::tick);
-    return static_cast<int>(it - tempoChanges.begin());
+    if (index < 0)
+    {
+        changes.push_back({tick, bpm});
+        std::ranges::sort(changes, {}, &TempoChange::tick);
+        auto it = std::ranges::find(changes, tick, &TempoChange::tick);
+        index = static_cast<int>(it - changes.begin());
+    }
+    timeline.setTempoChanges(std::move(changes));
+    return index;
 }
 
 void MidiSequence::addTimeSignatureChange(int tick, int num, int den)
 {
+    auto changes = timeline.getTimeSignatureChanges();
+    const int ppq = timeline.getTicksPerQuarterNote();
+
     std::vector<int> bars;
-    bars.reserve(timeSignatureChanges.size());
-    for (const auto& ts : timeSignatureChanges)
-        bars.push_back(tickToBarBeatTick(ts.tick).bar);
+    bars.reserve(changes.size());
+    for (const auto& ts : changes)
+        bars.push_back(timeline.tickToBarBeatTick(ts.tick).bar);
 
     bool modified = false;
-    for (auto& ts : timeSignatureChanges)
+    for (auto& ts : changes)
     {
         if (ts.tick == tick)
         {
@@ -162,23 +97,24 @@ void MidiSequence::addTimeSignatureChange(int tick, int num, int den)
 
     if (!modified)
     {
-        int targetBar = tickToBarBeatTick(tick).bar;
+        int targetBar = timeline.tickToBarBeatTick(tick).bar;
         size_t insertPos = 0;
-        while (insertPos < timeSignatureChanges.size() && timeSignatureChanges[insertPos].tick < tick)
+        while (insertPos < changes.size() && changes[insertPos].tick < tick)
             ++insertPos;
-        timeSignatureChanges.insert(timeSignatureChanges.begin() + insertPos, {tick, num, den});
+        changes.insert(changes.begin() + insertPos, {tick, num, den});
         bars.insert(bars.begin() + insertPos, targetBar);
     }
 
-    if (!timeSignatureChanges.empty())
-        timeSignatureChanges[0].tick = 0;
-    for (size_t i = 1; i < timeSignatureChanges.size(); ++i)
+    if (!changes.empty())
+        changes[0].tick = 0;
+    for (size_t i = 1; i < changes.size(); ++i)
     {
-        int ticksPerBeat = ticksPerQuarterNote * 4 / timeSignatureChanges[i - 1].denominator;
-        int ticksPerBar = ticksPerBeat * timeSignatureChanges[i - 1].numerator;
+        int ticksPerBeat = ppq * 4 / changes[i - 1].denominator;
+        int ticksPerBar = ticksPerBeat * changes[i - 1].numerator;
         int barsFromPrev = bars[i] - bars[i - 1];
-        timeSignatureChanges[i].tick = timeSignatureChanges[i - 1].tick + barsFromPrev * ticksPerBar;
+        changes[i].tick = changes[i - 1].tick + barsFromPrev * ticksPerBar;
     }
+    timeline.setTimeSignatureChanges(std::move(changes));
 }
 
 std::vector<TimeSignatureChange>
@@ -374,14 +310,24 @@ void MidiSequence::addKeySignatureChange(int tick, int sharpsOrFlats, bool isMin
     std::ranges::sort(keySignatureChanges, {}, &KeySignatureChange::tick);
 }
 
+const TimelineMap& MidiSequence::getTimeline() const
+{
+    return timeline;
+}
+
+void MidiSequence::setTicksPerQuarterNote(int ppq)
+{
+    timeline.setTicksPerQuarterNote(ppq);
+}
+
 void MidiSequence::setTempoChanges(std::vector<TempoChange> changes)
 {
-    tempoChanges = std::move(changes);
+    timeline.setTempoChanges(std::move(changes));
 }
 
 void MidiSequence::setTimeSignatureChanges(std::vector<TimeSignatureChange> changes)
 {
-    timeSignatureChanges = std::move(changes);
+    timeline.setTimeSignatureChanges(std::move(changes));
 }
 
 void MidiSequence::setKeySignatureChanges(std::vector<KeySignatureChange> changes)
@@ -412,7 +358,7 @@ MidiSequence::buildKeySignatureChangesAfterMove(const std::vector<KeySignatureCh
 
     std::vector<int> bars(before.size());
     for (size_t i = 0; i < before.size(); ++i)
-        bars[i] = tickToBarBeatTick(before[i].tick).bar;
+        bars[i] = timeline.tickToBarBeatTick(before[i].tick).bar;
 
     int prevMovingBar = -1;
     for (int i = 0; i < count; ++i)
@@ -425,9 +371,9 @@ MidiSequence::buildKeySignatureChangesAfterMove(const std::vector<KeySignatureCh
     }
 
     int clampedTarget = std::max(0, targetTick);
-    int targetBar = tickToBarBeatTick(clampedTarget).bar;
-    int targetBarStart = barStartToTick(targetBar);
-    if (clampedTarget - targetBarStart >= barStartToTick(targetBar + 1) - clampedTarget)
+    int targetBar = timeline.tickToBarBeatTick(clampedTarget).bar;
+    int targetBarStart = timeline.barStartToTick(targetBar);
+    if (clampedTarget - targetBarStart >= timeline.barStartToTick(targetBar + 1) - clampedTarget)
         ++targetBar;
     int delta = targetBar - bars[static_cast<size_t>(anchorIndex)];
 
@@ -445,7 +391,7 @@ MidiSequence::buildKeySignatureChangesAfterMove(const std::vector<KeySignatureCh
         {
             int nextTick = before[static_cast<size_t>(i + 1)].tick;
             int nextBar = bars[static_cast<size_t>(i + 1)];
-            int limit = barStartToTick(nextBar) == nextTick ? nextBar - 1 : nextBar;
+            int limit = timeline.barStartToTick(nextBar) == nextTick ? nextBar - 1 : nextBar;
             deltaHi = std::min(deltaHi, limit - bars[static_cast<size_t>(i)]);
         }
     }
@@ -456,7 +402,7 @@ MidiSequence::buildKeySignatureChangesAfterMove(const std::vector<KeySignatureCh
     auto result = before;
     for (int i = 0; i < count; ++i)
         if (isMoving[static_cast<size_t>(i)])
-            result[static_cast<size_t>(i)].tick = barStartToTick(bars[static_cast<size_t>(i)] + delta);
+            result[static_cast<size_t>(i)].tick = timeline.barStartToTick(bars[static_cast<size_t>(i)] + delta);
     return result;
 }
 
@@ -493,9 +439,9 @@ std::pair<int, int> MidiSequence::chordAddSpanAt(int tick) const
     if (governing >= 0 && !chordChanges[static_cast<size_t>(governing)].isNoChord())
         return {0, 0};
 
-    const int bar = tickToBarBeatTick(tick).bar;
-    const int barStart = barStartToTick(bar);
-    const int nextBarStart = barStartToTick(bar + 1);
+    const int bar = timeline.tickToBarBeatTick(tick).bar;
+    const int barStart = timeline.barStartToTick(bar);
+    const int nextBarStart = timeline.barStartToTick(bar + 1);
 
     int start = barStart;
     if (governing >= 0)
@@ -951,140 +897,6 @@ std::vector<ChordChange> MidiSequence::buildChordChangesAfterPaste(const std::ve
         result.push_back(cc);
     }
     return result;
-}
-
-double MidiSequence::ticksToSeconds(int ticks) const
-{
-    double seconds = 0.0;
-    int prevTick = 0;
-    double currentBpm = 120.0;
-
-    for (const auto& tc : tempoChanges)
-    {
-        if (tc.tick >= ticks)
-            break;
-
-        if (tc.tick > prevTick)
-        {
-            double ticksPerSecond = (currentBpm / 60.0) * ticksPerQuarterNote;
-            seconds += (tc.tick - prevTick) / ticksPerSecond;
-            prevTick = tc.tick;
-        }
-
-        currentBpm = tc.bpm;
-    }
-
-    double ticksPerSecond = (currentBpm / 60.0) * ticksPerQuarterNote;
-    seconds += (ticks - prevTick) / ticksPerSecond;
-
-    return seconds;
-}
-
-int MidiSequence::secondsToTicks(double seconds) const
-{
-    double accSeconds = 0.0;
-    int prevTick = 0;
-    double currentBpm = 120.0;
-
-    for (const auto& tc : tempoChanges)
-    {
-        double ticksPerSecond = (currentBpm / 60.0) * ticksPerQuarterNote;
-        double segmentSeconds = (tc.tick - prevTick) / ticksPerSecond;
-
-        if (accSeconds + segmentSeconds >= seconds)
-        {
-            double remainingSeconds = seconds - accSeconds;
-            return prevTick + floorTicks(remainingSeconds * ticksPerSecond);
-        }
-
-        accSeconds += segmentSeconds;
-        prevTick = tc.tick;
-        currentBpm = tc.bpm;
-    }
-
-    double ticksPerSecond = (currentBpm / 60.0) * ticksPerQuarterNote;
-    double remainingSeconds = seconds - accSeconds;
-    return prevTick + floorTicks(remainingSeconds * ticksPerSecond);
-}
-
-BarBeatTick MidiSequence::tickToBarBeatTick(int tick) const
-{
-    int bar = 1;
-    int pos = 0;
-
-    for (size_t i = 0; i < timeSignatureChanges.size(); ++i)
-    {
-        const auto& ts = timeSignatureChanges[i];
-        int ticksPerBeat = ticksPerQuarterNote * 4 / ts.denominator;
-        int ticksPerBar = ticksPerBeat * ts.numerator;
-
-        int nextChangeTick = (i + 1 < timeSignatureChanges.size()) ? timeSignatureChanges[i + 1].tick : tick + 1;
-
-        if (tick < nextChangeTick)
-        {
-            int ticksInThisSection = tick - pos;
-            int barsInSection = ticksInThisSection / ticksPerBar;
-            int remainder = ticksInThisSection % ticksPerBar;
-            bar += barsInSection;
-            int beat = remainder / ticksPerBeat + 1;
-            int tickInBeat = remainder % ticksPerBeat;
-            return {bar, beat, tickInBeat};
-        }
-
-        int sectionTicks = nextChangeTick - pos;
-        int barsInSection = sectionTicks / ticksPerBar;
-        bar += barsInSection;
-        pos = nextChangeTick;
-    }
-
-    return {bar, 1, 0};
-}
-
-int MidiSequence::barStartToTick(int targetBar) const
-{
-    if (targetBar <= 1)
-        return 0;
-
-    int bar = 1;
-    int pos = 0;
-
-    for (size_t i = 0; i < timeSignatureChanges.size(); ++i)
-    {
-        const auto& ts = timeSignatureChanges[i];
-        int ticksPerBeat = ticksPerQuarterNote * 4 / ts.denominator;
-        int ticksPerBar = ticksPerBeat * ts.numerator;
-
-        if (i + 1 < timeSignatureChanges.size())
-        {
-            int nextChangeTick = timeSignatureChanges[i + 1].tick;
-            int sectionTicks = nextChangeTick - pos;
-            int barsInSection = sectionTicks / ticksPerBar;
-
-            if (bar + barsInSection >= targetBar)
-                return pos + (targetBar - bar) * ticksPerBar;
-
-            bar += barsInSection;
-            pos = nextChangeTick;
-        }
-        else
-        {
-            return pos + (targetBar - bar) * ticksPerBar;
-        }
-    }
-
-    return 0;
-}
-
-int MidiSequence::barBeatTickToTick(int bar, int beat, int tickInBeat) const
-{
-    bar = std::max(1, bar);
-
-    int barStart = barStartToTick(bar);
-
-    auto ts = getTimeSignatureAt(barStart);
-    int ticksPerBeat = ticksPerQuarterNote * 4 / ts.denominator;
-
-    return std::max(0, barStart + (beat - 1) * ticksPerBeat + tickInBeat);
 }
 
 void MidiSequence::addListener(Listener* listener)

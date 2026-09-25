@@ -42,7 +42,7 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
     if (!sequence || selectedTempoIndices.empty())
         return;
 
-    auto before = sequence->getTempoChanges();
+    auto before = sequence->getTimeline().getTempoChanges();
     const int count = static_cast<int>(before.size());
 
     std::vector<TempoChange> after;
@@ -71,7 +71,7 @@ void TempoTrackStrip::copySelectedTempoPoints()
     if (!sequence || selectedTempoIndices.empty())
         return;
 
-    const auto& changes = sequence->getTempoChanges();
+    const auto& changes = sequence->getTimeline().getTempoChanges();
     const int count = static_cast<int>(changes.size());
 
     std::vector<TempoChange> points;
@@ -103,7 +103,7 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
     if (!sequence || !clipboard.hasTempoPoints())
         return;
 
-    auto before = sequence->getTempoChanges();
+    auto before = sequence->getTimeline().getTempoChanges();
     auto after = before;
 
     std::vector<int> pastedTicks;
@@ -127,7 +127,7 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
     }
 
     selectedTempoIndices.clear();
-    const auto& changes = sequence->getTempoChanges();
+    const auto& changes = sequence->getTimeline().getTempoChanges();
     for (int t : pastedTicks)
     {
         auto it = std::ranges::find(changes, t, &TempoChange::tick);
@@ -145,8 +145,8 @@ float TempoTrackStrip::tempoBpmToY(double bpm) const
     int graphTop = 3;
     int graphBottom = getHeight() - 4;
 
-    double range = MidiSequence::maxBpm - MidiSequence::minBpm;
-    double normalized = (bpm - MidiSequence::minBpm) / range;
+    double range = TimelineMap::maxBpm - TimelineMap::minBpm;
+    double normalized = (bpm - TimelineMap::minBpm) / range;
     return static_cast<float>(graphBottom - normalized * (graphBottom - graphTop));
 }
 
@@ -162,14 +162,14 @@ bool TempoTrackStrip::hitTestTempoLine(int x, int y, int& outTick, double& outBp
         return false;
 
     constexpr int tolerance = 5;
-    double activeBpm = sequence->getTempoAt(geometry.xToTick(x));
+    double activeBpm = sequence->getTimeline().getTempoAt(geometry.xToTick(x));
     float lineY = tempoBpmToY(activeBpm);
     if (std::abs(static_cast<float>(y) - lineY) > tolerance)
         return false;
 
     int tick = std::max(0, geometry.roundTickToGrid(geometry.xToTick(x)));
     outTick = tick;
-    outBpm = sequence->getTempoAt(tick);
+    outBpm = sequence->getTimeline().getTempoAt(tick);
     return true;
 }
 
@@ -178,9 +178,9 @@ double TempoTrackStrip::tempoYToBpm(int y) const
     int graphTop = 3;
     int graphBottom = getHeight() - 4;
 
-    double range = MidiSequence::maxBpm - MidiSequence::minBpm;
+    double range = TimelineMap::maxBpm - TimelineMap::minBpm;
     double normalized = static_cast<double>(graphBottom - y) / static_cast<double>(graphBottom - graphTop);
-    return MidiSequence::minBpm + normalized * range;
+    return TimelineMap::minBpm + normalized * range;
 }
 
 int TempoTrackStrip::hitTestTempoPoint(int x, int y) const
@@ -194,7 +194,7 @@ int TempoTrackStrip::hitTestTempoPoint(int x, int y) const
     if (x < viewLeftX + labelWidth())
         return -1;
 
-    const auto& changes = sequence->getTempoChanges();
+    const auto& changes = sequence->getTimeline().getTempoChanges();
     constexpr float hitRadius = 6.0f;
     float bandTop = 3.0f;
     float bandBottom = static_cast<float>(getHeight() - 4);
@@ -229,7 +229,7 @@ void TempoTrackStrip::paint(juce::Graphics& g)
 
     drawTrackGridLines(g, visibleLeft, visibleRight, 0.0f, static_cast<float>(getHeight()));
 
-    const auto& tempoChanges = sequence->getTempoChanges();
+    const auto& tempoChanges = sequence->getTimeline().getTempoChanges();
     juce::Colour amberColour = accent::base;
     if (tempoChanges.empty())
     {
@@ -363,7 +363,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
             return;
         }
 
-        tempoDragBefore = sequence->getTempoChanges();
+        tempoDragBefore = sequence->getTimeline().getTempoChanges();
         tempoDragIndex = pointIndex;
         isTempoPointDragging = true;
         tempoDragMoved = false;
@@ -379,7 +379,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
     double tempoBpm = 0.0;
     if (!e.mods.isShiftDown() && hitTestTempoLine(e.x, e.y, tempoTick, tempoBpm))
     {
-        const auto& changes = sequence->getTempoChanges();
+        const auto& changes = sequence->getTimeline().getTempoChanges();
         bool exists = std::any_of(changes.begin(), changes.end(),
                                   [tempoTick](const TempoChange& tc) { return tc.tick == tempoTick; });
         if (!exists)
@@ -454,15 +454,15 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
         }
         deltaTick = (deltaLo > deltaHi) ? 0 : std::clamp(deltaTick, deltaLo, deltaHi);
 
-        double groupMinBpm = MidiSequence::maxBpm;
-        double groupMaxBpm = MidiSequence::minBpm;
+        double groupMinBpm = TimelineMap::maxBpm;
+        double groupMaxBpm = TimelineMap::minBpm;
         for (int i : tempoDragGroup)
             if (i >= 0 && i < count)
             {
                 groupMinBpm = std::min(groupMinBpm, tempoDragBefore[i].bpm);
                 groupMaxBpm = std::max(groupMaxBpm, tempoDragBefore[i].bpm);
             }
-        deltaBpm = juce::jlimit(MidiSequence::minBpm - groupMinBpm, MidiSequence::maxBpm - groupMaxBpm, deltaBpm);
+        deltaBpm = juce::jlimit(TimelineMap::minBpm - groupMinBpm, TimelineMap::maxBpm - groupMaxBpm, deltaBpm);
 
         auto changes = tempoDragBefore;
         for (int i : tempoDragGroup)
@@ -486,7 +486,7 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
         int tickHi = geometry.xToTick(hi);
 
         selectedTempoIndices = tempoSelectBase;
-        const auto& changes = sequence->getTempoChanges();
+        const auto& changes = sequence->getTimeline().getTempoChanges();
         for (int i = 0; i < static_cast<int>(changes.size()); ++i)
             if (changes[i].tick >= tickLo && changes[i].tick <= tickHi)
                 selectedTempoIndices.insert(i);
@@ -506,7 +506,7 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
 
         if (tempoDragMoved)
         {
-            auto after = sequence->getTempoChanges();
+            auto after = sequence->getTimeline().getTempoChanges();
             undoManager.beginNewTransaction("Move Tempo Change");
             undoManager.perform(new ReplaceListAction<TempoChange>(sequence, tempoDragBefore, after));
             selectedTempoIndices = std::set<int>(tempoDragGroup.begin(), tempoDragGroup.end());

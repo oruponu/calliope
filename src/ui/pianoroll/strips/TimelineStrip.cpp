@@ -55,8 +55,9 @@ float TimelineStrip::playheadX() const
 {
     if (sequence == nullptr)
         return static_cast<float>(geometry.timelineStartX());
-    return static_cast<float>(geometry.timelineStartX() +
-                              playheadTick / sequence->getTicksPerQuarterNote() * geometry.getBeatWidth());
+    return static_cast<float>(geometry.timelineStartX() + playheadTick /
+                                                              sequence->getTimeline().getTicksPerQuarterNote() *
+                                                              geometry.getBeatWidth());
 }
 
 void TimelineStrip::drawLabelColumn(juce::Graphics& g)
@@ -99,14 +100,14 @@ void TimelineStrip::drawTrackGridLines(juce::Graphics& g, int visibleLeft, int v
     if (sequence == nullptr)
         return;
 
-    int ppq = sequence->getTicksPerQuarterNote();
+    int ppq = sequence->getTimeline().getTicksPerQuarterNote();
     int quantizeGrid = geometry.gridTicks();
     int totalTicks = geometry.xToTick(getWidth());
     int tick = 0;
 
     while (tick < totalTicks)
     {
-        auto ts = sequence->getTimeSignatureAt(tick);
+        auto ts = sequence->getTimeline().getTimeSignatureAt(tick);
         int ticksPerBeat = ppq * 4 / ts.denominator;
         int beatsInBar = ts.numerator;
         int barEndTick = tick + beatsInBar * ticksPerBeat;

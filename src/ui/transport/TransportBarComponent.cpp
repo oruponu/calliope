@@ -226,20 +226,20 @@ void TransportBarComponent::setLoopActive(bool active)
 void TransportBarComponent::commitPositionEdit()
 {
     int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto current = document.getSequence().tickToBarBeatTick(currentTick);
+    auto current = document.getSequence().getTimeline().tickToBarBeatTick(currentTick);
 
     int bar = positionBarLabel.getText().isEmpty() ? current.bar : positionBarLabel.getText().getIntValue();
     int beat = positionBeatLabel.getText().isEmpty() ? current.beat : positionBeatLabel.getText().getIntValue();
     int tickInBeat = positionTickLabel.getText().isEmpty() ? current.tick : positionTickLabel.getText().getIntValue();
 
-    jumpToTick(document.getSequence().barBeatTickToTick(bar, beat, tickInBeat));
+    jumpToTick(document.getSequence().getTimeline().barBeatTickToTick(bar, beat, tickInBeat));
 }
 
 void TransportBarComponent::nudgePosition(PositionUnit unit, int direction)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ts = document.getSequence().getTimeSignatureAt(tick);
-    int ticksPerBeat = document.getSequence().getTicksPerQuarterNote() * 4 / ts.denominator;
+    auto ts = document.getSequence().getTimeline().getTimeSignatureAt(tick);
+    int ticksPerBeat = document.getSequence().getTimeline().getTicksPerQuarterNote() * 4 / ts.denominator;
 
     int step = 1;
     switch (unit)
@@ -270,7 +270,7 @@ void TransportBarComponent::commitTempoEdit()
 void TransportBarComponent::nudgeTempo(int direction)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto tc = document.getSequence().getTempoChangeAt(tick);
+    auto tc = document.getSequence().getTimeline().getTempoChangeAt(tick);
 
     setTempoAtPlayhead(juce::roundToInt(tc.bpm) + direction);
 }
@@ -278,9 +278,9 @@ void TransportBarComponent::nudgeTempo(int direction)
 void TransportBarComponent::setTempoAtPlayhead(double bpm)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto tc = document.getSequence().getTempoChangeAt(tick);
+    auto tc = document.getSequence().getTimeline().getTempoChangeAt(tick);
 
-    double clamped = juce::jlimit(MidiSequence::minBpm, MidiSequence::maxBpm, bpm);
+    double clamped = juce::jlimit(TimelineMap::minBpm, TimelineMap::maxBpm, bpm);
     if (clamped == tc.bpm)
     {
         updateDisplay();
@@ -295,7 +295,7 @@ void TransportBarComponent::setTempoAtPlayhead(double bpm)
 void TransportBarComponent::commitTimeSignatureEdit()
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ts = document.getSequence().getTimeSignatureAt(tick);
+    auto ts = document.getSequence().getTimeline().getTimeSignatureAt(tick);
 
     int num = timeSigNumLabel.getText().isEmpty() ? ts.numerator : timeSigNumLabel.getText().getIntValue();
     int den = timeSigDenLabel.getText().isEmpty() ? ts.denominator : timeSigDenLabel.getText().getIntValue();
@@ -306,7 +306,7 @@ void TransportBarComponent::commitTimeSignatureEdit()
 void TransportBarComponent::nudgeTimeSignature(TimeSigUnit unit, int direction)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ts = document.getSequence().getTimeSignatureAt(tick);
+    auto ts = document.getSequence().getTimeline().getTimeSignatureAt(tick);
 
     if (unit == TimeSigUnit::Numerator)
         setTimeSignatureAtPlayhead(ts.numerator + direction, ts.denominator);
@@ -317,7 +317,7 @@ void TransportBarComponent::nudgeTimeSignature(TimeSigUnit unit, int direction)
 void TransportBarComponent::setTimeSignatureAtPlayhead(int num, int den)
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
-    auto ts = document.getSequence().getTimeSignatureAt(tick);
+    auto ts = document.getSequence().getTimeline().getTimeSignatureAt(tick);
 
     auto snapToPowerOfTwo = [](int value)
     {
@@ -393,7 +393,7 @@ void TransportBarComponent::updateDisplay()
 {
     int tick = static_cast<int>(playbackEngine.getCurrentTick());
 
-    auto bbt = document.getSequence().tickToBarBeatTick(tick);
+    auto bbt = document.getSequence().getTimeline().tickToBarBeatTick(tick);
     if (positionBarLabel.getCurrentTextEditor() == nullptr)
         positionBarLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3), juce::dontSendNotification);
     if (positionBeatLabel.getCurrentTextEditor() == nullptr)
@@ -401,7 +401,7 @@ void TransportBarComponent::updateDisplay()
     if (positionTickLabel.getCurrentTextEditor() == nullptr)
         positionTickLabel.setText(juce::String(bbt.tick).paddedLeft('0', 4), juce::dontSendNotification);
 
-    auto ts = document.getSequence().getTimeSignatureAt(tick);
+    auto ts = document.getSequence().getTimeline().getTimeSignatureAt(tick);
     if (timeSigNumLabel.getCurrentTextEditor() == nullptr)
         timeSigNumLabel.setText(juce::String(ts.numerator), juce::dontSendNotification);
     if (timeSigDenLabel.getCurrentTextEditor() == nullptr)
@@ -420,7 +420,7 @@ void TransportBarComponent::updateDisplay()
 
     if (tempoValueLabel.getCurrentTextEditor() == nullptr)
     {
-        double tempo = document.getSequence().getTempoAt(tick);
+        double tempo = document.getSequence().getTimeline().getTempoAt(tick);
         tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
     }
 }

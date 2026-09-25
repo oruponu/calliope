@@ -17,8 +17,8 @@ double PlaybackSnapshot::getTempoAt(int tick) const
 PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq)
 {
     PlaybackSnapshot snap;
-    snap.ticksPerQuarterNote = seq.getTicksPerQuarterNote();
-    snap.tempoChanges = seq.getTempoChanges();
+    snap.ticksPerQuarterNote = seq.getTimeline().getTicksPerQuarterNote();
+    snap.tempoChanges = seq.getTimeline().getTempoChanges();
     std::stable_sort(snap.tempoChanges.begin(), snap.tempoChanges.end(),
                      [](const TempoChange& a, const TempoChange& b) { return a.tick < b.tick; });
 

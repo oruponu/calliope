@@ -87,8 +87,8 @@ void KeySignatureStrip::copySelectedKeySignatures()
     std::vector<RelativeKeySignature> items;
     for (int i : selectedKeySigIndices)
         if (i >= 0 && i < count)
-            items.push_back(
-                {sequence->tickToBarBeatTick(changes[i].tick).bar, changes[i].sharpsOrFlats, changes[i].isMinor});
+            items.push_back({sequence->getTimeline().tickToBarBeatTick(changes[i].tick).bar, changes[i].sharpsOrFlats,
+                             changes[i].isMinor});
 
     if (items.empty())
         return;
@@ -114,14 +114,14 @@ void KeySignatureStrip::pasteKeySignatures(int atTick)
     if (!sequence || !clipboard.hasKeySignatures())
         return;
 
-    const int anchorBar = sequence->tickToBarBeatTick(std::max(0, atTick)).bar;
+    const int anchorBar = sequence->getTimeline().tickToBarBeatTick(std::max(0, atTick)).bar;
     auto before = sequence->getKeySignatureChanges();
     auto after = before;
 
     std::vector<int> pastedTicks;
     for (const auto& item : clipboard.getKeySignatures())
     {
-        const int tick = sequence->barStartToTick(anchorBar + item.barOffset);
+        const int tick = sequence->getTimeline().barStartToTick(anchorBar + item.barOffset);
         pastedTicks.push_back(tick);
         auto it = std::ranges::find(after, tick, &KeySignatureChange::tick);
         if (it != after.end())
@@ -456,7 +456,8 @@ void KeySignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
     isKeySigRangeSelecting = false;
     keySigSelectBase.clear();
 
-    int barStart = sequence->barStartToTick(sequence->tickToBarBeatTick(std::max(0, geometry.xToTick(e.x))).bar);
+    int barStart = sequence->getTimeline().barStartToTick(
+        sequence->getTimeline().tickToBarBeatTick(std::max(0, geometry.xToTick(e.x))).bar);
 
     const auto& changes = sequence->getKeySignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)

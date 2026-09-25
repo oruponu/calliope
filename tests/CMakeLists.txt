@@ -3,6 +3,7 @@ add_executable(CalliopeTests
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/TimelineMap.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/KeySignatureName.cpp
 )
@@ -20,6 +21,7 @@ target_sources(CalliopeTests PRIVATE
     model/ChordPasteTests.cpp
     model/ChordResizeTests.cpp
     model/ChordStartResizeTests.cpp
+    model/DefaultTimelineTests.cpp
     model/KeySignatureMoveTests.cpp
     model/TempoAddChangeTests.cpp
     model/TickSecondsTests.cpp

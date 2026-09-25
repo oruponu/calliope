@@ -31,7 +31,7 @@ struct PlaybackSnapshot
     std::vector<ScheduledNote> notes;
     std::vector<ScheduledEvent> events;
     std::vector<TempoChange> tempoChanges;
-    int ticksPerQuarterNote = MidiSequence::defaultTicksPerQuarterNote;
+    int ticksPerQuarterNote = TimelineMap::defaultTicksPerQuarterNote;
 
     double getTempoAt(int tick) const;
     static PlaybackSnapshot build(const MidiSequence& seq);
