@@ -1,5 +1,8 @@
 #pragma once
 
+#include "edit/ChordTrackEdits.h"
+#include "edit/KeySignatureEdits.h"
+#include "edit/TimeSignatureEdits.h"
 #include "model/MidiNote.h"
 #include "model/MidiSequence.h"
 #include <utility>

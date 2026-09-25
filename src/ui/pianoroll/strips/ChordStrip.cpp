@@ -1,11 +1,12 @@
 #include "ui/pianoroll/strips/ChordStrip.h"
+#include "edit/ChordTrackEdits.h"
 #include "ui/theme/Theme.h"
-#include "undo/ChordActions.h"
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
 #include <climits>
 #include <cstdlib>
 #include <memory>
+#include <utility>
 
 namespace
 {
@@ -66,7 +67,7 @@ void ChordStrip::deleteSelectedChordsImpl(const juce::String& transactionName)
         return;
 
     auto before = sequence->getChordChanges();
-    auto after = MidiSequence::buildChordChangesAfterDelete(
+    auto after = ChordTrackEdits::afterDelete(
         before, std::vector<int>(selectedChordIndices.begin(), selectedChordIndices.end()));
     if (after == before)
         return;
@@ -121,7 +122,7 @@ void ChordStrip::pasteChords(int atTick)
 
     const int anchorTick = geometry.floorTickToGrid(std::max(0, atTick));
     auto before = sequence->getChordChanges();
-    auto after = MidiSequence::buildChordChangesAfterPaste(before, clipboard.getChords(), anchorTick);
+    auto after = ChordTrackEdits::afterPaste(before, clipboard.getChords(), anchorTick);
 
     const bool changed = (after != before);
     if (changed)
@@ -556,7 +557,7 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
         if (chordResizeIndex < 0 || chordResizeIndex >= static_cast<int>(chordResizeBefore.size()))
             return;
 
-        sequence->setChordChanges(MidiSequence::buildChordChangesAfterResize(
+        sequence->setChordChanges(ChordTrackEdits::afterResize(
             chordResizeBefore, chordResizeIndex, geometry.xToTick(e.x) - chordResizeGrabOffset, geometry.gridTicks()));
         remapSelectionAfterResize(chordResizeBefore, chordResizeIndex, ResizeEdge::Right);
         repaint();
@@ -568,9 +569,9 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
         if (chordStartResizeIndex < 0 || chordStartResizeIndex >= static_cast<int>(chordStartResizeBefore.size()))
             return;
 
-        sequence->setChordChanges(MidiSequence::buildChordChangesAfterStartResize(
-            chordStartResizeBefore, chordStartResizeIndex, geometry.xToTick(e.x) - chordStartResizeGrabOffset,
-            geometry.gridTicks()));
+        sequence->setChordChanges(ChordTrackEdits::afterStartResize(chordStartResizeBefore, chordStartResizeIndex,
+                                                                    geometry.xToTick(e.x) - chordStartResizeGrabOffset,
+                                                                    geometry.gridTicks()));
         remapSelectionAfterResize(chordStartResizeBefore, chordStartResizeIndex, ResizeEdge::Left);
         repaint();
         return;
@@ -581,9 +582,9 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
         if (chordMoveIndex < 0 || chordMoveIndex >= static_cast<int>(chordMoveBefore.size()))
             return;
 
-        sequence->setChordChanges(MidiSequence::buildChordChangesAfterMove(
-            chordMoveBefore, chordMoveGroup, chordMoveIndex, geometry.xToTick(e.x) - chordMoveGrabOffset,
-            geometry.gridTicks()));
+        sequence->setChordChanges(ChordTrackEdits::afterMove(chordMoveBefore, chordMoveGroup, chordMoveIndex,
+                                                             geometry.xToTick(e.x) - chordMoveGrabOffset,
+                                                             geometry.gridTicks()));
         selectMovedChords(chordMoveIndex, geometry.xToTick(e.x) - chordMoveGrabOffset);
         repaint();
         return;
@@ -635,7 +636,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
 
         const bool validIndex = resizedIndex >= 0 && resizedIndex < static_cast<int>(chordResizeBefore.size());
         if (validIndex && e.mouseWasDraggedSinceMouseDown())
-            sequence->setChordChanges(MidiSequence::buildChordChangesAfterResize(
+            sequence->setChordChanges(ChordTrackEdits::afterResize(
                 chordResizeBefore, resizedIndex, geometry.xToTick(e.x) - chordResizeGrabOffset, geometry.gridTicks()));
 
         const auto& changes = sequence->getChordChanges();
@@ -684,7 +685,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         }
 
         if (e.mouseWasDraggedSinceMouseDown())
-            sequence->setChordChanges(MidiSequence::buildChordChangesAfterStartResize(
+            sequence->setChordChanges(ChordTrackEdits::afterStartResize(
                 chordStartResizeBefore, movedIndex, geometry.xToTick(e.x) - chordStartResizeGrabOffset,
                 geometry.gridTicks()));
 
@@ -734,9 +735,9 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         }
 
         if (e.mouseWasDraggedSinceMouseDown())
-            sequence->setChordChanges(MidiSequence::buildChordChangesAfterMove(
-                chordMoveBefore, chordMoveGroup, movedIndex, geometry.xToTick(e.x) - chordMoveGrabOffset,
-                geometry.gridTicks()));
+            sequence->setChordChanges(ChordTrackEdits::afterMove(chordMoveBefore, chordMoveGroup, movedIndex,
+                                                                 geometry.xToTick(e.x) - chordMoveGrabOffset,
+                                                                 geometry.gridTicks()));
 
         const auto& changes = sequence->getChordChanges();
         if (changes != chordMoveBefore)
@@ -814,7 +815,8 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
         return;
     }
 
-    auto [startTick, endTick] = sequence->chordAddSpanAt(std::max(0, geometry.xToTick(e.x)));
+    auto [startTick, endTick] = ChordTrackEdits::addSpanAt(sequence->getChordChanges(),
+                                                           std::max(0, geometry.xToTick(e.x)), sequence->getTimeline());
     if (endTick <= startTick)
         return;
 
@@ -892,8 +894,8 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
 
     if (chordEditIsNew)
     {
-        auto after = MidiSequence::buildChordChangesAfterAdd(
-            sequence->getChordChanges(), chordEditTick, chordEditEndTick, chordRoot, chordType, bassRoot, bassType);
+        auto after = ChordTrackEdits::afterAdd(sequence->getChordChanges(), chordEditTick, chordEditEndTick, chordRoot,
+                                               chordType, bassRoot, bassType);
         undoManager.beginNewTransaction("Add Chord");
         undoManager.perform(
             new ReplaceListAction<ChordChange>(sequence, sequence->getChordChanges(), std::move(after)));
@@ -910,7 +912,10 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
         }
 
         undoManager.beginNewTransaction("Edit Chord");
-        undoManager.perform(new ChordChangeAction(sequence, chordEditTick, chordRoot, chordType, bassRoot, bassType));
+        auto before = sequence->getChordChanges();
+        auto after = before;
+        ChordTrackEdits::add(after, chordEditTick, chordRoot, chordType, bassRoot, bassType);
+        undoManager.perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), std::move(after)));
     }
 
     const auto& changes = sequence->getChordChanges();

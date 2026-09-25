@@ -9,8 +9,7 @@ std::vector<ChordChange> add(const std::vector<ChordChange>& before, int startTi
                              const std::string& name)
 {
     const auto c = chord(0, name);
-    return MidiSequence::buildChordChangesAfterAdd(before, startTick, endTick, c.chordRoot, c.chordType, c.bassRoot,
-                                                   c.bassType);
+    return ChordTrackEdits::afterAdd(before, startTick, endTick, c.chordRoot, c.chordType, c.bassRoot, c.bassType);
 }
 } // namespace
 
@@ -57,7 +56,7 @@ TEST_CASE("the same chord can be added next to itself", "[chord][add]")
 
 TEST_CASE("bass fields are written as given", "[chord][add]")
 {
-    const auto after = MidiSequence::buildChordChangesAfterAdd({}, 0, 1920, 0x31, 0, 0x33, 0);
+    const auto after = ChordTrackEdits::afterAdd({}, 0, 1920, 0x31, 0, 0x33, 0);
     const std::vector<ChordChange> expected{{0, 0x31, 0, 0x33, 0}, chord(1920, "N.C.")};
     CHECK(after == expected);
 }

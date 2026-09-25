@@ -13,7 +13,7 @@ std::vector<TimeSignatureChange> threeSections()
 std::vector<TimeSignatureChange> paste(const std::vector<TimeSignatureChange>& before,
                                        const std::vector<RelativeTimeSignature>& items, int anchorBar)
 {
-    return MidiSequence::buildTimeSignatureChangesAfterPaste(before, items, anchorBar, ppq);
+    return TimeSignatureEdits::afterPaste(before, items, anchorBar, ppq);
 }
 } // namespace
 

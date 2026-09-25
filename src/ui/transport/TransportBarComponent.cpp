@@ -1,11 +1,13 @@
 #include "ui/transport/TransportBarComponent.h"
 #include "document/Document.h"
+#include "edit/KeySignatureEdits.h"
+#include "edit/TempoEdits.h"
+#include "edit/TimeSignatureEdits.h"
 #include "engine/PlaybackEngine.h"
 #include "notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
-#include "undo/KeySignatureActions.h"
-#include "undo/TempoActions.h"
-#include "undo/TimeSignatureActions.h"
+#include "undo/ReplaceListAction.h"
+#include <utility>
 
 TransportBarComponent::TransportBarComponent(Document& documentRef, PlaybackEngine& playbackEngineRef)
     : document(documentRef), playbackEngine(playbackEngineRef)
@@ -288,7 +290,11 @@ void TransportBarComponent::setTempoAtPlayhead(double bpm)
     }
 
     document.getUndoManager().beginNewTransaction();
-    document.getUndoManager().perform(new TempoChangeAction(&document.getSequence(), tc.tick, clamped));
+    auto before = document.getSequence().getTimeline().getTempoChanges();
+    auto after = before;
+    TempoEdits::add(after, tc.tick, clamped);
+    document.getUndoManager().perform(
+        new ReplaceListAction<TempoChange>(&document.getSequence(), std::move(before), std::move(after)));
     playbackEngine.rebuildSnapshot();
 }
 
@@ -339,7 +345,11 @@ void TransportBarComponent::setTimeSignatureAtPlayhead(int num, int den)
     }
 
     document.getUndoManager().beginNewTransaction();
-    document.getUndoManager().perform(new TimeSignatureChangeAction(&document.getSequence(), ts.tick, num, den));
+    auto before = document.getSequence().getTimeline().getTimeSignatureChanges();
+    auto after = before;
+    TimeSignatureEdits::add(after, ts.tick, num, den, document.getSequence().getTimeline().getTicksPerQuarterNote());
+    document.getUndoManager().perform(
+        new ReplaceListAction<TimeSignatureChange>(&document.getSequence(), std::move(before), std::move(after)));
 }
 
 void TransportBarComponent::commitKeySignatureEdit()
@@ -385,8 +395,11 @@ void TransportBarComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool is
     }
 
     document.getUndoManager().beginNewTransaction();
+    auto before = document.getSequence().getKeySignatureChanges();
+    auto after = before;
+    KeySignatureEdits::add(after, ks.tick, sharpsOrFlats, isMinor);
     document.getUndoManager().perform(
-        new KeySignatureChangeAction(&document.getSequence(), ks.tick, sharpsOrFlats, isMinor));
+        new ReplaceListAction<KeySignatureChange>(&document.getSequence(), std::move(before), std::move(after)));
 }
 
 void TransportBarComponent::updateDisplay()

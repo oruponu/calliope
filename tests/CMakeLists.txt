@@ -1,4 +1,8 @@
 add_executable(CalliopeTests
+    ${PROJECT_SOURCE_DIR}/src/edit/ChordTrackEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
@@ -9,26 +13,27 @@ add_executable(CalliopeTests
 )
 
 target_sources(CalliopeTests PRIVATE
+    edit/ChordAddChangeTests.cpp
+    edit/ChordAddSpanTests.cpp
+    edit/ChordAddTests.cpp
+    edit/ChordDeleteTests.cpp
+    edit/ChordMoveTests.cpp
+    edit/ChordPasteTests.cpp
+    edit/ChordResizeTests.cpp
+    edit/ChordStartResizeTests.cpp
+    edit/KeySignatureAddChangeTests.cpp
+    edit/KeySignatureMoveTests.cpp
+    edit/TempoAddChangeTests.cpp
+    edit/TimeSignatureAddChangeTests.cpp
+    edit/TimeSignatureDeleteTests.cpp
+    edit/TimeSignatureMoveTests.cpp
+    edit/TimeSignaturePasteTests.cpp
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp
     model/BarBeatTickTests.cpp
-    model/ChordAddChangeTests.cpp
-    model/ChordAddSpanTests.cpp
-    model/ChordAddTests.cpp
     model/ChordChangeTests.cpp
-    model/ChordDeleteTests.cpp
-    model/ChordMoveTests.cpp
-    model/ChordPasteTests.cpp
-    model/ChordResizeTests.cpp
-    model/ChordStartResizeTests.cpp
     model/DefaultTimelineTests.cpp
-    model/KeySignatureMoveTests.cpp
-    model/TempoAddChangeTests.cpp
     model/TickSecondsTests.cpp
-    model/TimeSignatureAddChangeTests.cpp
-    model/TimeSignatureDeleteTests.cpp
-    model/TimeSignatureMoveTests.cpp
-    model/TimeSignaturePasteTests.cpp
     model/TimelineLookupTests.cpp
     notation/ChordSymbolTests.cpp
     notation/KeySignatureNameTests.cpp

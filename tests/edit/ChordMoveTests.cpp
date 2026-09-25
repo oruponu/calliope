@@ -18,7 +18,7 @@ std::vector<ChordChange> group()
 std::vector<ChordChange> moveChords(const std::vector<ChordChange>& before, const std::vector<int>& moved, int anchor,
                                     int target)
 {
-    return MidiSequence::buildChordChangesAfterMove(before, moved, anchor, target, grid);
+    return ChordTrackEdits::afterMove(before, moved, anchor, target, grid);
 }
 } // namespace
 
@@ -97,5 +97,5 @@ TEST_CASE("move is a no-op in degenerate cases", "[chord][move]")
     CHECK(moveChords(before, {1}, 0, 3840) == before);
     CHECK(moveChords(before, {2}, 2, 5760) == before);
     CHECK(moveChords(before, {-1, 99}, 1, 3840) == before);
-    CHECK(MidiSequence::buildChordChangesAfterMove(before, {1}, 1, 3840, 0) == before);
+    CHECK(ChordTrackEdits::afterMove(before, {1}, 1, 3840, 0) == before);
 }

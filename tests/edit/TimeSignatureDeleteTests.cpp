@@ -12,7 +12,7 @@ std::vector<TimeSignatureChange> threeSections()
 
 std::vector<TimeSignatureChange> deleteAt(const std::vector<TimeSignatureChange>& before, const std::set<int>& indices)
 {
-    return MidiSequence::buildTimeSignatureChangesAfterDelete(before, indices, ppq);
+    return TimeSignatureEdits::afterDelete(before, indices, ppq);
 }
 } // namespace
 

@@ -24,6 +24,10 @@ target_sources(Calliope PRIVATE
     src/MainComponent.cpp
     src/audio/MidiDeviceOutput.cpp
     src/document/Document.cpp
+    src/edit/ChordTrackEdits.cpp
+    src/edit/KeySignatureEdits.cpp
+    src/edit/TempoEdits.cpp
+    src/edit/TimeSignatureEdits.cpp
     src/engine/PlaybackEngine.cpp
     src/engine/PlaybackProcessor.cpp
     src/engine/PlaybackSnapshot.cpp

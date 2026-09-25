@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/MidiSequence.h"
+#include "edit/ChordTrackEdits.h"
 #include "notation/ChordSymbol.h"
 #include <catch2/catch_tostring.hpp>
 #include <format>
