@@ -9,6 +9,7 @@ target_sources(CalliopeTests PRIVATE
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp
     model/BarBeatTickTests.cpp
+    model/ChordAddChangeTests.cpp
     model/ChordAddSpanTests.cpp
     model/ChordAddTests.cpp
     model/ChordDeleteTests.cpp
@@ -19,7 +20,9 @@ target_sources(CalliopeTests PRIVATE
     model/ChordSymbolTests.cpp
     model/KeySignatureMoveTests.cpp
     model/KeySignatureNameTests.cpp
+    model/TempoAddChangeTests.cpp
     model/TickSecondsTests.cpp
+    model/TimeSignatureAddChangeTests.cpp
     model/TimeSignatureDeleteTests.cpp
     model/TimeSignatureMoveTests.cpp
     model/TimeSignaturePasteTests.cpp
