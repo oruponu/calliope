@@ -14,6 +14,9 @@ target_sources(CalliopeTests PRIVATE
     model/ChordPasteTests.cpp
     model/ChordResizeTests.cpp
     model/ChordStartResizeTests.cpp
+    model/TimeSignatureDeleteTests.cpp
+    model/TimeSignatureMoveTests.cpp
+    model/TimeSignaturePasteTests.cpp
 )
 
 target_include_directories(CalliopeTests PRIVATE
