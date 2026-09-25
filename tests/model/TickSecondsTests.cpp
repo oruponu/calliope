@@ -39,18 +39,7 @@ TEST_CASE("ticks round-trip through seconds", "[timeline][seconds]")
 {
     MidiSequence seq;
     seq.setTempoChanges({{0, 120.0}, {1920, 60.0}, {5000, 100.0}});
-    for (int t : {0, 1, 479, 1919, 1920, 4999, 5000, 5001, 100003})
-    {
-        CAPTURE(t);
-        CHECK(seq.secondsToTicks(seq.ticksToSeconds(t)) == t);
-    }
-}
-
-TEST_CASE("ticks round-trip through seconds (pending)", "[timeline][seconds][!mayfail]")
-{
-    MidiSequence seq;
-    seq.setTempoChanges({{0, 120.0}, {1920, 60.0}, {5000, 100.0}});
-    for (int t : {1921, 7777})
+    for (int t : {0, 1, 479, 1919, 1920, 1921, 4999, 5000, 5001, 7777, 100003})
     {
         CAPTURE(t);
         CHECK(seq.secondsToTicks(seq.ticksToSeconds(t)) == t);

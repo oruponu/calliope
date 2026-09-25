@@ -25,6 +25,13 @@ constexpr int chordNoteSemitones[] = {-1, 0, 2, 4, 5, 7, 9, 11};
 constexpr int sharpRoots[] = {0x31, 0x41, 0x32, 0x42, 0x33, 0x34, 0x44, 0x35, 0x45, 0x36, 0x46, 0x37};
 constexpr int flatRoots[] = {0x31, 0x22, 0x32, 0x23, 0x33, 0x34, 0x25, 0x35, 0x26, 0x36, 0x27, 0x37};
 constexpr int mixedRoots[] = {0x31, 0x41, 0x32, 0x23, 0x33, 0x34, 0x44, 0x35, 0x26, 0x36, 0x27, 0x37};
+
+// tick counts converted back from seconds can land just below an integer (e.g. 1920.9999999)
+// when one tick is not a binary-exact number of seconds; absorb that before truncating
+int floorTicks(double ticks)
+{
+    return static_cast<int>(std::floor(ticks + 1e-6));
+}
 } // namespace
 
 MidiSequence::MidiSequence()
@@ -1227,7 +1234,7 @@ int MidiSequence::secondsToTicks(double seconds) const
         if (accSeconds + segmentSeconds >= seconds)
         {
             double remainingSeconds = seconds - accSeconds;
-            return prevTick + static_cast<int>(remainingSeconds * ticksPerSecond);
+            return prevTick + floorTicks(remainingSeconds * ticksPerSecond);
         }
 
         accSeconds += segmentSeconds;
@@ -1237,7 +1244,7 @@ int MidiSequence::secondsToTicks(double seconds) const
 
     double ticksPerSecond = (currentBpm / 60.0) * ticksPerQuarterNote;
     double remainingSeconds = seconds - accSeconds;
-    return prevTick + static_cast<int>(remainingSeconds * ticksPerSecond);
+    return prevTick + floorTicks(remainingSeconds * ticksPerSecond);
 }
 
 BarBeatTick MidiSequence::tickToBarBeatTick(int tick) const
