@@ -6,14 +6,10 @@
 #include <cmath>
 #include <limits>
 
-TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef)
-    : TimelineStrip(geometryRef, "Tempo"), clipboard(clipboardRef)
+TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
+                                 juce::UndoManager& undoManagerRef)
+    : TimelineStrip(geometryRef, "Tempo"), clipboard(clipboardRef), undoManager(undoManagerRef)
 {
-}
-
-void TempoTrackStrip::setUndoManager(juce::UndoManager* um)
-{
-    undoManager = um;
 }
 
 void TempoTrackStrip::setSequence(MidiSequence* seq)
@@ -61,15 +57,8 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
     if (after.size() == before.size())
         return;
 
-    if (undoManager)
-    {
-        undoManager->beginNewTransaction(transactionName);
-        undoManager->perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), std::move(after)));
-    }
-    else
-    {
-        sequence->setTempoChanges(std::move(after));
-    }
+    undoManager.beginNewTransaction(transactionName);
+    undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), std::move(after)));
 
     selectedTempoIndices.clear();
     repaint();
@@ -133,15 +122,8 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        if (undoManager)
-        {
-            undoManager->beginNewTransaction("Paste Tempo Changes");
-            undoManager->perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), after));
-        }
-        else
-        {
-            sequence->setTempoChanges(after);
-        }
+        undoManager.beginNewTransaction("Paste Tempo Changes");
+        undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), after));
     }
 
     selectedTempoIndices.clear();
@@ -403,17 +385,10 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
         if (!exists)
         {
             int addedIndex = -1;
-            if (undoManager)
-            {
-                undoManager->beginNewTransaction("Add Tempo Change");
-                auto* action = new TempoChangeAction(sequence, tempoTick, tempoBpm);
-                undoManager->perform(action);
-                addedIndex = action->getAddedIndex();
-            }
-            else
-            {
-                addedIndex = sequence->addTempoChange(tempoTick, tempoBpm);
-            }
+            undoManager.beginNewTransaction("Add Tempo Change");
+            auto* action = new TempoChangeAction(sequence, tempoTick, tempoBpm);
+            undoManager.perform(action);
+            addedIndex = action->getAddedIndex();
             if (onSelectionTaken)
                 onSelectionTaken();
             selectedTempoIndices.clear();
@@ -532,11 +507,8 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
         if (tempoDragMoved)
         {
             auto after = sequence->getTempoChanges();
-            if (undoManager)
-            {
-                undoManager->beginNewTransaction("Move Tempo Change");
-                undoManager->perform(new ReplaceListAction<TempoChange>(sequence, tempoDragBefore, after));
-            }
+            undoManager.beginNewTransaction("Move Tempo Change");
+            undoManager.perform(new ReplaceListAction<TempoChange>(sequence, tempoDragBefore, after));
             selectedTempoIndices = std::set<int>(tempoDragGroup.begin(), tempoDragGroup.end());
             if (onTempoChanged)
                 onTempoChanged();

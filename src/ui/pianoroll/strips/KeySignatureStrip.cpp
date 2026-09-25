@@ -14,19 +14,15 @@ bool keySignatureTicksEqual(const std::vector<KeySignatureChange>& a, const std:
 }
 } // namespace
 
-KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef)
-    : TimelineStrip(geometryRef, "Key"), clipboard(clipboardRef)
+KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
+                                     juce::UndoManager& undoManagerRef)
+    : TimelineStrip(geometryRef, "Key"), clipboard(clipboardRef), undoManager(undoManagerRef)
 {
 }
 
 KeySignatureStrip::~KeySignatureStrip()
 {
     closeKeySignatureEditor();
-}
-
-void KeySignatureStrip::setUndoManager(juce::UndoManager* um)
-{
-    undoManager = um;
 }
 
 void KeySignatureStrip::setSequence(MidiSequence* seq)
@@ -72,16 +68,8 @@ void KeySignatureStrip::deleteSelectedKeySignaturesImpl(const juce::String& tran
     if (after.size() == before.size())
         return;
 
-    if (undoManager)
-    {
-        undoManager->beginNewTransaction(transactionName);
-        undoManager->perform(new ReplaceListAction<KeySignatureChange>(sequence, std::move(before), std::move(after)));
-    }
-    else
-    {
-        sequence->setKeySignatureChanges(std::move(after));
-        sequence->notifyTimelineMetadataChanged();
-    }
+    undoManager.beginNewTransaction(transactionName);
+    undoManager.perform(new ReplaceListAction<KeySignatureChange>(sequence, std::move(before), std::move(after)));
 
     clearKeySignatureSelection();
     repaint();
@@ -148,16 +136,8 @@ void KeySignatureStrip::pasteKeySignatures(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        if (undoManager)
-        {
-            undoManager->beginNewTransaction("Paste Key Signature Changes");
-            undoManager->perform(new ReplaceListAction<KeySignatureChange>(sequence, std::move(before), after));
-        }
-        else
-        {
-            sequence->setKeySignatureChanges(after);
-            sequence->notifyTimelineMetadataChanged();
-        }
+        undoManager.beginNewTransaction("Paste Key Signature Changes");
+        undoManager.perform(new ReplaceListAction<KeySignatureChange>(sequence, std::move(before), after));
     }
 
     selectedKeySigIndices.clear();
@@ -415,15 +395,8 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
 
         if (movedFinal)
         {
-            if (undoManager)
-            {
-                undoManager->beginNewTransaction("Move Key Signature Change");
-                undoManager->perform(new ReplaceListAction<KeySignatureChange>(sequence, keySigDragBefore, changes));
-            }
-            else
-            {
-                sequence->notifyTimelineMetadataChanged();
-            }
+            undoManager.beginNewTransaction("Move Key Signature Change");
+            undoManager.perform(new ReplaceListAction<KeySignatureChange>(sequence, keySigDragBefore, changes));
             if (onSelectionTaken)
                 onSelectionTaken();
             selectedKeySigIndices = std::set<int>(keySigDragGroup.begin(), keySigDragGroup.end());
@@ -552,16 +525,8 @@ void KeySignatureStrip::commitKeySignatureEdit(int sharpsOrFlats, bool isMinor)
         return;
     }
 
-    if (undoManager)
-    {
-        undoManager->beginNewTransaction(keySigEditIsNew ? "Add Key Signature Change" : "Edit Key Signature Change");
-        undoManager->perform(new KeySignatureChangeAction(sequence, keySigEditTick, sharpsOrFlats, isMinor));
-    }
-    else
-    {
-        sequence->addKeySignatureChange(keySigEditTick, sharpsOrFlats, isMinor);
-        sequence->notifyTimelineMetadataChanged();
-    }
+    undoManager.beginNewTransaction(keySigEditIsNew ? "Add Key Signature Change" : "Edit Key Signature Change");
+    undoManager.perform(new KeySignatureChangeAction(sequence, keySigEditTick, sharpsOrFlats, isMinor));
 
     const auto& changes = sequence->getKeySignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)

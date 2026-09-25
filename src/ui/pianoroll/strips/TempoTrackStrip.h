@@ -11,12 +11,12 @@ class TempoTrackStrip : public TimelineStrip
 public:
     static constexpr int height = 48;
 
-    TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef);
+    TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
+                    juce::UndoManager& undoManagerRef);
 
     std::function<void()> onSelectionTaken;
     std::function<void()> onTempoChanged;
 
-    void setUndoManager(juce::UndoManager* um);
     void setSequence(MidiSequence* seq) override;
     bool hasSelection() const;
     void clearTempoSelection();
@@ -43,7 +43,7 @@ private:
     bool hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const;
 
     EditClipboard& clipboard;
-    juce::UndoManager* undoManager = nullptr;
+    juce::UndoManager& undoManager;
 
     std::set<int> selectedTempoIndices;
     bool isTempoPointDragging = false;

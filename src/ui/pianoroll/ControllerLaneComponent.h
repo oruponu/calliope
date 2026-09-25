@@ -10,7 +10,7 @@
 class ControllerLaneComponent : public juce::Component, public MidiSequence::Listener
 {
 public:
-    ControllerLaneComponent() = default;
+    explicit ControllerLaneComponent(juce::UndoManager& undoManagerRef) : undoManager(undoManagerRef) {}
     ~ControllerLaneComponent() override;
 
     enum class DisplayMode
@@ -22,7 +22,6 @@ public:
     };
 
     void setSequence(MidiSequence* seq);
-    void setUndoManager(juce::UndoManager* um);
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
     void setDisplayMode(DisplayMode mode);
     void setCCNumber(int cc);
@@ -91,7 +90,7 @@ private:
 
     int quantizeDenominator = 4;
 
-    juce::UndoManager* undoManager = nullptr;
+    juce::UndoManager& undoManager;
     bool isDragging = false;
     int lastDragX = -1;
     std::vector<int> velocitySnapshot;

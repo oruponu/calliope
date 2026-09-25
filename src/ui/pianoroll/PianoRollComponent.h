@@ -18,7 +18,7 @@
 class PianoRollComponent : public juce::Component, public MidiSequence::Listener, private juce::Timer
 {
 public:
-    PianoRollComponent();
+    explicit PianoRollComponent(juce::UndoManager& undoManagerRef);
     ~PianoRollComponent() override;
 
     enum class EditMode
@@ -36,7 +36,6 @@ public:
     };
 
     void setSequence(MidiSequence* seq);
-    void setUndoManager(juce::UndoManager* um);
     void setPlayheadTick(double tick);
     void setEditMode(EditMode mode);
     EditMode getEditMode() const;
@@ -184,7 +183,7 @@ private:
 
     TimelineGeometry geometry{keyboardWidth};
     MidiSequence* sequence = nullptr;
-    juce::UndoManager* undoManager = nullptr;
+    juce::UndoManager& undoManager;
     double playheadTick = 0.0;
     std::set<int> selectedTrackIndices = {0};
     int activeTrackIndex = 0;
@@ -244,10 +243,10 @@ private:
     EditClipboard clipboard;
     LoopStrip loopStrip{geometry};
     RulerStrip ruler{geometry};
-    TempoTrackStrip tempoStrip{geometry, clipboard};
-    TimeSignatureStrip timeSigStrip{geometry, clipboard};
-    KeySignatureStrip keyStrip{geometry, clipboard};
-    ChordStrip chordStrip{geometry, clipboard};
+    TempoTrackStrip tempoStrip{geometry, clipboard, undoManager};
+    TimeSignatureStrip timeSigStrip{geometry, clipboard, undoManager};
+    KeySignatureStrip keyStrip{geometry, clipboard, undoManager};
+    ChordStrip chordStrip{geometry, clipboard, undoManager};
 
     MidiNote previewNote;
     bool isPreviewing = false;

@@ -38,7 +38,6 @@ MainComponent::MainComponent()
     playbackEngine.addListener(&pluginHost);
 
     pianoRoll.setSequence(&document.getSequence());
-    pianoRoll.setUndoManager(&document.getUndoManager());
 
     pianoRoll.onPlayheadMoved = [this](int tick)
     {
@@ -279,7 +278,6 @@ MainComponent::MainComponent()
     };
 
     controllerLane.setSequence(&document.getSequence());
-    controllerLane.setUndoManager(&document.getUndoManager());
     controllerLane.setSelectedTracks(0, {0});
     controllerLane.onDataChanged = [this]()
     {

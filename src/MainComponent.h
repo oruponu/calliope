@@ -83,13 +83,13 @@ private:
 
     TransportBarComponent transportBar{document, playbackEngine};
 
-    PianoRollComponent pianoRoll;
+    PianoRollComponent pianoRoll{document.getUndoManager()};
     PianoRollViewport viewport;
     TrackListComponent trackList;
     juce::Viewport trackListViewport;
     juce::Rectangle<int> trackListHeaderBounds;
 
-    ControllerLaneComponent controllerLane;
+    ControllerLaneComponent controllerLane{document.getUndoManager()};
 
     ControllerLaneViewport controllerLaneViewport;
 

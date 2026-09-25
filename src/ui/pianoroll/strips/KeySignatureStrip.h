@@ -12,12 +12,12 @@ class KeySignatureStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef);
+    KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
+                      juce::UndoManager& undoManagerRef);
     ~KeySignatureStrip() override;
 
     std::function<void()> onSelectionTaken;
 
-    void setUndoManager(juce::UndoManager* um);
     void setSequence(MidiSequence* seq) override;
     bool hasSelection() const;
     void clearKeySignatureSelection();
@@ -46,7 +46,7 @@ private:
     void closeKeySignatureEditor();
 
     EditClipboard& clipboard;
-    juce::UndoManager* undoManager = nullptr;
+    juce::UndoManager& undoManager;
 
     std::set<int> selectedKeySigIndices;
     bool isKeySigEditing = false;

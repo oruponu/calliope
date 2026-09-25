@@ -13,12 +13,11 @@ class ChordStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef);
+    ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, juce::UndoManager& undoManagerRef);
     ~ChordStrip() override;
 
     std::function<void()> onSelectionTaken;
 
-    void setUndoManager(juce::UndoManager* um);
     void setSequence(MidiSequence* seq) override;
     void clearChordSelection();
     bool hasSelection() const;
@@ -65,7 +64,7 @@ private:
     void cancelChordEdit();
     void closeChordEditor();
 
-    juce::UndoManager* undoManager = nullptr;
+    juce::UndoManager& undoManager;
     EditClipboard& clipboard;
 
     std::set<int> selectedChordIndices;
