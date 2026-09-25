@@ -19,6 +19,7 @@ target_sources(CalliopeTests PRIVATE
     model/TimeSignatureDeleteTests.cpp
     model/TimeSignatureMoveTests.cpp
     model/TimeSignaturePasteTests.cpp
+    model/TimelineLookupTests.cpp
 )
 
 target_include_directories(CalliopeTests PRIVATE
