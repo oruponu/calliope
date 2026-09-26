@@ -15,21 +15,21 @@ TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipbo
 
 void TempoTrackStrip::setSequence(MidiSequence* seq)
 {
-    selectedTempoIndices.clear();
+    selection.clear();
     isTempoRangeSelecting = false;
     TimelineStrip::setSequence(seq);
 }
 
 bool TempoTrackStrip::hasSelection() const
 {
-    return !selectedTempoIndices.empty();
+    return !selection.isEmpty();
 }
 
 void TempoTrackStrip::clearTempoSelection()
 {
-    if (selectedTempoIndices.empty())
+    if (selection.isEmpty())
         return;
-    selectedTempoIndices.clear();
+    selection.clear();
     repaint();
 }
 
@@ -40,7 +40,7 @@ void TempoTrackStrip::deleteSelectedTempoPoints()
 
 void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transactionName)
 {
-    if (!sequence || selectedTempoIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     auto before = sequence->getTimeline().getTempoChanges();
@@ -50,7 +50,7 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
     after.reserve(before.size());
     for (int i = 0; i < count; ++i)
     {
-        const bool remove = selectedTempoIndices.count(i) > 0 && before[i].tick != 0;
+        const bool remove = selection.contains(i) && before[i].tick != 0;
         if (!remove)
             after.push_back(before[i]);
     }
@@ -61,7 +61,7 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
     undoManager.beginNewTransaction(transactionName);
     undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), std::move(after)));
 
-    selectedTempoIndices.clear();
+    selection.clear();
     repaint();
     if (onTempoChanged)
         onTempoChanged();
@@ -69,14 +69,14 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
 
 void TempoTrackStrip::copySelectedTempoPoints()
 {
-    if (!sequence || selectedTempoIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     const auto& changes = sequence->getTimeline().getTempoChanges();
     const int count = static_cast<int>(changes.size());
 
     std::vector<TempoChange> points;
-    for (int i : selectedTempoIndices)
+    for (int i : selection.indices())
         if (i >= 0 && i < count)
             points.push_back(changes[i]);
 
@@ -92,7 +92,7 @@ void TempoTrackStrip::copySelectedTempoPoints()
 
 void TempoTrackStrip::cutSelectedTempoPoints()
 {
-    if (!sequence || selectedTempoIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     copySelectedTempoPoints();
@@ -127,14 +127,7 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
         undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), after));
     }
 
-    selectedTempoIndices.clear();
-    const auto& changes = sequence->getTimeline().getTempoChanges();
-    for (int t : pastedTicks)
-    {
-        auto it = std::ranges::find(changes, t, &TempoChange::tick);
-        if (it != changes.end())
-            selectedTempoIndices.insert(static_cast<int>(it - changes.begin()));
-    }
+    selection.selectTicks(sequence->getTimeline().getTempoChanges(), pastedTicks);
 
     repaint();
     if (changed && onTempoChanged)
@@ -262,7 +255,7 @@ void TempoTrackStrip::paint(juce::Graphics& g)
             if (drawEndX < visibleLeft || drawStartX > visibleRight)
                 continue;
 
-            bool selected = selectedTempoIndices.count(static_cast<int>(i)) > 0;
+            bool selected = selection.contains(static_cast<int>(i));
             juce::Colour lineColour = selected ? amberColour.brighter(0.5f) : amberColour;
 
             g.setColour(lineColour);
@@ -314,32 +307,14 @@ void TempoTrackStrip::paint(juce::Graphics& g)
         g.drawLine(phX, 0.0f, phX, static_cast<float>(getHeight()), 1.0f);
     }
 
-    drawTempoRangeSelection(g);
+    if (isTempoRangeSelecting)
+        drawRangeBand(g, rangeSelect, accent::soft, accent::base.withAlpha(0.6f));
 
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 
     g.restoreState();
 
     drawLabelColumn(g);
-}
-
-void TempoTrackStrip::drawTempoRangeSelection(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    if (!isTempoRangeSelecting)
-        return;
-
-    int lo = std::min(tempoSelectStartX, tempoSelectCurrentX);
-    int hi = std::max(tempoSelectStartX, tempoSelectCurrentX);
-    if (hi <= lo)
-        return;
-
-    juce::Rectangle<float> band(static_cast<float>(lo), 0.0f, static_cast<float>(hi - lo),
-                                static_cast<float>(getHeight()));
-    g.setColour(accent::soft);
-    g.fillRect(band);
-    g.setColour(accent::base.withAlpha(0.6f));
-    g.drawRect(band, 1.0f);
 }
 
 void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
@@ -356,10 +331,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
             onSelectionTaken();
         if (e.mods.isShiftDown())
         {
-            if (selectedTempoIndices.count(pointIndex) > 0)
-                selectedTempoIndices.erase(pointIndex);
-            else
-                selectedTempoIndices.insert(pointIndex);
+            selection.toggle(pointIndex);
             repaint();
             return;
         }
@@ -369,10 +341,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
         isTempoPointDragging = true;
         tempoDragMoved = false;
 
-        if (selectedTempoIndices.count(pointIndex) > 0 && selectedTempoIndices.size() > 1)
-            tempoDragGroup.assign(selectedTempoIndices.begin(), selectedTempoIndices.end());
-        else
-            tempoDragGroup = {pointIndex};
+        tempoDragGroup = selection.dragGroup(pointIndex);
         return;
     }
 
@@ -392,8 +361,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
             undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), std::move(after)));
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedTempoIndices.clear();
-            selectedTempoIndices.insert(addedIndex);
+            selection.selectOnly(addedIndex);
             repaint();
             if (onTempoChanged)
                 onTempoChanged();
@@ -406,11 +374,9 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
         if (onSelectionTaken)
             onSelectionTaken();
         isTempoRangeSelecting = true;
-        tempoSelectStartX = e.x;
-        tempoSelectCurrentX = e.x;
-        tempoSelectBase = e.mods.isShiftDown() ? selectedTempoIndices : std::set<int>{};
+        rangeSelect = {e.x, e.x, e.mods.isShiftDown() ? selection.indices() : std::set<int>{}};
         if (!e.mods.isShiftDown())
-            selectedTempoIndices.clear();
+            selection.clear();
         repaint();
         return;
     }
@@ -480,17 +446,14 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
 
     if (isTempoRangeSelecting)
     {
-        tempoSelectCurrentX = e.x;
-        int lo = std::min(tempoSelectStartX, tempoSelectCurrentX);
-        int hi = std::max(tempoSelectStartX, tempoSelectCurrentX);
-        int tickLo = geometry.xToTick(lo);
-        int tickHi = geometry.xToTick(hi);
-
-        selectedTempoIndices = tempoSelectBase;
+        rangeSelect.currentX = e.x;
         const auto& changes = sequence->getTimeline().getTempoChanges();
-        for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-            if (changes[i].tick >= tickLo && changes[i].tick <= tickHi)
-                selectedTempoIndices.insert(i);
+        selection.assign(rangeSelect.selectionFor(static_cast<int>(changes.size()), geometry,
+                                                  [&changes](int i, int tickLo, int tickHi)
+                                                  {
+                                                      const int tick = changes[static_cast<size_t>(i)].tick;
+                                                      return tick >= tickLo && tick <= tickHi;
+                                                  }));
 
         repaint();
         return;
@@ -510,14 +473,13 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
             auto after = sequence->getTimeline().getTempoChanges();
             undoManager.beginNewTransaction("Move Tempo Change");
             undoManager.perform(new ReplaceListAction<TempoChange>(sequence, tempoDragBefore, after));
-            selectedTempoIndices = std::set<int>(tempoDragGroup.begin(), tempoDragGroup.end());
+            selection.assign(std::set<int>(tempoDragGroup.begin(), tempoDragGroup.end()));
             if (onTempoChanged)
                 onTempoChanged();
         }
         else if (draggedIndex >= 0)
         {
-            selectedTempoIndices.clear();
-            selectedTempoIndices.insert(draggedIndex);
+            selection.selectOnly(draggedIndex);
         }
 
         tempoDragBefore.clear();
@@ -530,7 +492,7 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
     if (isTempoRangeSelecting)
     {
         isTempoRangeSelecting = false;
-        tempoSelectBase.clear();
+        rangeSelect = {};
         repaint();
         return;
     }

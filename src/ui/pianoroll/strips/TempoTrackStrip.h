@@ -1,9 +1,10 @@
 #pragma once
 
 #include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/strips/IndexSelection.h"
+#include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
-#include <set>
 #include <vector>
 
 class TempoTrackStrip : public TimelineStrip
@@ -36,7 +37,6 @@ private:
     void timelineMetadataChanged() override { repaint(); }
 
     void deleteSelectedTempoPointsImpl(const juce::String& transactionName);
-    void drawTempoRangeSelection(juce::Graphics& g);
     float tempoBpmToY(double bpm) const;
     double tempoYToBpm(int y) const;
     int hitTestTempoPoint(int x, int y) const;
@@ -45,14 +45,12 @@ private:
     EditClipboard& clipboard;
     juce::UndoManager& undoManager;
 
-    std::set<int> selectedTempoIndices;
+    IndexSelection selection;
     bool isTempoPointDragging = false;
     int tempoDragIndex = -1;
     bool tempoDragMoved = false;
     std::vector<TempoChange> tempoDragBefore;
     std::vector<int> tempoDragGroup;
     bool isTempoRangeSelecting = false;
-    int tempoSelectStartX = 0;
-    int tempoSelectCurrentX = 0;
-    std::set<int> tempoSelectBase;
+    RangeSelectGesture rangeSelect;
 };

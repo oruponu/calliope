@@ -38,22 +38,22 @@ void ChordStrip::setSequence(MidiSequence* seq)
     closeChordEditor();
     clearChordSelection();
     isChordRangeSelecting = false;
-    chordSelectBase.clear();
+    rangeSelect = {};
     chordRangeToggleIndex = -1;
     TimelineStrip::setSequence(seq);
 }
 
 void ChordStrip::clearChordSelection()
 {
-    if (selectedChordIndices.empty())
+    if (selection.isEmpty())
         return;
-    selectedChordIndices.clear();
+    selection.clear();
     repaint();
 }
 
 bool ChordStrip::hasSelection() const
 {
-    return !selectedChordIndices.empty();
+    return !selection.isEmpty();
 }
 
 void ChordStrip::deleteSelectedChords()
@@ -63,12 +63,12 @@ void ChordStrip::deleteSelectedChords()
 
 void ChordStrip::deleteSelectedChordsImpl(const juce::String& transactionName)
 {
-    if (!sequence || selectedChordIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     auto before = sequence->getChordChanges();
-    auto after = ChordTrackEdits::afterDelete(
-        before, std::vector<int>(selectedChordIndices.begin(), selectedChordIndices.end()));
+    auto after =
+        ChordTrackEdits::afterDelete(before, std::vector<int>(selection.indices().begin(), selection.indices().end()));
     if (after == before)
         return;
 
@@ -81,7 +81,7 @@ void ChordStrip::deleteSelectedChordsImpl(const juce::String& transactionName)
 
 void ChordStrip::copySelectedChords()
 {
-    if (!sequence || selectedChordIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     const auto& changes = sequence->getChordChanges();
@@ -89,7 +89,7 @@ void ChordStrip::copySelectedChords()
 
     std::vector<RelativeChord> items;
     int baseTick = -1;
-    for (int i : selectedChordIndices)
+    for (int i : selection.indices())
     {
         if (i < 0 || i >= count || changes[static_cast<size_t>(i)].isNoChord())
             continue;
@@ -108,7 +108,7 @@ void ChordStrip::copySelectedChords()
 
 void ChordStrip::cutSelectedChords()
 {
-    if (!sequence || selectedChordIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     copySelectedChords();
@@ -131,14 +131,14 @@ void ChordStrip::pasteChords(int atTick)
         undoManager.perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), after));
     }
 
-    selectedChordIndices.clear();
+    selection.clear();
     const auto& changes = sequence->getChordChanges();
     for (const auto& item : clipboard.getChords())
     {
         const int target = anchorTick + item.tickOffset;
         for (int i = 0; i < static_cast<int>(changes.size()); ++i)
             if (changes[static_cast<size_t>(i)].tick == target && !changes[static_cast<size_t>(i)].isNoChord())
-                selectedChordIndices.insert(i);
+                selection.add(i);
     }
 
     repaint();
@@ -284,7 +284,7 @@ void ChordStrip::remapSelectionAfterResize(const std::vector<ChordChange>& befor
         }
     }
 
-    selectedChordIndices.clear();
+    selection.clear();
     for (int i : chordEdgeSelectionBefore)
     {
         if (i < 0 || i >= static_cast<int>(before.size()))
@@ -293,7 +293,7 @@ void ChordStrip::remapSelectionAfterResize(const std::vector<ChordChange>& befor
         if (i == draggedIndex)
         {
             if (draggedAfter >= 0)
-                selectedChordIndices.insert(draggedAfter);
+                selection.add(draggedAfter);
             continue;
         }
         for (size_t j = 0; j < after.size(); ++j)
@@ -302,7 +302,7 @@ void ChordStrip::remapSelectionAfterResize(const std::vector<ChordChange>& befor
                 continue;
             if (after[j].tick < chordSpanEnd(before, bi) && chordSpanEnd(after, j) > before[bi].tick)
             {
-                selectedChordIndices.insert(static_cast<int>(j));
+                selection.add(static_cast<int>(j));
                 break;
             }
         }
@@ -348,7 +348,7 @@ void ChordStrip::paint(juce::Graphics& g)
         if (spanRect.getX() > visibleRight || spanRect.getRight() < visibleLeft)
             continue;
 
-        bool selected = selectedChordIndices.count(i) > 0;
+        bool selected = selection.contains(i);
         bool editingThis =
             isChordEditing && !chordEditIsNew && chordChanges[static_cast<size_t>(i)].tick == chordEditTick;
         bool highlighted = selected || editingThis;
@@ -414,32 +414,14 @@ void ChordStrip::paint(juce::Graphics& g)
         g.drawLine(phX, 0.0f, phX, static_cast<float>(getHeight()), 1.0f);
     }
 
-    drawChordRangeSelection(g);
+    if (isChordRangeSelecting)
+        drawRangeBand(g, rangeSelect, track::violet.withAlpha(0.15f), track::violet.withAlpha(0.6f));
 
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 
     g.restoreState();
 
     drawLabelColumn(g);
-}
-
-void ChordStrip::drawChordRangeSelection(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    if (!isChordRangeSelecting)
-        return;
-
-    int lo = std::min(chordSelectStartX, chordSelectCurrentX);
-    int hi = std::max(chordSelectStartX, chordSelectCurrentX);
-    if (hi <= lo)
-        return;
-
-    juce::Rectangle<float> band(static_cast<float>(lo), 0.0f, static_cast<float>(hi - lo),
-                                static_cast<float>(getHeight()));
-    g.setColour(track::violet.withAlpha(0.15f));
-    g.fillRect(band);
-    g.setColour(track::violet.withAlpha(0.6f));
-    g.drawRect(band, 1.0f);
 }
 
 void ChordStrip::mouseDown(const juce::MouseEvent& e)
@@ -456,9 +438,7 @@ void ChordStrip::mouseDown(const juce::MouseEvent& e)
             if (onSelectionTaken)
                 onSelectionTaken();
             isChordRangeSelecting = true;
-            chordSelectStartX = e.x;
-            chordSelectCurrentX = e.x;
-            chordSelectBase = selectedChordIndices;
+            rangeSelect = {e.x, e.x, selection.indices()};
             chordRangeToggleIndex = hitTestChordSpan(e.x, e.y);
             repaint();
         }
@@ -468,7 +448,7 @@ void ChordStrip::mouseDown(const juce::MouseEvent& e)
     auto [edgeIndex, edgeKind] = hitTestChordEdge(e.x, e.y);
     if (edgeIndex >= 0 && edgeKind != ResizeEdge::None)
     {
-        chordEdgeSelectionBefore = selectedChordIndices;
+        chordEdgeSelectionBefore = selection.indices();
         if (isJointChordEdge(edgeIndex, edgeKind))
         {
             isChordJointDragging = true;
@@ -490,11 +470,9 @@ void ChordStrip::mouseDown(const juce::MouseEvent& e)
             if (onSelectionTaken)
                 onSelectionTaken();
             isChordRangeSelecting = true;
-            chordSelectStartX = e.x;
-            chordSelectCurrentX = e.x;
-            chordSelectBase.clear();
+            rangeSelect = {e.x, e.x, {}};
             chordRangeToggleIndex = -1;
-            selectedChordIndices.clear();
+            selection.clear();
             repaint();
         }
         return;
@@ -505,10 +483,7 @@ void ChordStrip::mouseDown(const juce::MouseEvent& e)
     chordMoveIndex = index;
     isChordMoving = true;
     chordMoveGrabOffset = geometry.xToTick(e.x) - changes[static_cast<size_t>(index)].tick;
-    if (selectedChordIndices.count(index) > 0 && selectedChordIndices.size() > 1)
-        chordMoveGroup.assign(selectedChordIndices.begin(), selectedChordIndices.end());
-    else
-        chordMoveGroup = {index};
+    chordMoveGroup = selection.dragGroup(index);
 }
 
 void ChordStrip::mouseMove(const juce::MouseEvent& e)
@@ -531,7 +506,7 @@ void ChordStrip::selectMovedChords(int anchorIndex, int cursorTick)
         delta = std::max(delta, -chordMoveBefore[static_cast<size_t>(g)].tick);
         break;
     }
-    selectedChordIndices.clear();
+    selection.clear();
     for (int g : chordMoveGroup)
     {
         if (g < 0 || g >= static_cast<int>(chordMoveBefore.size()) ||
@@ -540,7 +515,7 @@ void ChordStrip::selectMovedChords(int anchorIndex, int cursorTick)
         const int target = chordMoveBefore[static_cast<size_t>(g)].tick + delta;
         for (int i = 0; i < static_cast<int>(changes.size()); ++i)
             if (changes[static_cast<size_t>(i)].tick == target && !changes[static_cast<size_t>(i)].isNoChord())
-                selectedChordIndices.insert(i);
+                selection.add(i);
     }
 }
 
@@ -592,23 +567,17 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
 
     if (isChordRangeSelecting)
     {
-        chordSelectCurrentX = e.x;
-        int lo = std::min(chordSelectStartX, chordSelectCurrentX);
-        int hi = std::max(chordSelectStartX, chordSelectCurrentX);
-        int tickLo = geometry.xToTick(lo);
-        int tickHi = geometry.xToTick(hi);
-
-        selectedChordIndices = chordSelectBase;
+        rangeSelect.currentX = e.x;
         const auto& changes = sequence->getChordChanges();
-        for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-        {
-            if (changes[static_cast<size_t>(i)].isNoChord())
-                continue;
-            if (changes[static_cast<size_t>(i)].tick > tickHi)
-                continue;
-            if (i + 1 >= static_cast<int>(changes.size()) || changes[static_cast<size_t>(i) + 1].tick > tickLo)
-                selectedChordIndices.insert(i);
-        }
+        selection.assign(rangeSelect.selectionFor(static_cast<int>(changes.size()), geometry,
+                                                  [&changes](int i, int tickLo, int tickHi)
+                                                  {
+                                                      const auto index = static_cast<size_t>(i);
+                                                      if (changes[index].isNoChord() || changes[index].tick > tickHi)
+                                                          return false;
+                                                      return index + 1 >= changes.size() ||
+                                                             changes[index + 1].tick > tickLo;
+                                                  }));
         repaint();
     }
 }
@@ -656,7 +625,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedChordIndices = {resizedIndex};
+            selection.selectOnly(resizedIndex);
         }
 
         chordEdgeSelectionBefore.clear();
@@ -704,7 +673,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedChordIndices = {movedIndex};
+            selection.selectOnly(movedIndex);
         }
 
         chordEdgeSelectionBefore.clear();
@@ -753,7 +722,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedChordIndices = {movedIndex};
+            selection.selectOnly(movedIndex);
         }
 
         chordMoveBefore.clear();
@@ -767,15 +736,10 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         isChordRangeSelecting = false;
         const int toggleIndex = chordRangeToggleIndex;
         chordRangeToggleIndex = -1;
-        chordSelectBase.clear();
+        rangeSelect = {};
 
         if (!e.mouseWasDraggedSinceMouseDown() && toggleIndex >= 0)
-        {
-            if (selectedChordIndices.count(toggleIndex) > 0)
-                selectedChordIndices.erase(toggleIndex);
-            else
-                selectedChordIndices.insert(toggleIndex);
-        }
+            selection.toggle(toggleIndex);
         repaint();
     }
 }
@@ -799,7 +763,7 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
     chordStartResizeIndex = -1;
     chordStartResizeBefore.clear();
     isChordRangeSelecting = false;
-    chordSelectBase.clear();
+    rangeSelect = {};
     chordRangeToggleIndex = -1;
 
     int index = hitTestChordSpan(e.x, e.y);
@@ -808,7 +772,7 @@ void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
         const auto& cc = sequence->getChordChanges()[static_cast<size_t>(index)];
         if (onSelectionTaken)
             onSelectionTaken();
-        selectedChordIndices = {index};
+        selection.selectOnly(index);
         repaint();
         openChordEditor(cc.tick, 0, cc.chordRoot, cc.chordType, cc.bassRoot, false,
                         {chordSpanRect(index).getX() + 4, 0, 40, getHeight()});
@@ -921,7 +885,7 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
     const auto& changes = sequence->getChordChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
         if (changes[static_cast<size_t>(i)].tick == chordEditTick)
-            selectedChordIndices = {i};
+            selection.selectOnly(i);
     repaint();
 }
 

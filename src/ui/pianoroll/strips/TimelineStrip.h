@@ -2,6 +2,7 @@
 
 #include "model/MidiSequence.h"
 #include "ui/pianoroll/TimelineGeometry.h"
+#include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 
 class TimelineStrip : public juce::Component, public MidiSequence::Listener
@@ -21,6 +22,8 @@ protected:
     void drawLabelColumn(juce::Graphics& g);
     void drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha);
     void drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top, float bottom);
+    void drawRangeBand(juce::Graphics& g, const RangeSelectGesture& gesture, juce::Colour fillColour,
+                       juce::Colour borderColour);
 
     const TimelineGeometry& geometry;
     MidiSequence* sequence = nullptr;

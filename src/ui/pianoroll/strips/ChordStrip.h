@@ -3,6 +3,8 @@
 #include "notation/ChordSymbol.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/strips/ChordEditor.h"
+#include "ui/pianoroll/strips/IndexSelection.h"
+#include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
 #include <set>
@@ -56,7 +58,6 @@ private:
     void beginChordEdgeDrag(const std::vector<ChordChange>& changes, int index, ResizeEdge edge, int grabX);
     void switchJointChordEdge(int x, int grabX);
     void remapSelectionAfterResize(const std::vector<ChordChange>& before, int draggedIndex, ResizeEdge edge);
-    void drawChordRangeSelection(juce::Graphics& g);
     void selectMovedChords(int anchorIndex, int cursorTick);
     void deleteSelectedChordsImpl(const juce::String& transactionName);
     void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
@@ -68,7 +69,7 @@ private:
     juce::UndoManager& undoManager;
     EditClipboard& clipboard;
 
-    std::set<int> selectedChordIndices;
+    IndexSelection selection;
     bool isChordEditing = false;
     int chordEditTick = 0;
     int chordEditEndTick = 0;
@@ -98,8 +99,6 @@ private:
     std::vector<ChordChange> chordJointBefore;
     std::set<int> chordEdgeSelectionBefore;
     bool isChordRangeSelecting = false;
-    int chordSelectStartX = 0;
-    int chordSelectCurrentX = 0;
-    std::set<int> chordSelectBase;
+    RangeSelectGesture rangeSelect;
     int chordRangeToggleIndex = -1;
 };

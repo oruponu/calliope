@@ -1,10 +1,11 @@
 #pragma once
 
 #include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/KeySignatureEditor.h"
+#include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
-#include <set>
 #include <vector>
 
 class KeySignatureStrip : public TimelineStrip
@@ -37,7 +38,6 @@ private:
 
     int hitTestKeySignaturePoint(int x, int y) const;
     juce::Rectangle<int> keySignatureLabelRect(int index) const;
-    void drawKeySignatureRangeSelection(juce::Graphics& g);
     void deleteSelectedKeySignaturesImpl(const juce::String& transactionName);
     void openKeySignatureEditor(int tick, int sharpsOrFlats, bool isMinor, bool isNew,
                                 juce::Rectangle<int> anchorInLocal);
@@ -48,7 +48,7 @@ private:
     EditClipboard& clipboard;
     juce::UndoManager& undoManager;
 
-    std::set<int> selectedKeySigIndices;
+    IndexSelection selection;
     bool isKeySigEditing = false;
     int keySigEditTick = 0;
     int keySigDraftSharpsOrFlats = 0;
@@ -63,7 +63,5 @@ private:
     int keySigDragGrabOffset = 0;
     std::vector<int> keySigDragGroup;
     bool isKeySigRangeSelecting = false;
-    int keySigSelectStartX = 0;
-    int keySigSelectCurrentX = 0;
-    std::set<int> keySigSelectBase;
+    RangeSelectGesture rangeSelect;
 };

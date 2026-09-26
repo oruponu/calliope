@@ -27,14 +27,14 @@ void TimeSignatureStrip::setSequence(MidiSequence* seq)
 
 bool TimeSignatureStrip::hasSelection() const
 {
-    return !selectedTimeSigIndices.empty();
+    return !selection.isEmpty();
 }
 
 void TimeSignatureStrip::clearTimeSignatureSelection()
 {
-    if (selectedTimeSigIndices.empty())
+    if (selection.isEmpty())
         return;
-    selectedTimeSigIndices.clear();
+    selection.clear();
     repaint();
 }
 
@@ -45,12 +45,12 @@ void TimeSignatureStrip::deleteSelectedTimeSignatures()
 
 void TimeSignatureStrip::deleteSelectedTimeSignaturesImpl(const juce::String& transactionName)
 {
-    if (!sequence || selectedTimeSigIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     auto before = sequence->getTimeline().getTimeSignatureChanges();
-    auto after = TimeSignatureEdits::afterDelete(before, selectedTimeSigIndices,
-                                                 sequence->getTimeline().getTicksPerQuarterNote());
+    auto after =
+        TimeSignatureEdits::afterDelete(before, selection.indices(), sequence->getTimeline().getTicksPerQuarterNote());
     if (after.size() == before.size())
         return;
 
@@ -63,14 +63,14 @@ void TimeSignatureStrip::deleteSelectedTimeSignaturesImpl(const juce::String& tr
 
 void TimeSignatureStrip::copySelectedTimeSignatures()
 {
-    if (!sequence || selectedTimeSigIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     const int count = static_cast<int>(changes.size());
 
     std::vector<RelativeTimeSignature> items;
-    for (int i : selectedTimeSigIndices)
+    for (int i : selection.indices())
         if (i >= 0 && i < count)
             items.push_back({sequence->getTimeline().tickToBarBeatTick(changes[i].tick).bar, changes[i].numerator,
                              changes[i].denominator});
@@ -87,7 +87,7 @@ void TimeSignatureStrip::copySelectedTimeSignatures()
 
 void TimeSignatureStrip::cutSelectedTimeSignatures()
 {
-    if (!sequence || selectedTimeSigIndices.empty())
+    if (!sequence || selection.isEmpty())
         return;
 
     copySelectedTimeSignatures();
@@ -115,15 +115,10 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
         undoManager.perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), after));
     }
 
-    selectedTimeSigIndices.clear();
-    const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
+    std::vector<int> pastedTicks;
     for (int b : pastedBars)
-    {
-        const int t = sequence->getTimeline().barStartToTick(b);
-        auto it = std::ranges::find(changes, t, &TimeSignatureChange::tick);
-        if (it != changes.end())
-            selectedTimeSigIndices.insert(static_cast<int>(it - changes.begin()));
-    }
+        pastedTicks.push_back(sequence->getTimeline().barStartToTick(b));
+    selection.selectTicks(sequence->getTimeline().getTimeSignatureChanges(), pastedTicks);
 
     repaint();
 }
@@ -208,7 +203,7 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
 
             if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
             {
-                bool selected = selectedTimeSigIndices.count(static_cast<int>(i)) > 0;
+                bool selected = selection.contains(static_cast<int>(i));
                 bool editingThis = isTimeSigEditing && !timeSigEditIsNew && tsChanges[i].tick == timeSigEditTick;
                 auto labelRect = timeSignatureLabelRect(static_cast<int>(i));
                 if (selected || editingThis)
@@ -249,32 +244,14 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
         g.drawLine(phX, 0.0f, phX, static_cast<float>(getHeight()), 1.0f);
     }
 
-    drawTimeSignatureRangeSelection(g);
+    if (isTimeSigRangeSelecting)
+        drawRangeBand(g, rangeSelect, track::teal.withAlpha(0.15f), track::teal.withAlpha(0.6f));
 
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 
     g.restoreState();
 
     drawLabelColumn(g);
-}
-
-void TimeSignatureStrip::drawTimeSignatureRangeSelection(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    if (!isTimeSigRangeSelecting)
-        return;
-
-    int lo = std::min(timeSigSelectStartX, timeSigSelectCurrentX);
-    int hi = std::max(timeSigSelectStartX, timeSigSelectCurrentX);
-    if (hi <= lo)
-        return;
-
-    juce::Rectangle<float> band(static_cast<float>(lo), 0.0f, static_cast<float>(hi - lo),
-                                static_cast<float>(getHeight()));
-    g.setColour(track::teal.withAlpha(0.15f));
-    g.fillRect(band);
-    g.setColour(track::teal.withAlpha(0.6f));
-    g.drawRect(band, 1.0f);
 }
 
 void TimeSignatureStrip::mouseDown(const juce::MouseEvent& e)
@@ -291,10 +268,7 @@ void TimeSignatureStrip::mouseDown(const juce::MouseEvent& e)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
-            if (selectedTimeSigIndices.count(tsIndex) > 0)
-                selectedTimeSigIndices.erase(tsIndex);
-            else
-                selectedTimeSigIndices.insert(tsIndex);
+            selection.toggle(tsIndex);
             repaint();
             return;
         }
@@ -305,10 +279,7 @@ void TimeSignatureStrip::mouseDown(const juce::MouseEvent& e)
         timeSigDragMoved = false;
         timeSigDragGrabOffset = geometry.xToTick(e.x) - timeSigDragBefore[static_cast<size_t>(tsIndex)].tick;
 
-        if (selectedTimeSigIndices.count(tsIndex) > 0 && selectedTimeSigIndices.size() > 1)
-            timeSigDragGroup.assign(selectedTimeSigIndices.begin(), selectedTimeSigIndices.end());
-        else
-            timeSigDragGroup = {tsIndex};
+        timeSigDragGroup = selection.dragGroup(tsIndex);
         return;
     }
 
@@ -317,11 +288,9 @@ void TimeSignatureStrip::mouseDown(const juce::MouseEvent& e)
         if (onSelectionTaken)
             onSelectionTaken();
         isTimeSigRangeSelecting = true;
-        timeSigSelectStartX = e.x;
-        timeSigSelectCurrentX = e.x;
-        timeSigSelectBase = e.mods.isShiftDown() ? selectedTimeSigIndices : std::set<int>{};
+        rangeSelect = {e.x, e.x, e.mods.isShiftDown() ? selection.indices() : std::set<int>{}};
         if (!e.mods.isShiftDown())
-            selectedTimeSigIndices.clear();
+            selection.clear();
         repaint();
         return;
     }
@@ -352,17 +321,14 @@ void TimeSignatureStrip::mouseDrag(const juce::MouseEvent& e)
 
     if (isTimeSigRangeSelecting)
     {
-        timeSigSelectCurrentX = e.x;
-        int lo = std::min(timeSigSelectStartX, timeSigSelectCurrentX);
-        int hi = std::max(timeSigSelectStartX, timeSigSelectCurrentX);
-        int tickLo = geometry.xToTick(lo);
-        int tickHi = geometry.xToTick(hi);
-
-        selectedTimeSigIndices = timeSigSelectBase;
+        rangeSelect.currentX = e.x;
         const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
-        for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-            if (changes[static_cast<size_t>(i)].tick >= tickLo && changes[static_cast<size_t>(i)].tick <= tickHi)
-                selectedTimeSigIndices.insert(i);
+        selection.assign(rangeSelect.selectionFor(static_cast<int>(changes.size()), geometry,
+                                                  [&changes](int i, int tickLo, int tickHi)
+                                                  {
+                                                      const int tick = changes[static_cast<size_t>(i)].tick;
+                                                      return tick >= tickLo && tick <= tickHi;
+                                                  }));
 
         repaint();
         return;
@@ -389,12 +355,11 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
             undoManager.perform(new ReplaceListAction<TimeSignatureChange>(sequence, timeSigDragBefore, changes));
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedTimeSigIndices = std::set<int>(timeSigDragGroup.begin(), timeSigDragGroup.end());
+            selection.assign(std::set<int>(timeSigDragGroup.begin(), timeSigDragGroup.end()));
         }
         else if (validIndex && !timeSigDragMoved)
         {
-            const bool soleSelection =
-                selectedTimeSigIndices.size() == 1 && selectedTimeSigIndices.count(draggedIndex) > 0;
+            const bool soleSelection = selection.isSole(draggedIndex);
             if (soleSelection && !isTimeSigEditing)
             {
                 const auto& ts = changes[static_cast<size_t>(draggedIndex)];
@@ -405,14 +370,14 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
             {
                 if (onSelectionTaken)
                     onSelectionTaken();
-                selectedTimeSigIndices = {draggedIndex};
+                selection.selectOnly(draggedIndex);
             }
         }
         else if (validIndex)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedTimeSigIndices = {draggedIndex};
+            selection.selectOnly(draggedIndex);
         }
 
         timeSigDragBefore.clear();
@@ -425,7 +390,7 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
     if (isTimeSigRangeSelecting)
     {
         isTimeSigRangeSelecting = false;
-        timeSigSelectBase.clear();
+        rangeSelect = {};
         repaint();
         return;
     }
@@ -443,7 +408,7 @@ void TimeSignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
         return;
 
     isTimeSigRangeSelecting = false;
-    timeSigSelectBase.clear();
+    rangeSelect = {};
 
     int barStart = sequence->getTimeline().barStartToTick(
         sequence->getTimeline().tickToBarBeatTick(std::max(0, geometry.xToTick(e.x))).bar);
@@ -455,7 +420,7 @@ void TimeSignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
         {
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectedTimeSigIndices = {i};
+            selection.selectOnly(i);
             repaint();
             openTimeSignatureEditor(changes[static_cast<size_t>(i)].tick, changes[static_cast<size_t>(i)].numerator,
                                     changes[static_cast<size_t>(i)].denominator, false, timeSignatureLabelRect(i));
@@ -525,7 +490,7 @@ void TimeSignatureStrip::commitTimeSignatureEdit(int num, int den)
     const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
         if (changes[i].tick == timeSigEditTick)
-            selectedTimeSigIndices = {i};
+            selection.selectOnly(i);
     repaint();
 }
 
