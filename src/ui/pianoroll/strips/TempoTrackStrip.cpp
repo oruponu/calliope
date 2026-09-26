@@ -58,8 +58,7 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
     if (after.size() == before.size())
         return;
 
-    undoManager.beginNewTransaction(transactionName);
-    undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), std::move(after)));
+    performReplaceList(undoManager, sequence, transactionName, std::move(before), std::move(after));
 
     selection.clear();
     repaint();
@@ -123,8 +122,7 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        undoManager.beginNewTransaction("Paste Tempo Changes");
-        undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), after));
+        performReplaceList(undoManager, sequence, "Paste Tempo Changes", std::move(before), after);
     }
 
     selection.selectTicks(sequence->getTimeline().getTempoChanges(), pastedTicks);
@@ -354,11 +352,10 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
                                   [tempoTick](const TempoChange& tc) { return tc.tick == tempoTick; });
         if (!exists)
         {
-            undoManager.beginNewTransaction("Add Tempo Change");
             auto before = sequence->getTimeline().getTempoChanges();
             auto after = before;
             const int addedIndex = TempoEdits::add(after, tempoTick, tempoBpm);
-            undoManager.perform(new ReplaceListAction<TempoChange>(sequence, std::move(before), std::move(after)));
+            performReplaceList(undoManager, sequence, "Add Tempo Change", std::move(before), std::move(after));
             if (onSelectionTaken)
                 onSelectionTaken();
             selection.selectOnly(addedIndex);
@@ -471,8 +468,7 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
         if (tempoDragMoved)
         {
             auto after = sequence->getTimeline().getTempoChanges();
-            undoManager.beginNewTransaction("Move Tempo Change");
-            undoManager.perform(new ReplaceListAction<TempoChange>(sequence, tempoDragBefore, after));
+            performReplaceList(undoManager, sequence, "Move Tempo Change", tempoDragBefore, after);
             selection.assign(std::set<int>(tempoDragGroup.begin(), tempoDragGroup.end()));
             if (onTempoChanged)
                 onTempoChanged();
