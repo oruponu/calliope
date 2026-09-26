@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/strips/CalloutEditorSession.h"
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimeSignatureEditor.h"
@@ -15,7 +16,6 @@ public:
 
     TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
                        juce::UndoManager& undoManagerRef);
-    ~TimeSignatureStrip() override;
 
     std::function<void()> onSelectionTaken;
     std::function<void()> onTimelineMetadataChanged;
@@ -35,6 +35,14 @@ public:
     void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
+    struct TimeSignatureDraft
+    {
+        int tick = 0;
+        int numerator = 4;
+        int denominator = 4;
+        bool isNew = false;
+    };
+
     void timelineMetadataChanged() override { repaint(); }
 
     int hitTestTimeSignaturePoint(int x, int y) const;
@@ -43,19 +51,12 @@ private:
     void openTimeSignatureEditor(int tick, int num, int den, bool isNew, juce::Rectangle<int> anchorInLocal);
     void commitTimeSignatureEdit(int num, int den);
     void cancelTimeSignatureEdit();
-    void closeTimeSignatureEditor();
 
     EditClipboard& clipboard;
     juce::UndoManager& undoManager;
 
     IndexSelection selection;
-    bool isTimeSigEditing = false;
-    int timeSigEditTick = 0;
-    int timeSigDraftNum = 4;
-    int timeSigDraftDen = 4;
-    bool timeSigEditIsNew = false;
-    juce::Component::SafePointer<juce::CallOutBox> timeSigCallout;
-    juce::Component::SafePointer<TimeSignatureEditor> timeSigEditor;
+    CalloutEditorSession<TimeSignatureEditor, TimeSignatureDraft> editSession;
     bool isTimeSigPointDragging = false;
     int timeSigDragIndex = -1;
     bool timeSigDragMoved = false;

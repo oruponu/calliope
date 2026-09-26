@@ -1,7 +1,7 @@
 #pragma once
 
-#include "notation/ChordSymbol.h"
 #include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/strips/CalloutEditorSession.h"
 #include "ui/pianoroll/strips/ChordEditor.h"
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
@@ -17,7 +17,6 @@ public:
     static constexpr int height = 24;
 
     ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, juce::UndoManager& undoManagerRef);
-    ~ChordStrip() override;
 
     std::function<void()> onSelectionTaken;
 
@@ -48,10 +47,19 @@ private:
         Left,
         Right
     };
+    struct ChordDraft
+    {
+        int tick = 0;
+        int endTick = 0;
+        int root = 0;
+        int type = 0;
+        int bassRoot = 0;
+        bool isNew = false;
+    };
     int spanHeight() const { return getHeight() - spanTop * 2; }
 
     juce::Rectangle<int> chordSpanRect(int index) const;
-    juce::Rectangle<int> chordDraftSpanRect() const;
+    juce::Rectangle<int> chordDraftSpanRect(const ChordDraft& draft) const;
     int hitTestChordSpan(int x, int y) const;
     std::pair<int, ResizeEdge> hitTestChordEdge(int x, int y) const;
     bool isJointChordEdge(int index, ResizeEdge edge) const;
@@ -64,22 +72,12 @@ private:
                          juce::Rectangle<int> anchorInLocal);
     void commitChordEdit(int chordRoot, int chordType, int bassRoot);
     void cancelChordEdit();
-    void closeChordEditor();
 
     juce::UndoManager& undoManager;
     EditClipboard& clipboard;
 
     IndexSelection selection;
-    bool isChordEditing = false;
-    int chordEditTick = 0;
-    int chordEditEndTick = 0;
-    int chordDraftRoot = 0;
-    int chordDraftType = 0;
-    int chordDraftBassRoot = 0;
-    bool chordEditIsNew = false;
-    ChordSpelling chordEditSpelling = ChordSpelling::Mixed;
-    juce::Component::SafePointer<juce::CallOutBox> chordCallout;
-    juce::Component::SafePointer<ChordEditor> chordEditor;
+    CalloutEditorSession<ChordEditor, ChordDraft> editSession;
     bool isChordResizing = false;
     int chordResizeIndex = -1;
     std::vector<ChordChange> chordResizeBefore;

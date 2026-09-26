@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/strips/CalloutEditorSession.h"
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/KeySignatureEditor.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
@@ -15,7 +16,6 @@ public:
 
     KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
                       juce::UndoManager& undoManagerRef);
-    ~KeySignatureStrip() override;
 
     std::function<void()> onSelectionTaken;
 
@@ -34,6 +34,14 @@ public:
     void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
+    struct KeySignatureDraft
+    {
+        int tick = 0;
+        int sharpsOrFlats = 0;
+        bool isMinor = false;
+        bool isNew = false;
+    };
+
     void timelineMetadataChanged() override { repaint(); }
 
     int hitTestKeySignaturePoint(int x, int y) const;
@@ -43,19 +51,12 @@ private:
                                 juce::Rectangle<int> anchorInLocal);
     void commitKeySignatureEdit(int sharpsOrFlats, bool isMinor);
     void cancelKeySignatureEdit();
-    void closeKeySignatureEditor();
 
     EditClipboard& clipboard;
     juce::UndoManager& undoManager;
 
     IndexSelection selection;
-    bool isKeySigEditing = false;
-    int keySigEditTick = 0;
-    int keySigDraftSharpsOrFlats = 0;
-    bool keySigDraftIsMinor = false;
-    bool keySigEditIsNew = false;
-    juce::Component::SafePointer<juce::CallOutBox> keySigCallout;
-    juce::Component::SafePointer<KeySignatureEditor> keySigEditor;
+    CalloutEditorSession<KeySignatureEditor, KeySignatureDraft> editSession;
     bool isKeySigPointDragging = false;
     int keySigDragIndex = -1;
     bool keySigDragMoved = false;
