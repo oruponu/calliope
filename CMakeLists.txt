@@ -37,6 +37,8 @@ target_sources(Calliope PRIVATE
     src/model/TimelineMap.cpp
     src/notation/ChordSymbol.cpp
     src/notation/KeySignatureName.cpp
+    src/plugin/PluginAssignmentCodec.cpp
+    src/plugin/PluginSyncPlan.cpp
     src/plugin/VstPluginHost.cpp
     src/ui/EventListComponent.cpp
     src/ui/TrackListComponent.cpp

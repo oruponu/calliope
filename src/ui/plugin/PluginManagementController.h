@@ -35,7 +35,7 @@ private:
     };
 
     void attachPluginFileToTrack(TrackId trackId, const juce::File& file);
-    void applyPluginRoutingToTrack(TrackId trackId);
+    void assignPluginToTrack(TrackId trackId, const juce::PluginDescription& description);
     void stopPlaybackIfPlaying();
 
     VstPluginHost& pluginHost;

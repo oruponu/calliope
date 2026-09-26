@@ -10,6 +10,7 @@ add_executable(CalliopeTests
     ${PROJECT_SOURCE_DIR}/src/model/TimelineMap.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/KeySignatureName.cpp
+    ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
 )
 
 target_sources(CalliopeTests PRIVATE
@@ -39,6 +40,8 @@ target_sources(CalliopeTests PRIVATE
     model/TrackIdTests.cpp
     notation/ChordSymbolTests.cpp
     notation/KeySignatureNameTests.cpp
+    plugin/PluginSyncPlanTests.cpp
+    plugin/RetiredStateStoreTests.cpp
     ui/IndexSelectionTests.cpp
     ui/RangeSelectGestureTests.cpp
 )

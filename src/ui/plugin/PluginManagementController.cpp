@@ -3,8 +3,11 @@
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
 #include "model/MidiTrack.h"
+#include "model/PluginAssignment.h"
+#include "plugin/PluginAssignmentCodec.h"
 #include "plugin/VstPluginHost.h"
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <memory>
 #include <utility>
 
 PluginManagementController::PluginManagementController(VstPluginHost& pluginHostRef, Document& documentRef,
@@ -124,7 +127,7 @@ void PluginManagementController::attachPluginToTrack(TrackId trackId, const juce
 
     stopPlaybackIfPlaying();
     if (pluginHost.attachPlugin(trackId, description))
-        applyPluginRoutingToTrack(trackId);
+        assignPluginToTrack(trackId, description);
 }
 
 juce::Array<juce::PluginDescription> PluginManagementController::getPluginTypes() const
@@ -132,7 +135,7 @@ juce::Array<juce::PluginDescription> PluginManagementController::getPluginTypes(
     return knownPluginList.getTypes();
 }
 
-void PluginManagementController::applyPluginRoutingToTrack(TrackId trackId)
+void PluginManagementController::assignPluginToTrack(TrackId trackId, const juce::PluginDescription& description)
 {
     auto& sequence = document.getSequence();
     const int index = sequence.indexOf(trackId);
@@ -140,6 +143,8 @@ void PluginManagementController::applyPluginRoutingToTrack(TrackId trackId)
         return;
 
     auto& track = sequence.getTrack(index);
+    track.setPluginAssignment(
+        std::make_shared<const PluginAssignment>(PluginAssignment{PluginAssignmentCodec::toXml(description), {}}));
     track.setRouteTarget(std::nullopt);
     track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
     sequence.notifyTracksChanged();
