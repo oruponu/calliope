@@ -5,7 +5,6 @@
 #include <juce_data_structures/juce_data_structures.h>
 #include <optional>
 #include <string>
-#include <vector>
 
 class ChannelChangeAction : public juce::UndoableAction
 {
@@ -133,9 +132,6 @@ public:
     bool perform() override
     {
         savedTrack = sequence->getTrack(trackIdx);
-        savedRouteTargets.clear();
-        for (int i = 0; i < sequence->getNumTracks(); ++i)
-            savedRouteTargets.push_back(sequence->getTrack(i).getRouteTarget());
 
         if (onDetach)
             onDetach(trackIdx);
@@ -148,8 +144,6 @@ public:
     bool undo() override
     {
         sequence->insertTrack(trackIdx, savedTrack);
-        for (int i = 0; i < static_cast<int>(savedRouteTargets.size()); ++i)
-            sequence->getTrack(i).setRouteTarget(savedRouteTargets[i]);
         sequence->notifyTracksChanged();
         return true;
     }
@@ -161,5 +155,4 @@ private:
     int trackIdx;
     std::function<void(int)> onDetach;
     MidiTrack savedTrack;
-    std::vector<std::optional<TrackId>> savedRouteTargets;
 };
