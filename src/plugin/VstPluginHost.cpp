@@ -51,32 +51,19 @@ void VstPluginHost::prepare(juce::AudioProcessorGraph& g)
     audioOutNodeId = audioOut->nodeID;
 }
 
-bool VstPluginHost::loadPlugin(const juce::File& file)
+std::optional<juce::PluginDescription> VstPluginHost::describePluginFile(const juce::File& file)
 {
-    return attachPlugin(0, file);
-}
-
-bool VstPluginHost::loadPlugin(const juce::PluginDescription& description)
-{
-    return attachPlugin(0, description);
-}
-
-bool VstPluginHost::attachPlugin(int trackIndex, const juce::File& file)
-{
-    if (graph == nullptr)
-        return false;
-
     juce::OwnedArray<juce::PluginDescription> descriptions;
     for (int i = 0; i < formatManager.getNumFormats(); ++i)
         formatManager.getFormat(i)->findAllTypesForFile(descriptions, file.getFullPathName());
 
     if (descriptions.isEmpty())
-        return false;
+        return std::nullopt;
 
-    return attachPlugin(trackIndex, *descriptions[0]);
+    return *descriptions[0];
 }
 
-bool VstPluginHost::attachPlugin(int trackIndex, const juce::PluginDescription& description)
+bool VstPluginHost::attachPlugin(TrackId trackId, const juce::PluginDescription& description)
 {
     if (graph == nullptr)
         return false;
@@ -88,16 +75,12 @@ bool VstPluginHost::attachPlugin(int trackIndex, const juce::PluginDescription& 
     if (pluginInstance == nullptr)
         return false;
 
-    detachPlugin(trackIndex);
+    detachPlugin(trackId);
 
     auto midiSourceProcessor = std::make_unique<MidiSourceProcessor>();
     auto* collectorPtr = &midiSourceProcessor->collector;
     auto midiSourceNode = graph->addNode(std::move(midiSourceProcessor));
-    midiSourceNodes[trackIndex] = midiSourceNode->nodeID;
-    midiCollectors[trackIndex] = collectorPtr;
-
     auto pluginNode = graph->addNode(std::move(pluginInstance));
-    pluginNodes[trackIndex] = pluginNode->nodeID;
 
     graph->addConnection({{midiSourceNode->nodeID, juce::AudioProcessorGraph::midiChannelIndex},
                           {pluginNode->nodeID, juce::AudioProcessorGraph::midiChannelIndex}});
@@ -107,83 +90,53 @@ bool VstPluginHost::attachPlugin(int trackIndex, const juce::PluginDescription& 
     for (int ch = 0; ch < channelsToConnect; ++ch)
         graph->addConnection({{pluginNode->nodeID, ch}, {audioOutNodeId, ch}});
 
+    instances[trackId] = Instance{pluginNode->nodeID, midiSourceNode->nodeID, collectorPtr};
     return true;
 }
 
-void VstPluginHost::detachPlugin(int trackIndex)
+void VstPluginHost::detachPlugin(TrackId trackId)
 {
-    auto it = pluginNodes.find(trackIndex);
-    if (it == pluginNodes.end())
+    auto it = instances.find(trackId);
+    if (it == instances.end())
         return;
 
     if (onPluginDetached)
-        onPluginDetached(trackIndex);
-    midiCollectors.erase(trackIndex);
+        onPluginDetached(trackId);
 
-    if (auto sourceIt = midiSourceNodes.find(trackIndex); sourceIt != midiSourceNodes.end())
-    {
-        graph->removeNode(sourceIt->second);
-        midiSourceNodes.erase(sourceIt);
-    }
-
-    graph->removeNode(it->second);
-    pluginNodes.erase(it);
+    const Instance instance = it->second;
+    instances.erase(it);
+    graph->removeNode(instance.sourceNode);
+    graph->removeNode(instance.pluginNode);
 }
 
 void VstPluginHost::detachAllPlugins()
 {
-    std::vector<int> trackIndices;
-    trackIndices.reserve(pluginNodes.size());
-    for (const auto& [idx, _] : pluginNodes)
-        trackIndices.push_back(idx);
-    for (int idx : trackIndices)
-        detachPlugin(idx);
+    std::vector<TrackId> trackIds;
+    trackIds.reserve(instances.size());
+    for (const auto& [trackId, _] : instances)
+        trackIds.push_back(trackId);
+    for (TrackId trackId : trackIds)
+        detachPlugin(trackId);
 }
 
-void VstPluginHost::renumberTrackIndices(int from, int delta)
-{
-    if (onTrackIndicesRenumbered)
-        onTrackIndicesRenumbered(from, delta);
-
-    auto shiftMap = [from, delta](auto& map)
-    {
-        using MapT = std::decay_t<decltype(map)>;
-        MapT newMap;
-        for (auto& entry : map)
-        {
-            int newIdx = (entry.first >= from) ? entry.first + delta : entry.first;
-            newMap.emplace(newIdx, std::move(entry.second));
-        }
-        map = std::move(newMap);
-    };
-    shiftMap(pluginNodes);
-    shiftMap(midiSourceNodes);
-    shiftMap(midiCollectors);
-}
-
-juce::AudioProcessor* VstPluginHost::getPluginProcessor(int trackIndex) const
+juce::AudioProcessor* VstPluginHost::getPluginProcessor(TrackId trackId) const
 {
     if (graph == nullptr)
         return nullptr;
 
-    auto it = pluginNodes.find(trackIndex);
-    if (it == pluginNodes.end())
+    auto it = instances.find(trackId);
+    if (it == instances.end())
         return nullptr;
 
-    auto* node = graph->getNodeForId(it->second);
-    if (node == nullptr)
-        return nullptr;
-
-    return node->getProcessor();
+    auto* node = graph->getNodeForId(it->second.pluginNode);
+    return node != nullptr ? node->getProcessor() : nullptr;
 }
 
-juce::String VstPluginHost::getPluginName(int trackIndex) const
+juce::String VstPluginHost::getPluginName(TrackId trackId) const
 {
-    auto it = pluginNodes.find(trackIndex);
-    if (it == pluginNodes.end())
-        return {};
-
-    return graph->getNodeForId(it->second)->getProcessor()->getName();
+    if (auto* processor = getPluginProcessor(trackId))
+        return processor->getName();
+    return {};
 }
 
 juce::MidiMessageCollector* VstPluginHost::resolveCollector(const PlaybackTrackContext& ctx) const
@@ -191,11 +144,8 @@ juce::MidiMessageCollector* VstPluginHost::resolveCollector(const PlaybackTrackC
     if (ctx.destination != MidiTrack::OutputDestination::Plugin)
         return nullptr;
 
-    int targetIndex = ctx.routeTarget;
-    auto it = midiCollectors.find(targetIndex);
-    if (it == midiCollectors.end())
-        return nullptr;
-    return it->second;
+    auto it = instances.find(ctx.routeTarget);
+    return it != instances.end() ? it->second.collector : nullptr;
 }
 
 void VstPluginHost::onNoteOn(const PlaybackTrackContext& ctx, const MidiNote& note)

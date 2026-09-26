@@ -29,25 +29,23 @@ private:
 
 PluginEditorController::PluginEditorController(VstPluginHost& pluginHostRef) : pluginHost(pluginHostRef)
 {
-    pluginHost.onPluginDetached = [this](int trackIndex) { closeEditor(trackIndex); };
-    pluginHost.onTrackIndicesRenumbered = [this](int from, int) { closeEditorsFromIndex(from); };
+    pluginHost.onPluginDetached = [this](TrackId trackId) { closeEditor(trackId); };
 }
 
 PluginEditorController::~PluginEditorController()
 {
     pluginHost.onPluginDetached = nullptr;
-    pluginHost.onTrackIndicesRenumbered = nullptr;
 }
 
-void PluginEditorController::showEditor(int trackIndex)
+void PluginEditorController::showEditor(TrackId trackId)
 {
-    if (auto it = editorWindows.find(trackIndex); it != editorWindows.end())
+    if (auto it = editorWindows.find(trackId); it != editorWindows.end())
     {
         it->second->toFront(true);
         return;
     }
 
-    auto* processor = pluginHost.getPluginProcessor(trackIndex);
+    auto* processor = pluginHost.getPluginProcessor(trackId);
     if (processor == nullptr)
         return;
 
@@ -55,22 +53,11 @@ void PluginEditorController::showEditor(int trackIndex)
     if (editor == nullptr)
         return;
 
-    editorWindows[trackIndex] = std::make_unique<EditorWindow>(processor->getName(), editor, [this, trackIndex]()
-                                                               { editorWindows.erase(trackIndex); });
+    editorWindows[trackId] = std::make_unique<EditorWindow>(processor->getName(), editor,
+                                                            [this, trackId]() { editorWindows.erase(trackId); });
 }
 
-void PluginEditorController::closeEditor(int trackIndex)
+void PluginEditorController::closeEditor(TrackId trackId)
 {
-    editorWindows.erase(trackIndex);
-}
-
-void PluginEditorController::closeEditorsFromIndex(int from)
-{
-    for (auto it = editorWindows.begin(); it != editorWindows.end();)
-    {
-        if (it->first >= from)
-            it = editorWindows.erase(it);
-        else
-            ++it;
-    }
+    editorWindows.erase(trackId);
 }

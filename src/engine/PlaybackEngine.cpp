@@ -185,10 +185,10 @@ void PlaybackEngine::removeListener(PlaybackListener* listener)
     std::erase(listeners, listener);
 }
 
-void PlaybackEngine::releaseActiveNotesForTrack(int trackIndex)
+void PlaybackEngine::releaseActiveNotesForTrack(TrackId trackId)
 {
     FanOut sink(listeners);
-    processor.releaseActiveNotesForTrack(trackIndex, sink);
+    processor.releaseActiveNotesForTrack(trackId, sink);
 }
 
 void PlaybackEngine::hiResTimerCallback()

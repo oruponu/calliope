@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/TrackId.h"
 #include <functional>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -20,8 +21,8 @@ public:
     void handleMenuSelection(int menuItemID);
     void loadPluginViaFileChooser();
     void managePlugins();
-    void attachPluginToTrackViaFileChooser(int trackIndex);
-    void attachPluginToTrack(int trackIndex, const juce::PluginDescription& description);
+    void attachPluginToTrackViaFileChooser(TrackId trackId);
+    void attachPluginToTrack(TrackId trackId, const juce::PluginDescription& description);
     juce::Array<juce::PluginDescription> getPluginTypes() const;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
@@ -33,7 +34,8 @@ private:
         managePluginsItem
     };
 
-    void applyPluginRoutingToTrack(int trackIndex);
+    void attachPluginFileToTrack(TrackId trackId, const juce::File& file);
+    void applyPluginRoutingToTrack(TrackId trackId);
     void stopPlaybackIfPlaying();
 
     VstPluginHost& pluginHost;

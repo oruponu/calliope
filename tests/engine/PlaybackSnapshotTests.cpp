@@ -17,7 +17,7 @@ TEST_CASE("notes are sorted by startTick and carry resolved ctx", "[engine][snap
     CHECK(snap.notes[0].note.startTick == 0);
     CHECK(snap.notes[1].note.startTick == 480);
     CHECK(snap.notes[0].ctx.channel == 3);
-    CHECK(snap.notes[0].ctx.trackIndex == 0);
+    CHECK(snap.notes[0].ctx.trackId == seq.getTrack(0).getId());
 }
 
 TEST_CASE("muted track is excluded", "[engine][snapshot]")
@@ -31,7 +31,7 @@ TEST_CASE("muted track is excluded", "[engine][snapshot]")
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);
-    CHECK(snap.notes[0].ctx.trackIndex == 0);
+    CHECK(snap.notes[0].ctx.trackId == seq.getTrack(0).getId());
 }
 
 TEST_CASE("solo excludes non-solo tracks", "[engine][snapshot]")
@@ -45,7 +45,7 @@ TEST_CASE("solo excludes non-solo tracks", "[engine][snapshot]")
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);
-    CHECK(snap.notes[0].ctx.trackIndex == 1);
+    CHECK(snap.notes[0].ctx.trackId == seq.getTrack(1).getId());
 }
 
 TEST_CASE("mute wins over solo on the same track", "[engine][snapshot]")
@@ -63,19 +63,34 @@ TEST_CASE("mute wins over solo on the same track", "[engine][snapshot]")
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);
-    CHECK(snap.notes[0].ctx.trackIndex == 2);
+    CHECK(snap.notes[0].ctx.trackId == seq.getTrack(2).getId());
 }
 
-TEST_CASE("routeTarget falls back to trackIndex when out of range", "[engine][snapshot]")
+TEST_CASE("routeTarget carries the id of an existing target track", "[engine][snapshot]")
 {
     MidiSequence seq;
-    auto& t0 = seq.addTrack();
-    t0.setRouteTargetTrackIndex(99);
-    t0.addNote({60, 100, 0, 480});
+    seq.addTrack();
+    seq.addTrack();
+    seq.getTrack(0).setRouteTarget(seq.getTrack(1).getId());
+    seq.getTrack(0).addNote({60, 100, 0, 480});
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);
-    CHECK(snap.notes[0].ctx.routeTarget == 0);
+    CHECK(snap.notes[0].ctx.routeTarget == seq.getTrack(1).getId());
+}
+
+TEST_CASE("routeTarget falls back to own track when the target was removed", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    seq.addTrack();
+    seq.getTrack(0).setRouteTarget(seq.getTrack(1).getId());
+    seq.removeTrack(1);
+    seq.getTrack(0).addNote({60, 100, 0, 480});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    REQUIRE(snap.notes.size() == 1);
+    CHECK(snap.notes[0].ctx.routeTarget == seq.getTrack(0).getId());
 }
 
 TEST_CASE("getTempoAt returns last change at or before tick", "[engine][snapshot]")

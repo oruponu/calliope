@@ -33,8 +33,10 @@ target_sources(CalliopeTests PRIVATE
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
     model/DefaultTimelineTests.cpp
+    model/RouteTargetTests.cpp
     model/TickSecondsTests.cpp
     model/TimelineLookupTests.cpp
+    model/TrackIdTests.cpp
     notation/ChordSymbolTests.cpp
     notation/KeySignatureNameTests.cpp
     ui/IndexSelectionTests.cpp

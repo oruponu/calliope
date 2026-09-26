@@ -12,7 +12,7 @@ public:
     void resetCursors(const PlaybackSnapshot& snap, int tick);
     void process(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink);
     void sendAllNoteOffs(PlaybackListener& sink);
-    void releaseActiveNotesForTrack(int trackIndex, PlaybackListener& sink);
+    void releaseActiveNotesForTrack(TrackId trackId, PlaybackListener& sink);
 
 private:
     void offExpired(int toTick, PlaybackListener& sink);

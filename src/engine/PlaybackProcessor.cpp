@@ -69,11 +69,11 @@ void PlaybackProcessor::sendAllNoteOffs(PlaybackListener& sink)
         sink.onNoteOff(a.ctx, a.note);
 }
 
-void PlaybackProcessor::releaseActiveNotesForTrack(int trackIndex, PlaybackListener& sink)
+void PlaybackProcessor::releaseActiveNotesForTrack(TrackId trackId, PlaybackListener& sink)
 {
     std::lock_guard<std::mutex> lock(activeNotesMutex);
     auto it = std::stable_partition(activeNotes.begin(), activeNotes.end(),
-                                    [&](const ScheduledNote& a) { return a.ctx.trackIndex != trackIndex; });
+                                    [&](const ScheduledNote& a) { return a.ctx.trackId != trackId; });
     for (auto i = it; i != activeNotes.end(); ++i)
         sink.onNoteOff(i->ctx, i->note);
     activeNotes.erase(it, activeNotes.end());

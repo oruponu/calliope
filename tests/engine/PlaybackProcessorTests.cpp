@@ -230,17 +230,17 @@ TEST_CASE("releaseActiveNotesForTrack offs that track's active notes and removes
     proc.process(snap, 0, 10, sink);
     sink.log.clear();
 
-    proc.releaseActiveNotesForTrack(0, sink);
+    proc.releaseActiveNotesForTrack(seq.getTrack(0).getId(), sink);
     REQUIRE(sink.log.size() == 1);
     CHECK(sink.log[0].kind == LoggedCall::NoteOff);
-    CHECK(sink.log[0].ctx.trackIndex == 0);
+    CHECK(sink.log[0].ctx.trackId == seq.getTrack(0).getId());
     CHECK(sink.log[0].note.noteNumber == 60);
 
     sink.log.clear();
     proc.sendAllNoteOffs(sink);
     REQUIRE(sink.log.size() == 1);
     CHECK(sink.log[0].kind == LoggedCall::NoteOff);
-    CHECK(sink.log[0].ctx.trackIndex == 1);
+    CHECK(sink.log[0].ctx.trackId == seq.getTrack(1).getId());
 }
 
 TEST_CASE("after snapshot swap, already-started note is not retriggered", "[engine][processor]")
