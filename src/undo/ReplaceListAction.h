@@ -66,3 +66,11 @@ private:
     std::vector<T> before;
     std::vector<T> after;
 };
+
+template <typename T>
+void performReplaceList(juce::UndoManager& undoManager, MidiSequence* sequence, const juce::String& transactionName,
+                        std::vector<T> before, std::vector<T> after)
+{
+    undoManager.beginNewTransaction(transactionName);
+    undoManager.perform(new ReplaceListAction<T>(sequence, std::move(before), std::move(after)));
+}
