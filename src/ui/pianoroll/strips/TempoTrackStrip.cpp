@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <set>
 #include <utility>
+#include <variant>
 
 TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
                                  juce::UndoManager& undoManagerRef)
@@ -16,7 +18,7 @@ TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipbo
 void TempoTrackStrip::setSequence(MidiSequence* seq)
 {
     selection.clear();
-    isTempoRangeSelecting = false;
+    drag = Idle{};
     TimelineStrip::setSequence(seq);
 }
 
@@ -305,8 +307,8 @@ void TempoTrackStrip::paint(juce::Graphics& g)
         g.drawLine(phX, 0.0f, phX, static_cast<float>(getHeight()), 1.0f);
     }
 
-    if (isTempoRangeSelecting)
-        drawRangeBand(g, rangeSelect, accent::soft, accent::base.withAlpha(0.6f));
+    if (const auto* selecting = std::get_if<RangeSelecting>(&drag))
+        drawRangeBand(g, selecting->gesture, accent::soft, accent::base.withAlpha(0.6f));
 
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 
@@ -334,12 +336,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
             return;
         }
 
-        tempoDragBefore = sequence->getTimeline().getTempoChanges();
-        tempoDragIndex = pointIndex;
-        isTempoPointDragging = true;
-        tempoDragMoved = false;
-
-        tempoDragGroup = selection.dragGroup(pointIndex);
+        drag = PointDragging{pointIndex, sequence->getTimeline().getTempoChanges(), selection.dragGroup(pointIndex)};
         return;
     }
 
@@ -370,8 +367,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
     {
         if (onSelectionTaken)
             onSelectionTaken();
-        isTempoRangeSelecting = true;
-        rangeSelect = {e.x, e.x, e.mods.isShiftDown() ? selection.indices() : std::set<int>{}};
+        drag = RangeSelecting{{e.x, e.x, e.mods.isShiftDown() ? selection.indices() : std::set<int>{}}};
         if (!e.mods.isShiftDown())
             selection.clear();
         repaint();
@@ -384,20 +380,21 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
     if (sequence == nullptr)
         return;
 
-    if (isTempoPointDragging)
+    if (auto* dragging = std::get_if<PointDragging>(&drag))
     {
-        const int count = static_cast<int>(tempoDragBefore.size());
-        if (tempoDragIndex < 0 || tempoDragIndex >= count)
+        const auto& before = dragging->before;
+        const int count = static_cast<int>(before.size());
+        if (dragging->index < 0 || dragging->index >= count)
             return;
 
         const int grid = geometry.gridTicks();
 
         std::set<int> moving;
-        for (int i : tempoDragGroup)
-            if (i >= 0 && i < count && tempoDragBefore[i].tick != 0)
+        for (int i : dragging->group)
+            if (i >= 0 && i < count && before[i].tick != 0)
                 moving.insert(i);
 
-        const TempoChange& dragOrig = tempoDragBefore[tempoDragIndex];
+        const TempoChange& dragOrig = before[dragging->index];
         int deltaTick =
             (dragOrig.tick == 0) ? 0 : (std::max(0, geometry.roundTickToGrid(geometry.xToTick(e.x))) - dragOrig.tick);
         double deltaBpm = std::round(tempoYToBpm(e.y)) - dragOrig.bpm;
@@ -405,12 +402,12 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
         int deltaLo = std::numeric_limits<int>::min();
         int deltaHi = std::numeric_limits<int>::max();
         for (int i : moving)
-            deltaLo = std::max(deltaLo, grid - tempoDragBefore[i].tick);
+            deltaLo = std::max(deltaLo, grid - before[i].tick);
         for (int i = 0; i + 1 < count; ++i)
         {
             bool aMoving = moving.count(i) > 0;
             bool bMoving = moving.count(i + 1) > 0;
-            int gap = tempoDragBefore[i + 1].tick - tempoDragBefore[i].tick;
+            int gap = before[i + 1].tick - before[i].tick;
             if (bMoving && !aMoving)
                 deltaLo = std::max(deltaLo, grid - gap);
             else if (aMoving && !bMoving)
@@ -420,38 +417,37 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
 
         double groupMinBpm = TimelineMap::maxBpm;
         double groupMaxBpm = TimelineMap::minBpm;
-        for (int i : tempoDragGroup)
+        for (int i : dragging->group)
             if (i >= 0 && i < count)
             {
-                groupMinBpm = std::min(groupMinBpm, tempoDragBefore[i].bpm);
-                groupMaxBpm = std::max(groupMaxBpm, tempoDragBefore[i].bpm);
+                groupMinBpm = std::min(groupMinBpm, before[i].bpm);
+                groupMaxBpm = std::max(groupMaxBpm, before[i].bpm);
             }
         deltaBpm = juce::jlimit(TimelineMap::minBpm - groupMinBpm, TimelineMap::maxBpm - groupMaxBpm, deltaBpm);
 
-        auto changes = tempoDragBefore;
-        for (int i : tempoDragGroup)
+        auto changes = before;
+        for (int i : dragging->group)
             if (i >= 0 && i < count)
-                changes[i].bpm = tempoDragBefore[i].bpm + deltaBpm;
+                changes[i].bpm = before[i].bpm + deltaBpm;
         for (int i : moving)
-            changes[i].tick = tempoDragBefore[i].tick + deltaTick;
+            changes[i].tick = before[i].tick + deltaTick;
         sequence->setTempoChanges(changes);
 
-        tempoDragMoved = (deltaTick != 0) || (deltaBpm != 0.0);
+        dragging->moved = (deltaTick != 0) || (deltaBpm != 0.0);
         repaint();
         return;
     }
 
-    if (isTempoRangeSelecting)
+    if (auto* selecting = std::get_if<RangeSelecting>(&drag))
     {
-        rangeSelect.currentX = e.x;
+        selecting->gesture.currentX = e.x;
         const auto& changes = sequence->getTimeline().getTempoChanges();
-        selection.assign(rangeSelect.selectionFor(static_cast<int>(changes.size()), geometry,
-                                                  [&changes](int i, int tickLo, int tickHi)
-                                                  {
-                                                      const int tick = changes[static_cast<size_t>(i)].tick;
-                                                      return tick >= tickLo && tick <= tickHi;
-                                                  }));
-
+        selection.assign(selecting->gesture.selectionFor(static_cast<int>(changes.size()), geometry,
+                                                         [&changes](int i, int tickLo, int tickHi)
+                                                         {
+                                                             const int tick = changes[static_cast<size_t>(i)].tick;
+                                                             return tick >= tickLo && tick <= tickHi;
+                                                         }));
         repaint();
         return;
     }
@@ -459,36 +455,29 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
 
 void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
 {
-    if (isTempoPointDragging)
-    {
-        isTempoPointDragging = false;
-        int draggedIndex = tempoDragIndex;
-        tempoDragIndex = -1;
+    auto state = std::exchange(drag, Idle{});
 
-        if (tempoDragMoved)
+    if (const auto* dragging = std::get_if<PointDragging>(&state))
+    {
+        if (dragging->moved)
         {
             auto after = sequence->getTimeline().getTempoChanges();
-            performReplaceList(undoManager, sequence, "Move Tempo Change", tempoDragBefore, after);
-            selection.assign(std::set<int>(tempoDragGroup.begin(), tempoDragGroup.end()));
+            performReplaceList(undoManager, sequence, "Move Tempo Change", dragging->before, std::move(after));
+            selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
             if (onTempoChanged)
                 onTempoChanged();
         }
-        else if (draggedIndex >= 0)
+        else if (dragging->index >= 0)
         {
-            selection.selectOnly(draggedIndex);
+            selection.selectOnly(dragging->index);
         }
 
-        tempoDragBefore.clear();
-        tempoDragGroup.clear();
-        tempoDragMoved = false;
         repaint();
         return;
     }
 
-    if (isTempoRangeSelecting)
+    if (std::holds_alternative<RangeSelecting>(state))
     {
-        isTempoRangeSelecting = false;
-        rangeSelect = {};
         repaint();
         return;
     }

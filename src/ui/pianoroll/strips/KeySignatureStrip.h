@@ -7,6 +7,7 @@
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
+#include <variant>
 #include <vector>
 
 class KeySignatureStrip : public TimelineStrip
@@ -41,6 +42,21 @@ private:
         bool isMinor = false;
         bool isNew = false;
     };
+    struct Idle
+    {
+    };
+    struct PointDragging
+    {
+        int index = -1;
+        std::vector<KeySignatureChange> before;
+        int grabOffset = 0;
+        std::vector<int> group;
+        bool moved = false;
+    };
+    struct RangeSelecting
+    {
+        RangeSelectGesture gesture;
+    };
 
     void timelineMetadataChanged() override { repaint(); }
 
@@ -57,12 +73,5 @@ private:
 
     IndexSelection selection;
     CalloutEditorSession<KeySignatureEditor, KeySignatureDraft> editSession;
-    bool isKeySigPointDragging = false;
-    int keySigDragIndex = -1;
-    bool keySigDragMoved = false;
-    std::vector<KeySignatureChange> keySigDragBefore;
-    int keySigDragGrabOffset = 0;
-    std::vector<int> keySigDragGroup;
-    bool isKeySigRangeSelecting = false;
-    RangeSelectGesture rangeSelect;
+    std::variant<Idle, PointDragging, RangeSelecting> drag;
 };

@@ -5,6 +5,7 @@
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
+#include <variant>
 #include <vector>
 
 class TempoTrackStrip : public TimelineStrip
@@ -33,6 +34,21 @@ public:
     void mouseMove(const juce::MouseEvent& e) override;
 
 private:
+    struct Idle
+    {
+    };
+    struct PointDragging
+    {
+        int index = -1;
+        std::vector<TempoChange> before;
+        std::vector<int> group;
+        bool moved = false;
+    };
+    struct RangeSelecting
+    {
+        RangeSelectGesture gesture;
+    };
+
     void tempoChanged() override { repaint(); }
     void timelineMetadataChanged() override { repaint(); }
 
@@ -46,11 +62,5 @@ private:
     juce::UndoManager& undoManager;
 
     IndexSelection selection;
-    bool isTempoPointDragging = false;
-    int tempoDragIndex = -1;
-    bool tempoDragMoved = false;
-    std::vector<TempoChange> tempoDragBefore;
-    std::vector<int> tempoDragGroup;
-    bool isTempoRangeSelecting = false;
-    RangeSelectGesture rangeSelect;
+    std::variant<Idle, PointDragging, RangeSelecting> drag;
 };
