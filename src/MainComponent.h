@@ -12,8 +12,9 @@
 #include "ui/pianoroll/ControllerLaneViewport.h"
 #include "ui/pianoroll/PianoRollComponent.h"
 #include "ui/pianoroll/PianoRollViewport.h"
+#include "ui/plugin/PluginCatalogController.h"
 #include "ui/plugin/PluginEditorController.h"
-#include "ui/plugin/PluginManagementController.h"
+#include "ui/plugin/TrackOutputController.h"
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
 #include "ui/widgets/FocusBorder.h"
@@ -78,7 +79,8 @@ private:
     juce::AudioProcessorGraph audioGraph;
     juce::AudioProcessorPlayer audioPlayer;
     VstPluginHost pluginHost;
-    PluginManagementController pluginController{pluginHost, document, playbackEngine, [this] { stopPlayback(); }};
+    PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
+    TrackOutputController trackOutput{pluginHost, document, playbackEngine, pluginCatalog, [this] { stopPlayback(); }};
     PluginEditorController editorController{pluginHost};
 
     TransportBarComponent transportBar{document, playbackEngine};
@@ -128,7 +130,8 @@ private:
 
     juce::ApplicationCommandManager commandManager;
 
-    MainMenuModel mainMenuModel{commandManager, pluginController, midiOutput, [this] { showAudioSettings(); }};
+    MainMenuModel mainMenuModel{commandManager, pluginCatalog, trackOutput, midiOutput,
+                                [this] { showAudioSettings(); }};
 
     juce::MenuBarComponent menuBar;
 
