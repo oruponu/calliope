@@ -37,6 +37,8 @@ target_sources(CalliopeTests PRIVATE
     model/TimelineLookupTests.cpp
     notation/ChordSymbolTests.cpp
     notation/KeySignatureNameTests.cpp
+    ui/IndexSelectionTests.cpp
+    ui/RangeSelectGestureTests.cpp
 )
 
 target_include_directories(CalliopeTests PRIVATE

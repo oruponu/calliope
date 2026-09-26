@@ -1,10 +1,11 @@
 #pragma once
 
 #include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/strips/IndexSelection.h"
+#include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimeSignatureEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
-#include <set>
 #include <vector>
 
 class TimeSignatureStrip : public TimelineStrip
@@ -38,7 +39,6 @@ private:
 
     int hitTestTimeSignaturePoint(int x, int y) const;
     juce::Rectangle<int> timeSignatureLabelRect(int index) const;
-    void drawTimeSignatureRangeSelection(juce::Graphics& g);
     void deleteSelectedTimeSignaturesImpl(const juce::String& transactionName);
     void openTimeSignatureEditor(int tick, int num, int den, bool isNew, juce::Rectangle<int> anchorInLocal);
     void commitTimeSignatureEdit(int num, int den);
@@ -48,7 +48,7 @@ private:
     EditClipboard& clipboard;
     juce::UndoManager& undoManager;
 
-    std::set<int> selectedTimeSigIndices;
+    IndexSelection selection;
     bool isTimeSigEditing = false;
     int timeSigEditTick = 0;
     int timeSigDraftNum = 4;
@@ -63,7 +63,5 @@ private:
     int timeSigDragGrabOffset = 0;
     std::vector<int> timeSigDragGroup;
     bool isTimeSigRangeSelecting = false;
-    int timeSigSelectStartX = 0;
-    int timeSigSelectCurrentX = 0;
-    std::set<int> timeSigSelectBase;
+    RangeSelectGesture rangeSelect;
 };
