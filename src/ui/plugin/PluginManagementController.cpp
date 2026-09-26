@@ -61,12 +61,10 @@ juce::PopupMenu PluginManagementController::buildPluginMenu()
 void PluginManagementController::handleMenuSelection(int menuItemID)
 {
     int index = juce::KnownPluginList::getIndexChosenByMenu(pluginMenuSnapshot, menuItemID);
-    if (index < 0)
+    if (index < 0 || document.getSequence().getNumTracks() == 0)
         return;
 
-    stopPlaybackIfPlaying();
-    if (pluginHost.loadPlugin(pluginMenuSnapshot.getReference(index)))
-        applyPluginRoutingToTrack(0);
+    attachPluginToTrack(document.getSequence().getTrack(0).getId(), pluginMenuSnapshot.getReference(index));
 }
 
 void PluginManagementController::loadPluginViaFileChooser()
@@ -76,11 +74,9 @@ void PluginManagementController::loadPluginViaFileChooser()
                              [this](const juce::FileChooser& fc)
                              {
                                  auto file = fc.getResult();
-                                 if (file == juce::File{})
+                                 if (file == juce::File{} || document.getSequence().getNumTracks() == 0)
                                      return;
-                                 stopPlaybackIfPlaying();
-                                 if (pluginHost.loadPlugin(file))
-                                     applyPluginRoutingToTrack(0);
+                                 attachPluginFileToTrack(document.getSequence().getTrack(0).getId(), file);
                              });
 }
 
@@ -101,26 +97,34 @@ void PluginManagementController::managePlugins()
     options.launchAsync();
 }
 
-void PluginManagementController::attachPluginToTrackViaFileChooser(int trackIndex)
+void PluginManagementController::attachPluginToTrackViaFileChooser(TrackId trackId)
 {
     fileChooser = std::make_unique<juce::FileChooser>("Load Plugin", juce::File{}, "*.vst3");
     fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-                             [this, trackIndex](const juce::FileChooser& fc)
+                             [this, trackId](const juce::FileChooser& fc)
                              {
                                  auto file = fc.getResult();
                                  if (file == juce::File{})
                                      return;
-                                 stopPlaybackIfPlaying();
-                                 if (pluginHost.attachPlugin(trackIndex, file))
-                                     applyPluginRoutingToTrack(trackIndex);
+                                 attachPluginFileToTrack(trackId, file);
                              });
 }
 
-void PluginManagementController::attachPluginToTrack(int trackIndex, const juce::PluginDescription& description)
+void PluginManagementController::attachPluginFileToTrack(TrackId trackId, const juce::File& file)
 {
     stopPlaybackIfPlaying();
-    if (pluginHost.attachPlugin(trackIndex, description))
-        applyPluginRoutingToTrack(trackIndex);
+    if (auto description = pluginHost.describePluginFile(file))
+        attachPluginToTrack(trackId, *description);
+}
+
+void PluginManagementController::attachPluginToTrack(TrackId trackId, const juce::PluginDescription& description)
+{
+    if (document.getSequence().indexOf(trackId) < 0)
+        return;
+
+    stopPlaybackIfPlaying();
+    if (pluginHost.attachPlugin(trackId, description))
+        applyPluginRoutingToTrack(trackId);
 }
 
 juce::Array<juce::PluginDescription> PluginManagementController::getPluginTypes() const
@@ -128,12 +132,17 @@ juce::Array<juce::PluginDescription> PluginManagementController::getPluginTypes(
     return knownPluginList.getTypes();
 }
 
-void PluginManagementController::applyPluginRoutingToTrack(int trackIndex)
+void PluginManagementController::applyPluginRoutingToTrack(TrackId trackId)
 {
-    auto& track = document.getSequence().getTrack(trackIndex);
-    track.setRouteTargetTrackIndex(-1);
+    auto& sequence = document.getSequence();
+    const int index = sequence.indexOf(trackId);
+    if (index < 0)
+        return;
+
+    auto& track = sequence.getTrack(index);
+    track.setRouteTarget(std::nullopt);
     track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-    document.getSequence().notifyTracksChanged();
+    sequence.notifyTracksChanged();
     playbackEngine.rebuildSnapshot();
 }
 

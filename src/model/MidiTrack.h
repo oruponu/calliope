@@ -2,6 +2,8 @@
 
 #include "model/MidiEvent.h"
 #include "model/MidiNote.h"
+#include "model/TrackId.h"
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,6 +16,8 @@ public:
         Plugin,
         None
     };
+
+    TrackId getId() const;
 
     void addNote(const MidiNote& note);
     void insertNote(int index, const MidiNote& note);
@@ -47,10 +51,13 @@ public:
     OutputDestination getOutputDestination() const;
     void setOutputDestination(OutputDestination dest);
 
-    int getRouteTargetTrackIndex() const;
-    void setRouteTargetTrackIndex(int index);
+    const std::optional<TrackId>& getRouteTarget() const;
+    void setRouteTarget(std::optional<TrackId> target);
 
 private:
+    friend class MidiSequence;
+
+    TrackId id{};
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
     std::string name;
@@ -58,5 +65,5 @@ private:
     bool solo = false;
     int channel = 1;
     OutputDestination outputDestination = OutputDestination::MidiDevice;
-    int routeTargetTrackIndex = -1;
+    std::optional<TrackId> routeTarget;
 };

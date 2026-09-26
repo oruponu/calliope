@@ -200,8 +200,8 @@ void TrackListComponent::paint(juce::Graphics& g)
         {
         case MidiTrack::OutputDestination::Plugin:
         {
-            int targetIdx = track.getRouteTargetTrackIndex();
-            if (targetIdx < 0 || targetIdx >= sequence->getNumTracks() || targetIdx == i)
+            const TrackId target = sequence->resolveRouteTarget(i);
+            if (target == track.getId())
             {
                 labelText = juce::String::fromUTF8("\xe2\x96\xb6 ") +
                             (pluginName.isEmpty() ? juce::String("(no plugin)") : pluginName);
@@ -209,6 +209,7 @@ void TrackListComponent::paint(juce::Graphics& g)
             }
             else
             {
+                const int targetIdx = sequence->indexOf(target);
                 const auto& targetTrack = sequence->getTrack(targetIdx);
                 juce::String targetPluginName = pluginNameForTrack ? pluginNameForTrack(targetIdx) : juce::String{};
                 if (!targetPluginName.isEmpty())

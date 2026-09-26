@@ -1,6 +1,11 @@
 #include "model/MidiTrack.h"
 #include <algorithm>
 
+TrackId MidiTrack::getId() const
+{
+    return id;
+}
+
 void MidiTrack::addNote(const MidiNote& note)
 {
     notes.push_back(note);
@@ -122,12 +127,12 @@ void MidiTrack::setOutputDestination(OutputDestination dest)
     outputDestination = dest;
 }
 
-int MidiTrack::getRouteTargetTrackIndex() const
+const std::optional<TrackId>& MidiTrack::getRouteTarget() const
 {
-    return routeTargetTrackIndex;
+    return routeTarget;
 }
 
-void MidiTrack::setRouteTargetTrackIndex(int index)
+void MidiTrack::setRouteTarget(std::optional<TrackId> target)
 {
-    routeTargetTrackIndex = index;
+    routeTarget = target;
 }

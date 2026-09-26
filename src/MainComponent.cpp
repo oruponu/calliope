@@ -128,8 +128,10 @@ MainComponent::MainComponent()
         document.getSequence().notifyTracksChanged();
         playbackEngine.rebuildSnapshot();
     };
-    trackList.pluginNameForTrack = [this](int trackIndex) { return pluginHost.getPluginName(trackIndex); };
-    trackList.onEditorButtonClicked = [this](int trackIndex) { editorController.showEditor(trackIndex); };
+    trackList.pluginNameForTrack = [this](int trackIndex)
+    { return pluginHost.getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
+    trackList.onEditorButtonClicked = [this](int trackIndex)
+    { editorController.showEditor(document.getSequence().getTrack(trackIndex).getId()); };
     trackList.onChannelLabelClicked = [this](int trackIndex)
     {
         int currentCh = document.getSequence().getTrack(trackIndex).getChannel();
@@ -137,18 +139,19 @@ MainComponent::MainComponent()
         menu.addSectionHeader("Channel");
         for (int ch = 1; ch <= 16; ++ch)
         {
-            menu.addItem(juce::String(ch), true, ch == currentCh,
-                         [this, trackIndex, ch]()
-                         {
-                             int currentChannel = document.getSequence().getTrack(trackIndex).getChannel();
-                             if (currentChannel == ch)
-                                 return;
-                             document.getUndoManager().beginNewTransaction();
-                             document.getUndoManager().perform(new ChannelChangeAction(
-                                 &document.getSequence(), trackIndex, currentChannel, ch,
-                                 [this](int idx) { playbackEngine.releaseActiveNotesForTrack(idx); }));
-                             playbackEngine.rebuildSnapshot();
-                         });
+            menu.addItem(
+                juce::String(ch), true, ch == currentCh,
+                [this, trackIndex, ch]()
+                {
+                    int currentChannel = document.getSequence().getTrack(trackIndex).getChannel();
+                    if (currentChannel == ch)
+                        return;
+                    document.getUndoManager().beginNewTransaction();
+                    document.getUndoManager().perform(new ChannelChangeAction(
+                        &document.getSequence(), trackIndex, currentChannel, ch, [this](int idx)
+                        { playbackEngine.releaseActiveNotesForTrack(document.getSequence().getTrack(idx).getId()); }));
+                    playbackEngine.rebuildSnapshot();
+                });
         }
         menu.showMenuAsync(juce::PopupMenu::Options{});
     };
@@ -158,8 +161,10 @@ MainComponent::MainComponent()
         document.getUndoManager().perform(new TrackAddAction(&document.getSequence(),
                                                              [this](int idx)
                                                              {
-                                                                 playbackEngine.releaseActiveNotesForTrack(idx);
-                                                                 pluginHost.detachPlugin(idx);
+                                                                 const TrackId trackId =
+                                                                     document.getSequence().getTrack(idx).getId();
+                                                                 playbackEngine.releaseActiveNotesForTrack(trackId);
+                                                                 pluginHost.detachPlugin(trackId);
                                                              }));
         trackList.refresh();
         playbackEngine.rebuildSnapshot();
@@ -172,8 +177,14 @@ MainComponent::MainComponent()
         bool wasRunning = playbackEngine.suspendForStructuralChange();
         document.getUndoManager().beginNewTransaction(kStructuralTxn);
         document.getUndoManager().perform(new TrackRemoveAction(
-            &document.getSequence(), trackIndex, [this](int idx) { pluginHost.detachPlugin(idx); },
-            [this](int from, int delta) { pluginHost.renumberTrackIndices(from, delta); }));
+            &document.getSequence(), trackIndex,
+            [this](int idx) { pluginHost.detachPlugin(document.getSequence().getTrack(idx).getId()); },
+            [this](int from)
+            {
+                auto& seq = document.getSequence();
+                for (int i = from; i < seq.getNumTracks(); ++i)
+                    editorController.closeEditor(seq.getTrack(i).getId());
+            }));
         playbackEngine.resumeAfterStructuralChange(wasRunning);
 
         int newActive = juce::jlimit(0, document.getSequence().getNumTracks() - 1, trackIndex);
@@ -195,85 +206,96 @@ MainComponent::MainComponent()
     trackList.onPluginLabelClicked = [this](int trackIndex)
     {
         auto types = pluginController.getPluginTypes();
+        auto& sequence = document.getSequence();
 
         juce::PopupMenu menu;
-        const auto& currentTrack = document.getSequence().getTrack(trackIndex);
-        auto currentDest = currentTrack.getOutputDestination();
-        int currentRouteTarget = currentTrack.getRouteTargetTrackIndex();
+        const auto& currentTrack = sequence.getTrack(trackIndex);
+        const TrackId trackId = currentTrack.getId();
+        const auto currentDest = currentTrack.getOutputDestination();
+        const TrackId currentTarget = sequence.resolveRouteTarget(trackIndex);
 
         menu.addSectionHeader("Output");
-        for (int i = 0; i < document.getSequence().getNumTracks(); ++i)
+        for (int i = 0; i < sequence.getNumTracks(); ++i)
         {
-            juce::String pluginName = pluginHost.getPluginName(i);
+            const TrackId candidate = sequence.getTrack(i).getId();
+            juce::String pluginName = pluginHost.getPluginName(candidate);
             if (pluginName.isEmpty())
                 continue;
-            bool isOwn = (i == trackIndex);
-            bool ticked =
-                currentDest == MidiTrack::OutputDestination::Plugin &&
-                (isOwn ? (currentRouteTarget < 0 || currentRouteTarget == trackIndex) : currentRouteTarget == i);
+            const bool ticked = currentDest == MidiTrack::OutputDestination::Plugin && currentTarget == candidate;
             menu.addItem(pluginName, true, ticked,
-                         [this, trackIndex, i, isOwn]()
+                         [this, trackId, candidate]()
                          {
-                             playbackEngine.releaseActiveNotesForTrack(trackIndex);
-                             auto& track = document.getSequence().getTrack(trackIndex);
-                             track.setRouteTargetTrackIndex(isOwn ? -1 : i);
+                             auto& seq = document.getSequence();
+                             const int index = seq.indexOf(trackId);
+                             if (index < 0)
+                                 return;
+                             playbackEngine.releaseActiveNotesForTrack(trackId);
+                             auto& track = seq.getTrack(index);
+                             track.setRouteTarget(candidate == trackId ? std::optional<TrackId>{} : candidate);
                              track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-                             document.getSequence().notifyTracksChanged();
+                             seq.notifyTracksChanged();
                              playbackEngine.rebuildSnapshot();
                          });
         }
 
         menu.addItem("MIDI Device", true, currentDest == MidiTrack::OutputDestination::MidiDevice,
-                     [this, trackIndex]()
+                     [this, trackId]()
                      {
-                         playbackEngine.releaseActiveNotesForTrack(trackIndex);
-                         document.getSequence()
-                             .getTrack(trackIndex)
-                             .setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
-                         document.getSequence().notifyTracksChanged();
+                         auto& seq = document.getSequence();
+                         const int index = seq.indexOf(trackId);
+                         if (index < 0)
+                             return;
+                         playbackEngine.releaseActiveNotesForTrack(trackId);
+                         seq.getTrack(index).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         seq.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
                      });
 
-        menu.addItem(
-            "None", true, currentDest == MidiTrack::OutputDestination::None,
-            [this, trackIndex]()
-            {
-                playbackEngine.releaseActiveNotesForTrack(trackIndex);
-                document.getSequence().getTrack(trackIndex).setOutputDestination(MidiTrack::OutputDestination::None);
-                document.getSequence().notifyTracksChanged();
-                playbackEngine.rebuildSnapshot();
-            });
+        menu.addItem("None", true, currentDest == MidiTrack::OutputDestination::None,
+                     [this, trackId]()
+                     {
+                         auto& seq = document.getSequence();
+                         const int index = seq.indexOf(trackId);
+                         if (index < 0)
+                             return;
+                         playbackEngine.releaseActiveNotesForTrack(trackId);
+                         seq.getTrack(index).setOutputDestination(MidiTrack::OutputDestination::None);
+                         seq.notifyTracksChanged();
+                         playbackEngine.rebuildSnapshot();
+                     });
         menu.addSeparator();
 
         menu.addItem("Load Plugin...", true, false,
-                     [this, trackIndex]() { pluginController.attachPluginToTrackViaFileChooser(trackIndex); });
+                     [this, trackId]() { pluginController.attachPluginToTrackViaFileChooser(trackId); });
 
         juce::PopupMenu chooseSubmenu;
         juce::KnownPluginList::addToMenu(chooseSubmenu, types, juce::KnownPluginList::sortByManufacturer);
         menu.addSubMenu("Choose Plugin", chooseSubmenu, !types.isEmpty());
 
-        bool hasPlugin = !pluginHost.getPluginName(trackIndex).isEmpty();
+        const bool hasPlugin = !pluginHost.getPluginName(trackId).isEmpty();
         menu.addItem("Detach Plugin", hasPlugin, false,
-                     [this, trackIndex]()
+                     [this, trackId]()
                      {
+                         auto& seq = document.getSequence();
+                         const int index = seq.indexOf(trackId);
+                         if (index < 0)
+                             return;
                          if (playbackEngine.isPlaying())
                              stopPlayback();
-                         playbackEngine.releaseActiveNotesForTrack(trackIndex);
-                         pluginHost.detachPlugin(trackIndex);
-                         document.getSequence()
-                             .getTrack(trackIndex)
-                             .setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
-                         document.getSequence().notifyTracksChanged();
+                         playbackEngine.releaseActiveNotesForTrack(trackId);
+                         pluginHost.detachPlugin(trackId);
+                         seq.getTrack(index).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         seq.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
                      });
 
         menu.showMenuAsync(juce::PopupMenu::Options{},
-                           [this, trackIndex, types](int result)
+                           [this, trackId, types](int result)
                            {
                                int index = juce::KnownPluginList::getIndexChosenByMenu(types, result);
                                if (index < 0)
                                    return;
-                               pluginController.attachPluginToTrack(trackIndex, types.getReference(index));
+                               pluginController.attachPluginToTrack(trackId, types.getReference(index));
                            });
     };
 
@@ -1058,16 +1080,9 @@ void MainComponent::stopPlayback()
 
 PlaybackTrackContext MainComponent::makeTrackContext(int trackIndex) const
 {
-    PlaybackTrackContext ctx;
-    ctx.trackIndex = trackIndex;
     if (trackIndex < 0 || trackIndex >= document.getSequence().getNumTracks())
-        return ctx;
-    const auto& track = document.getSequence().getTrack(trackIndex);
-    ctx.channel = track.getChannel();
-    ctx.destination = track.getOutputDestination();
-    const int rt = track.getRouteTargetTrackIndex();
-    ctx.routeTarget = (rt >= 0 && rt < document.getSequence().getNumTracks()) ? rt : trackIndex;
-    return ctx;
+        return {};
+    return makePlaybackTrackContext(document.getSequence(), trackIndex);
 }
 
 void MainComponent::onSequenceLoaded()

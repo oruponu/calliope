@@ -4,6 +4,8 @@
 #include "model/KeySignatureChange.h"
 #include "model/MidiTrack.h"
 #include "model/TimelineMap.h"
+#include "model/TrackId.h"
+#include <cstdint>
 #include <vector>
 
 class MidiSequence
@@ -44,6 +46,8 @@ public:
     const MidiTrack& getTrack(int index) const;
     int getNumTracks() const;
     bool isAnySolo() const;
+    int indexOf(TrackId id) const;
+    TrackId resolveRouteTarget(int index) const;
 
     const TimelineMap& getTimeline() const;
     void setTicksPerQuarterNote(int ppq);
@@ -62,4 +66,5 @@ private:
     std::vector<KeySignatureChange> keySignatureChanges;
     std::vector<ChordChange> chordChanges;
     std::vector<Listener*> listeners;
+    std::uint32_t nextTrackId = 1;
 };

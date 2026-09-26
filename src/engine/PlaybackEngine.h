@@ -35,7 +35,7 @@ public:
     void addListener(PlaybackListener* listener);
     void removeListener(PlaybackListener* listener);
 
-    void releaseActiveNotesForTrack(int trackIndex);
+    void releaseActiveNotesForTrack(TrackId trackId);
 
     bool suspendForStructuralChange();
     void resumeAfterStructuralChange(bool wasRunning);

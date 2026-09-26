@@ -1,5 +1,7 @@
 #include "model/MidiSequence.h"
 #include <algorithm>
+#include <cassert>
+#include <iterator>
 #include <ranges>
 
 void MidiSequence::clear()
@@ -12,12 +14,14 @@ void MidiSequence::clear()
 
 MidiTrack& MidiSequence::addTrack()
 {
-    tracks.emplace_back();
-    return tracks.back();
+    auto& track = tracks.emplace_back();
+    track.id = TrackId{nextTrackId++};
+    return track;
 }
 
 void MidiSequence::insertTrack(int index, const MidiTrack& track)
 {
+    assert(indexOf(track.getId()) < 0);
     tracks.insert(tracks.begin() + index, track);
 }
 
@@ -44,6 +48,20 @@ int MidiSequence::getNumTracks() const
 bool MidiSequence::isAnySolo() const
 {
     return std::ranges::any_of(tracks, [](const MidiTrack& track) { return track.isSolo(); });
+}
+
+int MidiSequence::indexOf(TrackId id) const
+{
+    auto it = std::ranges::find(tracks, id, &MidiTrack::getId);
+    return it == tracks.end() ? -1 : static_cast<int>(std::distance(tracks.begin(), it));
+}
+
+TrackId MidiSequence::resolveRouteTarget(int index) const
+{
+    const auto& track = tracks[index];
+    if (const auto& target = track.getRouteTarget(); target && indexOf(*target) >= 0)
+        return *target;
+    return track.getId();
 }
 
 KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const

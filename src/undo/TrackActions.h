@@ -3,6 +3,7 @@
 #include "model/MidiSequence.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -85,8 +86,16 @@ public:
 
     bool perform() override
     {
-        sequence->addTrack();
-        addedIndex = sequence->getNumTracks() - 1;
+        if (removedTrack)
+        {
+            sequence->insertTrack(addedIndex, *removedTrack);
+            removedTrack.reset();
+        }
+        else
+        {
+            sequence->addTrack();
+            addedIndex = sequence->getNumTracks() - 1;
+        }
         sequence->notifyTracksChanged();
         return true;
     }
@@ -95,6 +104,7 @@ public:
     {
         if (beforeRemove)
             beforeRemove(addedIndex);
+        removedTrack = sequence->getTrack(addedIndex);
         sequence->removeTrack(addedIndex);
         sequence->notifyTracksChanged();
         return true;
@@ -108,14 +118,17 @@ private:
     MidiSequence* sequence;
     std::function<void(int)> beforeRemove;
     int addedIndex = -1;
+    // Held between undo and redo so redo restores the same id.
+    std::optional<MidiTrack> removedTrack;
 };
 
 class TrackRemoveAction : public juce::UndoableAction
 {
 public:
     TrackRemoveAction(MidiSequence* seq, int trackIndex, std::function<void(int)> onDetach,
-                      std::function<void(int from, int delta)> onRenumber)
-        : sequence(seq), trackIdx(trackIndex), onDetach(std::move(onDetach)), onRenumber(std::move(onRenumber))
+                      std::function<void(int from)> onTracksShifted)
+        : sequence(seq), trackIdx(trackIndex), onDetach(std::move(onDetach)),
+          onTracksShifted(std::move(onTracksShifted))
     {
     }
 
@@ -124,36 +137,27 @@ public:
         savedTrack = sequence->getTrack(trackIdx);
         savedRouteTargets.clear();
         for (int i = 0; i < sequence->getNumTracks(); ++i)
-            savedRouteTargets.push_back(sequence->getTrack(i).getRouteTargetTrackIndex());
+            savedRouteTargets.push_back(sequence->getTrack(i).getRouteTarget());
 
         if (onDetach)
             onDetach(trackIdx);
 
         sequence->removeTrack(trackIdx);
 
-        if (onRenumber)
-            onRenumber(trackIdx + 1, -1);
+        if (onTracksShifted)
+            onTracksShifted(trackIdx);
 
-        for (int i = 0; i < sequence->getNumTracks(); ++i)
-        {
-            auto& t = sequence->getTrack(i);
-            int rt = t.getRouteTargetTrackIndex();
-            if (rt == trackIdx)
-                t.setRouteTargetTrackIndex(-1);
-            else if (rt > trackIdx)
-                t.setRouteTargetTrackIndex(rt - 1);
-        }
         sequence->notifyTracksChanged();
         return true;
     }
 
     bool undo() override
     {
-        if (onRenumber)
-            onRenumber(trackIdx, +1);
+        if (onTracksShifted)
+            onTracksShifted(trackIdx);
         sequence->insertTrack(trackIdx, savedTrack);
         for (int i = 0; i < static_cast<int>(savedRouteTargets.size()); ++i)
-            sequence->getTrack(i).setRouteTargetTrackIndex(savedRouteTargets[i]);
+            sequence->getTrack(i).setRouteTarget(savedRouteTargets[i]);
         sequence->notifyTracksChanged();
         return true;
     }
@@ -164,7 +168,7 @@ private:
     MidiSequence* sequence;
     int trackIdx;
     std::function<void(int)> onDetach;
-    std::function<void(int, int)> onRenumber;
+    std::function<void(int)> onTracksShifted;
     MidiTrack savedTrack;
-    std::vector<int> savedRouteTargets;
+    std::vector<std::optional<TrackId>> savedRouteTargets;
 };

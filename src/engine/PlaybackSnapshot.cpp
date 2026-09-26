@@ -33,12 +33,7 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq)
         if (anySolo && !track.isSolo())
             continue;
 
-        PlaybackTrackContext ctx;
-        ctx.trackIndex = t;
-        ctx.channel = track.getChannel();
-        ctx.destination = track.getOutputDestination();
-        const int rt = track.getRouteTargetTrackIndex();
-        ctx.routeTarget = (rt >= 0 && rt < numTracks) ? rt : t;
+        const PlaybackTrackContext ctx = makePlaybackTrackContext(seq, t);
 
         for (const auto& note : track.getNotes())
             snap.notes.push_back({ctx, note});
@@ -52,4 +47,15 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq)
                      [](const ScheduledEvent& a, const ScheduledEvent& b) { return a.event.tick < b.event.tick; });
 
     return snap;
+}
+
+PlaybackTrackContext makePlaybackTrackContext(const MidiSequence& seq, int trackIndex)
+{
+    const auto& track = seq.getTrack(trackIndex);
+    PlaybackTrackContext ctx;
+    ctx.trackId = track.getId();
+    ctx.channel = track.getChannel();
+    ctx.routeTarget = seq.resolveRouteTarget(trackIndex);
+    ctx.destination = track.getOutputDestination();
+    return ctx;
 }

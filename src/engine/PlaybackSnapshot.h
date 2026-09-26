@@ -8,9 +8,9 @@
 
 struct PlaybackTrackContext
 {
-    int trackIndex = 0;
+    TrackId trackId{};
     int channel = 1;
-    int routeTarget = 0;
+    TrackId routeTarget{};
     MidiTrack::OutputDestination destination = MidiTrack::OutputDestination::MidiDevice;
 };
 
@@ -36,3 +36,5 @@ struct PlaybackSnapshot
     double getTempoAt(int tick) const;
     static PlaybackSnapshot build(const MidiSequence& seq);
 };
+
+PlaybackTrackContext makePlaybackTrackContext(const MidiSequence& seq, int trackIndex);
