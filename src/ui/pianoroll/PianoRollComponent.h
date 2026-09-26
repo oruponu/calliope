@@ -13,6 +13,7 @@
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <set>
+#include <variant>
 #include <vector>
 
 class PianoRollComponent : public juce::Component, public MidiSequence::Listener, private juce::Timer
@@ -145,14 +146,6 @@ private:
     void updateStripPositions();
     void repaintStrips();
 
-    enum class DragMode
-    {
-        None,
-        Moving,
-        Resizing,
-        RubberBand
-    };
-
     void drawKeyboard(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
@@ -207,9 +200,6 @@ private:
     bool altDuplicateDone = false;
     NoteRef selectedNote;
     std::set<NoteRef> selectedNotes;
-    DragMode dragMode = DragMode::None;
-    int dragStartTick = 0;
-    int dragStartNote = 0;
 
     struct ResizeTarget
     {
@@ -217,7 +207,6 @@ private:
         int startTick = 0;
         int duration = 0;
     };
-    std::vector<ResizeTarget> resizeTargets;
 
     struct MoveTarget
     {
@@ -225,20 +214,41 @@ private:
         int startTick = 0;
         int noteNumber = 0;
     };
-    std::vector<MoveTarget> moveTargets;
-    int moveAnchorStartTick = 0;
-    int moveDeltaTick = 0;
-    int moveDeltaNote = 0;
 
-    ResizeEdge resizeEdge = ResizeEdge::None;
-    int resizeAnchorStartTick = 0;
-    int resizeAnchorEndTick = 0;
-    bool isCreatingNote = false;
+    struct Idle
+    {
+    };
+    struct KeyboardPreviewing
+    {
+    };
+    struct RubberBand
+    {
+        juce::Point<int> start;
+        juce::Rectangle<int> rect;
+    };
+    struct Resizing
+    {
+        std::vector<ResizeTarget> targets;
+        ResizeEdge edge = ResizeEdge::None;
+        int anchorStartTick = 0;
+        int anchorEndTick = 0;
+        bool isCreatingNote = false;
+    };
+    struct Moving
+    {
+        std::vector<MoveTarget> targets;
+        int anchorStartTick = 0;
+        int dragStartTick = 0;
+        int dragStartNote = 0;
+        int deltaTick = 0;
+        int deltaNote = 0;
+    };
+
+    std::variant<Idle, KeyboardPreviewing, RubberBand, Resizing, Moving> drag;
+    void resetNoteDrag();
     void beginResize(const NoteRef& hit, ResizeEdge edge);
     void beginMove(const NoteRef& anchor, const juce::MouseEvent& e);
     int contentBeats = 0;
-    juce::Point<int> rubberBandStart;
-    juce::Rectangle<int> rubberBandRect;
 
     EditClipboard clipboard;
     LoopStrip loopStrip{geometry};
@@ -254,8 +264,6 @@ private:
     void stopNotePreview();
     void timerCallback() override;
     static constexpr int previewHoldMs = 300;
-
-    bool isKeyboardDragging = false;
 
     int quantizeDenominator = 4;
 
