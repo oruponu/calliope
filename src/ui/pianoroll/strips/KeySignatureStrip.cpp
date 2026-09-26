@@ -22,14 +22,9 @@ KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef, EditCl
 {
 }
 
-KeySignatureStrip::~KeySignatureStrip()
-{
-    closeKeySignatureEditor();
-}
-
 void KeySignatureStrip::setSequence(MidiSequence* seq)
 {
-    closeKeySignatureEditor();
+    editSession.close();
     clearKeySignatureSelection();
     isKeySigRangeSelecting = false;
     TimelineStrip::setSequence(seq);
@@ -195,6 +190,7 @@ void KeySignatureStrip::paint(juce::Graphics& g)
     g.reduceClipRegion(viewLeftX + labelWidth(), 0, getWidth(), getHeight());
 
     drawTrackGridLines(g, visibleLeft, visibleRight, 0.0f, static_cast<float>(getHeight()));
+    const auto* draft = editSession.current();
 
     juce::Colour ksColour = track::sand;
     const auto& ksChanges = sequence->getKeySignatureChanges();
@@ -220,7 +216,7 @@ void KeySignatureStrip::paint(juce::Graphics& g)
         if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
         {
             bool selected = selection.contains(static_cast<int>(i));
-            bool editingThis = isKeySigEditing && !keySigEditIsNew && ksChanges[i].tick == keySigEditTick;
+            bool editingThis = draft != nullptr && !draft->isNew && ksChanges[i].tick == draft->tick;
             auto labelRect = keySignatureLabelRect(static_cast<int>(i));
             if (selected || editingThis)
             {
@@ -229,17 +225,17 @@ void KeySignatureStrip::paint(juce::Graphics& g)
             }
             g.setColour(selected || editingThis ? ksColour.brighter(0.5f) : ksColour);
             g.setFont(font::sans(font::sizeSM));
-            int sf = editingThis ? keySigDraftSharpsOrFlats : ksChanges[i].sharpsOrFlats;
-            bool minor = editingThis ? keySigDraftIsMinor : ksChanges[i].isMinor;
+            int sf = editingThis ? draft->sharpsOrFlats : ksChanges[i].sharpsOrFlats;
+            bool minor = editingThis ? draft->isMinor : ksChanges[i].isMinor;
             juce::String labelText = juce::String(KeySignatureName::toString(sf, minor));
             g.drawText(labelText, labelRect, juce::Justification::centredLeft);
         }
     }
 
-    if (isKeySigEditing && keySigEditIsNew)
+    if (draft != nullptr && draft->isNew)
     {
         juce::Colour draftColour = ksColour.withAlpha(0.6f);
-        int x = geometry.tickToX(keySigEditTick);
+        int x = geometry.tickToX(draft->tick);
         if (x >= visibleLeft && x <= visibleRight)
         {
             g.setColour(draftColour.withAlpha(0.4f));
@@ -248,7 +244,7 @@ void KeySignatureStrip::paint(juce::Graphics& g)
         int textX = std::max(x + 4, viewLeftX + labelWidth() + 4);
         g.setColour(draftColour);
         g.setFont(font::sans(font::sizeSM));
-        g.drawText(juce::String(KeySignatureName::toString(keySigDraftSharpsOrFlats, keySigDraftIsMinor)), textX, 0, 40,
+        g.drawText(juce::String(KeySignatureName::toString(draft->sharpsOrFlats, draft->isMinor)), textX, 0, 40,
                    getHeight(), juce::Justification::centredLeft);
     }
 
@@ -371,7 +367,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
         else if (validIndex && !keySigDragMoved)
         {
             const bool soleSelection = selection.isSole(draggedIndex);
-            if (soleSelection && !isKeySigEditing)
+            if (soleSelection && !editSession.isOpen())
             {
                 const auto& ks = changes[static_cast<size_t>(draggedIndex)];
                 openKeySignatureEditor(ks.tick, ks.sharpsOrFlats, ks.isMinor, false,
@@ -409,7 +405,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
 
 void KeySignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
 {
-    if (!sequence || e.mods.isRightButtonDown() || isKeySigEditing)
+    if (!sequence || e.mods.isRightButtonDown() || editSession.isOpen())
         return;
 
     if (e.y < 0 || e.y >= getHeight() || e.x < viewLeftX + labelWidth())
@@ -452,75 +448,53 @@ void KeySignatureStrip::openKeySignatureEditor(int tick, int sharpsOrFlats, bool
 {
     anchorInLocal.setX(std::max(anchorInLocal.getX(), viewLeftX + labelWidth()));
 
-    isKeySigEditing = true;
-    keySigEditTick = tick;
-    keySigDraftSharpsOrFlats = sharpsOrFlats;
-    keySigDraftIsMinor = isMinor;
-    keySigEditIsNew = isNew;
-
     auto content = std::make_unique<KeySignatureEditor>(sharpsOrFlats, isMinor, isNew);
-    keySigEditor = content.get();
     content->onDraftChanged = [this](int sf, bool minor)
     {
-        keySigDraftSharpsOrFlats = sf;
-        keySigDraftIsMinor = minor;
+        if (auto* draft = editSession.current())
+        {
+            draft->sharpsOrFlats = sf;
+            draft->isMinor = minor;
+        }
         repaint();
     };
     content->onCommit = [this](int sf, bool minor) { commitKeySignatureEdit(sf, minor); };
     content->onCancel = [this]() { cancelKeySignatureEdit(); };
 
-    auto& box = juce::CallOutBox::launchAsynchronously(std::move(content), localAreaToGlobal(anchorInLocal), nullptr);
-    box.setDismissalMouseClicksAreAlwaysConsumed(true);
-    keySigCallout = &box;
+    editSession.open({tick, sharpsOrFlats, isMinor, isNew}, std::move(content), localAreaToGlobal(anchorInLocal));
     repaint();
 }
 
 void KeySignatureStrip::commitKeySignatureEdit(int sharpsOrFlats, bool isMinor)
 {
-    isKeySigEditing = false;
-    keySigEditor = nullptr;
-    keySigCallout = nullptr;
+    const auto draft = editSession.finish();
 
     if (!sequence)
         return;
 
     const auto& existing = sequence->getKeySignatureChanges();
-    auto atTick = std::ranges::find(existing, keySigEditTick, &KeySignatureChange::tick);
+    auto atTick = std::ranges::find(existing, draft.tick, &KeySignatureChange::tick);
     if (atTick != existing.end() && sharpsOrFlats == atTick->sharpsOrFlats && isMinor == atTick->isMinor)
     {
         repaint();
         return;
     }
 
-    undoManager.beginNewTransaction(keySigEditIsNew ? "Add Key Signature Change" : "Edit Key Signature Change");
+    undoManager.beginNewTransaction(draft.isNew ? "Add Key Signature Change" : "Edit Key Signature Change");
     auto before = sequence->getKeySignatureChanges();
     auto after = before;
-    KeySignatureEdits::add(after, keySigEditTick, sharpsOrFlats, isMinor);
+    KeySignatureEdits::add(after, draft.tick, sharpsOrFlats, isMinor);
     undoManager.perform(new ReplaceListAction<KeySignatureChange>(sequence, std::move(before), std::move(after)));
 
     const auto& changes = sequence->getKeySignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-        if (changes[static_cast<size_t>(i)].tick == keySigEditTick)
+        if (changes[static_cast<size_t>(i)].tick == draft.tick)
             selection.selectOnly(i);
     repaint();
 }
 
 void KeySignatureStrip::cancelKeySignatureEdit()
 {
-    isKeySigEditing = false;
-    keySigEditor = nullptr;
-    keySigCallout = nullptr;
+    editSession.finish();
     repaint();
-}
-
-void KeySignatureStrip::closeKeySignatureEditor()
-{
-    if (keySigEditor != nullptr)
-        keySigEditor->abandon();
-    if (keySigCallout != nullptr)
-        keySigCallout->dismiss();
-
-    isKeySigEditing = false;
-    keySigEditor = nullptr;
-    keySigCallout = nullptr;
 }

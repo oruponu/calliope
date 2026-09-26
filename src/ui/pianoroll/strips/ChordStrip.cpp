@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/ChordStrip.h"
 #include "edit/ChordTrackEdits.h"
+#include "notation/ChordSymbol.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
@@ -28,14 +29,9 @@ ChordStrip::ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipb
 {
 }
 
-ChordStrip::~ChordStrip()
-{
-    closeChordEditor();
-}
-
 void ChordStrip::setSequence(MidiSequence* seq)
 {
-    closeChordEditor();
+    editSession.close();
     clearChordSelection();
     isChordRangeSelecting = false;
     rangeSelect = {};
@@ -162,13 +158,13 @@ juce::Rectangle<int> ChordStrip::chordSpanRect(int index) const
     return {x, spanTop, nextX - x, spanHeight()};
 }
 
-juce::Rectangle<int> ChordStrip::chordDraftSpanRect() const
+juce::Rectangle<int> ChordStrip::chordDraftSpanRect(const ChordDraft& draft) const
 {
     if (!sequence)
         return {};
 
-    int x = geometry.tickToX(chordEditTick);
-    int nextX = geometry.tickToX(chordEditEndTick);
+    int x = geometry.tickToX(draft.tick);
+    int nextX = geometry.tickToX(draft.endTick);
     return {x, spanTop, nextX - x, spanHeight()};
 }
 
@@ -336,6 +332,7 @@ void ChordStrip::paint(juce::Graphics& g)
     g.reduceClipRegion(viewLeftX + labelWidth(), 0, getWidth(), getHeight());
 
     drawTrackGridLines(g, visibleLeft, visibleRight, 0.0f, static_cast<float>(getHeight()));
+    const auto* draft = editSession.current();
 
     juce::Colour chordColour = track::violet;
     const auto& chordChanges = sequence->getChordChanges();
@@ -350,7 +347,7 @@ void ChordStrip::paint(juce::Graphics& g)
 
         bool selected = selection.contains(i);
         bool editingThis =
-            isChordEditing && !chordEditIsNew && chordChanges[static_cast<size_t>(i)].tick == chordEditTick;
+            draft != nullptr && !draft->isNew && chordChanges[static_cast<size_t>(i)].tick == draft->tick;
         bool highlighted = selected || editingThis;
 
         if (highlighted)
@@ -373,9 +370,9 @@ void ChordStrip::paint(juce::Graphics& g)
             ChordChange displayed = chordChanges[static_cast<size_t>(i)];
             if (editingThis)
             {
-                displayed.chordRoot = chordDraftRoot;
-                displayed.chordType = chordDraftType;
-                displayed.bassRoot = chordDraftBassRoot;
+                displayed.chordRoot = draft->root;
+                displayed.chordType = draft->type;
+                displayed.bassRoot = draft->bassRoot;
             }
             g.setColour(highlighted ? chordColour.brighter(0.5f) : chordColour);
             g.setFont(font::sans(font::sizeSM));
@@ -384,9 +381,9 @@ void ChordStrip::paint(juce::Graphics& g)
         }
     }
 
-    if (isChordEditing && chordEditIsNew)
+    if (draft != nullptr && draft->isNew)
     {
-        auto draftRect = chordDraftSpanRect();
+        auto draftRect = chordDraftSpanRect(*draft);
         if (!draftRect.isEmpty() && draftRect.getX() <= visibleRight && draftRect.getRight() >= visibleLeft)
         {
             g.setColour(chordColour.withAlpha(0.1f));
@@ -398,10 +395,10 @@ void ChordStrip::paint(juce::Graphics& g)
             int textWidth = draftRect.getRight() - textX - 2;
             if (textWidth > 8)
             {
-                ChordChange draft{chordEditTick, chordDraftRoot, chordDraftType, chordDraftBassRoot, ChordChange::none};
+                ChordChange draftChord{draft->tick, draft->root, draft->type, draft->bassRoot, ChordChange::none};
                 g.setColour(chordColour.withAlpha(0.6f));
                 g.setFont(font::sans(font::sizeSM));
-                g.drawText(juce::String(ChordSymbol::toString(draft)), textX, 0, textWidth, getHeight(),
+                g.drawText(juce::String(ChordSymbol::toString(draftChord)), textX, 0, textWidth, getHeight(),
                            juce::Justification::centredLeft);
             }
         }
@@ -746,7 +743,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
 
 void ChordStrip::mouseDoubleClick(const juce::MouseEvent& e)
 {
-    if (!sequence || e.mods.isRightButtonDown() || isChordEditing)
+    if (!sequence || e.mods.isRightButtonDown() || editSession.isOpen())
         return;
 
     if (e.y < 0 || e.y >= getHeight() || e.x < viewLeftX + labelWidth())
@@ -817,48 +814,39 @@ void ChordStrip::openChordEditor(int tick, int endTick, int chordRoot, int chord
     chordRoot = ChordSymbol::normalizeRoot(chordRoot);
     chordType = ChordSymbol::normalizeType(chordType);
     bassRoot = ChordSymbol::normalizeBassRoot(bassRoot);
+    const auto spelling = ChordSymbol::spellingForKeySignature(sequence->getKeySignatureAt(tick).sharpsOrFlats);
 
-    isChordEditing = true;
-    chordEditTick = tick;
-    chordEditEndTick = endTick;
-    chordDraftRoot = chordRoot;
-    chordDraftType = chordType;
-    chordDraftBassRoot = bassRoot;
-    chordEditIsNew = isNew;
-    chordEditSpelling = ChordSymbol::spellingForKeySignature(sequence->getKeySignatureAt(tick).sharpsOrFlats);
-
-    auto content = std::make_unique<ChordEditor>(chordRoot, chordType, bassRoot, chordEditSpelling, isNew);
-    chordEditor = content.get();
+    auto content = std::make_unique<ChordEditor>(chordRoot, chordType, bassRoot, spelling, isNew);
     content->onDraftChanged = [this](int root, int type, int bass)
     {
-        chordDraftRoot = root;
-        chordDraftType = type;
-        chordDraftBassRoot = bass;
+        if (auto* draft = editSession.current())
+        {
+            draft->root = root;
+            draft->type = type;
+            draft->bassRoot = bass;
+        }
         repaint();
     };
     content->onCommit = [this](int root, int type, int bass) { commitChordEdit(root, type, bass); };
     content->onCancel = [this]() { cancelChordEdit(); };
 
-    auto& box = juce::CallOutBox::launchAsynchronously(std::move(content), localAreaToGlobal(anchorInLocal), nullptr);
-    box.setDismissalMouseClicksAreAlwaysConsumed(true);
-    chordCallout = &box;
+    editSession.open({tick, endTick, chordRoot, chordType, bassRoot, isNew}, std::move(content),
+                     localAreaToGlobal(anchorInLocal));
     repaint();
 }
 
 void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
 {
-    isChordEditing = false;
-    chordEditor = nullptr;
-    chordCallout = nullptr;
+    const auto draft = editSession.finish();
 
     if (!sequence)
         return;
 
     const int bassType = (bassRoot == ChordChange::none) ? ChordChange::none : chordType;
 
-    if (chordEditIsNew)
+    if (draft.isNew)
     {
-        auto after = ChordTrackEdits::afterAdd(sequence->getChordChanges(), chordEditTick, chordEditEndTick, chordRoot,
+        auto after = ChordTrackEdits::afterAdd(sequence->getChordChanges(), draft.tick, draft.endTick, chordRoot,
                                                chordType, bassRoot, bassType);
         undoManager.beginNewTransaction("Add Chord");
         undoManager.perform(
@@ -867,7 +855,7 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
     else
     {
         const auto& existing = sequence->getChordChanges();
-        auto atTick = std::ranges::find(existing, chordEditTick, &ChordChange::tick);
+        auto atTick = std::ranges::find(existing, draft.tick, &ChordChange::tick);
         if (atTick != existing.end() && atTick->chordRoot == chordRoot && atTick->chordType == chordType &&
             atTick->bassRoot == bassRoot)
         {
@@ -878,33 +866,19 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
         undoManager.beginNewTransaction("Edit Chord");
         auto before = sequence->getChordChanges();
         auto after = before;
-        ChordTrackEdits::add(after, chordEditTick, chordRoot, chordType, bassRoot, bassType);
+        ChordTrackEdits::add(after, draft.tick, chordRoot, chordType, bassRoot, bassType);
         undoManager.perform(new ReplaceListAction<ChordChange>(sequence, std::move(before), std::move(after)));
     }
 
     const auto& changes = sequence->getChordChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-        if (changes[static_cast<size_t>(i)].tick == chordEditTick)
+        if (changes[static_cast<size_t>(i)].tick == draft.tick)
             selection.selectOnly(i);
     repaint();
 }
 
 void ChordStrip::cancelChordEdit()
 {
-    isChordEditing = false;
-    chordEditor = nullptr;
-    chordCallout = nullptr;
+    editSession.finish();
     repaint();
-}
-
-void ChordStrip::closeChordEditor()
-{
-    if (chordEditor != nullptr)
-        chordEditor->abandon();
-    if (chordCallout != nullptr)
-        chordCallout->dismiss();
-
-    isChordEditing = false;
-    chordEditor = nullptr;
-    chordCallout = nullptr;
 }

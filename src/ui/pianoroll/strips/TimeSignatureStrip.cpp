@@ -12,14 +12,9 @@ TimeSignatureStrip::TimeSignatureStrip(const TimelineGeometry& geometryRef, Edit
 {
 }
 
-TimeSignatureStrip::~TimeSignatureStrip()
-{
-    closeTimeSignatureEditor();
-}
-
 void TimeSignatureStrip::setSequence(MidiSequence* seq)
 {
-    closeTimeSignatureEditor();
+    editSession.close();
     clearTimeSignatureSelection();
     isTimeSigRangeSelecting = false;
     TimelineStrip::setSequence(seq);
@@ -171,6 +166,7 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
     g.reduceClipRegion(viewLeftX + labelWidth(), 0, getWidth(), getHeight());
 
     drawTrackGridLines(g, visibleLeft, visibleRight, 0.0f, static_cast<float>(getHeight()));
+    const auto* draft = editSession.current();
 
     const auto& tsChanges = sequence->getTimeline().getTimeSignatureChanges();
     if (tsChanges.empty())
@@ -204,7 +200,7 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
             if (x + 4 >= visibleLeft - 40 && x <= visibleRight)
             {
                 bool selected = selection.contains(static_cast<int>(i));
-                bool editingThis = isTimeSigEditing && !timeSigEditIsNew && tsChanges[i].tick == timeSigEditTick;
+                bool editingThis = draft != nullptr && !draft->isNew && tsChanges[i].tick == draft->tick;
                 auto labelRect = timeSignatureLabelRect(static_cast<int>(i));
                 if (selected || editingThis)
                 {
@@ -213,18 +209,18 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
                 }
                 g.setColour(selected || editingThis ? tsColour.brighter(0.5f) : tsColour);
                 g.setFont(font::sans(font::sizeSM));
-                int labelNum = editingThis ? timeSigDraftNum : tsChanges[i].numerator;
-                int labelDen = editingThis ? timeSigDraftDen : tsChanges[i].denominator;
+                int labelNum = editingThis ? draft->numerator : tsChanges[i].numerator;
+                int labelDen = editingThis ? draft->denominator : tsChanges[i].denominator;
                 juce::String labelText = juce::String(labelNum) + "/" + juce::String(labelDen);
                 g.drawText(labelText, labelRect, juce::Justification::centredLeft);
             }
         }
     }
 
-    if (isTimeSigEditing && timeSigEditIsNew)
+    if (draft != nullptr && draft->isNew)
     {
         juce::Colour draftColour = track::teal.withAlpha(0.6f);
-        int x = geometry.tickToX(timeSigEditTick);
+        int x = geometry.tickToX(draft->tick);
         if (x >= visibleLeft && x <= visibleRight)
         {
             g.setColour(draftColour.withAlpha(0.4f));
@@ -233,7 +229,7 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
         int textX = std::max(x + 4, viewLeftX + labelWidth() + 4);
         g.setColour(draftColour);
         g.setFont(font::sans(font::sizeSM));
-        juce::String labelText = juce::String(timeSigDraftNum) + "/" + juce::String(timeSigDraftDen);
+        juce::String labelText = juce::String(draft->numerator) + "/" + juce::String(draft->denominator);
         g.drawText(labelText, textX, 0, 40, getHeight(), juce::Justification::centredLeft);
     }
 
@@ -360,7 +356,7 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
         else if (validIndex && !timeSigDragMoved)
         {
             const bool soleSelection = selection.isSole(draggedIndex);
-            if (soleSelection && !isTimeSigEditing)
+            if (soleSelection && !editSession.isOpen())
             {
                 const auto& ts = changes[static_cast<size_t>(draggedIndex)];
                 openTimeSignatureEditor(ts.tick, ts.numerator, ts.denominator, false,
@@ -398,7 +394,7 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
 
 void TimeSignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
 {
-    if (!sequence || e.mods.isRightButtonDown() || isTimeSigEditing)
+    if (!sequence || e.mods.isRightButtonDown() || editSession.isOpen())
         return;
 
     if (e.y < 0 || e.y >= getHeight() || e.x < viewLeftX + labelWidth())
@@ -441,75 +437,53 @@ void TimeSignatureStrip::openTimeSignatureEditor(int tick, int num, int den, boo
 {
     anchorInLocal.setX(std::max(anchorInLocal.getX(), viewLeftX + labelWidth()));
 
-    isTimeSigEditing = true;
-    timeSigEditTick = tick;
-    timeSigDraftNum = num;
-    timeSigDraftDen = den;
-    timeSigEditIsNew = isNew;
-
     auto content = std::make_unique<TimeSignatureEditor>(num, den, isNew);
-    timeSigEditor = content.get();
     content->onDraftChanged = [this](int n, int d)
     {
-        timeSigDraftNum = n;
-        timeSigDraftDen = d;
+        if (auto* draft = editSession.current())
+        {
+            draft->numerator = n;
+            draft->denominator = d;
+        }
         repaint();
     };
     content->onCommit = [this](int n, int d) { commitTimeSignatureEdit(n, d); };
     content->onCancel = [this]() { cancelTimeSignatureEdit(); };
 
-    auto& box = juce::CallOutBox::launchAsynchronously(std::move(content), localAreaToGlobal(anchorInLocal), nullptr);
-    box.setDismissalMouseClicksAreAlwaysConsumed(true);
-    timeSigCallout = &box;
+    editSession.open({tick, num, den, isNew}, std::move(content), localAreaToGlobal(anchorInLocal));
     repaint();
 }
 
 void TimeSignatureStrip::commitTimeSignatureEdit(int num, int den)
 {
-    isTimeSigEditing = false;
-    timeSigEditor = nullptr;
-    timeSigCallout = nullptr;
+    const auto draft = editSession.finish();
 
     if (!sequence)
         return;
 
     const auto& existing = sequence->getTimeline().getTimeSignatureChanges();
-    auto atTick = std::ranges::find(existing, timeSigEditTick, &TimeSignatureChange::tick);
+    auto atTick = std::ranges::find(existing, draft.tick, &TimeSignatureChange::tick);
     if (atTick != existing.end() && num == atTick->numerator && den == atTick->denominator)
     {
         repaint();
         return;
     }
 
-    undoManager.beginNewTransaction(timeSigEditIsNew ? "Add Time Signature Change" : "Edit Time Signature Change");
+    undoManager.beginNewTransaction(draft.isNew ? "Add Time Signature Change" : "Edit Time Signature Change");
     auto before = sequence->getTimeline().getTimeSignatureChanges();
     auto after = before;
-    TimeSignatureEdits::add(after, timeSigEditTick, num, den, sequence->getTimeline().getTicksPerQuarterNote());
+    TimeSignatureEdits::add(after, draft.tick, num, den, sequence->getTimeline().getTicksPerQuarterNote());
     undoManager.perform(new ReplaceListAction<TimeSignatureChange>(sequence, std::move(before), std::move(after)));
 
     const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-        if (changes[i].tick == timeSigEditTick)
+        if (changes[i].tick == draft.tick)
             selection.selectOnly(i);
     repaint();
 }
 
 void TimeSignatureStrip::cancelTimeSignatureEdit()
 {
-    isTimeSigEditing = false;
-    timeSigEditor = nullptr;
-    timeSigCallout = nullptr;
+    editSession.finish();
     repaint();
-}
-
-void TimeSignatureStrip::closeTimeSignatureEditor()
-{
-    if (timeSigEditor != nullptr)
-        timeSigEditor->abandon();
-    if (timeSigCallout != nullptr)
-        timeSigCallout->dismiss();
-
-    isTimeSigEditing = false;
-    timeSigEditor = nullptr;
-    timeSigCallout = nullptr;
 }
