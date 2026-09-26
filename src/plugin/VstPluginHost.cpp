@@ -1,5 +1,7 @@
 #include "plugin/VstPluginHost.h"
 #include "model/MidiTrack.h"
+#include "plugin/PluginAssignmentCodec.h"
+#include "plugin/PluginSyncPlan.h"
 
 namespace
 {
@@ -63,7 +65,37 @@ std::optional<juce::PluginDescription> VstPluginHost::describePluginFile(const j
     return *descriptions[0];
 }
 
+VstPluginHost::~VstPluginHost()
+{
+    if (sequence != nullptr)
+        sequence->removeListener(this);
+}
+
+void VstPluginHost::setSequence(MidiSequence* seq)
+{
+    if (sequence != nullptr)
+        sequence->removeListener(this);
+    sequence = seq;
+    if (sequence != nullptr)
+        sequence->addListener(this);
+}
+
 bool VstPluginHost::attachPlugin(TrackId trackId, const juce::PluginDescription& description)
+{
+    if (!createInstance(trackId, description, nullptr))
+        return false;
+    failedIds.erase(trackId);
+    return true;
+}
+
+void VstPluginHost::detachPlugin(TrackId trackId)
+{
+    destroyInstance(trackId);
+    failedIds.erase(trackId);
+}
+
+bool VstPluginHost::createInstance(TrackId trackId, const juce::PluginDescription& description,
+                                   const juce::MemoryBlock* state)
 {
     if (graph == nullptr)
         return false;
@@ -75,7 +107,10 @@ bool VstPluginHost::attachPlugin(TrackId trackId, const juce::PluginDescription&
     if (pluginInstance == nullptr)
         return false;
 
-    detachPlugin(trackId);
+    if (state != nullptr)
+        pluginInstance->setStateInformation(state->getData(), static_cast<int>(state->getSize()));
+
+    destroyInstance(trackId);
 
     auto midiSourceProcessor = std::make_unique<MidiSourceProcessor>();
     auto* collectorPtr = &midiSourceProcessor->collector;
@@ -90,11 +125,11 @@ bool VstPluginHost::attachPlugin(TrackId trackId, const juce::PluginDescription&
     for (int ch = 0; ch < channelsToConnect; ++ch)
         graph->addConnection({{pluginNode->nodeID, ch}, {audioOutNodeId, ch}});
 
-    instances[trackId] = Instance{pluginNode->nodeID, midiSourceNode->nodeID, collectorPtr};
+    instances[trackId] = Instance{pluginNode->nodeID, midiSourceNode->nodeID, collectorPtr, {}};
     return true;
 }
 
-void VstPluginHost::detachPlugin(TrackId trackId)
+void VstPluginHost::destroyInstance(TrackId trackId)
 {
     auto it = instances.find(trackId);
     if (it == instances.end())
@@ -109,14 +144,76 @@ void VstPluginHost::detachPlugin(TrackId trackId)
     graph->removeNode(instance.pluginNode);
 }
 
-void VstPluginHost::detachAllPlugins()
+void VstPluginHost::tracksChanged()
+{
+    syncWithSequence();
+}
+
+void VstPluginHost::sequenceReset()
 {
     std::vector<TrackId> trackIds;
     trackIds.reserve(instances.size());
     for (const auto& [trackId, _] : instances)
         trackIds.push_back(trackId);
     for (TrackId trackId : trackIds)
-        detachPlugin(trackId);
+        destroyInstance(trackId);
+
+    retiredStates.clear();
+    failedIds.clear();
+}
+
+void VstPluginHost::syncWithSequence()
+{
+    if (sequence == nullptr)
+        return;
+
+    std::vector<TrackId> liveIds;
+    liveIds.reserve(instances.size());
+    for (const auto& [trackId, _] : instances)
+        liveIds.push_back(trackId);
+
+    const auto plan = planPluginSync(*sequence, liveIds, failedIds);
+
+    for (TrackId trackId : plan.toRetire)
+    {
+        if (auto* processor = getPluginProcessor(trackId))
+        {
+            juce::MemoryBlock state;
+            processor->getStateInformation(state);
+            retiredStates.put(trackId, instances.at(trackId).owner, std::move(state));
+        }
+        destroyInstance(trackId);
+    }
+
+    for (TrackId trackId : plan.toDestroy)
+        destroyInstance(trackId);
+
+    for (auto& [trackId, instance] : instances)
+        if (const int index = sequence->indexOf(trackId); index >= 0)
+            instance.owner = sequence->getTrack(index).getPluginAssignment();
+
+    for (TrackId trackId : plan.toCreate)
+    {
+        const auto assignment = sequence->getTrack(sequence->indexOf(trackId)).getPluginAssignment();
+        const auto description = PluginAssignmentCodec::fromXml(assignment->descriptionXml);
+
+        auto retired = retiredStates.take(trackId);
+        std::optional<juce::MemoryBlock> state = retired;
+        if (!state && !assignment->state.empty())
+            state = PluginAssignmentCodec::toMemoryBlock(assignment->state);
+
+        if (description && createInstance(trackId, *description, state ? &*state : nullptr))
+        {
+            instances.at(trackId).owner = assignment;
+            continue;
+        }
+
+        failedIds.insert(trackId);
+        if (retired)
+            retiredStates.put(trackId, assignment, std::move(*retired));
+    }
+
+    retiredStates.collectExpired();
 }
 
 juce::AudioProcessor* VstPluginHost::getPluginProcessor(TrackId trackId) const

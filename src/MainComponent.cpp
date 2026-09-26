@@ -32,6 +32,7 @@ MainComponent::MainComponent()
 
     document.getSequence().addTrack();
     document.getSequence().addListener(this);
+    pluginHost.setSequence(&document.getSequence());
 
     playbackEngine.setSequence(&document.getSequence());
     playbackEngine.addListener(&midiOutput);
@@ -158,14 +159,7 @@ MainComponent::MainComponent()
     trackList.onAddTrackRequested = [this]()
     {
         document.getUndoManager().beginNewTransaction(kStructuralTxn);
-        document.getUndoManager().perform(new TrackAddAction(&document.getSequence(),
-                                                             [this](int idx)
-                                                             {
-                                                                 const TrackId trackId =
-                                                                     document.getSequence().getTrack(idx).getId();
-                                                                 playbackEngine.releaseActiveNotesForTrack(trackId);
-                                                                 pluginHost.detachPlugin(trackId);
-                                                             }));
+        document.getUndoManager().perform(new TrackAddAction(&document.getSequence()));
         trackList.refresh();
         playbackEngine.rebuildSnapshot();
     };
@@ -176,9 +170,7 @@ MainComponent::MainComponent()
 
         bool wasRunning = playbackEngine.suspendForStructuralChange();
         document.getUndoManager().beginNewTransaction(kStructuralTxn);
-        document.getUndoManager().perform(
-            new TrackRemoveAction(&document.getSequence(), trackIndex, [this](int idx)
-                                  { pluginHost.detachPlugin(document.getSequence().getTrack(idx).getId()); }));
+        document.getUndoManager().perform(new TrackRemoveAction(&document.getSequence(), trackIndex));
         playbackEngine.resumeAfterStructuralChange(wasRunning);
 
         int newActive = juce::jlimit(0, document.getSequence().getNumTracks() - 1, trackIndex);
@@ -266,7 +258,7 @@ MainComponent::MainComponent()
         juce::KnownPluginList::addToMenu(chooseSubmenu, types, juce::KnownPluginList::sortByManufacturer);
         menu.addSubMenu("Choose Plugin", chooseSubmenu, !types.isEmpty());
 
-        const bool hasPlugin = !pluginHost.getPluginName(trackId).isEmpty();
+        const bool hasPlugin = currentTrack.getPluginAssignment() != nullptr;
         menu.addItem("Detach Plugin", hasPlugin, false,
                      [this, trackId]()
                      {
@@ -278,7 +270,9 @@ MainComponent::MainComponent()
                              stopPlayback();
                          playbackEngine.releaseActiveNotesForTrack(trackId);
                          pluginHost.detachPlugin(trackId);
-                         seq.getTrack(index).setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
+                         auto& track = seq.getTrack(index);
+                         track.setPluginAssignment(nullptr);
+                         track.setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
                          seq.notifyTracksChanged();
                          playbackEngine.rebuildSnapshot();
                      });
@@ -827,7 +821,6 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
         {
             juce::File file(path);
             stopPlayback();
-            pluginHost.detachAllPlugins();
             if (document.loadFrom(file))
             {
                 onSequenceLoaded();
@@ -1012,7 +1005,6 @@ void MainComponent::zoomVertical(float factor, int anchorYInViewport)
 void MainComponent::newFile()
 {
     stopPlayback();
-    pluginHost.detachAllPlugins();
     document.newDocument();
     onSequenceLoaded();
     updateTitleBar();
@@ -1040,7 +1032,6 @@ void MainComponent::loadFile()
                                  if (file == juce::File{})
                                      return;
                                  stopPlayback();
-                                 pluginHost.detachAllPlugins();
                                  if (document.loadFrom(file))
                                  {
                                      onSequenceLoaded();

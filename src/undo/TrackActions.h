@@ -78,10 +78,7 @@ private:
 class TrackAddAction : public juce::UndoableAction
 {
 public:
-    TrackAddAction(MidiSequence* seq, std::function<void(int)> beforeRemove)
-        : sequence(seq), beforeRemove(std::move(beforeRemove))
-    {
-    }
+    explicit TrackAddAction(MidiSequence* seq) : sequence(seq) {}
 
     bool perform() override
     {
@@ -101,8 +98,6 @@ public:
 
     bool undo() override
     {
-        if (beforeRemove)
-            beforeRemove(addedIndex);
         removedTrack = sequence->getTrack(addedIndex);
         sequence->removeTrack(addedIndex);
         sequence->notifyTracksChanged();
@@ -115,7 +110,6 @@ public:
 
 private:
     MidiSequence* sequence;
-    std::function<void(int)> beforeRemove;
     int addedIndex = -1;
     // Held between undo and redo so redo restores the same id.
     std::optional<MidiTrack> removedTrack;
@@ -124,18 +118,11 @@ private:
 class TrackRemoveAction : public juce::UndoableAction
 {
 public:
-    TrackRemoveAction(MidiSequence* seq, int trackIndex, std::function<void(int)> onDetach)
-        : sequence(seq), trackIdx(trackIndex), onDetach(std::move(onDetach))
-    {
-    }
+    TrackRemoveAction(MidiSequence* seq, int trackIndex) : sequence(seq), trackIdx(trackIndex) {}
 
     bool perform() override
     {
         savedTrack = sequence->getTrack(trackIdx);
-
-        if (onDetach)
-            onDetach(trackIdx);
-
         sequence->removeTrack(trackIdx);
         sequence->notifyTracksChanged();
         return true;
@@ -153,6 +140,5 @@ public:
 private:
     MidiSequence* sequence;
     int trackIdx;
-    std::function<void(int)> onDetach;
     MidiTrack savedTrack;
 };

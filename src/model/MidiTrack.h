@@ -2,7 +2,9 @@
 
 #include "model/MidiEvent.h"
 #include "model/MidiNote.h"
+#include "model/PluginAssignment.h"
 #include "model/TrackId.h"
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -54,6 +56,9 @@ public:
     const std::optional<TrackId>& getRouteTarget() const;
     void setRouteTarget(std::optional<TrackId> target);
 
+    const std::shared_ptr<const PluginAssignment>& getPluginAssignment() const;
+    void setPluginAssignment(std::shared_ptr<const PluginAssignment> assignment);
+
 private:
     friend class MidiSequence;
 
@@ -66,4 +71,5 @@ private:
     int channel = 1;
     OutputDestination outputDestination = OutputDestination::MidiDevice;
     std::optional<TrackId> routeTarget;
+    std::shared_ptr<const PluginAssignment> pluginAssignment;
 };

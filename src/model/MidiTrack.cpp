@@ -1,5 +1,6 @@
 #include "model/MidiTrack.h"
 #include <algorithm>
+#include <utility>
 
 TrackId MidiTrack::getId() const
 {
@@ -135,4 +136,14 @@ const std::optional<TrackId>& MidiTrack::getRouteTarget() const
 void MidiTrack::setRouteTarget(std::optional<TrackId> target)
 {
     routeTarget = target;
+}
+
+const std::shared_ptr<const PluginAssignment>& MidiTrack::getPluginAssignment() const
+{
+    return pluginAssignment;
+}
+
+void MidiTrack::setPluginAssignment(std::shared_ptr<const PluginAssignment> assignment)
+{
+    pluginAssignment = std::move(assignment);
 }
