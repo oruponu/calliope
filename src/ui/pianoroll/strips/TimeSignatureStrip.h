@@ -7,6 +7,7 @@
 #include "ui/pianoroll/strips/TimeSignatureEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include <functional>
+#include <variant>
 #include <vector>
 
 class TimeSignatureStrip : public TimelineStrip
@@ -42,6 +43,21 @@ private:
         int denominator = 4;
         bool isNew = false;
     };
+    struct Idle
+    {
+    };
+    struct PointDragging
+    {
+        int index = -1;
+        std::vector<TimeSignatureChange> before;
+        int grabOffset = 0;
+        std::vector<int> group;
+        bool moved = false;
+    };
+    struct RangeSelecting
+    {
+        RangeSelectGesture gesture;
+    };
 
     void timelineMetadataChanged() override { repaint(); }
 
@@ -57,12 +73,5 @@ private:
 
     IndexSelection selection;
     CalloutEditorSession<TimeSignatureEditor, TimeSignatureDraft> editSession;
-    bool isTimeSigPointDragging = false;
-    int timeSigDragIndex = -1;
-    bool timeSigDragMoved = false;
-    std::vector<TimeSignatureChange> timeSigDragBefore;
-    int timeSigDragGrabOffset = 0;
-    std::vector<int> timeSigDragGroup;
-    bool isTimeSigRangeSelecting = false;
-    RangeSelectGesture rangeSelect;
+    std::variant<Idle, PointDragging, RangeSelecting> drag;
 };

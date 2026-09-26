@@ -4,7 +4,9 @@
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
 #include <memory>
+#include <set>
 #include <utility>
+#include <variant>
 
 TimeSignatureStrip::TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
                                        juce::UndoManager& undoManagerRef)
@@ -16,7 +18,7 @@ void TimeSignatureStrip::setSequence(MidiSequence* seq)
 {
     editSession.close();
     clearTimeSignatureSelection();
-    isTimeSigRangeSelecting = false;
+    drag = Idle{};
     TimelineStrip::setSequence(seq);
 }
 
@@ -238,8 +240,8 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
         g.drawLine(phX, 0.0f, phX, static_cast<float>(getHeight()), 1.0f);
     }
 
-    if (isTimeSigRangeSelecting)
-        drawRangeBand(g, rangeSelect, track::teal.withAlpha(0.15f), track::teal.withAlpha(0.6f));
+    if (const auto* selecting = std::get_if<RangeSelecting>(&drag))
+        drawRangeBand(g, selecting->gesture, track::teal.withAlpha(0.15f), track::teal.withAlpha(0.6f));
 
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 
@@ -267,13 +269,9 @@ void TimeSignatureStrip::mouseDown(const juce::MouseEvent& e)
             return;
         }
 
-        timeSigDragBefore = sequence->getTimeline().getTimeSignatureChanges();
-        timeSigDragIndex = tsIndex;
-        isTimeSigPointDragging = true;
-        timeSigDragMoved = false;
-        timeSigDragGrabOffset = geometry.xToTick(e.x) - timeSigDragBefore[static_cast<size_t>(tsIndex)].tick;
-
-        timeSigDragGroup = selection.dragGroup(tsIndex);
+        const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
+        drag = PointDragging{tsIndex, changes, geometry.xToTick(e.x) - changes[static_cast<size_t>(tsIndex)].tick,
+                             selection.dragGroup(tsIndex)};
         return;
     }
 
@@ -281,8 +279,7 @@ void TimeSignatureStrip::mouseDown(const juce::MouseEvent& e)
     {
         if (onSelectionTaken)
             onSelectionTaken();
-        isTimeSigRangeSelecting = true;
-        rangeSelect = {e.x, e.x, e.mods.isShiftDown() ? selection.indices() : std::set<int>{}};
+        drag = RangeSelecting{{e.x, e.x, e.mods.isShiftDown() ? selection.indices() : std::set<int>{}}};
         if (!e.mods.isShiftDown())
             selection.clear();
         repaint();
@@ -295,17 +292,17 @@ void TimeSignatureStrip::mouseDrag(const juce::MouseEvent& e)
     if (sequence == nullptr)
         return;
 
-    if (isTimeSigPointDragging)
+    if (auto* dragging = std::get_if<PointDragging>(&drag))
     {
-        if (timeSigDragIndex < 0 || timeSigDragIndex >= static_cast<int>(timeSigDragBefore.size()))
+        const auto index = static_cast<size_t>(dragging->index);
+        if (dragging->index < 0 || index >= dragging->before.size())
             return;
 
-        auto changes = TimeSignatureEdits::afterMove(timeSigDragBefore, timeSigDragGroup, timeSigDragIndex,
-                                                     geometry.xToTick(e.x) - timeSigDragGrabOffset,
+        auto changes = TimeSignatureEdits::afterMove(dragging->before, dragging->group, dragging->index,
+                                                     geometry.xToTick(e.x) - dragging->grabOffset,
                                                      sequence->getTimeline().getTicksPerQuarterNote());
-        if (changes[static_cast<size_t>(timeSigDragIndex)].tick !=
-            timeSigDragBefore[static_cast<size_t>(timeSigDragIndex)].tick)
-            timeSigDragMoved = true;
+        if (changes[index].tick != dragging->before[index].tick)
+            dragging->moved = true;
         sequence->setTimeSignatureChanges(std::move(changes));
         repaint();
         if (onTimelineMetadataChanged)
@@ -313,17 +310,16 @@ void TimeSignatureStrip::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
-    if (isTimeSigRangeSelecting)
+    if (auto* selecting = std::get_if<RangeSelecting>(&drag))
     {
-        rangeSelect.currentX = e.x;
+        selecting->gesture.currentX = e.x;
         const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
-        selection.assign(rangeSelect.selectionFor(static_cast<int>(changes.size()), geometry,
-                                                  [&changes](int i, int tickLo, int tickHi)
-                                                  {
-                                                      const int tick = changes[static_cast<size_t>(i)].tick;
-                                                      return tick >= tickLo && tick <= tickHi;
-                                                  }));
-
+        selection.assign(selecting->gesture.selectionFor(static_cast<int>(changes.size()), geometry,
+                                                         [&changes](int i, int tickLo, int tickHi)
+                                                         {
+                                                             const int tick = changes[static_cast<size_t>(i)].tick;
+                                                             return tick >= tickLo && tick <= tickHi;
+                                                         }));
         repaint();
         return;
     }
@@ -331,26 +327,25 @@ void TimeSignatureStrip::mouseDrag(const juce::MouseEvent& e)
 
 void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
 {
-    if (isTimeSigPointDragging)
-    {
-        isTimeSigPointDragging = false;
-        int draggedIndex = timeSigDragIndex;
-        timeSigDragIndex = -1;
+    auto state = std::exchange(drag, Idle{});
 
+    if (const auto* dragging = std::get_if<PointDragging>(&state))
+    {
+        const int draggedIndex = dragging->index;
         const auto& changes = sequence->getTimeline().getTimeSignatureChanges();
         bool validIndex = draggedIndex >= 0 && draggedIndex < static_cast<int>(changes.size()) &&
-                          draggedIndex < static_cast<int>(timeSigDragBefore.size());
+                          draggedIndex < static_cast<int>(dragging->before.size());
         bool movedFinal = validIndex && changes[static_cast<size_t>(draggedIndex)].tick !=
-                                            timeSigDragBefore[static_cast<size_t>(draggedIndex)].tick;
+                                            dragging->before[static_cast<size_t>(draggedIndex)].tick;
 
         if (movedFinal)
         {
-            performReplaceList(undoManager, sequence, "Move Time Signature Change", timeSigDragBefore, changes);
+            performReplaceList(undoManager, sequence, "Move Time Signature Change", dragging->before, changes);
             if (onSelectionTaken)
                 onSelectionTaken();
-            selection.assign(std::set<int>(timeSigDragGroup.begin(), timeSigDragGroup.end()));
+            selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
         }
-        else if (validIndex && !timeSigDragMoved)
+        else if (validIndex && !dragging->moved)
         {
             const bool soleSelection = selection.isSole(draggedIndex);
             if (soleSelection && !editSession.isOpen())
@@ -373,17 +368,12 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
             selection.selectOnly(draggedIndex);
         }
 
-        timeSigDragBefore.clear();
-        timeSigDragGroup.clear();
-        timeSigDragMoved = false;
         repaint();
         return;
     }
 
-    if (isTimeSigRangeSelecting)
+    if (std::holds_alternative<RangeSelecting>(state))
     {
-        isTimeSigRangeSelecting = false;
-        rangeSelect = {};
         repaint();
         return;
     }
@@ -400,8 +390,7 @@ void TimeSignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
     if (hitTestTimeSignaturePoint(e.x, e.y) >= 0)
         return;
 
-    isTimeSigRangeSelecting = false;
-    rangeSelect = {};
+    drag = Idle{};
 
     int barStart = sequence->getTimeline().barStartToTick(
         sequence->getTimeline().tickToBarBeatTick(std::max(0, geometry.xToTick(e.x))).bar);
