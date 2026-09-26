@@ -2,15 +2,16 @@
 #include "AppProperties.h"
 #include "audio/MidiDeviceOutput.h"
 #include "ui/commands/AppCommands.h"
-#include "ui/plugin/PluginManagementController.h"
+#include "ui/plugin/PluginCatalogController.h"
+#include "ui/plugin/TrackOutputController.h"
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <utility>
 
 MainMenuModel::MainMenuModel(juce::ApplicationCommandManager& commandManagerRef,
-                             PluginManagementController& pluginControllerRef, MidiDeviceOutput& midiOutputRef,
-                             std::function<void()> showAudioSettingsCallback)
-    : commandManager(commandManagerRef), pluginController(pluginControllerRef), midiOutput(midiOutputRef),
-      showAudioSettings(std::move(showAudioSettingsCallback))
+                             PluginCatalogController& pluginCatalogRef, TrackOutputController& trackOutputRef,
+                             MidiDeviceOutput& midiOutputRef, std::function<void()> showAudioSettingsCallback)
+    : commandManager(commandManagerRef), pluginCatalog(pluginCatalogRef), trackOutput(trackOutputRef),
+      midiOutput(midiOutputRef), showAudioSettings(std::move(showAudioSettingsCallback))
 {
     setApplicationCommandManagerToWatch(&commandManager);
 }
@@ -54,7 +55,7 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
     }
     else if (menuIndex == 3)
     {
-        menu = pluginController.buildPluginMenu();
+        menu = buildPluginMenu();
     }
     else if (menuIndex == 4)
     {
@@ -98,5 +99,33 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
 
 void MainMenuModel::menuItemSelected(int menuItemID, int)
 {
-    pluginController.handleMenuSelection(menuItemID);
+    int index = juce::KnownPluginList::getIndexChosenByMenu(pluginMenuSnapshot, menuItemID);
+    if (index >= 0)
+        trackOutput.attachPluginToFirstTrack(pluginMenuSnapshot.getReference(index));
+}
+
+juce::PopupMenu MainMenuModel::buildPluginMenu()
+{
+    juce::PopupMenu menu;
+
+    juce::PopupMenu::Item loadPluginItemEntry;
+    loadPluginItemEntry.itemID = PluginMenuItemID::loadPluginItem;
+    loadPluginItemEntry.text = "Load Plugin...";
+    loadPluginItemEntry.action = [this]() { trackOutput.attachPluginToFirstTrackViaFileChooser(); };
+    menu.addItem(loadPluginItemEntry);
+
+    pluginMenuSnapshot = pluginCatalog.getTypes();
+    juce::PopupMenu scannedSubmenu;
+    juce::KnownPluginList::addToMenu(scannedSubmenu, pluginMenuSnapshot, juce::KnownPluginList::sortByManufacturer);
+    menu.addSubMenu("Load Scanned Plugin", scannedSubmenu, !pluginMenuSnapshot.isEmpty());
+
+    menu.addSeparator();
+
+    juce::PopupMenu::Item manageItem;
+    manageItem.itemID = PluginMenuItemID::managePluginsItem;
+    manageItem.text = "Manage Plugins...";
+    manageItem.action = [this]() { pluginCatalog.showManageDialog(); };
+    menu.addItem(manageItem);
+
+    return menu;
 }

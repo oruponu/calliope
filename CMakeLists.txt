@@ -56,8 +56,9 @@ target_sources(Calliope PRIVATE
     src/ui/pianoroll/strips/TimeSignatureEditor.cpp
     src/ui/pianoroll/strips/TimeSignatureStrip.cpp
     src/ui/pianoroll/strips/TimelineStrip.cpp
+    src/ui/plugin/PluginCatalogController.cpp
     src/ui/plugin/PluginEditorController.cpp
-    src/ui/plugin/PluginManagementController.cpp
+    src/ui/plugin/TrackOutputController.cpp
     src/ui/theme/LookAndFeel.cpp
     src/ui/transport/TransportBarComponent.cpp
 )
