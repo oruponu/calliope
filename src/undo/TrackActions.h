@@ -125,10 +125,8 @@ private:
 class TrackRemoveAction : public juce::UndoableAction
 {
 public:
-    TrackRemoveAction(MidiSequence* seq, int trackIndex, std::function<void(int)> onDetach,
-                      std::function<void(int from)> onTracksShifted)
-        : sequence(seq), trackIdx(trackIndex), onDetach(std::move(onDetach)),
-          onTracksShifted(std::move(onTracksShifted))
+    TrackRemoveAction(MidiSequence* seq, int trackIndex, std::function<void(int)> onDetach)
+        : sequence(seq), trackIdx(trackIndex), onDetach(std::move(onDetach))
     {
     }
 
@@ -143,18 +141,12 @@ public:
             onDetach(trackIdx);
 
         sequence->removeTrack(trackIdx);
-
-        if (onTracksShifted)
-            onTracksShifted(trackIdx);
-
         sequence->notifyTracksChanged();
         return true;
     }
 
     bool undo() override
     {
-        if (onTracksShifted)
-            onTracksShifted(trackIdx);
         sequence->insertTrack(trackIdx, savedTrack);
         for (int i = 0; i < static_cast<int>(savedRouteTargets.size()); ++i)
             sequence->getTrack(i).setRouteTarget(savedRouteTargets[i]);
@@ -168,7 +160,6 @@ private:
     MidiSequence* sequence;
     int trackIdx;
     std::function<void(int)> onDetach;
-    std::function<void(int)> onTracksShifted;
     MidiTrack savedTrack;
     std::vector<std::optional<TrackId>> savedRouteTargets;
 };

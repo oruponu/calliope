@@ -176,15 +176,9 @@ MainComponent::MainComponent()
 
         bool wasRunning = playbackEngine.suspendForStructuralChange();
         document.getUndoManager().beginNewTransaction(kStructuralTxn);
-        document.getUndoManager().perform(new TrackRemoveAction(
-            &document.getSequence(), trackIndex,
-            [this](int idx) { pluginHost.detachPlugin(document.getSequence().getTrack(idx).getId()); },
-            [this](int from)
-            {
-                auto& seq = document.getSequence();
-                for (int i = from; i < seq.getNumTracks(); ++i)
-                    editorController.closeEditor(seq.getTrack(i).getId());
-            }));
+        document.getUndoManager().perform(
+            new TrackRemoveAction(&document.getSequence(), trackIndex, [this](int idx)
+                                  { pluginHost.detachPlugin(document.getSequence().getTrack(idx).getId()); }));
         playbackEngine.resumeAfterStructuralChange(wasRunning);
 
         int newActive = juce::jlimit(0, document.getSequence().getNumTracks() - 1, trackIndex);
