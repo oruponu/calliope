@@ -85,7 +85,11 @@ inline juce::Font sans(float pt = sizeMD)
 
 inline juce::Font mono(float pt = sizeMD)
 {
-    return juce::Font(juce::FontOptions().withName(juce::Font::getDefaultMonospacedFontName()).withPointHeight(pt));
+    // Inconsolata's ss02 swaps the slashed zero for a plain one.
+    return juce::Font(juce::FontOptions()
+                          .withName(juce::Font::getDefaultMonospacedFontName())
+                          .withPointHeight(pt)
+                          .withFeatureEnabled("ss02"));
 }
 } // namespace font
 
