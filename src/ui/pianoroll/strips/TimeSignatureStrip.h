@@ -6,6 +6,7 @@
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimeSignatureEditor.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
+#include "undo/UndoHistory.h"
 #include <functional>
 #include <variant>
 #include <vector>
@@ -15,8 +16,7 @@ class TimeSignatureStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
-                       juce::UndoManager& undoManagerRef);
+    TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
 
     std::function<void()> onSelectionTaken;
     std::function<void()> onTimelineMetadataChanged;
@@ -69,7 +69,7 @@ private:
     void cancelTimeSignatureEdit();
 
     EditClipboard& clipboard;
-    juce::UndoManager& undoManager;
+    UndoHistory& undoHistory;
 
     IndexSelection selection;
     CalloutEditorSession<TimeSignatureEditor, TimeSignatureDraft> editSession;

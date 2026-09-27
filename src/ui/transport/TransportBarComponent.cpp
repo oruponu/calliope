@@ -289,11 +289,11 @@ void TransportBarComponent::setTempoAtPlayhead(double bpm)
         return;
     }
 
-    document.getUndoManager().beginNewTransaction();
+    document.getHistory().beginNewTransaction();
     auto before = document.getSequence().getTimeline().getTempoChanges();
     auto after = before;
     TempoEdits::add(after, tc.tick, clamped);
-    document.getUndoManager().perform(
+    document.getHistory().perform(
         new ReplaceListAction<TempoChange>(&document.getSequence(), std::move(before), std::move(after)));
     playbackEngine.rebuildSnapshot();
 }
@@ -344,11 +344,11 @@ void TransportBarComponent::setTimeSignatureAtPlayhead(int num, int den)
         return;
     }
 
-    document.getUndoManager().beginNewTransaction();
+    document.getHistory().beginNewTransaction();
     auto before = document.getSequence().getTimeline().getTimeSignatureChanges();
     auto after = before;
     TimeSignatureEdits::add(after, ts.tick, num, den, document.getSequence().getTimeline().getTicksPerQuarterNote());
-    document.getUndoManager().perform(
+    document.getHistory().perform(
         new ReplaceListAction<TimeSignatureChange>(&document.getSequence(), std::move(before), std::move(after)));
 }
 
@@ -394,11 +394,11 @@ void TransportBarComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool is
         return;
     }
 
-    document.getUndoManager().beginNewTransaction();
+    document.getHistory().beginNewTransaction();
     auto before = document.getSequence().getKeySignatureChanges();
     auto after = before;
     KeySignatureEdits::add(after, ks.tick, sharpsOrFlats, isMinor);
-    document.getUndoManager().perform(
+    document.getHistory().perform(
         new ReplaceListAction<KeySignatureChange>(&document.getSequence(), std::move(before), std::move(after)));
 }
 

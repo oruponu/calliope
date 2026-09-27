@@ -6,6 +6,7 @@
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
+#include "undo/UndoHistory.h"
 #include <functional>
 #include <set>
 #include <utility>
@@ -17,7 +18,7 @@ class ChordStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, juce::UndoManager& undoManagerRef);
+    ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
 
     std::function<void()> onSelectionTaken;
 
@@ -118,7 +119,7 @@ private:
     void commitChordEdit(int chordRoot, int chordType, int bassRoot);
     void cancelChordEdit();
 
-    juce::UndoManager& undoManager;
+    UndoHistory& undoHistory;
     EditClipboard& clipboard;
 
     IndexSelection selection;

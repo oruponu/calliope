@@ -4,6 +4,7 @@
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "ui/pianoroll/strips/TimelineStrip.h"
+#include "undo/UndoHistory.h"
 #include <functional>
 #include <variant>
 #include <vector>
@@ -13,8 +14,7 @@ class TempoTrackStrip : public TimelineStrip
 public:
     static constexpr int height = 48;
 
-    TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
-                    juce::UndoManager& undoManagerRef);
+    TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
 
     std::function<void()> onSelectionTaken;
     std::function<void()> onTempoChanged;
@@ -59,7 +59,7 @@ private:
     bool hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const;
 
     EditClipboard& clipboard;
-    juce::UndoManager& undoManager;
+    UndoHistory& undoHistory;
 
     IndexSelection selection;
     std::variant<Idle, PointDragging, RangeSelecting> drag;

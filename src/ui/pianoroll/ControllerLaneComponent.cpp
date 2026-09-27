@@ -738,8 +738,8 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
         }
         if (!changes.empty())
         {
-            undoManager.beginNewTransaction("Edit Velocity");
-            undoManager.perform(new VelocityEditAction(sequence, activeTrackIndex, std::move(changes)));
+            undoHistory.beginNewTransaction("Edit Velocity");
+            undoHistory.perform(new VelocityEditAction(sequence, activeTrackIndex, std::move(changes)));
         }
     }
 

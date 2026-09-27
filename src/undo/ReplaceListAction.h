@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
+#include "undo/UndoHistory.h"
 #include <juce_data_structures/juce_data_structures.h>
 #include <utility>
 #include <vector>
@@ -68,9 +69,9 @@ private:
 };
 
 template <typename T>
-void performReplaceList(juce::UndoManager& undoManager, MidiSequence* sequence, const juce::String& transactionName,
+void performReplaceList(UndoHistory& undoHistory, MidiSequence* sequence, const juce::String& transactionName,
                         std::vector<T> before, std::vector<T> after)
 {
-    undoManager.beginNewTransaction(transactionName);
-    undoManager.perform(new ReplaceListAction<T>(sequence, std::move(before), std::move(after)));
+    undoHistory.beginNewTransaction(transactionName);
+    undoHistory.perform(new ReplaceListAction<T>(sequence, std::move(before), std::move(after)));
 }

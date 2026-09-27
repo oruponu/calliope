@@ -19,8 +19,8 @@ bool keySignatureTicksEqual(const std::vector<KeySignatureChange>& a, const std:
 } // namespace
 
 KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
-                                     juce::UndoManager& undoManagerRef)
-    : TimelineStrip(geometryRef, "Key"), clipboard(clipboardRef), undoManager(undoManagerRef)
+                                     UndoHistory& undoHistoryRef)
+    : TimelineStrip(geometryRef, "Key"), clipboard(clipboardRef), undoHistory(undoHistoryRef)
 {
 }
 
@@ -67,7 +67,7 @@ void KeySignatureStrip::deleteSelectedKeySignaturesImpl(const juce::String& tran
     if (after.size() == before.size())
         return;
 
-    performReplaceList(undoManager, sequence, transactionName, std::move(before), std::move(after));
+    performReplaceList(undoHistory, sequence, transactionName, std::move(before), std::move(after));
 
     clearKeySignatureSelection();
     repaint();
@@ -134,7 +134,7 @@ void KeySignatureStrip::pasteKeySignatures(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        performReplaceList(undoManager, sequence, "Paste Key Signature Changes", std::move(before), after);
+        performReplaceList(undoHistory, sequence, "Paste Key Signature Changes", std::move(before), after);
     }
 
     selection.selectTicks(sequence->getKeySignatureChanges(), pastedTicks);
@@ -351,7 +351,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
 
         if (movedFinal)
         {
-            performReplaceList(undoManager, sequence, "Move Key Signature Change", dragging->before, changes);
+            performReplaceList(undoHistory, sequence, "Move Key Signature Change", dragging->before, changes);
             if (onSelectionTaken)
                 onSelectionTaken();
             selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
@@ -469,7 +469,7 @@ void KeySignatureStrip::commitKeySignatureEdit(int sharpsOrFlats, bool isMinor)
     auto before = sequence->getKeySignatureChanges();
     auto after = before;
     KeySignatureEdits::add(after, draft.tick, sharpsOrFlats, isMinor);
-    performReplaceList(undoManager, sequence, draft.isNew ? "Add Key Signature Change" : "Edit Key Signature Change",
+    performReplaceList(undoHistory, sequence, draft.isNew ? "Add Key Signature Change" : "Edit Key Signature Change",
                        std::move(before), std::move(after));
 
     const auto& changes = sequence->getKeySignatureChanges();

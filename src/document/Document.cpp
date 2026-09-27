@@ -6,7 +6,7 @@ void Document::newDocument()
     sequence.clear();
     sequence.addTrack();
     currentFile = juce::File{};
-    undoManager.clearUndoHistory();
+    history.clear();
 }
 
 bool Document::loadFrom(const juce::File& file)
@@ -14,7 +14,7 @@ bool Document::loadFrom(const juce::File& file)
     if (!MidiFileIO::load(sequence, file))
         return false;
     currentFile = file;
-    undoManager.clearUndoHistory();
+    history.clear();
     return true;
 }
 

@@ -147,8 +147,8 @@ MainComponent::MainComponent()
                     int currentChannel = document.getSequence().getTrack(trackIndex).getChannel();
                     if (currentChannel == ch)
                         return;
-                    document.getUndoManager().beginNewTransaction();
-                    document.getUndoManager().perform(new ChannelChangeAction(
+                    document.getHistory().beginNewTransaction();
+                    document.getHistory().perform(new ChannelChangeAction(
                         &document.getSequence(), trackIndex, currentChannel, ch, [this](int idx)
                         { playbackEngine.releaseActiveNotesForTrack(document.getSequence().getTrack(idx).getId()); }));
                     playbackEngine.rebuildSnapshot();
@@ -158,8 +158,8 @@ MainComponent::MainComponent()
     };
     trackList.onAddTrackRequested = [this]()
     {
-        document.getUndoManager().beginNewTransaction(kStructuralTxn);
-        document.getUndoManager().perform(new TrackAddAction(&document.getSequence()));
+        document.getHistory().beginNewTransaction(kStructuralTxn);
+        document.getHistory().perform(new TrackAddAction(&document.getSequence()));
         trackList.refresh();
         playbackEngine.rebuildSnapshot();
     };
@@ -169,8 +169,8 @@ MainComponent::MainComponent()
             return;
 
         bool wasRunning = playbackEngine.suspendForStructuralChange();
-        document.getUndoManager().beginNewTransaction(kStructuralTxn);
-        document.getUndoManager().perform(new TrackRemoveAction(&document.getSequence(), trackIndex));
+        document.getHistory().beginNewTransaction(kStructuralTxn);
+        document.getHistory().perform(new TrackRemoveAction(&document.getSequence(), trackIndex));
         playbackEngine.resumeAfterStructuralChange(wasRunning);
 
         int newActive = juce::jlimit(0, document.getSequence().getNumTracks() - 1, trackIndex);
@@ -185,9 +185,8 @@ MainComponent::MainComponent()
         std::string requested = newName.toStdString();
         if (oldName == requested)
             return;
-        document.getUndoManager().beginNewTransaction();
-        document.getUndoManager().perform(
-            new TrackRenameAction(&document.getSequence(), trackIndex, oldName, requested));
+        document.getHistory().beginNewTransaction();
+        document.getHistory().perform(new TrackRenameAction(&document.getSequence(), trackIndex, oldName, requested));
     };
     trackList.onPluginLabelClicked = [this](int trackIndex) { trackOutput.showOutputMenu(trackIndex); };
 
@@ -482,10 +481,10 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     switch (commandID)
     {
     case AppCommands::undoAction:
-        result.setActive(document.getUndoManager().canUndo());
+        result.setActive(document.getHistory().canUndo());
         break;
     case AppCommands::redoAction:
-        result.setActive(document.getUndoManager().canRedo());
+        result.setActive(document.getHistory().canRedo());
         break;
     case AppCommands::cutAction:
     case AppCommands::copyAction:
@@ -561,11 +560,11 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::undoAction:
     {
-        const bool structural = (document.getUndoManager().getUndoDescription() == juce::String(kStructuralTxn));
+        const bool structural = (document.getHistory().getUndoDescription() == juce::String(kStructuralTxn));
         bool wasRunning = false;
         if (structural)
             wasRunning = playbackEngine.suspendForStructuralChange();
-        document.getUndoManager().undo();
+        document.getHistory().undo();
         if (structural)
             playbackEngine.resumeAfterStructuralChange(wasRunning);
         else
@@ -576,11 +575,11 @@ bool MainComponent::perform(const InvocationInfo& info)
     }
     case AppCommands::redoAction:
     {
-        const bool structural = (document.getUndoManager().getRedoDescription() == juce::String(kStructuralTxn));
+        const bool structural = (document.getHistory().getRedoDescription() == juce::String(kStructuralTxn));
         bool wasRunning = false;
         if (structural)
             wasRunning = playbackEngine.suspendForStructuralChange();
-        document.getUndoManager().redo();
+        document.getHistory().redo();
         if (structural)
             playbackEngine.resumeAfterStructuralChange(wasRunning);
         else

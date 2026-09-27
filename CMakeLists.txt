@@ -61,6 +61,7 @@ target_sources(Calliope PRIVATE
     src/ui/plugin/TrackOutputController.cpp
     src/ui/theme/LookAndFeel.cpp
     src/ui/transport/TransportBarComponent.cpp
+    src/undo/UndoHistory.cpp
 )
 
 target_include_directories(Calliope PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

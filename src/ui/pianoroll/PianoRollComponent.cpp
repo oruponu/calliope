@@ -276,7 +276,7 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
     if (deltaNote < 0 && minNote + deltaNote < 0)
         return;
 
-    undoManager.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
+    undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
     std::vector<NoteModification> mods;
     for (const auto& ref : selectedNotes)
     {
@@ -287,7 +287,7 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
         mods.push_back({ref.trackIndex, ref.noteIndex, beforeNote, afterNote});
     }
     if (!mods.empty())
-        undoManager.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+        undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
 
     NoteRef previewRef =
         (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
@@ -319,7 +319,7 @@ void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
     if (minStart + deltaTick < 0)
         return;
 
-    undoManager.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
+    undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
     std::vector<NoteModification> mods;
     for (const auto& ref : selectedNotes)
     {
@@ -330,7 +330,7 @@ void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
         mods.push_back({ref.trackIndex, ref.noteIndex, beforeNote, afterNote});
     }
     if (!mods.empty())
-        undoManager.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+        undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
 
     NoteRef anchorRef =
         (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
@@ -375,9 +375,9 @@ bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
 
     selectedNotes.clear();
 
-    undoManager.beginNewTransaction(notesToAdd.size() > 1 ? "Duplicate Notes" : "Duplicate Note");
+    undoHistory.beginNewTransaction(notesToAdd.size() > 1 ? "Duplicate Notes" : "Duplicate Note");
     auto* action = new MultiNoteAddAction(sequence, activeTrackIndex, notesToAdd);
-    undoManager.perform(action);
+    undoHistory.perform(action);
     int start = action->getAddedStartIndex();
     for (int i = 0; i < action->getAddedCount(); ++i)
         selectedNotes.insert({activeTrackIndex, start + i});
@@ -403,7 +403,7 @@ bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
     return true;
 }
 
-PianoRollComponent::PianoRollComponent(juce::UndoManager& undoManagerRef) : undoManager(undoManagerRef)
+PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistory(undoHistoryRef)
 {
     addAndMakeVisible(loopStrip);
     loopStrip.onLoopRegionChanged = [this](int startTick, int endTick)
@@ -723,8 +723,8 @@ void PianoRollComponent::cutSelectedNotes()
 
     copySelectedNotes();
 
-    undoManager.beginNewTransaction("Cut Notes");
-    undoManager.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
+    undoHistory.beginNewTransaction("Cut Notes");
+    undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
 
     selectedNotes.clear();
     repaint();
@@ -791,8 +791,8 @@ void PianoRollComponent::deleteSelectedNotes()
                 ++deletedBeforeSurvivor;
     }
 
-    undoManager.beginNewTransaction("Delete Notes");
-    undoManager.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
+    undoHistory.beginNewTransaction("Delete Notes");
+    undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
 
     selectedNotes.clear();
     if (survivorOldIndex >= 0)
@@ -984,9 +984,9 @@ void PianoRollComponent::pasteNotes(int atTick)
     clearChordSelection();
     selectedNotes.clear();
 
-    undoManager.beginNewTransaction("Paste Notes");
+    undoHistory.beginNewTransaction("Paste Notes");
     auto* action = new MultiNoteAddAction(sequence, activeTrackIndex, notesToAdd);
-    undoManager.perform(action);
+    undoHistory.perform(action);
     int start = action->getAddedStartIndex();
     for (int i = 0; i < action->getAddedCount(); ++i)
         selectedNotes.insert({activeTrackIndex, start + i});
@@ -1079,8 +1079,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                 }
             }
 
-            undoManager.beginNewTransaction("Delete Note");
-            undoManager.perform(new NoteDeleteAction(sequence, hit.trackIndex, hit.noteIndex));
+            undoHistory.beginNewTransaction("Delete Note");
+            undoHistory.perform(new NoteDeleteAction(sequence, hit.trackIndex, hit.noteIndex));
             selectedNote = {};
             selectedNotes.clear();
             repaint();
@@ -1103,9 +1103,9 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
         MidiNote newNote{noteNum, 100, tick, defaultDuration};
 
-        undoManager.beginNewTransaction("Add Note");
+        undoHistory.beginNewTransaction("Add Note");
         auto* action = new NoteAddAction(sequence, activeTrackIndex, newNote);
-        undoManager.perform(action);
+        undoHistory.perform(action);
         selectedNote = {activeTrackIndex, action->getAddedIndex()};
         selectedNotes.clear();
         selectedNotes.insert(selectedNote);
@@ -1126,8 +1126,8 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         {
             if (!selectedNotes.empty())
             {
-                undoManager.beginNewTransaction("Delete Notes");
-                undoManager.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
+                undoHistory.beginNewTransaction("Delete Notes");
+                undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
 
                 selectedNote = {};
                 selectedNotes.clear();
@@ -1319,8 +1319,8 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         if (!mods.empty())
         {
             if (!resizing->isCreatingNote)
-                undoManager.beginNewTransaction(mods.size() > 1 ? "Resize Notes" : "Resize Note");
-            undoManager.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+                undoHistory.beginNewTransaction(mods.size() > 1 ? "Resize Notes" : "Resize Note");
+            undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
         }
         if (onNotesChanged)
             onNotesChanged();
@@ -1331,7 +1331,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
     {
         if (moving->deltaTick != 0 || moving->deltaNote != 0)
         {
-            undoManager.beginNewTransaction(moving->targets.size() > 1 ? "Move Notes" : "Move Note");
+            undoHistory.beginNewTransaction(moving->targets.size() > 1 ? "Move Notes" : "Move Note");
             std::vector<NoteModification> mods;
             for (const auto& t : moving->targets)
             {
@@ -1343,7 +1343,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
                 mods.push_back({t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote});
             }
             if (!mods.empty())
-                undoManager.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+                undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
 
             if (onNotesChanged)
                 onNotesChanged();

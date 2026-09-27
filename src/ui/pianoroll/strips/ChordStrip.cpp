@@ -25,9 +25,8 @@ bool isSameChord(const ChordChange& a, const ChordChange& b)
 }
 } // namespace
 
-ChordStrip::ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
-                       juce::UndoManager& undoManagerRef)
-    : TimelineStrip(geometryRef, "Chord"), undoManager(undoManagerRef), clipboard(clipboardRef)
+ChordStrip::ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef)
+    : TimelineStrip(geometryRef, "Chord"), undoHistory(undoHistoryRef), clipboard(clipboardRef)
 {
 }
 
@@ -68,7 +67,7 @@ void ChordStrip::deleteSelectedChordsImpl(const juce::String& transactionName)
     if (after == before)
         return;
 
-    performReplaceList(undoManager, sequence, transactionName, std::move(before), std::move(after));
+    performReplaceList(undoHistory, sequence, transactionName, std::move(before), std::move(after));
 
     clearChordSelection();
     repaint();
@@ -122,7 +121,7 @@ void ChordStrip::pasteChords(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        performReplaceList(undoManager, sequence, "Paste Chords", std::move(before), after);
+        performReplaceList(undoHistory, sequence, "Paste Chords", std::move(before), after);
     }
 
     selection.clear();
@@ -607,7 +606,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const bool resized = validIndex && changes != resizing->before;
 
         if (resized)
-            performReplaceList(undoManager, sequence, "Resize Chord", resizing->before, changes);
+            performReplaceList(undoHistory, sequence, "Resize Chord", resizing->before, changes);
 
         if (validIndex && e.mouseWasDraggedSinceMouseDown())
         {
@@ -643,7 +642,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
 
         const auto& changes = sequence->getChordChanges();
         if (changes != resizing->before)
-            performReplaceList(undoManager, sequence, "Resize Chord", resizing->before, changes);
+            performReplaceList(undoHistory, sequence, "Resize Chord", resizing->before, changes);
 
         if (e.mouseWasDraggedSinceMouseDown())
         {
@@ -681,7 +680,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const auto& changes = sequence->getChordChanges();
         if (changes != moving->before)
         {
-            performReplaceList(undoManager, sequence, "Move Chord", moving->before, changes);
+            performReplaceList(undoHistory, sequence, "Move Chord", moving->before, changes);
 
             if (onSelectionTaken)
                 onSelectionTaken();
@@ -801,7 +800,7 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
     {
         auto after = ChordTrackEdits::afterAdd(sequence->getChordChanges(), draft.tick, draft.endTick, chordRoot,
                                                chordType, bassRoot, bassType);
-        performReplaceList(undoManager, sequence, "Add Chord", sequence->getChordChanges(), std::move(after));
+        performReplaceList(undoHistory, sequence, "Add Chord", sequence->getChordChanges(), std::move(after));
     }
     else
     {
@@ -817,7 +816,7 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
         auto before = sequence->getChordChanges();
         auto after = before;
         ChordTrackEdits::add(after, draft.tick, chordRoot, chordType, bassRoot, bassType);
-        performReplaceList(undoManager, sequence, "Edit Chord", std::move(before), std::move(after));
+        performReplaceList(undoHistory, sequence, "Edit Chord", std::move(before), std::move(after));
     }
 
     const auto& changes = sequence->getChordChanges();

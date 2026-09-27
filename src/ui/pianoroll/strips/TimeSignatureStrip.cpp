@@ -9,8 +9,8 @@
 #include <variant>
 
 TimeSignatureStrip::TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
-                                       juce::UndoManager& undoManagerRef)
-    : TimelineStrip(geometryRef, "Time Sig"), clipboard(clipboardRef), undoManager(undoManagerRef)
+                                       UndoHistory& undoHistoryRef)
+    : TimelineStrip(geometryRef, "Time Sig"), clipboard(clipboardRef), undoHistory(undoHistoryRef)
 {
 }
 
@@ -51,7 +51,7 @@ void TimeSignatureStrip::deleteSelectedTimeSignaturesImpl(const juce::String& tr
     if (after.size() == before.size())
         return;
 
-    performReplaceList(undoManager, sequence, transactionName, std::move(before), std::move(after));
+    performReplaceList(undoHistory, sequence, transactionName, std::move(before), std::move(after));
 
     clearTimeSignatureSelection();
     repaint();
@@ -107,7 +107,7 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        performReplaceList(undoManager, sequence, "Paste Time Signature Changes", std::move(before), after);
+        performReplaceList(undoHistory, sequence, "Paste Time Signature Changes", std::move(before), after);
     }
 
     std::vector<int> pastedTicks;
@@ -340,7 +340,7 @@ void TimeSignatureStrip::mouseUp(const juce::MouseEvent&)
 
         if (movedFinal)
         {
-            performReplaceList(undoManager, sequence, "Move Time Signature Change", dragging->before, changes);
+            performReplaceList(undoHistory, sequence, "Move Time Signature Change", dragging->before, changes);
             if (onSelectionTaken)
                 onSelectionTaken();
             selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
@@ -458,7 +458,7 @@ void TimeSignatureStrip::commitTimeSignatureEdit(int num, int den)
     auto before = sequence->getTimeline().getTimeSignatureChanges();
     auto after = before;
     TimeSignatureEdits::add(after, draft.tick, num, den, sequence->getTimeline().getTicksPerQuarterNote());
-    performReplaceList(undoManager, sequence, draft.isNew ? "Add Time Signature Change" : "Edit Time Signature Change",
+    performReplaceList(undoHistory, sequence, draft.isNew ? "Add Time Signature Change" : "Edit Time Signature Change",
                        std::move(before), std::move(after));
 
     const auto& changes = sequence->getTimeline().getTimeSignatureChanges();

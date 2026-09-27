@@ -1,8 +1,8 @@
 #pragma once
 
 #include "model/MidiSequence.h"
+#include "undo/UndoHistory.h"
 #include <juce_core/juce_core.h>
-#include <juce_data_structures/juce_data_structures.h>
 
 class Document
 {
@@ -15,12 +15,12 @@ public:
 
     MidiSequence& getSequence() { return sequence; }
     const MidiSequence& getSequence() const { return sequence; }
-    juce::UndoManager& getUndoManager() { return undoManager; }
+    UndoHistory& getHistory() { return history; }
     const juce::File& getCurrentFile() const { return currentFile; }
 
 private:
     MidiSequence sequence;
-    juce::UndoManager undoManager{10000, 100};
+    UndoHistory history;
     juce::File currentFile;
 
     JUCE_DECLARE_NON_COPYABLE(Document)

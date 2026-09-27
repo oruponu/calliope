@@ -9,6 +9,7 @@
 #include "ui/pianoroll/strips/RulerStrip.h"
 #include "ui/pianoroll/strips/TempoTrackStrip.h"
 #include "ui/pianoroll/strips/TimeSignatureStrip.h"
+#include "undo/UndoHistory.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -19,7 +20,7 @@
 class PianoRollComponent : public juce::Component, public MidiSequence::Listener, private juce::Timer
 {
 public:
-    explicit PianoRollComponent(juce::UndoManager& undoManagerRef);
+    explicit PianoRollComponent(UndoHistory& undoHistoryRef);
     ~PianoRollComponent() override;
 
     enum class EditMode
@@ -176,7 +177,7 @@ private:
 
     TimelineGeometry geometry{keyboardWidth};
     MidiSequence* sequence = nullptr;
-    juce::UndoManager& undoManager;
+    UndoHistory& undoHistory;
     double playheadTick = 0.0;
     std::set<int> selectedTrackIndices = {0};
     int activeTrackIndex = 0;
@@ -253,10 +254,10 @@ private:
     EditClipboard clipboard;
     LoopStrip loopStrip{geometry};
     RulerStrip ruler{geometry};
-    TempoTrackStrip tempoStrip{geometry, clipboard, undoManager};
-    TimeSignatureStrip timeSigStrip{geometry, clipboard, undoManager};
-    KeySignatureStrip keyStrip{geometry, clipboard, undoManager};
-    ChordStrip chordStrip{geometry, clipboard, undoManager};
+    TempoTrackStrip tempoStrip{geometry, clipboard, undoHistory};
+    TimeSignatureStrip timeSigStrip{geometry, clipboard, undoHistory};
+    KeySignatureStrip keyStrip{geometry, clipboard, undoHistory};
+    ChordStrip chordStrip{geometry, clipboard, undoHistory};
 
     MidiNote previewNote;
     bool isPreviewing = false;

@@ -10,8 +10,8 @@
 #include <variant>
 
 TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
-                                 juce::UndoManager& undoManagerRef)
-    : TimelineStrip(geometryRef, "Tempo"), clipboard(clipboardRef), undoManager(undoManagerRef)
+                                 UndoHistory& undoHistoryRef)
+    : TimelineStrip(geometryRef, "Tempo"), clipboard(clipboardRef), undoHistory(undoHistoryRef)
 {
 }
 
@@ -60,7 +60,7 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
     if (after.size() == before.size())
         return;
 
-    performReplaceList(undoManager, sequence, transactionName, std::move(before), std::move(after));
+    performReplaceList(undoHistory, sequence, transactionName, std::move(before), std::move(after));
 
     selection.clear();
     repaint();
@@ -124,7 +124,7 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
     const bool changed = (after != before);
     if (changed)
     {
-        performReplaceList(undoManager, sequence, "Paste Tempo Changes", std::move(before), after);
+        performReplaceList(undoHistory, sequence, "Paste Tempo Changes", std::move(before), after);
     }
 
     selection.selectTicks(sequence->getTimeline().getTempoChanges(), pastedTicks);
@@ -352,7 +352,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
             auto before = sequence->getTimeline().getTempoChanges();
             auto after = before;
             const int addedIndex = TempoEdits::add(after, tempoTick, tempoBpm);
-            performReplaceList(undoManager, sequence, "Add Tempo Change", std::move(before), std::move(after));
+            performReplaceList(undoHistory, sequence, "Add Tempo Change", std::move(before), std::move(after));
             if (onSelectionTaken)
                 onSelectionTaken();
             selection.selectOnly(addedIndex);
@@ -462,7 +462,7 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
         if (dragging->moved)
         {
             auto after = sequence->getTimeline().getTempoChanges();
-            performReplaceList(undoManager, sequence, "Move Tempo Change", dragging->before, std::move(after));
+            performReplaceList(undoHistory, sequence, "Move Tempo Change", dragging->before, std::move(after));
             selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
             if (onTempoChanged)
                 onTempoChanged();

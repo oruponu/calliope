@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
+#include "undo/UndoHistory.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -10,7 +11,7 @@
 class ControllerLaneComponent : public juce::Component, public MidiSequence::Listener
 {
 public:
-    explicit ControllerLaneComponent(juce::UndoManager& undoManagerRef) : undoManager(undoManagerRef) {}
+    explicit ControllerLaneComponent(UndoHistory& undoHistoryRef) : undoHistory(undoHistoryRef) {}
     ~ControllerLaneComponent() override;
 
     enum class DisplayMode
@@ -90,7 +91,7 @@ private:
 
     int quantizeDenominator = 4;
 
-    juce::UndoManager& undoManager;
+    UndoHistory& undoHistory;
     bool isDragging = false;
     int lastDragX = -1;
     std::vector<int> velocitySnapshot;
