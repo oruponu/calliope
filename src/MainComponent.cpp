@@ -32,6 +32,8 @@ MainComponent::MainComponent()
 
     document.getSequence().addTrack();
     document.getSequence().addListener(this);
+    document.addChangeListener(this);
+    document.onWillReplaceSequence = [this] { stopPlayback(); };
     pluginHost.setSequence(&document.getSequence());
 
     playbackEngine.setSequence(&document.getSequence());
@@ -384,6 +386,7 @@ void MainComponent::tracksChanged()
 MainComponent::~MainComponent()
 {
     document.getSequence().removeListener(this);
+    document.removeChangeListener(this);
     juce::Desktop::getInstance().removeFocusChangeListener(this);
     audioDeviceManager.removeChangeListener(this);
     menuBar.setModel(nullptr);
@@ -403,6 +406,10 @@ void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
     {
         if (auto xml = audioDeviceManager.createStateXml())
             getAppProperties().getUserSettings()->setValue("audioDeviceState", xml.get());
+    }
+    else if (source == &document)
+    {
+        updateTitleBar();
     }
 }
 
@@ -456,6 +463,7 @@ void MainComponent::parentHierarchyChanged()
 {
     if (auto* topLevel = getTopLevelComponent())
         topLevel->addKeyListener(commandManager.getKeyMappings());
+    updateTitleBar();
 }
 
 void MainComponent::mouseDown(const juce::MouseEvent& e)
@@ -722,9 +730,7 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
     {
         if (path.endsWithIgnoreCase(".mid") || path.endsWithIgnoreCase(".midi"))
         {
-            juce::File file(path);
-            stopPlayback();
-            if (document.loadFrom(file))
+            if (document.loadFrom(juce::File(path), true).wasOk())
             {
                 onSequenceLoaded();
                 updateTitleBar();
@@ -907,7 +913,6 @@ void MainComponent::zoomVertical(float factor, int anchorYInViewport)
 
 void MainComponent::newFile()
 {
-    stopPlayback();
     document.newDocument();
     onSequenceLoaded();
     updateTitleBar();
@@ -915,32 +920,19 @@ void MainComponent::newFile()
 
 void MainComponent::saveFile()
 {
-    fileChooser = std::make_unique<juce::FileChooser>("Save MIDI File", juce::File{}, "*.mid");
-    fileChooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
-                             [this](const juce::FileChooser& fc)
-                             {
-                                 auto file = fc.getResult();
-                                 if (file != juce::File{} && document.saveTo(file))
-                                     updateTitleBar();
-                             });
+    document.saveAsInteractiveAsync(false, {});
 }
 
 void MainComponent::loadFile()
 {
-    fileChooser = std::make_unique<juce::FileChooser>("Open MIDI File", juce::File{}, "*.mid");
-    fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-                             [this](const juce::FileChooser& fc)
-                             {
-                                 auto file = fc.getResult();
-                                 if (file == juce::File{})
-                                     return;
-                                 stopPlayback();
-                                 if (document.loadFrom(file))
-                                 {
-                                     onSequenceLoaded();
-                                     updateTitleBar();
-                                 }
-                             });
+    document.loadFromUserSpecifiedFileAsync(true,
+                                            [this](juce::Result result)
+                                            {
+                                                if (result.failed())
+                                                    return;
+                                                onSequenceLoaded();
+                                                updateTitleBar();
+                                            });
 }
 
 void MainComponent::showAudioSettings()
@@ -1015,9 +1007,7 @@ void MainComponent::updateTitleBar()
     if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
     {
         auto appName = juce::JUCEApplication::getInstance()->getApplicationName();
-        if (document.getCurrentFile() != juce::File{})
-            window->setName(document.getCurrentFile().getFileName() + " - " + appName);
-        else
-            window->setName(appName);
+        auto marker = juce::String(document.hasChangedSinceSaved() ? "*" : "");
+        window->setName(marker + document.getDocumentTitle() + " - " + appName);
     }
 }

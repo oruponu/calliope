@@ -143,7 +143,6 @@ private:
     juce::Rectangle<int> toolBarBounds;
     int toolBarSeparatorX = 0;
 
-    std::unique_ptr<juce::FileChooser> fileChooser;
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
     bool updatingFromEventList = false;

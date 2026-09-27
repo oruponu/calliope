@@ -44,6 +44,7 @@ target_sources(CalliopeTests PRIVATE
     plugin/RetiredStateStoreTests.cpp
     ui/IndexSelectionTests.cpp
     ui/RangeSelectGestureTests.cpp
+    undo/SavePointTrackerTests.cpp
 )
 
 target_include_directories(CalliopeTests PRIVATE

@@ -7,17 +7,44 @@ void UndoHistory::beginNewTransaction(const juce::String& name)
 
 bool UndoHistory::perform(juce::UndoableAction* action)
 {
-    return undoManager.perform(action);
+    const bool startsNewTransaction = undoManager.getNumActionsInCurrentTransaction() == 0;
+    if (!undoManager.perform(action))
+        return false;
+
+    if (startsNewTransaction)
+        savePoint.transactionPerformed();
+    else
+        savePoint.actionAppended();
+    notifyChanged();
+    return true;
 }
 
 bool UndoHistory::undo()
 {
-    return undoManager.undo();
+    if (!undoManager.undo())
+        return false;
+
+    // juce::UndoManager clears the whole history when an action fails to undo.
+    if (!undoManager.canUndo() && !undoManager.canRedo())
+        savePoint.cleared();
+    else
+        savePoint.undone();
+    notifyChanged();
+    return true;
 }
 
 bool UndoHistory::redo()
 {
-    return undoManager.redo();
+    if (!undoManager.redo())
+        return false;
+
+    // juce::UndoManager clears the whole history when an action fails to redo.
+    if (!undoManager.canUndo() && !undoManager.canRedo())
+        savePoint.cleared();
+    else
+        savePoint.redone();
+    notifyChanged();
+    return true;
 }
 
 bool UndoHistory::canUndo() const
@@ -43,4 +70,23 @@ juce::String UndoHistory::getRedoDescription() const
 void UndoHistory::clear()
 {
     undoManager.clearUndoHistory();
+    savePoint.cleared();
+    notifyChanged();
+}
+
+void UndoHistory::markSaved()
+{
+    savePoint.markSaved();
+    notifyChanged();
+}
+
+bool UndoHistory::isAtSavePoint() const
+{
+    return savePoint.isAtSavePoint();
+}
+
+void UndoHistory::notifyChanged()
+{
+    if (onChanged)
+        onChanged();
 }
