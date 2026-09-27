@@ -4,11 +4,6 @@
 #include "ui/theme/Theme.h"
 #include "undo/TrackActions.h"
 
-namespace
-{
-constexpr const char* kStructuralTxn = "Track structure";
-}
-
 void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
 {
     editToolButton.setActive(mode == PianoRollComponent::EditMode::Edit);
@@ -35,6 +30,7 @@ MainComponent::MainComponent()
     document.addChangeListener(this);
     document.onWillReplaceSequence = [this] { stopPlayback(); };
     pluginHost.setSequence(&document.getSequence());
+    pluginHost.setPlaybackEngine(&playbackEngine);
 
     playbackEngine.setSequence(&document.getSequence());
     playbackEngine.addListener(&midiOutput);
@@ -153,7 +149,7 @@ MainComponent::MainComponent()
     };
     trackList.onAddTrackRequested = [this]()
     {
-        document.getHistory().beginNewTransaction(kStructuralTxn);
+        document.getHistory().beginNewTransaction("Add Track");
         document.getHistory().perform(new TrackAddAction(&document.getSequence()));
         trackList.refresh();
     };
@@ -162,10 +158,8 @@ MainComponent::MainComponent()
         if (document.getSequence().getNumTracks() <= 1)
             return;
 
-        bool wasRunning = playbackEngine.suspendForStructuralChange();
-        document.getHistory().beginNewTransaction(kStructuralTxn);
+        document.getHistory().beginNewTransaction("Remove Track");
         document.getHistory().perform(new TrackRemoveAction(&document.getSequence(), trackIndex));
-        playbackEngine.resumeAfterStructuralChange(wasRunning);
 
         int newActive = juce::jlimit(0, document.getSequence().getNumTracks() - 1, trackIndex);
         trackList.refresh();
@@ -562,31 +556,15 @@ bool MainComponent::perform(const InvocationInfo& info)
         setActiveTool(PianoRollComponent::EditMode::Select);
         return true;
     case AppCommands::undoAction:
-    {
-        const bool structural = (document.getHistory().getUndoDescription() == juce::String(kStructuralTxn));
-        bool wasRunning = false;
-        if (structural)
-            wasRunning = playbackEngine.suspendForStructuralChange();
         document.getHistory().undo();
-        if (structural)
-            playbackEngine.resumeAfterStructuralChange(wasRunning);
         trackList.refresh();
         pianoRoll.setSelectedNotes({});
         return true;
-    }
     case AppCommands::redoAction:
-    {
-        const bool structural = (document.getHistory().getRedoDescription() == juce::String(kStructuralTxn));
-        bool wasRunning = false;
-        if (structural)
-            wasRunning = playbackEngine.suspendForStructuralChange();
         document.getHistory().redo();
-        if (structural)
-            playbackEngine.resumeAfterStructuralChange(wasRunning);
         trackList.refresh();
         pianoRoll.setSelectedNotes({});
         return true;
-    }
     case AppCommands::cutAction:
         pianoRoll.cutSelection();
         return true;

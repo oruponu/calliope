@@ -13,6 +13,20 @@
 class PlaybackEngine : private juce::HighResolutionTimer
 {
 public:
+    // While alive, no timer callback is running. Nestable; message thread only.
+    class ScopedPause
+    {
+    public:
+        explicit ScopedPause(PlaybackEngine& engineRef);
+        ~ScopedPause();
+
+        ScopedPause(const ScopedPause&) = delete;
+        ScopedPause& operator=(const ScopedPause&) = delete;
+
+    private:
+        PlaybackEngine& engine;
+    };
+
     PlaybackEngine();
     ~PlaybackEngine() override;
 
@@ -37,8 +51,7 @@ public:
 
     void releaseActiveNotesForTrack(TrackId trackId);
 
-    bool suspendForStructuralChange();
-    void resumeAfterStructuralChange(bool wasRunning);
+    bool isPaused() const;
 
 private:
     void hiResTimerCallback() override;
@@ -57,6 +70,9 @@ private:
 
     std::shared_ptr<const PlaybackSnapshot> currentOwner;
     std::atomic<std::shared_ptr<const PlaybackSnapshot>> snapshot;
+
+    int pauseDepth = 0;
+    bool resumeTimerAfterPause = false;
 
     PlaybackProcessor processor;
     std::vector<PlaybackListener*> listeners;

@@ -1,7 +1,9 @@
 #include "plugin/VstPluginHost.h"
+#include "engine/PlaybackEngine.h"
 #include "model/MidiTrack.h"
 #include "plugin/PluginAssignmentCodec.h"
 #include "plugin/PluginSyncPlan.h"
+#include <optional>
 
 namespace
 {
@@ -80,8 +82,17 @@ void VstPluginHost::setSequence(MidiSequence* seq)
         sequence->addListener(this);
 }
 
+void VstPluginHost::setPlaybackEngine(PlaybackEngine* engine)
+{
+    playbackEngine = engine;
+}
+
 bool VstPluginHost::attachPlugin(TrackId trackId, const juce::PluginDescription& description)
 {
+    std::optional<PlaybackEngine::ScopedPause> pause;
+    if (playbackEngine != nullptr)
+        pause.emplace(*playbackEngine);
+
     if (!createInstance(trackId, description, nullptr))
         return false;
     failedIds.erase(trackId);
@@ -90,6 +101,10 @@ bool VstPluginHost::attachPlugin(TrackId trackId, const juce::PluginDescription&
 
 void VstPluginHost::detachPlugin(TrackId trackId)
 {
+    std::optional<PlaybackEngine::ScopedPause> pause;
+    if (playbackEngine != nullptr)
+        pause.emplace(*playbackEngine);
+
     destroyInstance(trackId);
     failedIds.erase(trackId);
 }
@@ -97,6 +112,8 @@ void VstPluginHost::detachPlugin(TrackId trackId)
 bool VstPluginHost::createInstance(TrackId trackId, const juce::PluginDescription& description,
                                    const juce::MemoryBlock* state)
 {
+    jassert(playbackEngine == nullptr || playbackEngine->isPaused());
+
     if (graph == nullptr)
         return false;
 
@@ -131,6 +148,8 @@ bool VstPluginHost::createInstance(TrackId trackId, const juce::PluginDescriptio
 
 void VstPluginHost::destroyInstance(TrackId trackId)
 {
+    jassert(playbackEngine == nullptr || playbackEngine->isPaused());
+
     auto it = instances.find(trackId);
     if (it == instances.end())
         return;
@@ -151,6 +170,10 @@ void VstPluginHost::tracksChanged()
 
 void VstPluginHost::sequenceReset()
 {
+    std::optional<PlaybackEngine::ScopedPause> pause;
+    if (playbackEngine != nullptr && !instances.empty())
+        pause.emplace(*playbackEngine);
+
     std::vector<TrackId> trackIds;
     trackIds.reserve(instances.size());
     for (const auto& [trackId, _] : instances)
@@ -173,6 +196,10 @@ void VstPluginHost::syncWithSequence()
         liveIds.push_back(trackId);
 
     const auto plan = planPluginSync(*sequence, liveIds, failedIds);
+
+    std::optional<PlaybackEngine::ScopedPause> pause;
+    if (playbackEngine != nullptr && !(plan.toRetire.empty() && plan.toDestroy.empty() && plan.toCreate.empty()))
+        pause.emplace(*playbackEngine);
 
     for (TrackId trackId : plan.toRetire)
     {

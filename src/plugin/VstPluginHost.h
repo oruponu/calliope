@@ -13,6 +13,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+class PlaybackEngine;
+
 class VstPluginHost : public PlaybackListener, public MidiSequence::Listener
 {
 public:
@@ -21,6 +23,7 @@ public:
 
     void prepare(juce::AudioProcessorGraph& graph);
     void setSequence(MidiSequence* sequence);
+    void setPlaybackEngine(PlaybackEngine* engine);
 
     std::optional<juce::PluginDescription> describePluginFile(const juce::File& file);
     bool attachPlugin(TrackId trackId, const juce::PluginDescription& description);
@@ -57,6 +60,7 @@ private:
     juce::AudioProcessorGraph* graph = nullptr;
     juce::AudioProcessorGraph::NodeID audioOutNodeId;
     MidiSequence* sequence = nullptr;
+    PlaybackEngine* playbackEngine = nullptr;
     std::unordered_map<TrackId, Instance> instances;
     RetiredStateStore<juce::MemoryBlock> retiredStates;
     std::unordered_set<TrackId> failedIds;

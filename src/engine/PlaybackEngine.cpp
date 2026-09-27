@@ -1,4 +1,5 @@
 #include "engine/PlaybackEngine.h"
+#include <utility>
 
 namespace
 {
@@ -74,26 +75,33 @@ void PlaybackEngine::play()
     startTimer(1);
 }
 
-bool PlaybackEngine::suspendForStructuralChange()
+PlaybackEngine::ScopedPause::ScopedPause(PlaybackEngine& engineRef) : engine(engineRef)
 {
-    const bool wasRunning = isTimerRunning();
-    if (wasRunning)
-        stopTimer();
+    if (engine.pauseDepth++ > 0)
+        return;
 
-    FanOut sink(listeners);
-    processor.sendAllNoteOffs(sink);
-    return wasRunning;
+    engine.resumeTimerAfterPause = engine.isTimerRunning();
+    if (engine.resumeTimerAfterPause)
+        engine.stopTimer();
 }
 
-void PlaybackEngine::resumeAfterStructuralChange(bool wasRunning)
+PlaybackEngine::ScopedPause::~ScopedPause()
 {
-    rebuildSnapshot();
-    if (wasRunning)
-    {
-        lastSeenSnapshot.reset();
-        lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
-        startTimer(1);
-    }
+    if (--engine.pauseDepth > 0)
+        return;
+
+    if (!std::exchange(engine.resumeTimerAfterPause, false) || !engine.playing)
+        return;
+
+    engine.rebuildSnapshot();
+    engine.lastSeenSnapshot.reset();
+    engine.lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
+    engine.startTimer(1);
+}
+
+bool PlaybackEngine::isPaused() const
+{
+    return pauseDepth > 0;
 }
 
 void PlaybackEngine::stop()
