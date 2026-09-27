@@ -29,6 +29,7 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
         menu.addCommandItem(&commandManager, AppCommands::newFile_);
         menu.addCommandItem(&commandManager, AppCommands::openFile);
         menu.addCommandItem(&commandManager, AppCommands::saveFile_);
+        menu.addCommandItem(&commandManager, AppCommands::saveFileAs);
         menu.addSeparator();
         menu.addCommandItem(&commandManager, AppCommands::quitApp);
     }

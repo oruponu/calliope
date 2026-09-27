@@ -54,6 +54,10 @@ public:
     void fileDragExit(const juce::StringArray& files) override;
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
+    // `next` runs with the file operation still in progress and must call finishFileOperation() when it is done,
+    // unless it quits the app.
+    void saveIfNeededThen(std::function<void()> next);
+
 private:
     void tracksChanged() override;
 
@@ -65,11 +69,13 @@ private:
     void scrollViewHorizontally(int deltaX);
     void newFile();
     void saveFile();
+    void saveFileAs();
     void loadFile();
     void showAudioSettings();
     void stopPlayback();
     void onSequenceLoaded();
     void updateTitleBar();
+    void finishFileOperation();
     PlaybackTrackContext makeTrackContext(int trackIndex) const;
 
     Document document;
@@ -146,6 +152,7 @@ private:
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
     bool updatingFromEventList = false;
+    bool fileOperationInProgress = false;
 
     static constexpr int menuBarHeight = 30;
     static constexpr int transportBarHeight = 64;

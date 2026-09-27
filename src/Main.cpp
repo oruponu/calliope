@@ -30,6 +30,19 @@ public:
         juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
     }
 
+    void systemRequestedQuit() override
+    {
+        if (mainWindow != nullptr)
+        {
+            if (auto* content = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
+            {
+                content->saveIfNeededThen([] { juce::JUCEApplication::quit(); });
+                return;
+            }
+        }
+        quit();
+    }
+
     friend juce::ApplicationProperties& getAppProperties();
 
 private:

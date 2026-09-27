@@ -536,6 +536,9 @@ bool MainComponent::perform(const InvocationInfo& info)
     case AppCommands::saveFile_:
         saveFile();
         return true;
+    case AppCommands::saveFileAs:
+        saveFileAs();
+        return true;
     case AppCommands::quitApp:
         juce::JUCEApplication::getInstance()->systemRequestedQuit();
         return true;
@@ -730,11 +733,16 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
     {
         if (path.endsWithIgnoreCase(".mid") || path.endsWithIgnoreCase(".midi"))
         {
-            if (document.loadFrom(juce::File(path), true).wasOk())
-            {
-                onSequenceLoaded();
-                updateTitleBar();
-            }
+            saveIfNeededThen(
+                [this, file = juce::File(path)]
+                {
+                    if (document.loadFrom(file, true).wasOk())
+                    {
+                        onSequenceLoaded();
+                        updateTitleBar();
+                    }
+                    finishFileOperation();
+                });
             break;
         }
     }
@@ -913,26 +921,69 @@ void MainComponent::zoomVertical(float factor, int anchorYInViewport)
 
 void MainComponent::newFile()
 {
-    document.newDocument();
-    onSequenceLoaded();
-    updateTitleBar();
+    saveIfNeededThen(
+        [this]
+        {
+            document.newDocument();
+            onSequenceLoaded();
+            updateTitleBar();
+            finishFileOperation();
+        });
 }
 
 void MainComponent::saveFile()
 {
-    document.saveAsInteractiveAsync(false, {});
+    if (fileOperationInProgress)
+        return;
+    fileOperationInProgress = true;
+    document.saveAsync(true, true, [this](juce::FileBasedDocument::SaveResult) { finishFileOperation(); });
+}
+
+void MainComponent::saveFileAs()
+{
+    if (fileOperationInProgress)
+        return;
+    fileOperationInProgress = true;
+    document.saveAsInteractiveAsync(true, [this](juce::FileBasedDocument::SaveResult) { finishFileOperation(); });
 }
 
 void MainComponent::loadFile()
 {
-    document.loadFromUserSpecifiedFileAsync(true,
-                                            [this](juce::Result result)
-                                            {
-                                                if (result.failed())
-                                                    return;
-                                                onSequenceLoaded();
-                                                updateTitleBar();
-                                            });
+    saveIfNeededThen(
+        [this]
+        {
+            document.loadFromUserSpecifiedFileAsync(true,
+                                                    [this](juce::Result result)
+                                                    {
+                                                        if (result.wasOk())
+                                                        {
+                                                            onSequenceLoaded();
+                                                            updateTitleBar();
+                                                        }
+                                                        finishFileOperation();
+                                                    });
+        });
+}
+
+void MainComponent::saveIfNeededThen(std::function<void()> next)
+{
+    if (fileOperationInProgress)
+        return;
+
+    fileOperationInProgress = true;
+    document.saveIfNeededAndUserAgreesAsync(
+        [this, next = std::move(next)](juce::FileBasedDocument::SaveResult result)
+        {
+            if (result == juce::FileBasedDocument::savedOk)
+                next();
+            else
+                finishFileOperation();
+        });
+}
+
+void MainComponent::finishFileOperation()
+{
+    fileOperationInProgress = false;
 }
 
 void MainComponent::showAudioSettings()

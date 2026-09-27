@@ -36,7 +36,8 @@ struct AppCommands
         zoomOutVertical,
         zoomReset,
         toggleLoop,
-        audioSettings_
+        audioSettings_,
+        saveFileAs
     };
 
     static void getAllCommands(juce::Array<juce::CommandID>& commands);
