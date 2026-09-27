@@ -224,12 +224,19 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         midiFile.addTrack(msgSeq);
     }
 
-    file.deleteFile();
-    juce::FileOutputStream stream(file);
-    if (!stream.openedOk())
-        return false;
+    juce::TemporaryFile temp(file);
+    {
+        juce::FileOutputStream stream(temp.getFile());
+        if (!stream.openedOk() || !midiFile.writeTo(stream, 1))
+            return false;
 
-    return midiFile.writeTo(stream, 1);
+        // FileOutputStream buffers writes, so a failure may only surface in flush(), which reports it via getStatus().
+        stream.flush();
+        if (stream.getStatus().failed())
+            return false;
+    }
+
+    return temp.overwriteTargetFileWithTemporary();
 }
 
 bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
