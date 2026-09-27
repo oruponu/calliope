@@ -1,6 +1,7 @@
 #include "document/Document.h"
 #include "AppProperties.h"
 #include "io/MidiFileIO.h"
+#include <utility>
 
 namespace
 {
@@ -15,8 +16,9 @@ Document::Document() : juce::FileBasedDocument(".mid", "*.mid;*.midi", "Open MID
 void Document::newDocument()
 {
     notifyWillReplaceSequence();
-    sequence.clear();
-    sequence.addTrack();
+    SequenceContents contents;
+    contents.tracks.emplace_back();
+    sequence.replaceContents(std::move(contents));
     setFile({});
     history.clear();
     history.markSaved();
@@ -30,8 +32,10 @@ juce::String Document::getDocumentTitle()
 juce::Result Document::loadDocument(const juce::File& file)
 {
     notifyWillReplaceSequence();
-    if (!MidiFileIO::load(sequence, file))
+    auto contents = MidiFileIO::load(file);
+    if (!contents)
         return juce::Result::fail("The file could not be read as a MIDI file.");
+    sequence.replaceContents(std::move(*contents));
     history.clear();
     history.markSaved();
     return juce::Result::ok();

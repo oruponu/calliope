@@ -349,43 +349,41 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
     if (row < 0 || row >= sequence->getNumTracks())
         return;
 
-    auto& track = sequence->getTrack(row);
+    const auto& track = sequence->getTrack(row);
 
     if (getMuteButtonBounds(row).contains(e.x, e.y))
     {
-        bool newMuted = !track.isMuted();
+        const bool newMuted = !track.isMuted();
+        MidiSequence::ChangeBatch batch(*sequence);
         if (selectedTrackIndices.contains(row))
         {
             for (int idx : selectedTrackIndices)
                 if (idx >= 0 && idx < sequence->getNumTracks())
-                    sequence->getTrack(idx).setMuted(newMuted);
+                    sequence->setTrackMuted(idx, newMuted);
         }
         else
         {
-            track.setMuted(newMuted);
+            sequence->setTrackMuted(row, newMuted);
         }
         repaint();
-        if (onMuteSoloChanged)
-            onMuteSoloChanged();
         return;
     }
 
     if (getSoloButtonBounds(row).contains(e.x, e.y))
     {
-        bool newSolo = !track.isSolo();
+        const bool newSolo = !track.isSolo();
+        MidiSequence::ChangeBatch batch(*sequence);
         if (selectedTrackIndices.contains(row))
         {
             for (int idx : selectedTrackIndices)
                 if (idx >= 0 && idx < sequence->getNumTracks())
-                    sequence->getTrack(idx).setSolo(newSolo);
+                    sequence->setTrackSolo(idx, newSolo);
         }
         else
         {
-            track.setSolo(newSolo);
+            sequence->setTrackSolo(row, newSolo);
         }
         repaint();
-        if (onMuteSoloChanged)
-            onMuteSoloChanged();
         return;
     }
 

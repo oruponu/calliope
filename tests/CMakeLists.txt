@@ -34,6 +34,7 @@ target_sources(CalliopeTests PRIVATE
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
     model/DefaultTimelineTests.cpp
+    model/MidiSequenceNotificationTests.cpp
     model/RouteTargetTests.cpp
     model/TickSecondsTests.cpp
     model/TimelineLookupTests.cpp

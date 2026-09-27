@@ -11,7 +11,6 @@ template <typename T> struct ReplaceListTraits;
 template <> struct ReplaceListTraits<TempoChange>
 {
     static void set(MidiSequence& seq, std::vector<TempoChange> list) { seq.setTempoChanges(std::move(list)); }
-    static void notify(MidiSequence& seq) { seq.notifyTempoChanged(); }
 };
 
 template <> struct ReplaceListTraits<TimeSignatureChange>
@@ -20,7 +19,6 @@ template <> struct ReplaceListTraits<TimeSignatureChange>
     {
         seq.setTimeSignatureChanges(std::move(list));
     }
-    static void notify(MidiSequence& seq) { seq.notifyTimelineMetadataChanged(); }
 };
 
 template <> struct ReplaceListTraits<KeySignatureChange>
@@ -29,13 +27,11 @@ template <> struct ReplaceListTraits<KeySignatureChange>
     {
         seq.setKeySignatureChanges(std::move(list));
     }
-    static void notify(MidiSequence& seq) { seq.notifyTimelineMetadataChanged(); }
 };
 
 template <> struct ReplaceListTraits<ChordChange>
 {
     static void set(MidiSequence& seq, std::vector<ChordChange> list) { seq.setChordChanges(std::move(list)); }
-    static void notify(MidiSequence& seq) { seq.notifyTimelineMetadataChanged(); }
 };
 
 template <typename T> class ReplaceListAction : public juce::UndoableAction
@@ -49,14 +45,12 @@ public:
     bool perform() override
     {
         ReplaceListTraits<T>::set(*sequence, after);
-        ReplaceListTraits<T>::notify(*sequence);
         return true;
     }
 
     bool undo() override
     {
         ReplaceListTraits<T>::set(*sequence, before);
-        ReplaceListTraits<T>::notify(*sequence);
         return true;
     }
 

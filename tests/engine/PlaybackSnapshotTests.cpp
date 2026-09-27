@@ -7,10 +7,11 @@ using Catch::Matchers::WithinAbs;
 TEST_CASE("notes are sorted by startTick and carry resolved ctx", "[engine][snapshot]")
 {
     MidiSequence seq;
-    auto& t0 = seq.addTrack();
+    MidiTrack t0;
     t0.setChannel(3);
     t0.addNote({60, 100, 480, 480});
     t0.addNote({62, 100, 0, 240});
+    seq.addTrack(t0);
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 2);
@@ -23,11 +24,13 @@ TEST_CASE("notes are sorted by startTick and carry resolved ctx", "[engine][snap
 TEST_CASE("muted track is excluded", "[engine][snapshot]")
 {
     MidiSequence seq;
-    auto& t0 = seq.addTrack();
+    MidiTrack t0;
     t0.addNote({60, 100, 0, 480});
-    auto& t1 = seq.addTrack();
+    seq.addTrack(t0);
+    MidiTrack t1;
     t1.setMuted(true);
     t1.addNote({64, 100, 0, 480});
+    seq.addTrack(t1);
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);
@@ -37,11 +40,13 @@ TEST_CASE("muted track is excluded", "[engine][snapshot]")
 TEST_CASE("solo excludes non-solo tracks", "[engine][snapshot]")
 {
     MidiSequence seq;
-    auto& t0 = seq.addTrack();
+    MidiTrack t0;
     t0.addNote({60, 100, 0, 480});
-    auto& t1 = seq.addTrack();
+    seq.addTrack(t0);
+    MidiTrack t1;
     t1.setSolo(true);
     t1.addNote({64, 100, 0, 480});
+    seq.addTrack(t1);
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);
@@ -51,15 +56,18 @@ TEST_CASE("solo excludes non-solo tracks", "[engine][snapshot]")
 TEST_CASE("mute wins over solo on the same track", "[engine][snapshot]")
 {
     MidiSequence seq;
-    auto& t0 = seq.addTrack();
+    MidiTrack t0;
     t0.addNote({60, 100, 0, 480});
-    auto& t1 = seq.addTrack();
+    seq.addTrack(t0);
+    MidiTrack t1;
     t1.setMuted(true);
     t1.setSolo(true);
     t1.addNote({64, 100, 0, 480});
-    auto& t2 = seq.addTrack();
+    seq.addTrack(t1);
+    MidiTrack t2;
     t2.setSolo(true);
     t2.addNote({67, 100, 0, 480});
+    seq.addTrack(t2);
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);
@@ -71,8 +79,8 @@ TEST_CASE("routeTarget carries the id of an existing target track", "[engine][sn
     MidiSequence seq;
     seq.addTrack();
     seq.addTrack();
-    seq.getTrack(0).setRouteTarget(seq.getTrack(1).getId());
-    seq.getTrack(0).addNote({60, 100, 0, 480});
+    seq.setTrackRouteTarget(0, seq.getTrack(1).getId());
+    seq.addNote(0, {60, 100, 0, 480});
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);
@@ -84,9 +92,9 @@ TEST_CASE("routeTarget falls back to own track when the target was removed", "[e
     MidiSequence seq;
     seq.addTrack();
     seq.addTrack();
-    seq.getTrack(0).setRouteTarget(seq.getTrack(1).getId());
+    seq.setTrackRouteTarget(0, seq.getTrack(1).getId());
     seq.removeTrack(1);
-    seq.getTrack(0).addNote({60, 100, 0, 480});
+    seq.addNote(0, {60, 100, 0, 480});
 
     const auto snap = PlaybackSnapshot::build(seq);
     REQUIRE(snap.notes.size() == 1);

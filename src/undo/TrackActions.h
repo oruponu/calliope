@@ -20,8 +20,7 @@ public:
     {
         if (beforeChange)
             beforeChange(trackIdx);
-        sequence->getTrack(trackIdx).setChannel(newCh);
-        sequence->notifyTracksChanged();
+        sequence->setTrackChannel(trackIdx, newCh);
         return true;
     }
 
@@ -29,8 +28,7 @@ public:
     {
         if (beforeChange)
             beforeChange(trackIdx);
-        sequence->getTrack(trackIdx).setChannel(oldCh);
-        sequence->notifyTracksChanged();
+        sequence->setTrackChannel(trackIdx, oldCh);
         return true;
     }
 
@@ -54,15 +52,13 @@ public:
 
     bool perform() override
     {
-        sequence->getTrack(trackIdx).setName(newName);
-        sequence->notifyTracksChanged();
+        sequence->setTrackName(trackIdx, newName);
         return true;
     }
 
     bool undo() override
     {
-        sequence->getTrack(trackIdx).setName(oldName);
-        sequence->notifyTracksChanged();
+        sequence->setTrackName(trackIdx, oldName);
         return true;
     }
 
@@ -92,7 +88,6 @@ public:
             sequence->addTrack();
             addedIndex = sequence->getNumTracks() - 1;
         }
-        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -100,7 +95,6 @@ public:
     {
         removedTrack = sequence->getTrack(addedIndex);
         sequence->removeTrack(addedIndex);
-        sequence->notifyTracksChanged();
         return true;
     }
 
@@ -124,14 +118,12 @@ public:
     {
         savedTrack = sequence->getTrack(trackIdx);
         sequence->removeTrack(trackIdx);
-        sequence->notifyTracksChanged();
         return true;
     }
 
     bool undo() override
     {
         sequence->insertTrack(trackIdx, savedTrack);
-        sequence->notifyTracksChanged();
         return true;
     }
 

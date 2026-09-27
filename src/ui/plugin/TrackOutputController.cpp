@@ -115,12 +115,12 @@ void TrackOutputController::attachPlugin(TrackId trackId, const juce::PluginDesc
     if (!pluginHost.attachPlugin(trackId, description))
         return;
 
-    auto& track = sequence.getTrack(sequence.indexOf(trackId));
-    track.setPluginAssignment(
-        std::make_shared<const PluginAssignment>(PluginAssignment{PluginAssignmentCodec::toXml(description), {}}));
-    track.setRouteTarget(std::nullopt);
-    track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-    sequence.notifyTracksChanged();
+    const int index = sequence.indexOf(trackId);
+    MidiSequence::ChangeBatch batch(sequence);
+    sequence.setTrackPluginAssignment(index, std::make_shared<const PluginAssignment>(
+                                                 PluginAssignment{PluginAssignmentCodec::toXml(description), {}}));
+    sequence.setTrackRouteTarget(index, std::nullopt);
+    sequence.setTrackOutputDestination(index, MidiTrack::OutputDestination::Plugin);
 }
 
 void TrackOutputController::detachPlugin(TrackId trackId)
@@ -133,10 +133,9 @@ void TrackOutputController::detachPlugin(TrackId trackId)
     stopPlaybackIfPlaying();
     playbackEngine.releaseActiveNotesForTrack(trackId);
     pluginHost.detachPlugin(trackId);
-    auto& track = sequence.getTrack(index);
-    track.setPluginAssignment(nullptr);
-    track.setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
-    sequence.notifyTracksChanged();
+    MidiSequence::ChangeBatch batch(sequence);
+    sequence.setTrackPluginAssignment(index, nullptr);
+    sequence.setTrackOutputDestination(index, MidiTrack::OutputDestination::MidiDevice);
 }
 
 void TrackOutputController::routeToPlugin(TrackId trackId, TrackId target)
@@ -147,10 +146,9 @@ void TrackOutputController::routeToPlugin(TrackId trackId, TrackId target)
         return;
 
     playbackEngine.releaseActiveNotesForTrack(trackId);
-    auto& track = sequence.getTrack(index);
-    track.setRouteTarget(target == trackId ? std::optional<TrackId>{} : target);
-    track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
-    sequence.notifyTracksChanged();
+    MidiSequence::ChangeBatch batch(sequence);
+    sequence.setTrackRouteTarget(index, target == trackId ? std::optional<TrackId>{} : target);
+    sequence.setTrackOutputDestination(index, MidiTrack::OutputDestination::Plugin);
 }
 
 void TrackOutputController::setDestination(TrackId trackId, MidiTrack::OutputDestination destination)
@@ -161,8 +159,7 @@ void TrackOutputController::setDestination(TrackId trackId, MidiTrack::OutputDes
         return;
 
     playbackEngine.releaseActiveNotesForTrack(trackId);
-    sequence.getTrack(index).setOutputDestination(destination);
-    sequence.notifyTracksChanged();
+    sequence.setTrackOutputDestination(index, destination);
 }
 
 void TrackOutputController::stopPlaybackIfPlaying()

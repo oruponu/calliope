@@ -239,11 +239,11 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
     return temp.overwriteTargetFileWithTemporary();
 }
 
-bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
+std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
 {
     juce::MemoryBlock fileData;
     if (!file.loadFileAsData(fileData))
-        return false;
+        return std::nullopt;
 
     auto* data = static_cast<const uint8_t*>(fileData.getData());
     size_t size = fileData.getSize();
@@ -277,19 +277,19 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
 
     juce::MidiFile midiFile;
     if (!midiFile.readFrom(stream))
-        return false;
+        return std::nullopt;
 
-    sequence.clear();
+    SequenceContents contents;
 
     int ppq = midiFile.getTimeFormat();
     if (ppq <= 0)
         ppq = TimelineMap::defaultTicksPerQuarterNote;
-    sequence.setTicksPerQuarterNote(ppq);
+    contents.timeline.setTicksPerQuarterNote(ppq);
 
-    auto tempoChanges = sequence.getTimeline().getTempoChanges();
-    auto timeSignatureChanges = sequence.getTimeline().getTimeSignatureChanges();
-    auto keySignatureChanges = sequence.getKeySignatureChanges();
-    auto chordChanges = sequence.getChordChanges();
+    auto tempoChanges = contents.timeline.getTempoChanges();
+    auto timeSignatureChanges = contents.timeline.getTimeSignatureChanges();
+    auto keySignatureChanges = contents.keySignatureChanges;
+    auto chordChanges = contents.chordChanges;
 
     for (int t = 0; t < midiFile.getNumTracks(); ++t)
     {
@@ -332,10 +332,10 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
         }
     }
 
-    sequence.setTempoChanges(std::move(tempoChanges));
-    sequence.setTimeSignatureChanges(std::move(timeSignatureChanges));
-    sequence.setKeySignatureChanges(std::move(keySignatureChanges));
-    sequence.setChordChanges(std::move(chordChanges));
+    contents.timeline.setTempoChanges(std::move(tempoChanges));
+    contents.timeline.setTimeSignatureChanges(std::move(timeSignatureChanges));
+    contents.keySignatureChanges = std::move(keySignatureChanges);
+    contents.chordChanges = std::move(chordChanges);
 
     if (format == 0)
     {
@@ -358,8 +358,8 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
         std::map<int, int> channelTrackIndex;
         for (int ch : usedChannels)
         {
-            int index = sequence.getNumTracks();
-            auto& track = sequence.addTrack();
+            int index = static_cast<int>(contents.tracks.size());
+            auto& track = contents.tracks.emplace_back();
             track.setName("Ch." + std::to_string(ch));
             track.setChannel(ch);
             channelTrackIndex[ch] = index;
@@ -378,7 +378,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
 
                 if (msg.isNoteOn())
                 {
-                    auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
+                    auto& track = contents.tracks[static_cast<size_t>(channelTrackIndex[msg.getChannel()])];
 
                     int noteNumber = msg.getNoteNumber();
                     int velocity = msg.getVelocity();
@@ -392,7 +392,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 }
                 else if (msg.isController())
                 {
-                    auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
+                    auto& track = contents.tracks[static_cast<size_t>(channelTrackIndex[msg.getChannel()])];
 
                     track.addEvent({.type = MidiEvent::Type::ControlChange,
                                     .tick = static_cast<int>(msg.getTimeStamp()),
@@ -401,7 +401,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 }
                 else if (msg.isProgramChange())
                 {
-                    auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
+                    auto& track = contents.tracks[static_cast<size_t>(channelTrackIndex[msg.getChannel()])];
 
                     track.addEvent({.type = MidiEvent::Type::ProgramChange,
                                     .tick = static_cast<int>(msg.getTimeStamp()),
@@ -409,7 +409,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 }
                 else if (msg.isPitchWheel())
                 {
-                    auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
+                    auto& track = contents.tracks[static_cast<size_t>(channelTrackIndex[msg.getChannel()])];
 
                     track.addEvent({.type = MidiEvent::Type::PitchBend,
                                     .tick = static_cast<int>(msg.getTimeStamp()),
@@ -417,7 +417,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 }
                 else if (msg.isChannelPressure())
                 {
-                    auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
+                    auto& track = contents.tracks[static_cast<size_t>(channelTrackIndex[msg.getChannel()])];
 
                     track.addEvent({.type = MidiEvent::Type::ChannelPressure,
                                     .tick = static_cast<int>(msg.getTimeStamp()),
@@ -425,7 +425,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 }
                 else if (msg.isAftertouch())
                 {
-                    auto& track = sequence.getTrack(channelTrackIndex[msg.getChannel()]);
+                    auto& track = contents.tracks[static_cast<size_t>(channelTrackIndex[msg.getChannel()])];
 
                     track.addEvent({.type = MidiEvent::Type::KeyPressure,
                                     .tick = static_cast<int>(msg.getTimeStamp()),
@@ -460,7 +460,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 {
                     if (!track)
                     {
-                        track = &sequence.addTrack();
+                        track = &contents.tracks.emplace_back();
                         track->setChannel(msg.getChannel());
                     }
 
@@ -478,7 +478,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 {
                     if (!track)
                     {
-                        track = &sequence.addTrack();
+                        track = &contents.tracks.emplace_back();
                         track->setChannel(msg.getChannel());
                     }
 
@@ -491,7 +491,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 {
                     if (!track)
                     {
-                        track = &sequence.addTrack();
+                        track = &contents.tracks.emplace_back();
                         track->setChannel(msg.getChannel());
                     }
 
@@ -503,7 +503,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 {
                     if (!track)
                     {
-                        track = &sequence.addTrack();
+                        track = &contents.tracks.emplace_back();
                         track->setChannel(msg.getChannel());
                     }
 
@@ -515,7 +515,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 {
                     if (!track)
                     {
-                        track = &sequence.addTrack();
+                        track = &contents.tracks.emplace_back();
                         track->setChannel(msg.getChannel());
                     }
 
@@ -527,7 +527,7 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
                 {
                     if (!track)
                     {
-                        track = &sequence.addTrack();
+                        track = &contents.tracks.emplace_back();
                         track->setChannel(msg.getChannel());
                     }
 
@@ -543,8 +543,8 @@ bool MidiFileIO::load(MidiSequence& sequence, const juce::File& file)
         }
     }
 
-    if (sequence.getNumTracks() == 0)
-        sequence.addTrack();
+    if (contents.tracks.empty())
+        contents.tracks.emplace_back();
 
-    return true;
+    return contents;
 }

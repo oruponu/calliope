@@ -13,7 +13,8 @@ std::shared_ptr<const PluginAssignment> makeAssignment()
 TEST_CASE("live instance whose track was removed is retired", "[plugin][sync]")
 {
     MidiSequence seq;
-    seq.addTrack().setPluginAssignment(makeAssignment());
+    seq.addTrack();
+    seq.setTrackPluginAssignment(seq.getNumTracks() - 1, makeAssignment());
     seq.addTrack();
     const TrackId removed = seq.getTrack(0).getId();
     seq.removeTrack(0);
@@ -40,7 +41,8 @@ TEST_CASE("track with an assignment and no instance is created", "[plugin][sync]
 {
     MidiSequence seq;
     seq.addTrack();
-    seq.addTrack().setPluginAssignment(makeAssignment());
+    seq.addTrack();
+    seq.setTrackPluginAssignment(seq.getNumTracks() - 1, makeAssignment());
     const TrackId id = seq.getTrack(1).getId();
 
     const auto plan = planPluginSync(seq, {}, {});
@@ -52,7 +54,8 @@ TEST_CASE("track with an assignment and no instance is created", "[plugin][sync]
 TEST_CASE("failed track is not created", "[plugin][sync]")
 {
     MidiSequence seq;
-    seq.addTrack().setPluginAssignment(makeAssignment());
+    seq.addTrack();
+    seq.setTrackPluginAssignment(seq.getNumTracks() - 1, makeAssignment());
     const TrackId id = seq.getTrack(0).getId();
 
     const auto plan = planPluginSync(seq, {}, {id});
@@ -73,7 +76,8 @@ TEST_CASE("track without an assignment and no instance is left alone", "[plugin]
 TEST_CASE("nothing changes when instances match assignments", "[plugin][sync]")
 {
     MidiSequence seq;
-    seq.addTrack().setPluginAssignment(makeAssignment());
+    seq.addTrack();
+    seq.setTrackPluginAssignment(seq.getNumTracks() - 1, makeAssignment());
     seq.addTrack();
     const TrackId id = seq.getTrack(0).getId();
 

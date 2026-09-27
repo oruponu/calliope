@@ -52,7 +52,8 @@ MidiEvent controlChange(int tick)
 TEST_CASE("note-on fires when range covers startTick", "[engine][processor]")
 {
     MidiSequence seq;
-    seq.addTrack().addNote({60, 100, 100, 200});
+    seq.addTrack();
+    seq.addNote(seq.getNumTracks() - 1, {60, 100, 100, 200});
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -68,7 +69,8 @@ TEST_CASE("note-on fires when range covers startTick", "[engine][processor]")
 TEST_CASE("note-off fires when range passes endTick", "[engine][processor]")
 {
     MidiSequence seq;
-    seq.addTrack().addNote({60, 100, 100, 200});
+    seq.addTrack();
+    seq.addNote(seq.getNumTracks() - 1, {60, 100, 100, 200});
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -84,7 +86,8 @@ TEST_CASE("note-off fires when range passes endTick", "[engine][processor]")
 TEST_CASE("short note that starts and ends within one range is completed in that range", "[engine][processor]")
 {
     MidiSequence seq;
-    seq.addTrack().addNote({60, 100, 100, 20});
+    seq.addTrack();
+    seq.addNote(seq.getNumTracks() - 1, {60, 100, 100, 20});
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -101,7 +104,8 @@ TEST_CASE("short note that starts and ends within one range is completed in that
 TEST_CASE("note-off fires when endTick == toTick", "[engine][processor]")
 {
     MidiSequence seq;
-    seq.addTrack().addNote({60, 100, 0, 100});
+    seq.addTrack();
+    seq.addNote(seq.getNumTracks() - 1, {60, 100, 0, 100});
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -118,9 +122,10 @@ TEST_CASE("note-off fires when endTick == toTick", "[engine][processor]")
 TEST_CASE("within a range, note-off precedes note-on at the same tick", "[engine][processor]")
 {
     MidiSequence seq;
-    auto& t = seq.addTrack();
+    MidiTrack t;
     t.addNote({60, 100, 0, 100});
     t.addNote({62, 100, 100, 100});
+    seq.addTrack(t);
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -140,9 +145,10 @@ TEST_CASE("within a range, note-off precedes note-on at the same tick", "[engine
 TEST_CASE("midi events fire before note-ons within range", "[engine][processor]")
 {
     MidiSequence seq;
-    auto& t = seq.addTrack();
+    MidiTrack t;
     t.addNote({60, 100, 50, 100});
     t.addEvent(controlChange(20));
+    seq.addTrack(t);
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -158,9 +164,10 @@ TEST_CASE("midi events fire before note-ons within range", "[engine][processor]"
 TEST_CASE("expired note-off precedes a midi event in the same range", "[engine][processor]")
 {
     MidiSequence seq;
-    auto& t = seq.addTrack();
+    MidiTrack t;
     t.addNote({60, 100, 0, 100});
     t.addEvent(controlChange(150));
+    seq.addTrack(t);
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -180,9 +187,10 @@ TEST_CASE("expired note-off precedes a midi event in the same range", "[engine][
 TEST_CASE("expired note-off is sent before an earlier-ticked midi event", "[engine][processor]")
 {
     MidiSequence seq;
-    auto& t = seq.addTrack();
+    MidiTrack t;
     t.addNote({60, 100, 0, 100});
     t.addEvent(controlChange(80));
+    seq.addTrack(t);
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -201,9 +209,10 @@ TEST_CASE("expired note-off is sent before an earlier-ticked midi event", "[engi
 TEST_CASE("midi event is sent before a note-on even when it is later in the range", "[engine][processor]")
 {
     MidiSequence seq;
-    auto& t = seq.addTrack();
+    MidiTrack t;
     t.addNote({60, 100, 50, 1000});
     t.addEvent(controlChange(80));
+    seq.addTrack(t);
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -220,8 +229,10 @@ TEST_CASE("midi event is sent before a note-on even when it is later in the rang
 TEST_CASE("releaseActiveNotesForTrack offs that track's active notes and removes them", "[engine][processor]")
 {
     MidiSequence seq;
-    seq.addTrack().addNote({60, 100, 0, 1000});
-    seq.addTrack().addNote({72, 100, 0, 1000});
+    seq.addTrack();
+    seq.addNote(seq.getNumTracks() - 1, {60, 100, 0, 1000});
+    seq.addTrack();
+    seq.addNote(seq.getNumTracks() - 1, {72, 100, 0, 1000});
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -246,7 +257,8 @@ TEST_CASE("releaseActiveNotesForTrack offs that track's active notes and removes
 TEST_CASE("after snapshot swap, already-started note is not retriggered", "[engine][processor]")
 {
     MidiSequence seq;
-    seq.addTrack().addNote({60, 100, 0, 1000});
+    seq.addTrack();
+    seq.addNote(seq.getNumTracks() - 1, {60, 100, 0, 1000});
     const auto snapA = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -266,9 +278,10 @@ TEST_CASE("after snapshot swap, already-started note is not retriggered", "[engi
 TEST_CASE("deleted note still gets note-off via stored ctx", "[engine][processor]")
 {
     MidiSequence seq;
-    auto& t = seq.addTrack();
+    MidiTrack t;
     t.setChannel(5);
     t.addNote({60, 100, 0, 200});
+    seq.addTrack(t);
     const auto snapA = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -276,7 +289,7 @@ TEST_CASE("deleted note still gets note-off via stored ctx", "[engine][processor
     proc.resetCursors(snapA, 0);
     proc.process(snapA, 0, 100, sink);
 
-    t.removeNote(0);
+    seq.removeNote(0, 0);
     const auto snapB = PlaybackSnapshot::build(seq);
     sink.log.clear();
     proc.resetCursors(snapB, 100);
@@ -290,9 +303,10 @@ TEST_CASE("deleted note still gets note-off via stored ctx", "[engine][processor
 TEST_CASE("seek forward repositions cursor", "[engine][processor]")
 {
     MidiSequence seq;
-    auto& t = seq.addTrack();
+    MidiTrack t;
     t.addNote({60, 100, 100, 100});
     t.addNote({62, 100, 1000, 200});
+    seq.addTrack(t);
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;
@@ -310,9 +324,10 @@ TEST_CASE("loop boundary cuts sounding notes and restarts from loopStart", "[eng
     const int loopStart = 0;
     const int loopEnd = 480;
     MidiSequence seq;
-    auto& t = seq.addTrack();
+    MidiTrack t;
     t.addNote({60, 100, 240, 480});
     t.addNote({62, 100, 0, 100});
+    seq.addTrack(t);
     const auto snap = PlaybackSnapshot::build(seq);
 
     PlaybackProcessor proc;

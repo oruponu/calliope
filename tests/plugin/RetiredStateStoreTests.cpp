@@ -70,7 +70,8 @@ TEST_CASE("clear drops every state", "[plugin][retired]")
 TEST_CASE("state survives while a saved copy of the removed track is alive", "[plugin][retired]")
 {
     MidiSequence seq;
-    seq.addTrack().setPluginAssignment(makeAssignment());
+    seq.addTrack();
+    seq.setTrackPluginAssignment(seq.getNumTracks() - 1, makeAssignment());
     const TrackId id = seq.getTrack(0).getId();
     std::optional<MidiTrack> saved = seq.getTrack(0);
     seq.removeTrack(0);

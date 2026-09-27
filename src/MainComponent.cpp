@@ -120,7 +120,6 @@ MainComponent::MainComponent()
         controllerLane.setSelectedTracks(activeIdx, selected);
         eventList.setSelectedTracks(selected);
     };
-    trackList.onMuteSoloChanged = [this]() { document.getSequence().notifyTracksChanged(); };
     trackList.pluginNameForTrack = [this](int trackIndex)
     { return pluginHost.getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
     trackList.onEditorButtonClicked = [this](int trackIndex)
@@ -1009,8 +1008,6 @@ void MainComponent::onSequenceLoaded()
     int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * pianoRoll.noteHeight - getHeight() / 2;
     viewport.setViewPosition(0, c4Y);
     repaint(trackListHeaderBounds);
-
-    document.getSequence().notifySequenceReset();
 }
 
 void MainComponent::updateTitleBar()

@@ -20,7 +20,6 @@ public:
     void setSelectedTrackIndices(const std::set<int>& indices);
 
     std::function<void(int activeIndex, const std::set<int>& selectedIndices)> onTrackSelected;
-    std::function<void()> onMuteSoloChanged;
     std::function<juce::String(int trackIndex)> pluginNameForTrack;
     std::function<void(int trackIndex)> onPluginLabelClicked;
     std::function<void(int trackIndex)> onEditorButtonClicked;

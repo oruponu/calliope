@@ -17,16 +17,14 @@ public:
 
     bool perform() override
     {
-        sequence->getTrack(trackIdx).addNote(note);
+        sequence->addNote(trackIdx, note);
         addedIndex = sequence->getTrack(trackIdx).getNumNotes() - 1;
-        sequence->notifyNotesChanged(trackIdx);
         return true;
     }
 
     bool undo() override
     {
-        sequence->getTrack(trackIdx).removeNote(addedIndex);
-        sequence->notifyNotesChanged(trackIdx);
+        sequence->removeNote(trackIdx, addedIndex);
         return true;
     }
 
@@ -52,15 +50,13 @@ public:
     bool perform() override
     {
         deletedNote = sequence->getTrack(trackIdx).getNote(noteIdx);
-        sequence->getTrack(trackIdx).removeNote(noteIdx);
-        sequence->notifyNotesChanged(trackIdx);
+        sequence->removeNote(trackIdx, noteIdx);
         return true;
     }
 
     bool undo() override
     {
-        sequence->getTrack(trackIdx).insertNote(noteIdx, deletedNote);
-        sequence->notifyNotesChanged(trackIdx);
+        sequence->insertNote(trackIdx, noteIdx, deletedNote);
         return true;
     }
 
@@ -83,17 +79,13 @@ public:
 
     bool perform() override
     {
-        auto& note = sequence->getTrack(trackIdx).getNote(noteIdx);
-        note = afterNote;
-        sequence->notifyNotesChanged(trackIdx);
+        sequence->setNote(trackIdx, noteIdx, afterNote);
         return true;
     }
 
     bool undo() override
     {
-        auto& note = sequence->getTrack(trackIdx).getNote(noteIdx);
-        note = beforeNote;
-        sequence->notifyNotesChanged(trackIdx);
+        sequence->setNote(trackIdx, noteIdx, beforeNote);
         return true;
     }
 
@@ -124,17 +116,17 @@ public:
 
     bool perform() override
     {
+        MidiSequence::ChangeBatch batch(*sequence);
         for (const auto& m : mods)
-            sequence->getTrack(m.trackIndex).getNote(m.noteIndex) = m.after;
-        sequence->notifyNotesChanged(-1);
+            sequence->setNote(m.trackIndex, m.noteIndex, m.after);
         return true;
     }
 
     bool undo() override
     {
+        MidiSequence::ChangeBatch batch(*sequence);
         for (const auto& m : mods)
-            sequence->getTrack(m.trackIndex).getNote(m.noteIndex) = m.before;
-        sequence->notifyNotesChanged(-1);
+            sequence->setNote(m.trackIndex, m.noteIndex, m.before);
         return true;
     }
 
@@ -174,17 +166,17 @@ public:
 
     bool perform() override
     {
+        MidiSequence::ChangeBatch batch(*sequence);
         for (const auto& info : deletedNotes)
-            sequence->getTrack(info.trackIndex).removeNote(info.noteIndex);
-        sequence->notifyNotesChanged(-1);
+            sequence->removeNote(info.trackIndex, info.noteIndex);
         return true;
     }
 
     bool undo() override
     {
+        MidiSequence::ChangeBatch batch(*sequence);
         for (auto it = deletedNotes.rbegin(); it != deletedNotes.rend(); ++it)
-            sequence->getTrack(it->trackIndex).insertNote(it->noteIndex, it->note);
-        sequence->notifyNotesChanged(-1);
+            sequence->insertNote(it->trackIndex, it->noteIndex, it->note);
         return true;
     }
 
@@ -205,20 +197,18 @@ public:
 
     bool perform() override
     {
-        auto& track = sequence->getTrack(trackIdx);
-        addedStartIndex = track.getNumNotes();
+        addedStartIndex = sequence->getTrack(trackIdx).getNumNotes();
+        MidiSequence::ChangeBatch batch(*sequence);
         for (const auto& note : notes)
-            track.addNote(note);
-        sequence->notifyNotesChanged(trackIdx);
+            sequence->addNote(trackIdx, note);
         return true;
     }
 
     bool undo() override
     {
-        auto& track = sequence->getTrack(trackIdx);
+        MidiSequence::ChangeBatch batch(*sequence);
         for (int i = static_cast<int>(notes.size()) - 1; i >= 0; --i)
-            track.removeNote(addedStartIndex + i);
-        sequence->notifyNotesChanged(trackIdx);
+            sequence->removeNote(trackIdx, addedStartIndex + i);
         return true;
     }
 
@@ -251,19 +241,25 @@ public:
 
     bool perform() override
     {
-        auto& track = sequence->getTrack(trackIdx);
+        MidiSequence::ChangeBatch batch(*sequence);
         for (const auto& c : changes)
-            track.getNote(c.noteIndex).velocity = c.newVelocity;
-        sequence->notifyNotesChanged(trackIdx);
+        {
+            MidiNote note = sequence->getTrack(trackIdx).getNote(c.noteIndex);
+            note.velocity = c.newVelocity;
+            sequence->setNote(trackIdx, c.noteIndex, note);
+        }
         return true;
     }
 
     bool undo() override
     {
-        auto& track = sequence->getTrack(trackIdx);
+        MidiSequence::ChangeBatch batch(*sequence);
         for (const auto& c : changes)
-            track.getNote(c.noteIndex).velocity = c.oldVelocity;
-        sequence->notifyNotesChanged(trackIdx);
+        {
+            MidiNote note = sequence->getTrack(trackIdx).getNote(c.noteIndex);
+            note.velocity = c.oldVelocity;
+            sequence->setNote(trackIdx, c.noteIndex, note);
+        }
         return true;
     }
 

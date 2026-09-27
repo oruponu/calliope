@@ -1,6 +1,7 @@
 #include "model/MidiSequence.h"
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
+#include <utility>
 
 TEST_CASE("addTrack assigns distinct increasing ids", "[model][trackid]")
 {
@@ -29,13 +30,14 @@ TEST_CASE("insertTrack keeps the id of the inserted track", "[model][trackid]")
     CHECK(seq.indexOf(saved.getId()) == 0);
 }
 
-TEST_CASE("ids are not reused after clear", "[model][trackid]")
+TEST_CASE("ids are not reused after replaceContents", "[model][trackid]")
 {
     MidiSequence seq;
     const TrackId before = seq.addTrack().getId();
-    seq.clear();
-    const TrackId after = seq.addTrack().getId();
-    CHECK(static_cast<std::uint32_t>(after) > static_cast<std::uint32_t>(before));
+    SequenceContents contents;
+    contents.tracks.emplace_back();
+    seq.replaceContents(std::move(contents));
+    CHECK(static_cast<std::uint32_t>(seq.getTrack(0).getId()) > static_cast<std::uint32_t>(before));
 }
 
 TEST_CASE("ids are not reused after removeTrack", "[model][trackid]")
@@ -59,4 +61,13 @@ TEST_CASE("indexOf follows tracks and returns -1 for unknown ids", "[model][trac
     CHECK(seq.indexOf(c) == 1);
     CHECK(seq.indexOf(a) == -1);
     CHECK(seq.indexOf(TrackId{}) == -1);
+}
+
+TEST_CASE("addTrack assigns a fresh id even to a track that already has one", "[model][trackid]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    const MidiTrack copy = seq.getTrack(0);
+    seq.addTrack(copy);
+    CHECK(seq.getTrack(1).getId() != seq.getTrack(0).getId());
 }
