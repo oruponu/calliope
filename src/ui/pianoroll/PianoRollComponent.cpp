@@ -298,9 +298,6 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
     if (onScrollToNote)
         onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
 
-    if (onNotesChanged)
-        onNotesChanged();
-
     repaint();
 }
 
@@ -338,9 +335,6 @@ void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
 
     if (onScrollToNote)
         onScrollToNote(anchorNote.startTick, anchorNote.noteNumber);
-
-    if (onNotesChanged)
-        onNotesChanged();
 
     repaint();
 }
@@ -393,9 +387,6 @@ bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
     if (onScrollToNote)
         onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
 
-    if (onNotesChanged)
-        onNotesChanged();
-
     repaint();
     if (onNoteSelectionChanged)
         onNoteSelectionChanged(selectedNotes);
@@ -437,11 +428,6 @@ PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistor
         keyStrip.clearKeySignatureSelection();
         chordStrip.clearChordSelection();
         repaint();
-    };
-    tempoStrip.onTempoChanged = [this]
-    {
-        if (onTempoChanged)
-            onTempoChanged();
     };
     addAndMakeVisible(timeSigStrip);
     timeSigStrip.onSelectionTaken = [this]
@@ -728,8 +714,6 @@ void PianoRollComponent::cutSelectedNotes()
 
     selectedNotes.clear();
     repaint();
-    if (onNotesChanged)
-        onNotesChanged();
     if (onNoteSelectionChanged)
         onNoteSelectionChanged(selectedNotes);
 }
@@ -811,8 +795,6 @@ void PianoRollComponent::deleteSelectedNotes()
     }
 
     repaint();
-    if (onNotesChanged)
-        onNotesChanged();
     if (onNoteSelectionChanged)
         onNoteSelectionChanged(selectedNotes);
 }
@@ -992,8 +974,6 @@ void PianoRollComponent::pasteNotes(int atTick)
         selectedNotes.insert({activeTrackIndex, start + i});
 
     repaint();
-    if (onNotesChanged)
-        onNotesChanged();
     if (onNoteSelectionChanged)
         onNoteSelectionChanged(selectedNotes);
 }
@@ -1084,8 +1064,6 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             selectedNote = {};
             selectedNotes.clear();
             repaint();
-            if (onNotesChanged)
-                onNotesChanged();
             if (onNoteSelectionChanged)
                 onNoteSelectionChanged(selectedNotes);
             return;
@@ -1117,8 +1095,6 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                         ResizeEdge::Right, newNote.startTick, newNote.endTick(), true};
 
         repaint();
-        if (onNotesChanged)
-            onNotesChanged();
     }
     else // Select mode
     {
@@ -1132,8 +1108,6 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                 selectedNote = {};
                 selectedNotes.clear();
                 repaint();
-                if (onNotesChanged)
-                    onNotesChanged();
                 if (onNoteSelectionChanged)
                     onNoteSelectionChanged(selectedNotes);
             }
@@ -1322,8 +1296,6 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
                 undoHistory.beginNewTransaction(mods.size() > 1 ? "Resize Notes" : "Resize Note");
             undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
         }
-        if (onNotesChanged)
-            onNotesChanged();
         return;
     }
 
@@ -1344,9 +1316,6 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
             }
             if (!mods.empty())
                 undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
-
-            if (onNotesChanged)
-                onNotesChanged();
         }
     }
 }

@@ -66,8 +66,7 @@ void PlaybackEngine::play()
 {
     if (sequence == nullptr || playing)
         return;
-    if (!currentOwner)
-        rebuildSnapshot();
+    rebuildSnapshot();
 
     playing = true;
     lastSeenSnapshot.reset();

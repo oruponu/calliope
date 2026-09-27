@@ -31,6 +31,7 @@ target_sources(Calliope PRIVATE
     src/engine/PlaybackEngine.cpp
     src/engine/PlaybackProcessor.cpp
     src/engine/PlaybackSnapshot.cpp
+    src/engine/PlaybackSync.cpp
     src/io/MidiFileIO.cpp
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp

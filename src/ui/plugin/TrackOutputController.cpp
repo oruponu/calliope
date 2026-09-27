@@ -121,7 +121,6 @@ void TrackOutputController::attachPlugin(TrackId trackId, const juce::PluginDesc
     track.setRouteTarget(std::nullopt);
     track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
     sequence.notifyTracksChanged();
-    playbackEngine.rebuildSnapshot();
 }
 
 void TrackOutputController::detachPlugin(TrackId trackId)
@@ -138,7 +137,6 @@ void TrackOutputController::detachPlugin(TrackId trackId)
     track.setPluginAssignment(nullptr);
     track.setOutputDestination(MidiTrack::OutputDestination::MidiDevice);
     sequence.notifyTracksChanged();
-    playbackEngine.rebuildSnapshot();
 }
 
 void TrackOutputController::routeToPlugin(TrackId trackId, TrackId target)
@@ -153,7 +151,6 @@ void TrackOutputController::routeToPlugin(TrackId trackId, TrackId target)
     track.setRouteTarget(target == trackId ? std::optional<TrackId>{} : target);
     track.setOutputDestination(MidiTrack::OutputDestination::Plugin);
     sequence.notifyTracksChanged();
-    playbackEngine.rebuildSnapshot();
 }
 
 void TrackOutputController::setDestination(TrackId trackId, MidiTrack::OutputDestination destination)
@@ -166,7 +163,6 @@ void TrackOutputController::setDestination(TrackId trackId, MidiTrack::OutputDes
     playbackEngine.releaseActiveNotesForTrack(trackId);
     sequence.getTrack(index).setOutputDestination(destination);
     sequence.notifyTracksChanged();
-    playbackEngine.rebuildSnapshot();
 }
 
 void TrackOutputController::stopPlaybackIfPlaying()

@@ -44,13 +44,11 @@ public:
     void setLoopRegion(bool enabled, int startTick, int endTick);
 
     std::function<void(int startTick, int endTick)> onLoopRegionChanged;
-    std::function<void()> onTempoChanged;
     void paint(juce::Graphics& g) override;
     void resized() override;
     void moved() override;
 
     std::function<void(int tick)> onPlayheadMoved;
-    std::function<void()> onNotesChanged;
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
     std::function<void(const MidiNote&)> onNotePreview;
     std::function<void(const MidiNote&)> onNotePreviewEnd;

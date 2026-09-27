@@ -64,8 +64,6 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
 
     selection.clear();
     repaint();
-    if (onTempoChanged)
-        onTempoChanged();
 }
 
 void TempoTrackStrip::copySelectedTempoPoints()
@@ -130,8 +128,6 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
     selection.selectTicks(sequence->getTimeline().getTempoChanges(), pastedTicks);
 
     repaint();
-    if (changed && onTempoChanged)
-        onTempoChanged();
 }
 
 float TempoTrackStrip::tempoBpmToY(double bpm) const
@@ -357,8 +353,6 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
                 onSelectionTaken();
             selection.selectOnly(addedIndex);
             repaint();
-            if (onTempoChanged)
-                onTempoChanged();
         }
         return;
     }
@@ -464,8 +458,6 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
             auto after = sequence->getTimeline().getTempoChanges();
             performReplaceList(undoHistory, sequence, "Move Tempo Change", dragging->before, std::move(after));
             selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
-            if (onTempoChanged)
-                onTempoChanged();
         }
         else if (dragging->index >= 0)
         {

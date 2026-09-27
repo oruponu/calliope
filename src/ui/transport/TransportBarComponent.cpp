@@ -295,7 +295,6 @@ void TransportBarComponent::setTempoAtPlayhead(double bpm)
     TempoEdits::add(after, tc.tick, clamped);
     document.getHistory().perform(
         new ReplaceListAction<TempoChange>(&document.getSequence(), std::move(before), std::move(after)));
-    playbackEngine.rebuildSnapshot();
 }
 
 void TransportBarComponent::commitTimeSignatureEdit()

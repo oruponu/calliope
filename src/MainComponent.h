@@ -3,6 +3,7 @@
 #include "audio/MidiDeviceOutput.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
+#include "engine/PlaybackSync.h"
 #include "model/MidiSequence.h"
 #include "plugin/VstPluginHost.h"
 #include "ui/EventListComponent.h"
@@ -80,6 +81,7 @@ private:
 
     Document document;
     PlaybackEngine playbackEngine;
+    PlaybackSync playbackSync{playbackEngine, document.getSequence()};
     MidiDeviceOutput midiOutput;
     juce::AudioDeviceManager audioDeviceManager;
     juce::AudioProcessorGraph audioGraph;

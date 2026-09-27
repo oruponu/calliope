@@ -49,8 +49,6 @@ MainComponent::MainComponent()
         eventList.setPlayheadTick(tick);
         transportBar.updateDisplay();
     };
-    pianoRoll.onNotesChanged = [this]() { playbackEngine.rebuildSnapshot(); };
-    pianoRoll.onTempoChanged = [this]() { playbackEngine.rebuildSnapshot(); };
     pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
     {
         if (updatingFromEventList)
@@ -126,11 +124,7 @@ MainComponent::MainComponent()
         controllerLane.setSelectedTracks(activeIdx, selected);
         eventList.setSelectedTracks(selected);
     };
-    trackList.onMuteSoloChanged = [this]()
-    {
-        document.getSequence().notifyTracksChanged();
-        playbackEngine.rebuildSnapshot();
-    };
+    trackList.onMuteSoloChanged = [this]() { document.getSequence().notifyTracksChanged(); };
     trackList.pluginNameForTrack = [this](int trackIndex)
     { return pluginHost.getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
     trackList.onEditorButtonClicked = [this](int trackIndex)
@@ -153,7 +147,6 @@ MainComponent::MainComponent()
                     document.getHistory().perform(new ChannelChangeAction(
                         &document.getSequence(), trackIndex, currentChannel, ch, [this](int idx)
                         { playbackEngine.releaseActiveNotesForTrack(document.getSequence().getTrack(idx).getId()); }));
-                    playbackEngine.rebuildSnapshot();
                 });
         }
         menu.showMenuAsync(juce::PopupMenu::Options{});
@@ -163,7 +156,6 @@ MainComponent::MainComponent()
         document.getHistory().beginNewTransaction(kStructuralTxn);
         document.getHistory().perform(new TrackAddAction(&document.getSequence()));
         trackList.refresh();
-        playbackEngine.rebuildSnapshot();
     };
     trackList.onRemoveTrackRequested = [this](int trackIndex)
     {
@@ -578,8 +570,6 @@ bool MainComponent::perform(const InvocationInfo& info)
         document.getHistory().undo();
         if (structural)
             playbackEngine.resumeAfterStructuralChange(wasRunning);
-        else
-            playbackEngine.rebuildSnapshot();
         trackList.refresh();
         pianoRoll.setSelectedNotes({});
         return true;
@@ -593,8 +583,6 @@ bool MainComponent::perform(const InvocationInfo& info)
         document.getHistory().redo();
         if (structural)
             playbackEngine.resumeAfterStructuralChange(wasRunning);
-        else
-            playbackEngine.rebuildSnapshot();
         trackList.refresh();
         pianoRoll.setSelectedNotes({});
         return true;
@@ -1049,7 +1037,6 @@ void MainComponent::onSequenceLoaded()
     viewport.setViewPosition(0, c4Y);
     repaint(trackListHeaderBounds);
 
-    playbackEngine.rebuildSnapshot();
     document.getSequence().notifySequenceReset();
 }
 

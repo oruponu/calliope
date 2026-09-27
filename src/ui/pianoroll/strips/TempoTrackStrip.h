@@ -17,7 +17,6 @@ public:
     TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
 
     std::function<void()> onSelectionTaken;
-    std::function<void()> onTempoChanged;
 
     void setSequence(MidiSequence* seq) override;
     bool hasSelection() const;
