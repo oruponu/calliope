@@ -16,7 +16,8 @@ class KeySignatureStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
+    KeySignatureStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef,
+                      EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
 
     std::function<void()> onSelectionTaken;
 
@@ -52,14 +53,15 @@ private:
         int grabOffset = 0;
         std::vector<int> group;
         bool moved = false;
+        std::vector<KeySignatureChange> preview;
     };
     struct RangeSelecting
     {
         RangeSelectGesture gesture;
     };
 
-    void timelineMetadataChanged() override { repaint(); }
-
+    void cancelDrag() override;
+    const std::vector<KeySignatureChange>& displayedChanges() const;
     int hitTestKeySignaturePoint(int x, int y) const;
     juce::Rectangle<int> keySignatureLabelRect(int index) const;
     void deleteSelectedKeySignaturesImpl(const juce::String& transactionName);

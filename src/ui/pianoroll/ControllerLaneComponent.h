@@ -5,7 +5,9 @@
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <map>
 #include <set>
+#include <variant>
 #include <vector>
 
 class ControllerLaneComponent : public juce::Component, public MidiSequence::Listener
@@ -37,7 +39,6 @@ public:
     DisplayMode getDisplayMode() const { return displayMode; }
     int getCCNumber() const { return ccNumber; }
 
-    std::function<void()> onDataChanged;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onMouseWheel;
 
     void paint(juce::Graphics& g) override;
@@ -57,6 +58,7 @@ private:
     void tracksChanged() override;
     void tempoChanged() override;
     void timelineMetadataChanged() override;
+    void sequenceReset() override;
 
     void drawLeftPanel(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
@@ -92,9 +94,17 @@ private:
     int quantizeDenominator = 4;
 
     UndoHistory& undoHistory;
-    bool isDragging = false;
-    int lastDragX = -1;
-    std::vector<int> velocitySnapshot;
+    struct Idle
+    {
+    };
+    struct VelocityDragging
+    {
+        int trackIndex = -1;
+        int lastDragX = -1;
+        std::map<int, int> preview;
+    };
+    std::variant<Idle, VelocityDragging> drag;
+    int displayedVelocity(int trackIndex, int noteIndex) const;
 
     static constexpr int topPadding = 6;
     static constexpr int bottomPadding = 6;

@@ -1,7 +1,10 @@
 #include "ui/pianoroll/strips/LoopStrip.h"
 #include "ui/theme/Theme.h"
 
-LoopStrip::LoopStrip(const TimelineGeometry& geometryRef) : TimelineStrip(geometryRef, {}) {}
+LoopStrip::LoopStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef)
+    : TimelineStrip(geometryRef, displayedTimelineRef, {})
+{
+}
 
 void LoopStrip::paint(juce::Graphics& g)
 {

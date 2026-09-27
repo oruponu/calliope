@@ -2,8 +2,9 @@
 #include "ui/theme/Theme.h"
 #include <algorithm>
 
-TimelineStrip::TimelineStrip(const TimelineGeometry& geometryRef, const juce::String& labelText)
-    : geometry(geometryRef), label(labelText)
+TimelineStrip::TimelineStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef,
+                             const juce::String& labelText)
+    : geometry(geometryRef), displayedTimeline(displayedTimelineRef), label(labelText)
 {
     setWantsKeyboardFocus(false);
 }
@@ -49,6 +50,37 @@ void TimelineStrip::setViewLeftX(int x)
     repaint(viewLeftX, 0, labelWidth(), getHeight());
     viewLeftX = x;
     repaint(viewLeftX, 0, labelWidth(), getHeight());
+}
+
+void TimelineStrip::notesChanged(int)
+{
+    modelChanged();
+}
+
+void TimelineStrip::tracksChanged()
+{
+    modelChanged();
+}
+
+void TimelineStrip::tempoChanged()
+{
+    modelChanged();
+}
+
+void TimelineStrip::timelineMetadataChanged()
+{
+    modelChanged();
+}
+
+void TimelineStrip::sequenceReset()
+{
+    modelChanged();
+}
+
+void TimelineStrip::modelChanged()
+{
+    cancelDrag();
+    repaint();
 }
 
 float TimelineStrip::playheadX() const
@@ -100,14 +132,15 @@ void TimelineStrip::drawTrackGridLines(juce::Graphics& g, int visibleLeft, int v
     if (sequence == nullptr)
         return;
 
-    int ppq = sequence->getTimeline().getTicksPerQuarterNote();
+    const auto& timeline = displayedTimeline.get();
+    int ppq = timeline.getTicksPerQuarterNote();
     int quantizeGrid = geometry.gridTicks();
     int totalTicks = geometry.xToTick(getWidth());
     int tick = 0;
 
     while (tick < totalTicks)
     {
-        auto ts = sequence->getTimeline().getTimeSignatureAt(tick);
+        auto ts = timeline.getTimeSignatureAt(tick);
         int ticksPerBeat = ppq * 4 / ts.denominator;
         int beatsInBar = ts.numerator;
         int barEndTick = tick + beatsInBar * ticksPerBeat;

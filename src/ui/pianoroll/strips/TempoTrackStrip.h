@@ -14,7 +14,8 @@ class TempoTrackStrip : public TimelineStrip
 public:
     static constexpr int height = 48;
 
-    TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
+    TempoTrackStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef,
+                    EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
 
     std::function<void()> onSelectionTaken;
 
@@ -42,15 +43,15 @@ private:
         std::vector<TempoChange> before;
         std::vector<int> group;
         bool moved = false;
+        std::vector<TempoChange> preview;
     };
     struct RangeSelecting
     {
         RangeSelectGesture gesture;
     };
 
-    void tempoChanged() override { repaint(); }
-    void timelineMetadataChanged() override { repaint(); }
-
+    void cancelDrag() override;
+    const std::vector<TempoChange>& displayedChanges() const;
     void deleteSelectedTempoPointsImpl(const juce::String& transactionName);
     float tempoBpmToY(double bpm) const;
     double tempoYToBpm(int y) const;

@@ -18,9 +18,9 @@ bool keySignatureTicksEqual(const std::vector<KeySignatureChange>& a, const std:
 }
 } // namespace
 
-KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
-                                     UndoHistory& undoHistoryRef)
-    : TimelineStrip(geometryRef, "Key"), clipboard(clipboardRef), undoHistory(undoHistoryRef)
+KeySignatureStrip::KeySignatureStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef,
+                                     EditClipboard& clipboardRef, UndoHistory& undoHistoryRef)
+    : TimelineStrip(geometryRef, displayedTimelineRef, "Key"), clipboard(clipboardRef), undoHistory(undoHistoryRef)
 {
 }
 
@@ -144,7 +144,7 @@ void KeySignatureStrip::pasteKeySignatures(int atTick)
 
 juce::Rectangle<int> KeySignatureStrip::keySignatureLabelRect(int index) const
 {
-    const auto& changes = sequence->getKeySignatureChanges();
+    const auto& changes = displayedChanges();
     const auto& ks = changes[static_cast<size_t>(index)];
     int x = geometry.tickToX(ks.tick);
     int textX = (index == 0 && ks.tick == 0) ? viewLeftX + labelWidth() + 4 : x + 4;
@@ -162,7 +162,7 @@ int KeySignatureStrip::hitTestKeySignaturePoint(int x, int y) const
     if (x < viewLeftX + labelWidth())
         return -1;
 
-    const auto& changes = sequence->getKeySignatureChanges();
+    const auto& changes = displayedChanges();
     for (int i = 0; i < static_cast<int>(changes.size()); ++i)
     {
         if (geometry.tickToX(changes[static_cast<size_t>(i)].tick) + 4 < viewLeftX - 40)
@@ -193,7 +193,7 @@ void KeySignatureStrip::paint(juce::Graphics& g)
     const auto* draft = editSession.current();
 
     juce::Colour ksColour = track::sand;
-    const auto& ksChanges = sequence->getKeySignatureChanges();
+    const auto& ksChanges = displayedChanges();
 
     for (size_t i = 0; i < ksChanges.size(); ++i)
     {
@@ -285,8 +285,12 @@ void KeySignatureStrip::mouseDown(const juce::MouseEvent& e)
         }
 
         const auto& changes = sequence->getKeySignatureChanges();
-        drag = PointDragging{ksIndex, changes, geometry.xToTick(e.x) - changes[static_cast<size_t>(ksIndex)].tick,
-                             selection.dragGroup(ksIndex)};
+        drag = PointDragging{ksIndex,
+                             changes,
+                             geometry.xToTick(e.x) - changes[static_cast<size_t>(ksIndex)].tick,
+                             selection.dragGroup(ksIndex),
+                             false,
+                             changes};
         return;
     }
 
@@ -317,7 +321,7 @@ void KeySignatureStrip::mouseDrag(const juce::MouseEvent& e)
                                          geometry.xToTick(e.x) - dragging->grabOffset, sequence->getTimeline());
         if (!keySignatureTicksEqual(changes, dragging->before))
             dragging->moved = true;
-        sequence->setKeySignatureChanges(std::move(changes));
+        dragging->preview = std::move(changes);
         repaint();
         return;
     }
@@ -344,7 +348,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
     if (const auto* dragging = std::get_if<PointDragging>(&state))
     {
         const int draggedIndex = dragging->index;
-        const auto& changes = sequence->getKeySignatureChanges();
+        const auto& changes = dragging->preview;
         bool validIndex = draggedIndex >= 0 && draggedIndex < static_cast<int>(changes.size()) &&
                           draggedIndex < static_cast<int>(dragging->before.size());
         bool movedFinal = validIndex && !keySignatureTicksEqual(changes, dragging->before);
@@ -483,4 +487,17 @@ void KeySignatureStrip::cancelKeySignatureEdit()
 {
     editSession.finish();
     repaint();
+}
+
+void KeySignatureStrip::cancelDrag()
+{
+    if (std::holds_alternative<PointDragging>(drag))
+        drag = Idle{};
+}
+
+const std::vector<KeySignatureChange>& KeySignatureStrip::displayedChanges() const
+{
+    if (const auto* dragging = std::get_if<PointDragging>(&drag))
+        return dragging->preview;
+    return sequence->getKeySignatureChanges();
 }

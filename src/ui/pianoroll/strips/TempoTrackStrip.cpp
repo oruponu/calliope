@@ -9,9 +9,9 @@
 #include <utility>
 #include <variant>
 
-TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef,
-                                 UndoHistory& undoHistoryRef)
-    : TimelineStrip(geometryRef, "Tempo"), clipboard(clipboardRef), undoHistory(undoHistoryRef)
+TempoTrackStrip::TempoTrackStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef,
+                                 EditClipboard& clipboardRef, UndoHistory& undoHistoryRef)
+    : TimelineStrip(geometryRef, displayedTimelineRef, "Tempo"), clipboard(clipboardRef), undoHistory(undoHistoryRef)
 {
 }
 
@@ -184,7 +184,7 @@ int TempoTrackStrip::hitTestTempoPoint(int x, int y) const
     if (x < viewLeftX + labelWidth())
         return -1;
 
-    const auto& changes = sequence->getTimeline().getTempoChanges();
+    const auto& changes = displayedChanges();
     constexpr float hitRadius = 6.0f;
     float bandTop = 3.0f;
     float bandBottom = static_cast<float>(getHeight() - 4);
@@ -219,7 +219,7 @@ void TempoTrackStrip::paint(juce::Graphics& g)
 
     drawTrackGridLines(g, visibleLeft, visibleRight, 0.0f, static_cast<float>(getHeight()));
 
-    const auto& tempoChanges = sequence->getTimeline().getTempoChanges();
+    const auto& tempoChanges = displayedChanges();
     juce::Colour amberColour = accent::base;
     if (tempoChanges.empty())
     {
@@ -332,7 +332,8 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
             return;
         }
 
-        drag = PointDragging{pointIndex, sequence->getTimeline().getTempoChanges(), selection.dragGroup(pointIndex)};
+        const auto& changes = sequence->getTimeline().getTempoChanges();
+        drag = PointDragging{pointIndex, changes, selection.dragGroup(pointIndex), false, changes};
         return;
     }
 
@@ -425,7 +426,7 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
                 changes[i].bpm = before[i].bpm + deltaBpm;
         for (int i : moving)
             changes[i].tick = before[i].tick + deltaTick;
-        sequence->setTempoChanges(changes);
+        dragging->preview = std::move(changes);
 
         dragging->moved = (deltaTick != 0) || (deltaBpm != 0.0);
         repaint();
@@ -455,8 +456,7 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
     {
         if (dragging->moved)
         {
-            auto after = sequence->getTimeline().getTempoChanges();
-            performReplaceList(undoHistory, sequence, "Move Tempo Change", dragging->before, std::move(after));
+            performReplaceList(undoHistory, sequence, "Move Tempo Change", dragging->before, dragging->preview);
             selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
         }
         else if (dragging->index >= 0)
@@ -479,4 +479,17 @@ void TempoTrackStrip::mouseMove(const juce::MouseEvent& e)
 {
     setMouseCursor(sequence != nullptr && hitTestTempoPoint(e.x, e.y) >= 0 ? juce::MouseCursor::DraggingHandCursor
                                                                            : juce::MouseCursor::NormalCursor);
+}
+
+void TempoTrackStrip::cancelDrag()
+{
+    if (std::holds_alternative<PointDragging>(drag))
+        drag = Idle{};
+}
+
+const std::vector<TempoChange>& TempoTrackStrip::displayedChanges() const
+{
+    if (const auto* dragging = std::get_if<PointDragging>(&drag))
+        return dragging->preview;
+    return sequence->getTimeline().getTempoChanges();
 }

@@ -2,6 +2,7 @@
 #include "ui/theme/TrackColours.h"
 #include "undo/NoteActions.h"
 #include <algorithm>
+#include <utility>
 
 namespace
 {
@@ -51,18 +52,28 @@ ControllerLaneComponent::~ControllerLaneComponent()
 
 void ControllerLaneComponent::notesChanged(int)
 {
+    drag = Idle{};
     repaint();
 }
 void ControllerLaneComponent::tracksChanged()
 {
+    drag = Idle{};
     repaint();
 }
 void ControllerLaneComponent::tempoChanged()
 {
+    drag = Idle{};
     repaint();
 }
 void ControllerLaneComponent::timelineMetadataChanged()
 {
+    drag = Idle{};
+    repaint();
+}
+
+void ControllerLaneComponent::sequenceReset()
+{
+    drag = Idle{};
     repaint();
 }
 
@@ -97,6 +108,8 @@ void ControllerLaneComponent::setSequence(MidiSequence* seq)
 
 void ControllerLaneComponent::setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices)
 {
+    if (activeIndex != activeTrackIndex)
+        drag = Idle{};
     activeTrackIndex = activeIndex;
     selectedTrackIndices = selectedIndices;
     repaint();
@@ -356,6 +369,15 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
     }
 }
 
+int ControllerLaneComponent::displayedVelocity(int trackIndex, int noteIndex) const
+{
+    if (const auto* dragging = std::get_if<VelocityDragging>(&drag);
+        dragging != nullptr && dragging->trackIndex == trackIndex)
+        if (auto it = dragging->preview.find(noteIndex); it != dragging->preview.end())
+            return it->second;
+    return sequence->getTrack(trackIndex).getNote(noteIndex).velocity;
+}
+
 void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
 {
     if (!sequence)
@@ -385,7 +407,8 @@ void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
             if (x + velocityBarWidth < visibleLeft || x > visibleRight)
                 continue;
 
-            int barHeight = static_cast<int>(static_cast<float>(note.velocity) / 127.0f * getDrawAreaHeight());
+            int barHeight =
+                static_cast<int>(static_cast<float>(displayedVelocity(trackIdx, i)) / 127.0f * getDrawAreaHeight());
             int barTop = bottom - barHeight;
 
             g.setColour(colour.withAlpha(alpha));
@@ -654,7 +677,7 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     if (displayMode != DisplayMode::Velocity)
         return;
 
-    auto& track = sequence->getTrack(activeTrackIndex);
+    const auto& track = sequence->getTrack(activeTrackIndex);
     int newVelocity = yToValue(e.y);
 
     int bestIdx = -1;
@@ -675,34 +698,27 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
 
     if (bestIdx >= 0)
     {
-        velocitySnapshot.clear();
-        for (int i = 0; i < track.getNumNotes(); ++i)
-            velocitySnapshot.push_back(track.getNote(i).velocity);
-
-        track.getNote(bestIdx).velocity = newVelocity;
-        isDragging = true;
-        lastDragX = e.x;
+        drag = VelocityDragging{activeTrackIndex, e.x, {{bestIdx, newVelocity}}};
         repaint();
-        if (onDataChanged)
-            onDataChanged();
     }
 }
 
 void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
 {
-    if (!isDragging || !sequence)
+    auto* dragging = std::get_if<VelocityDragging>(&drag);
+    if (dragging == nullptr || !sequence)
         return;
-    if (activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+    if (dragging->trackIndex < 0 || dragging->trackIndex >= sequence->getNumTracks())
         return;
 
     if (displayMode != DisplayMode::Velocity)
         return;
 
-    auto& track = sequence->getTrack(activeTrackIndex);
+    const auto& track = sequence->getTrack(dragging->trackIndex);
     int newVelocity = yToValue(e.y);
 
-    int startX = std::min(lastDragX, e.x);
-    int endX = std::max(lastDragX, e.x);
+    int startX = std::min(dragging->lastDragX, e.x);
+    int endX = std::max(dragging->lastDragX, e.x);
 
     bool changed = false;
     for (int i = 0; i < track.getNumNotes(); ++i)
@@ -710,42 +726,41 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
         int nx = tickToX(track.getNote(i).startTick);
         if (nx + velocityBarWidth >= startX && nx <= endX)
         {
-            track.getNote(i).velocity = newVelocity;
+            dragging->preview[i] = newVelocity;
             changed = true;
         }
     }
 
-    lastDragX = e.x;
+    dragging->lastDragX = e.x;
 
     if (changed)
-    {
         repaint();
-        if (onDataChanged)
-            onDataChanged();
-    }
 }
 
 void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
 {
-    if (isDragging && sequence && activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks())
+    auto state = std::exchange(drag, Idle{});
+    const auto* dragging = std::get_if<VelocityDragging>(&state);
+    if (dragging == nullptr || !sequence || dragging->trackIndex < 0 ||
+        dragging->trackIndex >= sequence->getNumTracks())
+        return;
+
+    const auto& track = sequence->getTrack(dragging->trackIndex);
+    std::vector<VelocityChange> changes;
+    for (const auto& [noteIndex, velocity] : dragging->preview)
     {
-        auto& track = sequence->getTrack(activeTrackIndex);
-        std::vector<VelocityChange> changes;
-        for (int i = 0; i < track.getNumNotes() && i < static_cast<int>(velocitySnapshot.size()); ++i)
-        {
-            if (track.getNote(i).velocity != velocitySnapshot[i])
-                changes.push_back({i, velocitySnapshot[i], track.getNote(i).velocity});
-        }
-        if (!changes.empty())
-        {
-            undoHistory.beginNewTransaction("Edit Velocity");
-            undoHistory.perform(new VelocityEditAction(sequence, activeTrackIndex, std::move(changes)));
-        }
+        if (noteIndex >= track.getNumNotes())
+            continue;
+        const int current = track.getNote(noteIndex).velocity;
+        if (current != velocity)
+            changes.push_back({noteIndex, current, velocity});
     }
 
-    isDragging = false;
-    lastDragX = -1;
-    velocitySnapshot.clear();
+    if (!changes.empty())
+    {
+        undoHistory.beginNewTransaction("Edit Velocity");
+        undoHistory.perform(new VelocityEditAction(sequence, dragging->trackIndex, std::move(changes)));
+    }
 }
 
 void ControllerLaneComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)

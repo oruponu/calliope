@@ -8,7 +8,7 @@ class RulerStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    explicit RulerStrip(const TimelineGeometry& geometryRef);
+    RulerStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef);
 
     std::function<void(int tick)> onSeek;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onWheelZoom;
@@ -21,8 +21,6 @@ public:
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
 
 private:
-    void timelineMetadataChanged() override { repaint(); }
-
     bool isDragging = false;
     int dragStartY = 0;
     int lastDragY = 0;

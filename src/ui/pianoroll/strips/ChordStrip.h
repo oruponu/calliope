@@ -18,7 +18,8 @@ class ChordStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    ChordStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
+    ChordStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef,
+               EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
 
     std::function<void()> onSelectionTaken;
 
@@ -38,7 +39,8 @@ public:
     void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
-    void timelineMetadataChanged() override { repaint(); }
+    void cancelDrag() override;
+    const std::vector<ChordChange>& displayedChanges() const;
 
     static constexpr int spanTop = 3;
     static constexpr int resizeEdgeWidth = 6;
@@ -67,6 +69,8 @@ private:
         std::vector<ChordChange> before;
         int grabOffset = 0;
         std::vector<int> group;
+        std::vector<ChordChange> preview;
+        std::set<int> selectionBefore;
     };
     struct EndResizing
     {
@@ -74,6 +78,7 @@ private:
         std::vector<ChordChange> before;
         int grabOffset = 0;
         std::set<int> selectionBefore;
+        std::vector<ChordChange> preview;
     };
     struct StartResizing
     {
@@ -81,6 +86,7 @@ private:
         std::vector<ChordChange> before;
         int grabOffset = 0;
         std::set<int> selectionBefore;
+        std::vector<ChordChange> preview;
     };
     using EdgeDrag = std::variant<EndResizing, StartResizing>;
     struct JointDragging
@@ -108,11 +114,11 @@ private:
                           const std::set<int>& selectionBefore) const;
     static DragState fromEdgeDrag(EdgeDrag edge);
     void switchJointChordEdge(JointDragging& joint, int x, int grabX) const;
-    void dragEdge(const EndResizing& resizing, int x);
-    void dragEdge(const StartResizing& resizing, int x);
-    void remapSelectionAfterResize(const std::vector<ChordChange>& before, int draggedIndex, ResizeEdge edge,
-                                   const std::set<int>& selectionBefore);
-    void selectMovedChords(const Moving& moving, int cursorTick);
+    void dragEdge(EndResizing& resizing, int x);
+    void dragEdge(StartResizing& resizing, int x);
+    void remapSelectionAfterResize(const std::vector<ChordChange>& before, const std::vector<ChordChange>& after,
+                                   int draggedIndex, ResizeEdge edge, const std::set<int>& selectionBefore);
+    void selectMovedChords(const Moving& moving, const std::vector<ChordChange>& changes, int cursorTick);
     void deleteSelectedChordsImpl(const juce::String& transactionName);
     void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                          juce::Rectangle<int> anchorInLocal);

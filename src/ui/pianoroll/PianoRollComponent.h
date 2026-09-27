@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
+#include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/TimelineGeometry.h"
 #include "ui/pianoroll/strips/ChordStrip.h"
@@ -141,13 +142,18 @@ public:
 private:
     void notesChanged(int trackIndex) override;
     void tracksChanged() override;
+    void tempoChanged() override;
     void timelineMetadataChanged() override;
+    void sequenceReset() override;
     void updateStripPositions();
     void repaintStrips();
 
     void drawKeyboard(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
+    void drawActiveTrackNote(juce::Graphics& g, const juce::Rectangle<int>& clip, const MidiNote& note,
+                             juce::Colour baseColour, bool isSelected, bool isDrum);
+    MidiNote displayedNote(int trackIndex, int noteIndex) const;
     void drawMoveGhosts(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
@@ -174,6 +180,7 @@ private:
     static juce::String getNoteName(int noteNumber);
 
     TimelineGeometry geometry{keyboardWidth};
+    DisplayedTimeline displayedTimeline;
     MidiSequence* sequence = nullptr;
     UndoHistory& undoHistory;
     double playheadTick = 0.0;
@@ -205,6 +212,8 @@ private:
         NoteRef ref;
         int startTick = 0;
         int duration = 0;
+        int previewStartTick = 0;
+        int previewDuration = 0;
     };
 
     struct MoveTarget
@@ -231,7 +240,12 @@ private:
         ResizeEdge edge = ResizeEdge::None;
         int anchorStartTick = 0;
         int anchorEndTick = 0;
-        bool isCreatingNote = false;
+    };
+    struct Creating
+    {
+        int trackIndex = -1;
+        MidiNote note;
+        int previewDuration = 0;
     };
     struct Moving
     {
@@ -243,19 +257,20 @@ private:
         int deltaNote = 0;
     };
 
-    std::variant<Idle, KeyboardPreviewing, RubberBand, Resizing, Moving> drag;
+    std::variant<Idle, KeyboardPreviewing, RubberBand, Resizing, Creating, Moving> drag;
     void resetNoteDrag();
+    void cancelEditDrag();
     void beginResize(const NoteRef& hit, ResizeEdge edge);
     void beginMove(const NoteRef& anchor, const juce::MouseEvent& e);
     int contentBeats = 0;
 
     EditClipboard clipboard;
-    LoopStrip loopStrip{geometry};
-    RulerStrip ruler{geometry};
-    TempoTrackStrip tempoStrip{geometry, clipboard, undoHistory};
-    TimeSignatureStrip timeSigStrip{geometry, clipboard, undoHistory};
-    KeySignatureStrip keyStrip{geometry, clipboard, undoHistory};
-    ChordStrip chordStrip{geometry, clipboard, undoHistory};
+    LoopStrip loopStrip{geometry, displayedTimeline};
+    RulerStrip ruler{geometry, displayedTimeline};
+    TempoTrackStrip tempoStrip{geometry, displayedTimeline, clipboard, undoHistory};
+    TimeSignatureStrip timeSigStrip{geometry, displayedTimeline, clipboard, undoHistory};
+    KeySignatureStrip keyStrip{geometry, displayedTimeline, clipboard, undoHistory};
+    ChordStrip chordStrip{geometry, displayedTimeline, clipboard, undoHistory};
 
     MidiNote previewNote;
     bool isPreviewing = false;

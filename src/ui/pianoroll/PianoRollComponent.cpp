@@ -280,7 +280,7 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
     std::vector<NoteModification> mods;
     for (const auto& ref : selectedNotes)
     {
-        auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
         MidiNote beforeNote = note;
         MidiNote afterNote = note;
         afterNote.noteNumber = note.noteNumber + deltaNote;
@@ -320,7 +320,7 @@ void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
     std::vector<NoteModification> mods;
     for (const auto& ref : selectedNotes)
     {
-        auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
         MidiNote beforeNote = note;
         MidiNote afterNote = note;
         afterNote.startTick = note.startTick + deltaTick;
@@ -438,7 +438,11 @@ PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistor
         chordStrip.clearChordSelection();
         repaint();
     };
-    timeSigStrip.onTimelineMetadataChanged = [this] { repaint(); };
+    timeSigStrip.onTimeSignaturePreview = [this](const std::vector<TimeSignatureChange>* preview)
+    {
+        displayedTimeline.setTimeSignaturePreview(preview);
+        repaint();
+    };
     addAndMakeVisible(keyStrip);
     keyStrip.onSelectionTaken = [this]
     {
@@ -518,14 +522,27 @@ void PianoRollComponent::repaintStrips()
 
 void PianoRollComponent::notesChanged(int)
 {
+    cancelEditDrag();
     repaint();
 }
 void PianoRollComponent::tracksChanged()
 {
+    cancelEditDrag();
+    repaint();
+}
+void PianoRollComponent::tempoChanged()
+{
+    cancelEditDrag();
     repaint();
 }
 void PianoRollComponent::timelineMetadataChanged()
 {
+    cancelEditDrag();
+    repaint();
+}
+void PianoRollComponent::sequenceReset()
+{
+    cancelEditDrag();
     repaint();
 }
 
@@ -534,6 +551,7 @@ void PianoRollComponent::setSequence(MidiSequence* seq)
     if (sequence != nullptr)
         sequence->removeListener(this);
     sequence = seq;
+    displayedTimeline.setSequence(seq);
     geometry.setTicksPerQuarterNote(sequence != nullptr ? sequence->getTimeline().getTicksPerQuarterNote() : 0);
     loopStrip.setSequence(seq);
     ruler.setSequence(seq);
@@ -1081,19 +1099,13 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
         MidiNote newNote{noteNum, 100, tick, defaultDuration};
 
-        undoHistory.beginNewTransaction("Add Note");
-        auto* action = new NoteAddAction(sequence, activeTrackIndex, newNote);
-        undoHistory.perform(action);
-        selectedNote = {activeTrackIndex, action->getAddedIndex()};
+        selectedNote = {};
         selectedNotes.clear();
-        selectedNotes.insert(selectedNote);
         if (onNoteSelectionChanged)
             onNoteSelectionChanged(selectedNotes);
         startNotePreview(newNote);
 
-        drag = Resizing{std::vector<ResizeTarget>{{selectedNote, newNote.startTick, newNote.duration}},
-                        ResizeEdge::Right, newNote.startTick, newNote.endTick(), true};
-
+        drag = Creating{activeTrackIndex, newNote, newNote.duration};
         repaint();
     }
     else // Select mode
@@ -1185,7 +1197,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
-    if (const auto* resizing = std::get_if<Resizing>(&drag))
+    if (auto* resizing = std::get_if<Resizing>(&drag))
     {
         if (resizing->targets.empty())
             return;
@@ -1197,26 +1209,35 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         if (resizing->edge == ResizeEdge::Right)
         {
             int delta = currentTick - resizing->anchorEndTick;
-            for (const auto& t : resizing->targets)
+            for (auto& t : resizing->targets)
             {
-                auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
-                note.startTick = t.startTick;
-                note.duration = std::max(minDuration, t.duration + delta);
+                t.previewStartTick = t.startTick;
+                t.previewDuration = std::max(minDuration, t.duration + delta);
             }
         }
         else if (resizing->edge == ResizeEdge::Left)
         {
             int delta = currentTick - resizing->anchorStartTick;
-            for (const auto& t : resizing->targets)
+            for (auto& t : resizing->targets)
             {
-                auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
                 int endTick = t.startTick + t.duration;
                 int newStart = std::clamp(t.startTick + delta, 0, endTick - minDuration);
-                note.startTick = newStart;
-                note.duration = endTick - newStart;
+                t.previewStartTick = newStart;
+                t.previewDuration = endTick - newStart;
             }
         }
 
+        repaint();
+        return;
+    }
+
+    if (auto* creating = std::get_if<Creating>(&drag))
+    {
+        int minDuration =
+            sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
+        int currentTick = roundTickToGrid(xToTick(e.x));
+        creating->previewDuration =
+            std::max(minDuration, creating->note.duration + currentTick - creating->note.endTick());
         repaint();
         return;
     }
@@ -1281,21 +1302,38 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         std::vector<NoteModification> mods;
         for (const auto& t : resizing->targets)
         {
-            auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
-            if (note.startTick == t.startTick && note.duration == t.duration)
+            if (t.previewStartTick == t.startTick && t.previewDuration == t.duration)
                 continue;
 
-            MidiNote beforeNote{note.noteNumber, note.velocity, t.startTick, t.duration};
+            const auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
             MidiNote afterNote = note;
-            mods.push_back({t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote});
+            afterNote.startTick = t.previewStartTick;
+            afterNote.duration = t.previewDuration;
+            mods.push_back({t.ref.trackIndex, t.ref.noteIndex, note, afterNote});
         }
 
         if (!mods.empty())
         {
-            if (!resizing->isCreatingNote)
-                undoHistory.beginNewTransaction(mods.size() > 1 ? "Resize Notes" : "Resize Note");
+            undoHistory.beginNewTransaction(mods.size() > 1 ? "Resize Notes" : "Resize Note");
             undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
         }
+        return;
+    }
+
+    if (const auto* creating = std::get_if<Creating>(&state))
+    {
+        MidiNote newNote = creating->note;
+        newNote.duration = creating->previewDuration;
+
+        undoHistory.beginNewTransaction("Add Note");
+        auto* action = new NoteAddAction(sequence, creating->trackIndex, newNote);
+        undoHistory.perform(action);
+        selectedNote = {creating->trackIndex, action->getAddedIndex()};
+        selectedNotes.clear();
+        selectedNotes.insert(selectedNote);
+        repaint();
+        if (onNoteSelectionChanged)
+            onNoteSelectionChanged(selectedNotes);
         return;
     }
 
@@ -1307,7 +1345,7 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
             std::vector<NoteModification> mods;
             for (const auto& t : moving->targets)
             {
-                auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
+                const auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
                 MidiNote beforeNote{t.noteNumber, note.velocity, t.startTick, note.duration};
                 MidiNote afterNote = beforeNote;
                 afterNote.startTick = t.startTick + moving->deltaTick;
@@ -1464,14 +1502,15 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
         g.drawHorizontalLine(y, static_cast<float>(gridLeft), static_cast<float>(gridRight));
     }
 
-    int ppq = sequence->getTimeline().getTicksPerQuarterNote();
+    const auto& timeline = displayedTimeline.get();
+    int ppq = timeline.getTicksPerQuarterNote();
     int quantizeGrid = ppq * 4 / quantizeDenominator;
     int totalTicks = xToTick(getWidth());
     int tick = 0;
 
     while (tick < totalTicks)
     {
-        auto ts = sequence->getTimeline().getTimeSignatureAt(tick);
+        auto ts = timeline.getTimeSignatureAt(tick);
         int ticksPerBeat = ppq * 4 / ts.denominator;
         int beatsInBar = ts.numerator;
         int barEndTick = tick + beatsInBar * ticksPerBeat;
@@ -1517,6 +1556,23 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
     }
 }
 
+MidiNote PianoRollComponent::displayedNote(int trackIndex, int noteIndex) const
+{
+    auto note = sequence->getTrack(trackIndex).getNote(noteIndex);
+    if (const auto* resizing = std::get_if<Resizing>(&drag))
+    {
+        // beginResize builds the targets from a std::set, so they are sorted by ref.
+        const NoteRef ref{trackIndex, noteIndex};
+        auto it = std::ranges::lower_bound(resizing->targets, ref, {}, &ResizeTarget::ref);
+        if (it != resizing->targets.end() && it->ref == ref)
+        {
+            note.startTick = it->previewStartTick;
+            note.duration = it->previewDuration;
+        }
+    }
+    return note;
+}
+
 void PianoRollComponent::drawNotes(juce::Graphics& g)
 {
     if (!sequence)
@@ -1536,7 +1592,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
 
         for (int i = 0; i < track.getNumNotes(); ++i)
         {
-            const auto& note = track.getNote(i);
+            const auto note = displayedNote(trackIdx, i);
             auto baseColour = TrackColours::getColour(trackIdx).withAlpha(alpha);
             int x = tickToX(note.startTick);
             int y = noteToY(note.noteNumber);
@@ -1583,50 +1639,61 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
         selectedTrackIndices.contains(activeTrackIndex))
     {
         const auto& track = sequence->getTrack(activeTrackIndex);
+        const auto baseColour = TrackColours::getColour(activeTrackIndex);
+        const bool isDrum = track.getChannel() == 10;
 
         for (int i = 0; i < track.getNumNotes(); ++i)
+            drawActiveTrackNote(g, clip, displayedNote(activeTrackIndex, i), baseColour,
+                                isNoteSelected({activeTrackIndex, i}), isDrum);
+
+        if (const auto* creating = std::get_if<Creating>(&drag);
+            creating != nullptr && creating->trackIndex == activeTrackIndex)
         {
-            const auto& note = track.getNote(i);
-            auto baseColour = TrackColours::getColour(activeTrackIndex);
-            int x = tickToX(note.startTick);
-            int y = noteToY(note.noteNumber);
-            int w = tickToWidth(note.duration);
-
-            if (y + noteHeight < clip.getY() || y > clip.getBottom())
-                continue;
-
-            bool isSelected = isNoteSelected({activeTrackIndex, i});
-
-            if (track.getChannel() == 10)
-            {
-                float diameter = static_cast<float>(noteHeight - 2);
-                float cx = static_cast<float>(x);
-                float cy = static_cast<float>(y + 1) + diameter * 0.5f;
-                float left = cx - diameter * 0.5f;
-
-                if (left + diameter < clip.getX() || left > clip.getRight())
-                    continue;
-
-                g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
-                g.fillEllipse(left, cy - diameter * 0.5f, diameter, diameter);
-
-                g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
-                g.drawEllipse(left, cy - diameter * 0.5f, diameter, diameter, 1.0f);
-            }
-            else
-            {
-                if (x + w < clip.getX() || x > clip.getRight())
-                    continue;
-
-                g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
-                g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
-                                       static_cast<float>(noteHeight - 2), 2.0f);
-
-                g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
-                g.drawRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
-                                       static_cast<float>(noteHeight - 2), 2.0f, 1.0f);
-            }
+            MidiNote preview = creating->note;
+            preview.duration = creating->previewDuration;
+            drawActiveTrackNote(g, clip, preview, baseColour, true, isDrum);
         }
+    }
+}
+
+void PianoRollComponent::drawActiveTrackNote(juce::Graphics& g, const juce::Rectangle<int>& clip, const MidiNote& note,
+                                             juce::Colour baseColour, bool isSelected, bool isDrum)
+{
+    int x = tickToX(note.startTick);
+    int y = noteToY(note.noteNumber);
+    int w = tickToWidth(note.duration);
+
+    if (y + noteHeight < clip.getY() || y > clip.getBottom())
+        return;
+
+    if (isDrum)
+    {
+        float diameter = static_cast<float>(noteHeight - 2);
+        float cx = static_cast<float>(x);
+        float cy = static_cast<float>(y + 1) + diameter * 0.5f;
+        float left = cx - diameter * 0.5f;
+
+        if (left + diameter < clip.getX() || left > clip.getRight())
+            return;
+
+        g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
+        g.fillEllipse(left, cy - diameter * 0.5f, diameter, diameter);
+
+        g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
+        g.drawEllipse(left, cy - diameter * 0.5f, diameter, diameter, 1.0f);
+    }
+    else
+    {
+        if (x + w < clip.getX() || x > clip.getRight())
+            return;
+
+        g.setColour(isSelected ? baseColour.brighter(0.4f) : baseColour);
+        g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
+                               static_cast<float>(noteHeight - 2), 2.0f);
+
+        g.setColour(isSelected ? baseColour.brighter(0.7f) : baseColour.darker(0.3f));
+        g.drawRoundedRectangle(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
+                               static_cast<float>(noteHeight - 2), 2.0f, 1.0f);
     }
 }
 
@@ -1889,12 +1956,12 @@ void PianoRollComponent::beginResize(const NoteRef& hit, ResizeEdge edge)
     for (const auto& ref : targets)
     {
         const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        resizeTargets.push_back({ref, note.startTick, note.duration});
+        resizeTargets.push_back({ref, note.startTick, note.duration, note.startTick, note.duration});
     }
 
     const auto& anchor = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
     selectedNote = hit;
-    drag = Resizing{std::move(resizeTargets), edge, anchor.startTick, anchor.endTick(), false};
+    drag = Resizing{std::move(resizeTargets), edge, anchor.startTick, anchor.endTick()};
     repaint();
 }
 
@@ -1915,6 +1982,13 @@ void PianoRollComponent::beginMove(const NoteRef& anchor, const juce::MouseEvent
 void PianoRollComponent::resetNoteDrag()
 {
     if (!std::holds_alternative<KeyboardPreviewing>(drag))
+        drag = Idle{};
+}
+
+void PianoRollComponent::cancelEditDrag()
+{
+    if (std::holds_alternative<Moving>(drag) || std::holds_alternative<Resizing>(drag) ||
+        std::holds_alternative<Creating>(drag))
         drag = Idle{};
 }
 

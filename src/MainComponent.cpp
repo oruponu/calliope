@@ -180,11 +180,6 @@ MainComponent::MainComponent()
 
     controllerLane.setSequence(&document.getSequence());
     controllerLane.setSelectedTracks(0, {0});
-    controllerLane.onDataChanged = [this]()
-    {
-        pianoRoll.repaint();
-        eventList.refresh();
-    };
     controllerLane.onMouseWheel = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
     {
         if (e.mods.isCommandDown())

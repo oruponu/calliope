@@ -16,10 +16,11 @@ class TimeSignatureStrip : public TimelineStrip
 public:
     static constexpr int height = 24;
 
-    TimeSignatureStrip(const TimelineGeometry& geometryRef, EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
+    TimeSignatureStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef,
+                       EditClipboard& clipboardRef, UndoHistory& undoHistoryRef);
 
     std::function<void()> onSelectionTaken;
-    std::function<void()> onTimelineMetadataChanged;
+    std::function<void(const std::vector<TimeSignatureChange>* preview)> onTimeSignaturePreview;
 
     void setSequence(MidiSequence* seq) override;
     bool hasSelection() const;
@@ -53,14 +54,15 @@ private:
         int grabOffset = 0;
         std::vector<int> group;
         bool moved = false;
+        std::vector<TimeSignatureChange> preview;
     };
     struct RangeSelecting
     {
         RangeSelectGesture gesture;
     };
 
-    void timelineMetadataChanged() override { repaint(); }
-
+    void cancelDrag() override;
+    const std::vector<TimeSignatureChange>& displayedChanges() const;
     int hitTestTimeSignaturePoint(int x, int y) const;
     juce::Rectangle<int> timeSignatureLabelRect(int index) const;
     void deleteSelectedTimeSignaturesImpl(const juce::String& transactionName);

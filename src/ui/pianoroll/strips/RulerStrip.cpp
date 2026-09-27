@@ -1,7 +1,10 @@
 #include "ui/pianoroll/strips/RulerStrip.h"
 #include "ui/theme/Theme.h"
 
-RulerStrip::RulerStrip(const TimelineGeometry& geometryRef) : TimelineStrip(geometryRef, {}) {}
+RulerStrip::RulerStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef)
+    : TimelineStrip(geometryRef, displayedTimelineRef, {})
+{
+}
 
 void RulerStrip::paint(juce::Graphics& g)
 {
@@ -19,7 +22,8 @@ void RulerStrip::paint(juce::Graphics& g)
     g.saveState();
     g.reduceClipRegion(viewLeftX + labelWidth(), 0, getWidth(), getHeight());
 
-    int ppq = sequence->getTimeline().getTicksPerQuarterNote();
+    const auto& timeline = displayedTimeline.get();
+    int ppq = timeline.getTicksPerQuarterNote();
     int quantizeGrid = geometry.gridTicks();
     int totalTicks = geometry.xToTick(getWidth());
     int tick = 0;
@@ -27,7 +31,7 @@ void RulerStrip::paint(juce::Graphics& g)
 
     while (tick < totalTicks)
     {
-        auto ts = sequence->getTimeline().getTimeSignatureAt(tick);
+        auto ts = timeline.getTimeSignatureAt(tick);
         int ticksPerBeat = ppq * 4 / ts.denominator;
         int beatsInBar = ts.numerator;
         int barEndTick = tick + beatsInBar * ticksPerBeat;

@@ -8,7 +8,7 @@ class LoopStrip : public TimelineStrip
 public:
     static constexpr int height = 14;
 
-    explicit LoopStrip(const TimelineGeometry& geometryRef);
+    LoopStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef);
 
     std::function<void(int startTick, int endTick)> onLoopRegionChanged;
 
