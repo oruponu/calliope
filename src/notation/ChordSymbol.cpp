@@ -5,10 +5,10 @@ namespace
 {
 const char* const chordNoteNames[] = {"", "C", "D", "E", "F", "G", "A", "B"};
 const char* const chordAccidentals[] = {"bbb", "bb", "b", "", "#", "##", "###"};
-const char* const chordTypeNames[] = {
-    "",      "6",     "M7",     "M7(#11)", "add9",   "M7(9)", "6(9)", "aug", "m",     "m6",   "m7",   "m7b5",
-    "madd9", "m7(9)", "m7(11)", "mM7",     "mM7(9)", "dim",   "dim7", "7",   "7sus4", "7b5",  "7(9)", "7(#11)",
-    "7(13)", "7(b9)", "7(b13)", "7(#9)",   "M7aug",  "7aug",  "1+8",  "5",   "sus4",  "sus2", ""};
+const char* const chordTypeNames[] = {"",     "6",       "maj7",  "maj7#11", "add9", "maj9", "6add9", "aug",   "m",
+                                      "m6",   "m7",      "m7b5",  "madd9",   "m9",   "m11",  "mmaj7", "mmaj9", "dim",
+                                      "dim7", "7",       "7sus4", "7b5",     "9",    "7#11", "13",    "7b9",   "7b13",
+                                      "7#9",  "augmaj7", "aug7",  "1+8",     "5",    "sus4", "sus2",  ""};
 
 // semitone of each XF note index 1-7 (C, D, E, F, G, A, B)
 constexpr int chordNoteSemitones[] = {-1, 0, 2, 4, 5, 7, 9, 11};

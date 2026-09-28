@@ -79,9 +79,14 @@ TEST_CASE("chord types follow the XF table", "[notation][chord]")
 {
     CHECK(ChordSymbol::typeToString(0).empty());
     CHECK(ChordSymbol::typeToString(1) == "6");
-    CHECK(ChordSymbol::typeToString(2) == "M7");
+    CHECK(ChordSymbol::typeToString(2) == "maj7");
+    CHECK(ChordSymbol::typeToString(3) == "maj7#11");
+    CHECK(ChordSymbol::typeToString(6) == "6add9");
     CHECK(ChordSymbol::typeToString(10) == "m7");
+    CHECK(ChordSymbol::typeToString(15) == "mmaj7");
     CHECK(ChordSymbol::typeToString(19) == "7");
+    CHECK(ChordSymbol::typeToString(24) == "13");
+    CHECK(ChordSymbol::typeToString(28) == "augmaj7");
     CHECK(ChordSymbol::typeToString(30) == "1+8");
     CHECK(ChordSymbol::typeToString(33) == "sus2");
 }
@@ -97,9 +102,9 @@ TEST_CASE("type names are parsed", "[notation][chord]")
 {
     CHECK(parseType("m7") == 10);
     CHECK(parseType("") == 0);
-    CHECK(parseType(" 7 ( 9 ) ") == 22);
-    CHECK(parseType("maj7") == -1);
-    CHECK(parseType("M7 add") == -1);
+    CHECK(parseType(" 7 b 9 ") == 25);
+    CHECK(parseType("M7") == -1);
+    CHECK(parseType("maj7 add") == -1);
 }
 
 TEST_CASE("every type round-trips", "[notation][chord]")
@@ -171,7 +176,7 @@ TEST_CASE("chords are written as root, type and bass", "[notation][chord]")
     CHECK(ChordSymbol::toString({0, 0x31, 0, none, none}) == "C");
     CHECK(ChordSymbol::toString({0, 0x23, 10, none, none}) == "Ebm7");
     CHECK(ChordSymbol::toString({0, 0x31, 0, 0x35, 0}) == "C/G");
-    CHECK(ChordSymbol::toString({0, 0x31, 2, 0x30, 0}) == "CM7");
+    CHECK(ChordSymbol::toString({0, 0x31, 2, 0x30, 0}) == "Cmaj7");
 }
 
 TEST_CASE("no-chord has three encodings", "[notation][chord]")
