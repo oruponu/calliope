@@ -248,7 +248,7 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
     auto* data = static_cast<const uint8_t*>(fileData.getData());
     size_t size = fileData.getSize();
 
-    // MThd や MTrk 以外の非標準チャンクをフィルタリング（YAMAHA XG ファイルの XFIH 等）
+    // Drop non-standard chunks other than MThd and MTrk (e.g. XFIH in YAMAHA XG files)
     juce::MemoryBlock filteredData;
     {
         size_t pos = 0;
@@ -339,7 +339,7 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
 
     if (format == 0)
     {
-        // Format 0: チャンネル別にトラックを分割
+        // Format 0: split into one track per channel
         std::set<int> usedChannels;
         for (int t = 0; t < midiFile.getNumTracks(); ++t)
         {
@@ -437,7 +437,7 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
     }
     else
     {
-        // Format 1 以降: MIDI ファイルのトラックをそのまま使用
+        // Format 1 and later: use the MIDI file's tracks as-is
         for (int t = 0; t < midiFile.getNumTracks(); ++t)
         {
             const auto* msgSeq = midiFile.getTrack(t);
