@@ -1,6 +1,7 @@
 #include "ui/pianoroll/strips/ChordStrip.h"
 #include "edit/ChordTrackEdits.h"
 #include "notation/ChordSymbol.h"
+#include "ui/pianoroll/strips/ChordSymbolPainter.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
@@ -402,9 +403,7 @@ void ChordStrip::paint(juce::Graphics& g)
                 displayed.bassRoot = draft->bassRoot;
             }
             g.setColour(highlighted ? chordColour.brighter(0.5f) : chordColour);
-            g.setFont(font::sans(font::sizeSM));
-            g.drawText(juce::String(ChordSymbol::toString(displayed)), textX, 0, textWidth, getHeight(),
-                       juce::Justification::centredLeft);
+            ChordSymbolPainter::draw(g, ChordSymbol::toParts(displayed), {textX, 0, textWidth, getHeight()});
         }
     }
 
@@ -424,9 +423,7 @@ void ChordStrip::paint(juce::Graphics& g)
             {
                 ChordChange draftChord{draft->tick, draft->root, draft->type, draft->bassRoot, ChordChange::none};
                 g.setColour(chordColour.withAlpha(0.6f));
-                g.setFont(font::sans(font::sizeSM));
-                g.drawText(juce::String(ChordSymbol::toString(draftChord)), textX, 0, textWidth, getHeight(),
-                           juce::Justification::centredLeft);
+                ChordSymbolPainter::draw(g, ChordSymbol::toParts(draftChord), {textX, 0, textWidth, getHeight()});
             }
         }
     }

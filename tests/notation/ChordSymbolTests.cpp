@@ -179,6 +179,38 @@ TEST_CASE("chords are written as root, type and bass", "[notation][chord]")
     CHECK(ChordSymbol::toString({0, 0x31, 2, 0x30, 0}) == "Cmaj7");
 }
 
+TEST_CASE("chords are split into root, type and bass", "[notation][chord]")
+{
+    const auto parts = ChordSymbol::toParts({0, 0x41, 27, 0x33, 0});
+    CHECK(parts.root == "C#");
+    CHECK(parts.type == "7#9");
+    CHECK(parts.bass == "E");
+}
+
+TEST_CASE("a chord without bass has an empty bass part", "[notation][chord]")
+{
+    const auto parts = ChordSymbol::toParts({0, 0x31, 0, none, none});
+    CHECK(parts.root == "C");
+    CHECK(parts.type.empty());
+    CHECK(parts.bass.empty());
+}
+
+TEST_CASE("no-chord has no parts", "[notation][chord]")
+{
+    const auto parts = ChordSymbol::toParts(ChordChange::noChord(0));
+    CHECK(parts.root.empty());
+    CHECK(parts.type.empty());
+    CHECK(parts.bass.empty());
+}
+
+TEST_CASE("a root with an invalid accidental is split as a placeholder only", "[notation][chord]")
+{
+    const auto parts = ChordSymbol::toParts({0, 0x71, 10, 0x33, 0});
+    CHECK(parts.root == "--");
+    CHECK(parts.type.empty());
+    CHECK(parts.bass.empty());
+}
+
 TEST_CASE("no-chord has three encodings", "[notation][chord]")
 {
     CHECK(ChordSymbol::toString({0, none, 0, none, none}).empty());

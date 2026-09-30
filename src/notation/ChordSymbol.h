@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/ChordChange.h"
+#include "notation/ChordSymbolParts.h"
 #include <string>
 
 enum class ChordSpelling
@@ -13,6 +14,7 @@ enum class ChordSpelling
 namespace ChordSymbol
 {
 std::string toString(const ChordChange& chord);
+ChordSymbolParts toParts(const ChordChange& chord);
 
 std::string rootToString(int root);
 bool rootFromString(const std::string& text, int& root);

@@ -21,23 +21,27 @@ constexpr int mixedRoots[] = {0x31, 0x41, 0x32, 0x23, 0x33, 0x34, 0x44, 0x35, 0x
 
 std::string ChordSymbol::toString(const ChordChange& chord)
 {
-    if (chord.isNoChord())
-        return {};
-
-    std::string result = rootToString(chord.chordRoot);
-    if (result.empty())
-        return "--";
-
-    result += typeToString(chord.chordType);
-
-    std::string bassText = rootToString(chord.bassRoot);
-    if (!bassText.empty())
+    auto parts = toParts(chord);
+    std::string result = parts.root + parts.type;
+    if (!parts.bass.empty())
     {
         result += "/";
-        result += bassText;
+        result += parts.bass;
     }
 
     return result;
+}
+
+ChordSymbolParts ChordSymbol::toParts(const ChordChange& chord)
+{
+    if (chord.isNoChord())
+        return {};
+
+    std::string root = rootToString(chord.chordRoot);
+    if (root.empty())
+        return {"--", {}, {}};
+
+    return {root, typeToString(chord.chordType), rootToString(chord.bassRoot)};
 }
 
 std::string ChordSymbol::rootToString(int root)

@@ -49,6 +49,7 @@ target_sources(Calliope PRIVATE
     src/ui/pianoroll/PianoRollComponent.cpp
     src/ui/pianoroll/strips/ChordEditor.cpp
     src/ui/pianoroll/strips/ChordStrip.cpp
+    src/ui/pianoroll/strips/ChordSymbolPainter.cpp
     src/ui/pianoroll/strips/KeySignatureEditor.cpp
     src/ui/pianoroll/strips/KeySignatureStrip.cpp
     src/ui/pianoroll/strips/LoopStrip.cpp
