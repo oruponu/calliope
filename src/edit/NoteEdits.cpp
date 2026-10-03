@@ -9,3 +9,10 @@ MidiNote NoteEdits::afterStartResize(const MidiNote& note, int deltaTick, int mi
     resized.duration = endTick - resized.startTick;
     return resized;
 }
+
+MidiNote NoteEdits::afterEndResize(const MidiNote& note, int deltaTick, int minDuration)
+{
+    MidiNote resized = note;
+    resized.duration = std::max(minDuration, note.duration + deltaTick);
+    return resized;
+}

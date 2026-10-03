@@ -28,6 +28,7 @@ target_sources(CalliopeTests PRIVATE
     edit/ChordStartResizeTests.cpp
     edit/KeySignatureAddChangeTests.cpp
     edit/KeySignatureMoveTests.cpp
+    edit/NoteEndResizeTests.cpp
     edit/NoteStartResizeTests.cpp
     edit/TempoAddChangeTests.cpp
     edit/TimeSignatureAddChangeTests.cpp

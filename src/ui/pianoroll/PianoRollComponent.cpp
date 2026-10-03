@@ -1212,8 +1212,10 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
             int delta = currentTick - resizing->anchorEndTick;
             for (auto& t : resizing->targets)
             {
-                t.previewStartTick = t.startTick;
-                t.previewDuration = std::max(minDuration, t.duration + delta);
+                const auto resized =
+                    NoteEdits::afterEndResize({.startTick = t.startTick, .duration = t.duration}, delta, minDuration);
+                t.previewStartTick = resized.startTick;
+                t.previewDuration = resized.duration;
             }
         }
         else if (resizing->edge == ResizeEdge::Left)
@@ -1238,7 +1240,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
             sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
         int currentTick = roundTickToGrid(xToTick(e.x));
         creating->previewDuration =
-            std::max(minDuration, creating->note.duration + currentTick - creating->note.endTick());
+            NoteEdits::afterEndResize(creating->note, currentTick - creating->note.endTick(), minDuration).duration;
         repaint();
         return;
     }
