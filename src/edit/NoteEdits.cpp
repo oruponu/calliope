@@ -1,5 +1,6 @@
 #include "edit/NoteEdits.h"
 #include <algorithm>
+#include <limits>
 
 MidiNote NoteEdits::afterStartResize(const MidiNote& note, int deltaTick, int minDuration)
 {
@@ -30,4 +31,20 @@ bool NoteEdits::canShiftPitch(const std::vector<MidiNote>& notes, int deltaNote)
                                    const int noteNumber = n.noteNumber + deltaNote;
                                    return noteNumber >= 0 && noteNumber <= 127;
                                });
+}
+
+NoteShift NoteEdits::clampShift(const std::vector<MidiNote>& notes, NoteShift shift)
+{
+    int minStart = std::numeric_limits<int>::max();
+    int minNote = 127;
+    int maxNote = 0;
+    for (const auto& n : notes)
+    {
+        minStart = std::min(minStart, n.startTick);
+        minNote = std::min(minNote, n.noteNumber);
+        maxNote = std::max(maxNote, n.noteNumber);
+    }
+    shift.deltaTick = std::max(shift.deltaTick, -minStart);
+    shift.deltaNote = std::clamp(shift.deltaNote, -minNote, 127 - maxNote);
+    return shift;
 }

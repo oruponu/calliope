@@ -1229,20 +1229,15 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     int rawDeltaTick = currentTick - moving->dragStartTick;
     int deltaNote = currentNote - moving->dragStartNote;
     int snappedDeltaTick = roundTickToGrid(moving->anchorStartTick + rawDeltaTick) - moving->anchorStartTick;
-    int minStart = moving->targets.front().startTick;
-    int minNote = moving->targets.front().noteNumber;
-    int maxNote = moving->targets.front().noteNumber;
-    for (const auto& t : moving->targets)
-    {
-        minStart = std::min(minStart, t.startTick);
-        minNote = std::min(minNote, t.noteNumber);
-        maxNote = std::max(maxNote, t.noteNumber);
-    }
-    snappedDeltaTick = std::max(snappedDeltaTick, -minStart);
-    deltaNote = std::clamp(deltaNote, -minNote, 127 - maxNote);
 
-    moving->deltaTick = snappedDeltaTick;
-    moving->deltaNote = deltaNote;
+    std::vector<MidiNote> origins;
+    origins.reserve(moving->targets.size());
+    for (const auto& t : moving->targets)
+        origins.push_back({.noteNumber = t.noteNumber, .startTick = t.startTick});
+    const auto shift = NoteEdits::clampShift(origins, {snappedDeltaTick, deltaNote});
+
+    moving->deltaTick = shift.deltaTick;
+    moving->deltaNote = shift.deltaNote;
 
     const auto& anchorNote = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
     int previewPitch = anchorNote.noteNumber + moving->deltaNote;
