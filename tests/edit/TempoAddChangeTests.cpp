@@ -1,5 +1,5 @@
 #include "edit/TempoEdits.h"
-#include "support/TempoTestHelpers.h"
+#include "support/TempoStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 

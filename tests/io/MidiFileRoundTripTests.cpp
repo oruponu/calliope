@@ -1,9 +1,9 @@
 #include "support/ChordTestHelpers.h"
-#include "support/KeySignatureTestHelpers.h"
+#include "support/KeySignatureStringMaker.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiFileTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
-#include "support/TimeSignatureTestHelpers.h"
+#include "support/TimeSignatureStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <utility>

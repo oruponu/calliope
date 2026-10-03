@@ -1,7 +1,7 @@
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiFileTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
-#include "support/TempoTestHelpers.h"
+#include "support/TempoStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
 #include <vector>
@@ -9,7 +9,7 @@
 #ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <windows.h> // IWYU pragma: keep
 #endif
 
 using midifiletest::at;

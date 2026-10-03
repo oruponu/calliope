@@ -1,11 +1,11 @@
 #pragma once
 
-#include "edit/TimeSignatureEdits.h"
 #include "model/MidiSequence.h"
-#include <catch2/catch_tostring.hpp>
+#include "model/TimeSignatureChange.h"
+#include "model/TimelineMap.h"
+#include "support/TimeSignatureStringMaker.h"
 #include <initializer_list>
 #include <stdexcept>
-#include <string>
 #include <vector>
 
 namespace timesigtest
@@ -54,14 +54,3 @@ inline void setTimeSignatures(TimelineMap& timeline, std::initializer_list<BarSi
     timeline.setTimeSignatureChanges(timeSigs(entries));
 }
 } // namespace timesigtest
-
-namespace Catch
-{
-template <> struct StringMaker<TimeSignatureChange>
-{
-    static std::string convert(const TimeSignatureChange& ts)
-    {
-        return std::to_string(ts.tick) + ":" + std::to_string(ts.numerator) + "/" + std::to_string(ts.denominator);
-    }
-};
-} // namespace Catch

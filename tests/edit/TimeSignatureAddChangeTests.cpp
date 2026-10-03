@@ -1,3 +1,4 @@
+#include "edit/TimeSignatureEdits.h"
 #include "support/TimeSignatureTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>

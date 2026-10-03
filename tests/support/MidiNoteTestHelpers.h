@@ -1,4 +1,5 @@
 #pragma once
+// IWYU pragma: always_keep
 
 #include "model/MidiNote.h"
 #include <catch2/catch_tostring.hpp>

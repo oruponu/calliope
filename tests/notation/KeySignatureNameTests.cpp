@@ -1,4 +1,4 @@
-#include "support/KeySignatureTestHelpers.h"
+#include "support/KeySignatureStringMaker.h"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <string>

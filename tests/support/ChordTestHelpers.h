@@ -2,8 +2,7 @@
 
 #include "edit/ChordTrackEdits.h"
 #include "notation/ChordSymbol.h"
-#include <catch2/catch_tostring.hpp>
-#include <format>
+#include "support/ChordStringMaker.h"
 #include <initializer_list>
 #include <stdexcept>
 #include <string>
@@ -12,12 +11,6 @@
 namespace chordtest
 {
 constexpr int grid = 240;
-
-inline bool isCanonicalNoChord(const ChordChange& c)
-{
-    return c.chordRoot == ChordChange::none && c.chordType == ChordChange::typeCount &&
-           c.bassRoot == ChordChange::none && c.bassType == ChordChange::none;
-}
 
 inline ChordChange chord(int tick, const std::string& name)
 {
@@ -62,24 +55,3 @@ inline RelativeChord relative(int tickOffset, int length, const std::string& nam
     return {tickOffset, length, c.chordRoot, c.chordType, c.bassRoot, c.bassType};
 }
 } // namespace chordtest
-
-namespace Catch
-{
-template <> struct StringMaker<ChordChange>
-{
-    static std::string convert(const ChordChange& c)
-    {
-        auto text = std::to_string(c.tick) + ":";
-        if (chordtest::isCanonicalNoChord(c))
-            return text + "N.C.";
-
-        const auto name = ChordSymbol::toString(c);
-        const bool plain = c.bassRoot == ChordChange::none && c.bassType == ChordChange::none;
-        if (!name.empty() && plain)
-            return text + name;
-
-        return text + (name.empty() ? "N.C." : name) +
-               std::format(" raw{{{:#04x},{},{:#04x},{:#04x}}}", c.chordRoot, c.chordType, c.bassRoot, c.bassType);
-    }
-};
-} // namespace Catch

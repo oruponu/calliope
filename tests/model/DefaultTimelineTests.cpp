@@ -1,6 +1,6 @@
 #include "model/MidiSequence.h"
-#include "support/TempoTestHelpers.h"
-#include "support/TimeSignatureTestHelpers.h"
+#include "support/TempoStringMaker.h"
+#include "support/TimeSignatureStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <utility>
 #include <vector>
