@@ -188,6 +188,7 @@ private:
     int activeTrackIndex = 0;
 
     bool isNoteSelected(const NoteRef& ref) const;
+    std::vector<MidiNote> collectSelectedNotes() const;
     void clearNoteSelection();
     void clearTempoSelection();
     void clearTimeSignatureSelection();

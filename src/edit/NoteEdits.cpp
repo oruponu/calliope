@@ -16,3 +16,18 @@ MidiNote NoteEdits::afterEndResize(const MidiNote& note, int deltaTick, int minD
     resized.duration = std::max(minDuration, note.duration + deltaTick);
     return resized;
 }
+
+bool NoteEdits::canShiftTime(const std::vector<MidiNote>& notes, int deltaTick)
+{
+    return std::ranges::all_of(notes, [deltaTick](const MidiNote& n) { return n.startTick + deltaTick >= 0; });
+}
+
+bool NoteEdits::canShiftPitch(const std::vector<MidiNote>& notes, int deltaNote)
+{
+    return std::ranges::all_of(notes,
+                               [deltaNote](const MidiNote& n)
+                               {
+                                   const int noteNumber = n.noteNumber + deltaNote;
+                                   return noteNumber >= 0 && noteNumber <= 127;
+                               });
+}

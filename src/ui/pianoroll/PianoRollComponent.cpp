@@ -263,18 +263,7 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
     if (!sequence || selectedNotes.empty() || deltaNote == 0)
         return;
 
-    int minNote = 127;
-    int maxNote = 0;
-    for (const auto& ref : selectedNotes)
-    {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        minNote = std::min(minNote, note.noteNumber);
-        maxNote = std::max(maxNote, note.noteNumber);
-    }
-
-    if (deltaNote > 0 && maxNote + deltaNote > 127)
-        return;
-    if (deltaNote < 0 && minNote + deltaNote < 0)
+    if (!NoteEdits::canShiftPitch(collectSelectedNotes(), deltaNote))
         return;
 
     undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
@@ -307,14 +296,7 @@ void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
     if (!sequence || selectedNotes.empty() || deltaTick == 0)
         return;
 
-    int minStart = std::numeric_limits<int>::max();
-    for (const auto& ref : selectedNotes)
-    {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        minStart = std::min(minStart, note.startTick);
-    }
-
-    if (minStart + deltaTick < 0)
+    if (!NoteEdits::canShiftTime(collectSelectedNotes(), deltaTick))
         return;
 
     undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
@@ -345,28 +327,12 @@ bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
     if (!sequence || selectedNotes.empty() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return false;
 
-    int minNote = 127;
-    int maxNote = 0;
-    for (const auto& ref : selectedNotes)
-    {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        minNote = std::min(minNote, note.noteNumber);
-        maxNote = std::max(maxNote, note.noteNumber);
-    }
-
-    if (deltaNote > 0 && maxNote + deltaNote > 127)
-        return false;
-    if (deltaNote < 0 && minNote + deltaNote < 0)
+    auto notesToAdd = collectSelectedNotes();
+    if (!NoteEdits::canShiftPitch(notesToAdd, deltaNote))
         return false;
 
-    std::vector<MidiNote> notesToAdd;
-    notesToAdd.reserve(selectedNotes.size());
-    for (const auto& ref : selectedNotes)
-    {
-        MidiNote note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+    for (auto& note : notesToAdd)
         note.noteNumber += deltaNote;
-        notesToAdd.push_back(note);
-    }
 
     selectedNotes.clear();
 
@@ -658,6 +624,15 @@ void PianoRollComponent::modifierKeysChanged(const juce::ModifierKeys& modifiers
 bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
 {
     return selectedNotes.contains(ref);
+}
+
+std::vector<MidiNote> PianoRollComponent::collectSelectedNotes() const
+{
+    std::vector<MidiNote> notes;
+    notes.reserve(selectedNotes.size());
+    for (const auto& ref : selectedNotes)
+        notes.push_back(sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex));
+    return notes;
 }
 
 std::vector<PianoRollComponent::NoteRef> PianoRollComponent::findNotesInRect(const juce::Rectangle<int>& rect) const
