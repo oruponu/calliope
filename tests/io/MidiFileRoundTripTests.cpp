@@ -106,6 +106,37 @@ TEST_CASE("tracks keep their order, names and channels", "[io][midifile]")
     CHECK(loaded->tracks[1].getNotes() == std::vector<MidiNote>{{36, 100, 0, 120}});
 }
 
+TEST_CASE("tracks without notes or events keep their order, names and channels", "[io][midifile]")
+{
+    MidiSequence seq;
+    MidiTrack named;
+    named.setName("Strings");
+    named.setChannel(5);
+    seq.addTrack(named);
+    MidiTrack piano;
+    piano.setName("Piano");
+    piano.setChannel(2);
+    piano.addNote({60, 100, 0, 480});
+    seq.addTrack(piano);
+    MidiTrack unnamed;
+    unnamed.setChannel(16);
+    seq.addTrack(unnamed);
+
+    const auto loaded = midifiletest::saveAndLoad(seq);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 3);
+    CHECK(loaded->tracks[0].getName() == "Strings");
+    CHECK(loaded->tracks[0].getChannel() == 5);
+    CHECK(loaded->tracks[0].getNumNotes() == 0);
+    CHECK(loaded->tracks[1].getName() == "Piano");
+    CHECK(loaded->tracks[1].getChannel() == 2);
+    CHECK(loaded->tracks[1].getNotes() == std::vector<MidiNote>{{60, 100, 0, 480}});
+    CHECK(loaded->tracks[2].getName().empty());
+    CHECK(loaded->tracks[2].getChannel() == 16);
+    CHECK(loaded->tracks[2].getNumNotes() == 0);
+}
+
 TEST_CASE("the resolution is kept", "[io][midifile]")
 {
     MidiSequence seq;

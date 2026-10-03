@@ -64,6 +64,92 @@ TEST_CASE("a format 1 track takes its channel from its first channel event", "[i
     CHECK(loaded->tracks[0].getEvents() == std::vector<MidiEvent>{{MidiEvent::Type::ProgramChange, 0, 5, 0}});
 }
 
+TEST_CASE("format 1 tracks after the first are loaded even when empty", "[io][midifile]")
+{
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::textMetaEvent(3, "Song Title"), 0));
+    juce::MidiMessageSequence named;
+    named.addEvent(at(juce::MidiMessage::textMetaEvent(3, "Empty"), 0));
+    juce::MidiMessageSequence events;
+    events.addEvent(at(juce::MidiMessage::noteOn(2, 60, juce::uint8{100}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOff(2, 60), 480));
+    juce::MidiMessageSequence blank;
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(named);
+    midiFile.addTrack(events);
+    midiFile.addTrack(blank);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 3);
+    CHECK(loaded->tracks[0].getName() == "Empty");
+    CHECK(loaded->tracks[0].getNumNotes() == 0);
+    CHECK(loaded->tracks[1].getChannel() == 2);
+    CHECK(loaded->tracks[1].getNotes() == std::vector<MidiNote>{{60, 100, 0, 480}});
+    CHECK(loaded->tracks[2].getName().empty());
+    CHECK(loaded->tracks[2].getNumNotes() == 0);
+}
+
+TEST_CASE("a channel prefix sets the channel of a track without channel events", "[io][midifile]")
+{
+    juce::MidiMessageSequence conductor;
+    juce::MidiMessageSequence empty;
+    empty.addEvent(at(juce::MidiMessage::midiChannelMetaEvent(7), 0));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(empty);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getChannel() == 7);
+}
+
+TEST_CASE("a track's first channel event takes precedence over its channel prefix", "[io][midifile]")
+{
+    juce::MidiMessageSequence conductor;
+    juce::MidiMessageSequence events;
+    events.addEvent(at(juce::MidiMessage::midiChannelMetaEvent(7), 0));
+    events.addEvent(at(juce::MidiMessage::noteOn(3, 60, juce::uint8{100}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOff(3, 60), 480));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(events);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getChannel() == 3);
+}
+
+TEST_CASE("a first format 1 track without channel events is not loaded as a track", "[io][midifile]")
+{
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::textMetaEvent(3, "Song Title"), 0));
+    conductor.addEvent(at(juce::MidiMessage::tempoMetaEvent(500000), 0));
+    juce::MidiMessageSequence events;
+    events.addEvent(at(juce::MidiMessage::noteOn(1, 60, juce::uint8{100}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOff(1, 60), 480));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(events);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getName().empty());
+    CHECK(loaded->tracks[0].getNotes() == std::vector<MidiNote>{{60, 100, 0, 480}});
+}
+
 TEST_CASE("a note without a note-off lasts one quarter note", "[io][midifile]")
 {
     juce::MidiMessageSequence events;

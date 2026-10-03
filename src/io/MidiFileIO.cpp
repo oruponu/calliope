@@ -157,6 +157,7 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         const auto& track = sequence.getTrack(t);
         juce::MidiMessageSequence msgSeq;
         int lastTick = 0;
+        const int trackChannel = track.getChannel();
 
         if (!track.getName().empty())
         {
@@ -165,7 +166,10 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
             msgSeq.addEvent(nameEvent);
         }
 
-        const int trackChannel = track.getChannel();
+        // Lets a track without channel events keep its channel.
+        auto channelPrefix = juce::MidiMessage::midiChannelMetaEvent(trackChannel);
+        channelPrefix.setTimeStamp(0);
+        msgSeq.addEvent(channelPrefix);
 
         for (int i = 0; i < track.getNumNotes(); ++i)
         {
@@ -446,6 +450,7 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
 
             MidiTrack* track = nullptr;
             juce::String trackName;
+            std::optional<int> prefixChannel;
 
             for (int i = 0; i < sorted.getNumEvents(); ++i)
             {
@@ -455,6 +460,12 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                 if (msg.isTrackNameEvent())
                 {
                     trackName = decodeMetaText(msg);
+                }
+                else if (msg.isMidiChannelMetaEvent())
+                {
+                    const int channel = msg.getMidiChannelMetaEventChannel();
+                    if (!prefixChannel && channel >= 1 && channel <= 16)
+                        prefixChannel = channel;
                 }
                 else if (msg.isNoteOn())
                 {
@@ -536,6 +547,15 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                                      .data1 = msg.getNoteNumber(),
                                      .data2 = msg.getAfterTouchValue()});
                 }
+            }
+
+            // By convention the first track of a format 1 file is the conductor track, so it becomes a track only when
+            // it has channel events.
+            if (!track && t > 0)
+            {
+                track = &contents.tracks.emplace_back();
+                if (prefixChannel)
+                    track->setChannel(*prefixChannel);
             }
 
             if (track && trackName.isNotEmpty())
