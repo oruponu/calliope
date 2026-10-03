@@ -55,6 +55,7 @@ target_sources(CalliopeTests PRIVATE
     plugin/RetiredStateStoreTests.cpp
     ui/IndexSelectionTests.cpp
     ui/RangeSelectGestureTests.cpp
+    ui/TimelineGeometryTests.cpp
     undo/SavePointTrackerTests.cpp
 )
 
