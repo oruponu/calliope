@@ -1,10 +1,13 @@
-add_executable(CalliopeTests
+juce_add_console_app(CalliopeTests)
+
+target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/ChordTrackEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/model/TimelineMap.cpp
@@ -31,6 +34,8 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignaturePasteTests.cpp
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp
+    io/MidiFileLoadTests.cpp
+    io/MidiFileRoundTripTests.cpp
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
     model/DefaultTimelineTests.cpp
@@ -55,7 +60,18 @@ target_include_directories(CalliopeTests PRIVATE
 
 target_compile_features(CalliopeTests PRIVATE cxx_std_20)
 
-target_link_libraries(CalliopeTests PRIVATE Catch2::Catch2WithMain)
+target_compile_definitions(CalliopeTests PRIVATE
+    JUCE_USE_CURL=0
+)
+
+target_link_libraries(CalliopeTests PRIVATE
+    Catch2::Catch2WithMain
+    juce::juce_audio_basics
+)
+
+if(NOT WIN32)
+    target_link_libraries(CalliopeTests PRIVATE Iconv::Iconv)
+endif()
 
 include(Catch)
 catch_discover_tests(CalliopeTests)
