@@ -3,6 +3,7 @@ juce_add_console_app(CalliopeTests)
 target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/ChordTrackEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/NoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
@@ -27,6 +28,7 @@ target_sources(CalliopeTests PRIVATE
     edit/ChordStartResizeTests.cpp
     edit/KeySignatureAddChangeTests.cpp
     edit/KeySignatureMoveTests.cpp
+    edit/NoteStartResizeTests.cpp
     edit/TempoAddChangeTests.cpp
     edit/TimeSignatureAddChangeTests.cpp
     edit/TimeSignatureDeleteTests.cpp

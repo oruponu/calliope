@@ -1,4 +1,5 @@
 #include "ui/pianoroll/PianoRollComponent.h"
+#include "edit/NoteEdits.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/NoteActions.h"
 #include <algorithm>
@@ -1220,10 +1221,10 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
             int delta = currentTick - resizing->anchorStartTick;
             for (auto& t : resizing->targets)
             {
-                int endTick = t.startTick + t.duration;
-                int newStart = std::clamp(t.startTick + delta, 0, endTick - minDuration);
-                t.previewStartTick = newStart;
-                t.previewDuration = endTick - newStart;
+                const auto resized =
+                    NoteEdits::afterStartResize({.startTick = t.startTick, .duration = t.duration}, delta, minDuration);
+                t.previewStartTick = resized.startTick;
+                t.previewDuration = resized.duration;
             }
         }
 
