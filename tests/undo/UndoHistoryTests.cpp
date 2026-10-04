@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <juce_data_structures/juce_data_structures.h>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -53,6 +54,33 @@ public:
 
 private:
     bool performed = false;
+};
+
+class PerformingProbeAction : public juce::UndoableAction
+{
+public:
+    PerformingProbeAction(const UndoHistory& historyRef, std::vector<bool>& seenRef)
+        : history(historyRef), seen(seenRef)
+    {
+    }
+
+    bool perform() override
+    {
+        seen.push_back(history.isPerforming());
+        return true;
+    }
+
+    bool undo() override
+    {
+        seen.push_back(history.isPerforming());
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    const UndoHistory& history;
+    std::vector<bool>& seen;
 };
 } // namespace
 
@@ -205,4 +233,29 @@ TEST_CASE("every change to the history notifies the listener", "[undo][history]"
     CHECK(notifications == 4);
     history.clear();
     CHECK(notifications == 5);
+}
+
+TEST_CASE("the history reports performing only while an action runs", "[undo][history]")
+{
+    UndoHistory history;
+    std::vector<bool> seen;
+
+    history.perform(new PerformingProbeAction(history, seen));
+    const bool afterPerform = history.isPerforming();
+    history.undo();
+    const bool afterUndo = history.isPerforming();
+    history.redo();
+
+    CHECK(seen == std::vector<bool>{true, true, true});
+    CHECK_FALSE(afterPerform);
+    CHECK_FALSE(afterUndo);
+    CHECK_FALSE(history.isPerforming());
+}
+
+TEST_CASE("the history is not performing after an action is rejected", "[undo][history]")
+{
+    UndoHistory history;
+
+    CHECK_FALSE(history.perform(new RejectedAction));
+    CHECK_FALSE(history.isPerforming());
 }

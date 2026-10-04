@@ -21,6 +21,7 @@ public:
 
     void markSaved();
     bool isAtSavePoint() const;
+    bool isPerforming() const;
 
     std::function<void()> onChanged;
 
@@ -29,6 +30,7 @@ private:
 
     juce::UndoManager undoManager{10000, 100};
     SavePointTracker savePoint;
+    bool performing = false;
 
     JUCE_DECLARE_NON_COPYABLE(UndoHistory)
 };

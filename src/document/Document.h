@@ -6,12 +6,14 @@
 #include <functional>
 #include <juce_gui_extra/juce_gui_extra.h>
 
-class Document : public juce::FileBasedDocument
+class Document : public juce::FileBasedDocument, private MidiSequence::Listener
 {
 public:
     Document();
+    ~Document() override;
 
     void newDocument();
+    void markChanged();
     bool importMidi(const juce::File& file);
     bool exportMidi(const juce::File& file) const;
 
@@ -32,7 +34,14 @@ protected:
 
 private:
     void notifyWillReplaceSequence();
+    void notesChanged(int trackIndex) override;
+    void tracksChanged() override;
+    void tempoChanged() override;
+    void timelineMetadataChanged() override;
+    void noteChangeOutsideHistory();
+    void updateChangedFlag();
 
+    bool changedOutsideHistory = false;
     MidiSequence sequence;
     UndoHistory history;
 

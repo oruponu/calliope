@@ -39,7 +39,7 @@ MainComponent::MainComponent()
     audioDeviceManager.addAudioCallback(&audioPlayer);
     audioPlayer.setProcessor(&audioGraph);
 
-    document.getSequence().addTrack();
+    document.newDocument();
     document.getSequence().addListener(this);
     document.addChangeListener(this);
     document.onWillReplaceSequence = [this] { stopPlayback(); };

@@ -7,6 +7,7 @@ void UndoHistory::beginNewTransaction(const juce::String& name)
 
 bool UndoHistory::perform(juce::UndoableAction* action)
 {
+    const juce::ScopedValueSetter<bool> performingScope(performing, true);
     const bool startsNewTransaction = undoManager.getNumActionsInCurrentTransaction() == 0;
     if (!undoManager.perform(action))
         return false;
@@ -21,6 +22,7 @@ bool UndoHistory::perform(juce::UndoableAction* action)
 
 bool UndoHistory::undo()
 {
+    const juce::ScopedValueSetter<bool> performingScope(performing, true);
     if (!undoManager.undo())
         return false;
 
@@ -35,6 +37,7 @@ bool UndoHistory::undo()
 
 bool UndoHistory::redo()
 {
+    const juce::ScopedValueSetter<bool> performingScope(performing, true);
     if (!undoManager.redo())
         return false;
 
@@ -83,6 +86,11 @@ void UndoHistory::markSaved()
 bool UndoHistory::isAtSavePoint() const
 {
     return savePoint.isAtSavePoint();
+}
+
+bool UndoHistory::isPerforming() const
+{
+    return performing;
 }
 
 void UndoHistory::notifyChanged()

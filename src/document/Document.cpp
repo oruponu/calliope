@@ -11,7 +11,13 @@ constexpr const char* kLastDocumentKey = "lastDocumentFile";
 
 Document::Document() : juce::FileBasedDocument(".calliope", "*.calliope", "Open Project", "Save Project")
 {
-    history.onChanged = [this] { setChangedFlag(!history.isAtSavePoint()); };
+    history.onChanged = [this] { updateChangedFlag(); };
+    sequence.addListener(this);
+}
+
+Document::~Document()
+{
+    sequence.removeListener(this);
 }
 
 void Document::newDocument()
@@ -22,6 +28,7 @@ void Document::newDocument()
     sequence.replaceContents(std::move(contents));
     setFile({});
     history.clear();
+    changedOutsideHistory = false;
     history.markSaved();
 }
 
@@ -34,6 +41,7 @@ bool Document::importMidi(const juce::File& file)
     sequence.replaceContents(std::move(*contents));
     setFile({});
     history.clear();
+    changedOutsideHistory = false;
     history.markSaved();
     return true;
 }
@@ -56,6 +64,7 @@ juce::Result Document::loadDocument(const juce::File& file)
         return juce::Result::fail("The file could not be read as a Calliope project.");
     sequence.replaceContents(std::move(*contents));
     history.clear();
+    changedOutsideHistory = false;
     history.markSaved();
     return juce::Result::ok();
 }
@@ -64,6 +73,7 @@ juce::Result Document::saveDocument(const juce::File& file)
 {
     if (!ProjectFileIO::save(sequence, pluginStateSource, file))
         return juce::Result::fail("The project could not be written.");
+    changedOutsideHistory = false;
     history.markSaved();
     return juce::Result::ok();
 }
@@ -83,4 +93,43 @@ void Document::notifyWillReplaceSequence()
 {
     if (onWillReplaceSequence)
         onWillReplaceSequence();
+}
+
+void Document::markChanged()
+{
+    changedOutsideHistory = true;
+    updateChangedFlag();
+}
+
+void Document::notesChanged(int)
+{
+    noteChangeOutsideHistory();
+}
+
+void Document::tracksChanged()
+{
+    noteChangeOutsideHistory();
+}
+
+void Document::tempoChanged()
+{
+    noteChangeOutsideHistory();
+}
+
+void Document::timelineMetadataChanged()
+{
+    noteChangeOutsideHistory();
+}
+
+void Document::noteChangeOutsideHistory()
+{
+    // Changes made through the undo history are tracked by its save point instead. A ChangeBatch must not be
+    // opened around an UndoHistory call, or its deferred notification would arrive after performing ends.
+    if (!history.isPerforming())
+        markChanged();
+}
+
+void Document::updateChangedFlag()
+{
+    setChangedFlag(changedOutsideHistory || !history.isAtSavePoint());
 }
