@@ -34,6 +34,10 @@ target_sources(Calliope PRIVATE
     src/engine/PlaybackSnapshot.cpp
     src/engine/PlaybackSync.cpp
     src/io/MidiFileIO.cpp
+    src/io/ProjectFileIO.cpp
+    src/io/ProjectXmlReader.cpp
+    src/io/ProjectXmlWriter.cpp
+    src/io/XmlFieldReader.cpp
     src/io/XmlNumberText.cpp
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp

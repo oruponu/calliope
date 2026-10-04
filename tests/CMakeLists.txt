@@ -9,6 +9,10 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/ProjectFileIO.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlReader.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlWriter.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/XmlFieldReader.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlNumberText.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
@@ -49,6 +53,9 @@ target_sources(CalliopeTests PRIVATE
     engine/PlaybackSnapshotTests.cpp
     io/MidiFileLoadTests.cpp
     io/MidiFileRoundTripTests.cpp
+    io/ProjectFileIOTests.cpp
+    io/ProjectXmlReadTests.cpp
+    io/ProjectXmlRoundTripTests.cpp
     io/XmlNumberTextTests.cpp
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
@@ -80,6 +87,7 @@ target_compile_features(CalliopeTests PRIVATE cxx_std_20)
 
 target_compile_definitions(CalliopeTests PRIVATE
     JUCE_USE_CURL=0
+    CATCH_CONFIG_NO_CPP17_BYTE
 )
 
 target_link_libraries(CalliopeTests PRIVATE
