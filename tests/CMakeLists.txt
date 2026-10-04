@@ -34,6 +34,7 @@ target_sources(CalliopeTests PRIVATE
     edit/NoteStartResizeTests.cpp
     edit/TempoAddChangeTests.cpp
     edit/TempoDeleteTests.cpp
+    edit/TempoMoveTests.cpp
     edit/TempoPasteTests.cpp
     edit/TimeSignatureAddChangeTests.cpp
     edit/TimeSignatureDeleteTests.cpp

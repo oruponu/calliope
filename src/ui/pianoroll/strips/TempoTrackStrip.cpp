@@ -4,7 +4,6 @@
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <set>
 #include <utility>
 #include <variant>
@@ -360,58 +359,11 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
 
     if (auto* dragging = std::get_if<PointDragging>(&drag))
     {
-        const auto& before = dragging->before;
-        const int count = static_cast<int>(before.size());
-        if (dragging->index < 0 || dragging->index >= count)
-            return;
-
-        const int grid = geometry.gridTicks();
-
-        std::set<int> moving;
-        for (int i : dragging->group)
-            if (i >= 0 && i < count && before[i].tick != 0)
-                moving.insert(i);
-
-        const TempoChange& dragOrig = before[dragging->index];
-        int deltaTick =
-            (dragOrig.tick == 0) ? 0 : (std::max(0, geometry.roundTickToGrid(geometry.xToTick(e.x))) - dragOrig.tick);
-        double deltaBpm = std::round(tempoYToBpm(e.y)) - dragOrig.bpm;
-
-        int deltaLo = std::numeric_limits<int>::min();
-        int deltaHi = std::numeric_limits<int>::max();
-        for (int i : moving)
-            deltaLo = std::max(deltaLo, grid - before[i].tick);
-        for (int i = 0; i + 1 < count; ++i)
-        {
-            bool aMoving = moving.count(i) > 0;
-            bool bMoving = moving.count(i + 1) > 0;
-            int gap = before[i + 1].tick - before[i].tick;
-            if (bMoving && !aMoving)
-                deltaLo = std::max(deltaLo, grid - gap);
-            else if (aMoving && !bMoving)
-                deltaHi = std::min(deltaHi, gap - grid);
-        }
-        deltaTick = (deltaLo > deltaHi) ? 0 : std::clamp(deltaTick, deltaLo, deltaHi);
-
-        double groupMinBpm = TimelineMap::maxBpm;
-        double groupMaxBpm = TimelineMap::minBpm;
-        for (int i : dragging->group)
-            if (i >= 0 && i < count)
-            {
-                groupMinBpm = std::min(groupMinBpm, before[i].bpm);
-                groupMaxBpm = std::max(groupMaxBpm, before[i].bpm);
-            }
-        deltaBpm = juce::jlimit(TimelineMap::minBpm - groupMinBpm, TimelineMap::maxBpm - groupMaxBpm, deltaBpm);
-
-        auto changes = before;
-        for (int i : dragging->group)
-            if (i >= 0 && i < count)
-                changes[i].bpm = before[i].bpm + deltaBpm;
-        for (int i : moving)
-            changes[i].tick = before[i].tick + deltaTick;
-        dragging->preview = std::move(changes);
-
-        dragging->moved = (deltaTick != 0) || (deltaBpm != 0.0);
+        const int targetTick = std::max(0, geometry.roundTickToGrid(geometry.xToTick(e.x)));
+        const double targetBpm = std::round(tempoYToBpm(e.y));
+        dragging->preview = TempoEdits::afterMove(dragging->before, dragging->group, dragging->index, targetTick,
+                                                  targetBpm, geometry.gridTicks());
+        dragging->moved = dragging->preview != dragging->before;
         repaint();
         return;
     }
