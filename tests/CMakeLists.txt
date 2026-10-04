@@ -15,6 +15,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/KeySignatureName.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
+    ${PROJECT_SOURCE_DIR}/src/undo/UndoHistory.cpp
 )
 
 target_sources(CalliopeTests PRIVATE
@@ -62,6 +63,8 @@ target_sources(CalliopeTests PRIVATE
     ui/RangeSelectGestureTests.cpp
     ui/TimelineGeometryTests.cpp
     undo/SavePointTrackerTests.cpp
+    undo/TrackActionTests.cpp
+    undo/UndoHistoryTests.cpp
 )
 
 target_include_directories(CalliopeTests PRIVATE
@@ -78,6 +81,7 @@ target_compile_definitions(CalliopeTests PRIVATE
 target_link_libraries(CalliopeTests PRIVATE
     Catch2::Catch2WithMain
     juce::juce_audio_basics
+    juce::juce_data_structures
 )
 
 if(NOT WIN32)
