@@ -419,14 +419,21 @@ void MainComponent::paint(juce::Graphics& g)
         g.drawText(juce::String::fromUTF8("TRACKS \xc2\xb7 ") + juce::String(numTracks),
                    trackListHeaderBounds.reduced(12, 0), juce::Justification::centredLeft);
     }
+}
 
-    if (fileDragOver)
-    {
-        g.setColour(surface::press);
-        g.fillRect(getLocalBounds());
-        g.setColour(accent::base);
-        g.drawRect(getLocalBounds(), 2);
-    }
+void MainComponent::paintOverChildren(juce::Graphics& g)
+{
+    if (!fileDragOver)
+        return;
+
+    using namespace calliope::theme;
+    const float outset = panelGap * 0.5f;
+    auto area = trackListFrame.getBounds().getUnion(eventListFrame.getBounds()).toFloat().expanded(outset);
+    const float cornerRadius = radius::r3 + outset;
+    g.setColour(surface::press);
+    g.fillRoundedRectangle(area, cornerRadius);
+    g.setColour(accent::base);
+    g.drawRoundedRectangle(area.reduced(1.0f), cornerRadius - 1.0f, 2.0f);
 }
 
 void MainComponent::resized()
