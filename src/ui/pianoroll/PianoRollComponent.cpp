@@ -669,6 +669,8 @@ void PianoRollComponent::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
     g.fillAll(surface::surface);
+    // At fractional display scales the strips only partly cover their edge pixels, so draw nothing beneath them.
+    g.reduceClipRegion(getLocalBounds().withTop(loopStrip.getY() + gridTopOffset));
     drawGrid(g);
     drawLoopRegion(g);
     drawNotes(g);
