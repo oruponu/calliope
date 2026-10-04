@@ -12,6 +12,9 @@
 class MidiTrack
 {
 public:
+    MidiTrack() = default;
+    explicit MidiTrack(TrackId provisionalId);
+
     enum class OutputDestination
     {
         MidiDevice,

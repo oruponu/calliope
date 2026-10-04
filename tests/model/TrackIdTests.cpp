@@ -3,6 +3,11 @@
 #include <cstdint>
 #include <utility>
 
+TEST_CASE("a track built with a provisional id reports that id", "[model][trackid]")
+{
+    CHECK(MidiTrack(TrackId{7}).getId() == TrackId{7});
+}
+
 TEST_CASE("addTrack assigns distinct increasing ids", "[model][trackid]")
 {
     MidiSequence seq;
@@ -38,6 +43,22 @@ TEST_CASE("ids are not reused after replaceContents", "[model][trackid]")
     contents.tracks.emplace_back();
     seq.replaceContents(std::move(contents));
     CHECK(static_cast<std::uint32_t>(seq.getTrack(0).getId()) > static_cast<std::uint32_t>(before));
+}
+
+TEST_CASE("replaceContents links route targets given as provisional ids", "[model][trackid]")
+{
+    SequenceContents contents;
+    contents.tracks.emplace_back(TrackId{7});
+    MidiTrack follower(TrackId{3});
+    follower.setRouteTarget(TrackId{7});
+    contents.tracks.push_back(follower);
+
+    MidiSequence seq;
+    seq.addTrack();
+    seq.replaceContents(std::move(contents));
+
+    CHECK(seq.getTrack(0).getId() != TrackId{7});
+    CHECK(seq.getTrack(1).getRouteTarget() == seq.getTrack(0).getId());
 }
 
 TEST_CASE("ids are not reused after removeTrack", "[model][trackid]")

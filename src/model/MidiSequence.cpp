@@ -25,7 +25,10 @@ void MidiSequence::replaceContents(SequenceContents contents)
     {
         const TrackId fresh{nextTrackId++};
         if (track.id != TrackId{})
+        {
+            assert(!renumbered.contains(track.id));
             renumbered[track.id] = fresh;
+        }
         track.id = fresh;
     }
     for (auto& track : contents.tracks)

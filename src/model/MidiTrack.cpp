@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <utility>
 
+MidiTrack::MidiTrack(TrackId provisionalId) : id(provisionalId) {}
+
 TrackId MidiTrack::getId() const
 {
     return id;
