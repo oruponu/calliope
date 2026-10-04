@@ -37,6 +37,7 @@ target_sources(Calliope PRIVATE
     src/io/XmlNumberText.cpp
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp
+    src/model/SequenceContentsRules.cpp
     src/model/TimelineMap.cpp
     src/notation/ChordSymbol.cpp
     src/notation/KeySignatureName.cpp
