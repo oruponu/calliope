@@ -179,6 +179,21 @@ TEST_CASE("a file without a tempo at tick 0 starts at 120 bpm", "[io][midifile]"
     CHECK(loaded->timeline.getTempoChanges() == std::vector<TempoChange>{{0, 120.0}, {960, 60.0}});
 }
 
+TEST_CASE("a tempo of zero microseconds per quarter note is ignored", "[io][midifile]")
+{
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::tempoMetaEvent(0), 0));
+    conductor.addEvent(at(juce::MidiMessage::tempoMetaEvent(500000), 960));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    CHECK(loaded->timeline.getTempoChanges() == std::vector<TempoChange>{{0, 120.0}, {960, 120.0}});
+}
+
 TEST_CASE("sequencer-specific meta events that are not XF chords are ignored", "[io][midifile]")
 {
     const std::uint8_t raw[] = {0xFF, 0x7F, 0x07, 0x00, 0x00, 0x41, 0x01, 0x31, 0x00, 0x7F};

@@ -303,7 +303,10 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
             const auto& msg = msgSeq->getEventPointer(i)->message;
             if (msg.isTempoMetaEvent())
             {
-                double bpm = 60000000.0 / msg.getTempoSecondsPerQuarterNote() / 1000000.0;
+                const double secondsPerQuarter = msg.getTempoSecondsPerQuarterNote();
+                if (secondsPerQuarter <= 0.0)
+                    continue;
+                double bpm = 60000000.0 / secondsPerQuarter / 1000000.0;
                 int tick = static_cast<int>(msg.getTimeStamp());
                 TempoEdits::add(tempoChanges, tick, bpm);
             }
