@@ -19,6 +19,20 @@ TEST_CASE("a time signature added mid-bar lands on its bar start", "[timesig][ad
     CHECK(changes == timeSigs({{1, 4, 4}, {2, 3, 4}}));
 }
 
+TEST_CASE("a time signature added mid-bar replaces the one at its bar start", "[timesig][add-change]")
+{
+    auto changes = timeSigs({{1, 4, 4}, {3, 3, 4}});
+    TimeSignatureEdits::add(changes, 4320, 6, 8, ppq);
+    CHECK(changes == timeSigs({{1, 4, 4}, {3, 6, 8}}));
+}
+
+TEST_CASE("adding to a bar with stacked time signatures replaces the one in effect", "[timesig][add-change]")
+{
+    std::vector<TimeSignatureChange> changes{{0, 4, 4}, {0, 3, 4}};
+    TimeSignatureEdits::add(changes, 0, 2, 4, ppq);
+    CHECK(changes == std::vector<TimeSignatureChange>{{0, 4, 4}, {0, 2, 4}});
+}
+
 TEST_CASE("inserting a time signature keeps the later ones on their bars", "[timesig][add-change]")
 {
     auto changes = timeSigs({{1, 4, 4}, {5, 3, 4}});

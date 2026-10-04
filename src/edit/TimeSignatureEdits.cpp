@@ -2,6 +2,7 @@
 #include "model/TimelineMap.h"
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
 
 namespace
@@ -41,21 +42,16 @@ void TimeSignatureEdits::add(std::vector<TimeSignatureChange>& changes, int tick
     for (const auto& ts : changes)
         bars.push_back(timeline.tickToBarBeatTick(ts.tick).bar);
 
-    bool modified = false;
-    for (auto& ts : changes)
+    const int targetBar = timeline.tickToBarBeatTick(tick).bar;
+    const auto sameBar = std::find(bars.rbegin(), bars.rend(), targetBar);
+    if (sameBar != bars.rend())
     {
-        if (ts.tick == tick)
-        {
-            ts.numerator = num;
-            ts.denominator = den;
-            modified = true;
-            break;
-        }
+        auto& ts = changes[static_cast<size_t>(std::distance(sameBar, bars.rend()) - 1)];
+        ts.numerator = num;
+        ts.denominator = den;
     }
-
-    if (!modified)
+    else
     {
-        int targetBar = timeline.tickToBarBeatTick(tick).bar;
         size_t insertPos = 0;
         while (insertPos < changes.size() && changes[insertPos].tick < tick)
             ++insertPos;

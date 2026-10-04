@@ -196,6 +196,21 @@ TEST_CASE("a tempo of zero microseconds per quarter note is ignored", "[io][midi
     CHECK(loaded->timeline.getTempoChanges() == std::vector<TempoChange>{{0, 120.0}, {960, 120.0}});
 }
 
+TEST_CASE("a mid-bar time signature replaces the one at its bar start", "[io][midifile]")
+{
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::timeSignatureMetaEvent(3, 4), 0));
+    conductor.addEvent(at(juce::MidiMessage::timeSignatureMetaEvent(6, 8), 960));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 6, 8}});
+}
+
 TEST_CASE("a time signature with a zero numerator is ignored", "[io][midifile]")
 {
     juce::MidiMessageSequence conductor;
