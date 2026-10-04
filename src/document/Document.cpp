@@ -1,6 +1,7 @@
 #include "document/Document.h"
 #include "AppProperties.h"
 #include "io/MidiFileIO.h"
+#include "io/ProjectFileIO.h"
 #include <utility>
 
 namespace
@@ -8,7 +9,7 @@ namespace
 constexpr const char* kLastDocumentKey = "lastDocumentFile";
 }
 
-Document::Document() : juce::FileBasedDocument(".mid", "*.mid;*.midi", "Open MIDI File", "Save MIDI File")
+Document::Document() : juce::FileBasedDocument(".calliope", "*.calliope", "Open Project", "Save Project")
 {
     history.onChanged = [this] { setChangedFlag(!history.isAtSavePoint()); };
 }
@@ -50,9 +51,9 @@ juce::String Document::getDocumentTitle()
 juce::Result Document::loadDocument(const juce::File& file)
 {
     notifyWillReplaceSequence();
-    auto contents = MidiFileIO::load(file);
+    auto contents = ProjectFileIO::load(file);
     if (!contents)
-        return juce::Result::fail("The file could not be read as a MIDI file.");
+        return juce::Result::fail("The file could not be read as a Calliope project.");
     sequence.replaceContents(std::move(*contents));
     history.clear();
     history.markSaved();
@@ -61,8 +62,8 @@ juce::Result Document::loadDocument(const juce::File& file)
 
 juce::Result Document::saveDocument(const juce::File& file)
 {
-    if (!MidiFileIO::save(sequence, file))
-        return juce::Result::fail("The MIDI file could not be written.");
+    if (!ProjectFileIO::save(sequence, pluginStateSource, file))
+        return juce::Result::fail("The project could not be written.");
     history.markSaved();
     return juce::Result::ok();
 }

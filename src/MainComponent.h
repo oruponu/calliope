@@ -75,6 +75,8 @@ private:
     void importMidi();
     void importMidiFile(const juce::File& file);
     void exportMidi();
+    void onProjectOpened();
+    void showPluginLoadFailures();
     void showAudioSettings();
     void stopPlayback();
     void onSequenceLoaded();

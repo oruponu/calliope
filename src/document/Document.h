@@ -1,5 +1,6 @@
 #pragma once
 
+#include "io/ProjectXml.h"
 #include "model/MidiSequence.h"
 #include "undo/UndoHistory.h"
 #include <functional>
@@ -21,6 +22,7 @@ public:
     juce::String getDocumentTitle() override;
 
     std::function<void()> onWillReplaceSequence;
+    ProjectXml::PluginStateSource pluginStateSource;
 
 protected:
     juce::Result loadDocument(const juce::File& file) override;

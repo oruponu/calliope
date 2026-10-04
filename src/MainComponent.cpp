@@ -1,8 +1,22 @@
 #include "MainComponent.h"
 #include "AppProperties.h"
+#include "plugin/PluginAssignmentCodec.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
 #include "undo/TrackActions.h"
+
+namespace
+{
+bool isProjectFile(const juce::File& file)
+{
+    return file.hasFileExtension(".calliope");
+}
+
+bool isMidiFile(const juce::File& file)
+{
+    return file.hasFileExtension(".mid;.midi");
+}
+} // namespace
 
 void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
 {
@@ -31,6 +45,7 @@ MainComponent::MainComponent()
     document.onWillReplaceSequence = [this] { stopPlayback(); };
     pluginHost.setSequence(&document.getSequence());
     pluginHost.setPlaybackEngine(&playbackEngine);
+    document.pluginStateSource = [this](TrackId trackId) { return pluginHost.getPluginState(trackId); };
 
     playbackEngine.setSequence(&document.getSequence());
     playbackEngine.addListener(&midiOutput);
@@ -672,8 +687,8 @@ void MainComponent::paint(juce::Graphics& g)
 
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files)
 {
-    for (auto& file : files)
-        if (file.endsWithIgnoreCase(".mid") || file.endsWithIgnoreCase(".midi"))
+    for (auto& path : files)
+        if (const juce::File file(path); isProjectFile(file) || isMidiFile(file))
             return true;
     return false;
 }
@@ -697,19 +712,27 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
 
     for (auto& path : files)
     {
-        if (path.endsWithIgnoreCase(".mid") || path.endsWithIgnoreCase(".midi"))
+        const juce::File file(path);
+        if (isProjectFile(file))
         {
             saveIfNeededThen(
-                [this, file = juce::File(path)]
+                [this, file]
                 {
                     if (document.loadFrom(file, true).wasOk())
-                    {
-                        onSequenceLoaded();
-                        updateTitleBar();
-                    }
+                        onProjectOpened();
                     finishFileOperation();
                 });
-            break;
+            return;
+        }
+        if (isMidiFile(file))
+        {
+            saveIfNeededThen(
+                [this, file]
+                {
+                    importMidiFile(file);
+                    finishFileOperation();
+                });
+            return;
         }
     }
 }
@@ -922,10 +945,7 @@ void MainComponent::loadFile()
                                                     [this](juce::Result result)
                                                     {
                                                         if (result.wasOk())
-                                                        {
-                                                            onSequenceLoaded();
-                                                            updateTitleBar();
-                                                        }
+                                                            onProjectOpened();
                                                         finishFileOperation();
                                                     });
         });
@@ -988,6 +1008,42 @@ void MainComponent::exportMidi()
                                              nullptr);
                                      finishFileOperation();
                                  });
+}
+
+void MainComponent::onProjectOpened()
+{
+    onSequenceLoaded();
+    updateTitleBar();
+    showPluginLoadFailures();
+}
+
+void MainComponent::showPluginLoadFailures()
+{
+    const auto& failed = pluginHost.getFailedTracks();
+    const auto& sequence = document.getSequence();
+    juce::StringArray lines;
+    for (int i = 0; i < sequence.getNumTracks(); ++i)
+    {
+        const auto& track = sequence.getTrack(i);
+        const auto& assignment = track.getPluginAssignment();
+        if (assignment == nullptr || !failed.contains(track.getId()))
+            continue;
+
+        const auto description = PluginAssignmentCodec::fromXml(assignment->descriptionXml);
+        const auto trackName =
+            track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String::fromUTF8(track.getName().c_str());
+        lines.add(trackName + ": " + (description ? description->name : juce::String("Unknown plugin")));
+    }
+    if (lines.isEmpty())
+        return;
+
+    alertBox = juce::AlertWindow::showScopedAsync(
+        juce::MessageBoxOptions()
+            .withIconType(juce::MessageBoxIconType::WarningIcon)
+            .withTitle("Open Project")
+            .withMessage("The following plugins could not be loaded:\n" + lines.joinIntoString("\n"))
+            .withButton("OK"),
+        nullptr);
 }
 
 void MainComponent::saveIfNeededThen(std::function<void()> next)
