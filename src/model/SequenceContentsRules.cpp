@@ -41,17 +41,6 @@ bool acceptsTempo(const TempoChange& change)
     return std::isfinite(change.bpm) && change.bpm > 0.0;
 }
 
-bool acceptsTimeSignature(const TimeSignatureChange& change, int ppq)
-{
-    if (change.numerator < 1 || change.denominator < 1 ||
-        !std::has_single_bit(static_cast<unsigned>(change.denominator)))
-        return false;
-
-    // TimelineMap measures a beat as ppq * 4 / denominator ticks and a bar as that times the numerator, in int.
-    const long long ticksPerBeat = 4LL * ppq / change.denominator;
-    return ticksPerBeat >= 1 && ticksPerBeat <= intMax / change.numerator;
-}
-
 bool acceptsTimeline(const TimelineMap& timeline)
 {
     const int ppq = timeline.getTicksPerQuarterNote();
@@ -59,14 +48,14 @@ bool acceptsTimeline(const TimelineMap& timeline)
     const auto& signatures = timeline.getTimeSignatureChanges();
     return ppq > 0 && ppq <= intMax / 4 && startsAtZero(tempos) && ticksStrictlyIncrease(tempos) &&
            std::ranges::all_of(tempos, acceptsTempo) && startsAtZero(signatures) && ticksNeverDecrease(signatures) &&
-           std::ranges::all_of(signatures,
-                               [ppq](const TimeSignatureChange& c) { return acceptsTimeSignature(c, ppq); });
+           std::ranges::all_of(signatures, [ppq](const TimeSignatureChange& c)
+                               { return SequenceContentsRules::acceptsTimeSignature(c, ppq); });
 }
 
 bool acceptsKeySignatures(const std::vector<KeySignatureChange>& changes)
 {
     return startsAtOrAfterZero(changes) && ticksStrictlyIncrease(changes) &&
-           std::ranges::all_of(changes, [](const KeySignatureChange& c) { return inRange(c.sharpsOrFlats, -7, 7); });
+           std::ranges::all_of(changes, SequenceContentsRules::acceptsKeySignature);
 }
 
 bool acceptsChord(const ChordChange& change)
@@ -101,6 +90,22 @@ bool acceptsTrack(const MidiTrack& track)
 
 namespace SequenceContentsRules
 {
+bool acceptsTimeSignature(const TimeSignatureChange& change, int ppq)
+{
+    if (change.numerator < 1 || change.denominator < 1 ||
+        !std::has_single_bit(static_cast<unsigned>(change.denominator)))
+        return false;
+
+    // TimelineMap measures a beat as ppq * 4 / denominator ticks and a bar as that times the numerator, in int.
+    const long long ticksPerBeat = 4LL * ppq / change.denominator;
+    return ticksPerBeat >= 1 && ticksPerBeat <= intMax / change.numerator;
+}
+
+bool acceptsKeySignature(const KeySignatureChange& change)
+{
+    return inRange(change.sharpsOrFlats, -7, 7);
+}
+
 bool accepts(const SequenceContents& contents)
 {
     return acceptsTimeline(contents.timeline) && acceptsKeySignatures(contents.keySignatureChanges) &&

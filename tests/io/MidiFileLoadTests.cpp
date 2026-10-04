@@ -1,7 +1,9 @@
+#include "support/KeySignatureStringMaker.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiFileTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
 #include "support/TempoStringMaker.h"
+#include "support/TimeSignatureStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
 #include <vector>
@@ -192,6 +194,100 @@ TEST_CASE("a tempo of zero microseconds per quarter note is ignored", "[io][midi
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTempoChanges() == std::vector<TempoChange>{{0, 120.0}, {960, 120.0}});
+}
+
+TEST_CASE("a time signature with a zero numerator is ignored", "[io][midifile]")
+{
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::timeSignatureMetaEvent(3, 4), 0));
+    conductor.addEvent(at(juce::MidiMessage::timeSignatureMetaEvent(0, 4), 1440));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 3, 4}});
+}
+
+TEST_CASE("a time signature whose beat is shorter than a tick is ignored", "[io][midifile]")
+{
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::timeSignatureMetaEvent(3, 4), 0));
+    conductor.addEvent(at(juce::MidiMessage::timeSignatureMetaEvent(4, 4096), 1440));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 3, 4}});
+}
+
+TEST_CASE("a time signature whose denominator does not fit in an int is ignored", "[io][midifile]")
+{
+    const std::uint8_t raw[] = {0xFF, 0x58, 0x04, 0x04, 0x20, 0x18, 0x08};
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::timeSignatureMetaEvent(3, 4), 0));
+    conductor.addEvent(at(juce::MidiMessage(raw, static_cast<int>(sizeof(raw))), 1440));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 3, 4}});
+}
+
+TEST_CASE("a time signature with fewer than two data bytes is ignored", "[io][midifile]")
+{
+    const std::uint8_t raw[] = {0xFF, 0x58, 0x01, 0x02};
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::timeSignatureMetaEvent(3, 4), 0));
+    conductor.addEvent(at(juce::MidiMessage(raw, static_cast<int>(sizeof(raw))), 1440));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 3, 4}});
+}
+
+TEST_CASE("a key signature beyond seven sharps or flats is ignored", "[io][midifile]")
+{
+    const std::uint8_t raw[] = {0xFF, 0x59, 0x02, 0x08, 0x00};
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::keySignatureMetaEvent(2, false), 0));
+    conductor.addEvent(at(juce::MidiMessage(raw, static_cast<int>(sizeof(raw))), 1920));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    CHECK(loaded->keySignatureChanges == std::vector<KeySignatureChange>{{0, 2, false}});
+}
+
+TEST_CASE("a key signature with fewer than two data bytes is ignored", "[io][midifile]")
+{
+    const std::uint8_t raw[] = {0xFF, 0x59, 0x01, 0x03};
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::keySignatureMetaEvent(2, false), 0));
+    conductor.addEvent(at(juce::MidiMessage(raw, static_cast<int>(sizeof(raw))), 1920));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+
+    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    CHECK(loaded->keySignatureChanges == std::vector<KeySignatureChange>{{0, 2, false}});
 }
 
 TEST_CASE("sequencer-specific meta events that are not XF chords are ignored", "[io][midifile]")

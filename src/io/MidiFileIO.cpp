@@ -3,7 +3,12 @@
 #include "edit/KeySignatureEdits.h"
 #include "edit/TempoEdits.h"
 #include "edit/TimeSignatureEdits.h"
+#include "model/KeySignatureChange.h"
+#include "model/SequenceContentsRules.h"
+#include "model/TimeSignatureChange.h"
+#include <cstdint>
 #include <map>
+#include <optional>
 #include <set>
 #include <utility>
 
@@ -93,6 +98,31 @@ juce::String decodeMetaText(const juce::MidiMessage& msg)
 #endif
 
     return juce::String::fromUTF8(data, length);
+}
+
+std::optional<TimeSignatureChange> readTimeSignature(const juce::MidiMessage& msg, int ppq)
+{
+    const auto* data = msg.getMetaEventData();
+    if (msg.getMetaEventLength() < 2 || data[1] > 30)
+        return std::nullopt;
+
+    const TimeSignatureChange change{static_cast<int>(msg.getTimeStamp()), data[0], 1 << data[1]};
+    if (!SequenceContentsRules::acceptsTimeSignature(change, ppq))
+        return std::nullopt;
+    return change;
+}
+
+std::optional<KeySignatureChange> readKeySignature(const juce::MidiMessage& msg)
+{
+    const auto* data = msg.getMetaEventData();
+    if (msg.getMetaEventLength() < 2)
+        return std::nullopt;
+
+    const KeySignatureChange change{static_cast<int>(msg.getTimeStamp()), static_cast<std::int8_t>(data[0]),
+                                    data[1] != 0};
+    if (!SequenceContentsRules::acceptsKeySignature(change))
+        return std::nullopt;
+    return change;
 }
 
 } // anonymous namespace
@@ -312,17 +342,13 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
             }
             else if (msg.isTimeSignatureMetaEvent())
             {
-                int numerator, denominator;
-                msg.getTimeSignatureInfo(numerator, denominator);
-                int tick = static_cast<int>(msg.getTimeStamp());
-                TimeSignatureEdits::add(timeSignatureChanges, tick, numerator, denominator, ppq);
+                if (const auto ts = readTimeSignature(msg, ppq))
+                    TimeSignatureEdits::add(timeSignatureChanges, ts->tick, ts->numerator, ts->denominator, ppq);
             }
             else if (msg.isKeySignatureMetaEvent())
             {
-                int tick = static_cast<int>(msg.getTimeStamp());
-                int sf = msg.getKeySignatureNumberOfSharpsOrFlats();
-                bool isMinor = !msg.isKeySignatureMajorKey();
-                KeySignatureEdits::add(keySignatureChanges, tick, sf, isMinor);
+                if (const auto ks = readKeySignature(msg))
+                    KeySignatureEdits::add(keySignatureChanges, ks->tick, ks->sharpsOrFlats, ks->isMinor);
             }
             else if (msg.getMetaEventType() == 0x7F)
             {
@@ -569,5 +595,8 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
     if (contents.tracks.empty())
         contents.tracks.emplace_back();
 
+    // A song the project file would reject could not be reopened after saving.
+    if (!SequenceContentsRules::accepts(contents))
+        return std::nullopt;
     return contents;
 }
