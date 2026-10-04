@@ -11,4 +11,5 @@ namespace PluginAssignmentCodec
 std::string toXml(const juce::PluginDescription& description);
 std::optional<juce::PluginDescription> fromXml(const std::string& xml);
 juce::MemoryBlock toMemoryBlock(const std::vector<std::byte>& bytes);
+std::vector<std::byte> toBytes(const juce::MemoryBlock& block);
 } // namespace PluginAssignmentCodec

@@ -20,4 +20,10 @@ juce::MemoryBlock toMemoryBlock(const std::vector<std::byte>& bytes)
 {
     return juce::MemoryBlock(bytes.data(), bytes.size());
 }
+
+std::vector<std::byte> toBytes(const juce::MemoryBlock& block)
+{
+    const auto* data = static_cast<const std::byte*>(block.getData());
+    return {data, data + block.getSize()};
+}
 } // namespace PluginAssignmentCodec

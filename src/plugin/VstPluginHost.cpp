@@ -183,6 +183,7 @@ void VstPluginHost::sequenceReset()
 
     retiredStates.clear();
     failedIds.clear();
+    syncWithSequence();
 }
 
 void VstPluginHost::syncWithSequence()
@@ -254,6 +255,17 @@ juce::AudioProcessor* VstPluginHost::getPluginProcessor(TrackId trackId) const
 
     auto* node = graph->getNodeForId(it->second.pluginNode);
     return node != nullptr ? node->getProcessor() : nullptr;
+}
+
+std::optional<std::vector<std::byte>> VstPluginHost::getPluginState(TrackId trackId) const
+{
+    auto* processor = getPluginProcessor(trackId);
+    if (processor == nullptr)
+        return std::nullopt;
+
+    juce::MemoryBlock state;
+    processor->getStateInformation(state);
+    return PluginAssignmentCodec::toBytes(state);
 }
 
 juce::String VstPluginHost::getPluginName(TrackId trackId) const

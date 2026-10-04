@@ -5,6 +5,7 @@
 #include "model/PluginAssignment.h"
 #include "model/TrackId.h"
 #include "plugin/RetiredStateStore.h"
+#include <cstddef>
 #include <functional>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -12,6 +13,7 @@
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 class PlaybackEngine;
 
@@ -31,6 +33,8 @@ public:
 
     juce::String getPluginName(TrackId trackId) const;
     juce::AudioProcessor* getPluginProcessor(TrackId trackId) const;
+    std::optional<std::vector<std::byte>> getPluginState(TrackId trackId) const;
+    const std::unordered_set<TrackId>& getFailedTracks() const { return failedIds; }
 
     juce::AudioPluginFormatManager& getFormatManager() { return formatManager; }
 
