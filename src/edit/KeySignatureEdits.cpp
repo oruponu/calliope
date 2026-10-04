@@ -84,3 +84,35 @@ std::vector<KeySignatureChange> KeySignatureEdits::afterMove(const std::vector<K
             result[static_cast<size_t>(i)].tick = timeline.barStartToTick(bars[static_cast<size_t>(i)] + delta);
     return result;
 }
+
+std::vector<KeySignatureChange> KeySignatureEdits::afterDelete(const std::vector<KeySignatureChange>& before,
+                                                               const std::set<int>& deletedIndices)
+{
+    std::vector<KeySignatureChange> after;
+    after.reserve(before.size());
+    for (int i = 0; i < static_cast<int>(before.size()); ++i)
+        if (!deletedIndices.contains(i))
+            after.push_back(before[static_cast<size_t>(i)]);
+    return after;
+}
+
+std::vector<KeySignatureChange> KeySignatureEdits::afterPaste(const std::vector<KeySignatureChange>& before,
+                                                              const std::vector<RelativeKeySignature>& items,
+                                                              int anchorBar, const TimelineMap& timeline)
+{
+    auto after = before;
+    for (const auto& item : items)
+    {
+        const int tick = timeline.barStartToTick(anchorBar + item.barOffset);
+        auto it = std::ranges::find(after, tick, &KeySignatureChange::tick);
+        if (it != after.end())
+        {
+            it->sharpsOrFlats = item.sharpsOrFlats;
+            it->isMinor = item.isMinor;
+        }
+        else
+            after.push_back({tick, item.sharpsOrFlats, item.isMinor});
+    }
+    std::ranges::sort(after, {}, &KeySignatureChange::tick);
+    return after;
+}

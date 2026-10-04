@@ -56,13 +56,7 @@ void KeySignatureStrip::deleteSelectedKeySignaturesImpl(const juce::String& tran
         return;
 
     auto before = sequence->getKeySignatureChanges();
-    const int count = static_cast<int>(before.size());
-
-    std::vector<KeySignatureChange> after;
-    after.reserve(before.size());
-    for (int i = 0; i < count; ++i)
-        if (!selection.contains(i))
-            after.push_back(before[static_cast<size_t>(i)]);
+    auto after = KeySignatureEdits::afterDelete(before, selection.indices());
 
     if (after.size() == before.size())
         return;
@@ -111,25 +105,15 @@ void KeySignatureStrip::pasteKeySignatures(int atTick)
     if (!sequence || !clipboard.hasKeySignatures())
         return;
 
-    const int anchorBar = sequence->getTimeline().tickToBarBeatTick(std::max(0, atTick)).bar;
+    const auto& timeline = sequence->getTimeline();
+    const auto& items = clipboard.getKeySignatures();
+    const int anchorBar = timeline.tickToBarBeatTick(std::max(0, atTick)).bar;
     auto before = sequence->getKeySignatureChanges();
-    auto after = before;
+    auto after = KeySignatureEdits::afterPaste(before, items, anchorBar, timeline);
 
     std::vector<int> pastedTicks;
-    for (const auto& item : clipboard.getKeySignatures())
-    {
-        const int tick = sequence->getTimeline().barStartToTick(anchorBar + item.barOffset);
-        pastedTicks.push_back(tick);
-        auto it = std::ranges::find(after, tick, &KeySignatureChange::tick);
-        if (it != after.end())
-        {
-            it->sharpsOrFlats = item.sharpsOrFlats;
-            it->isMinor = item.isMinor;
-        }
-        else
-            after.push_back({tick, item.sharpsOrFlats, item.isMinor});
-    }
-    std::ranges::sort(after, {}, &KeySignatureChange::tick);
+    for (const auto& item : items)
+        pastedTicks.push_back(timeline.barStartToTick(anchorBar + item.barOffset));
 
     const bool changed = (after != before);
     if (changed)
