@@ -9,6 +9,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/XmlNumberText.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/model/TimelineMap.cpp
@@ -47,6 +48,7 @@ target_sources(CalliopeTests PRIVATE
     engine/PlaybackSnapshotTests.cpp
     io/MidiFileLoadTests.cpp
     io/MidiFileRoundTripTests.cpp
+    io/XmlNumberTextTests.cpp
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
     model/DefaultTimelineTests.cpp
