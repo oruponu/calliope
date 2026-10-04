@@ -250,7 +250,8 @@ MainComponent::MainComponent()
     controllerLaneDivider.onDrag = [this](int deltaY)
     {
         int minH = 60;
-        int maxH = getHeight() - menuBarHeight - transportBarHeight - toolBarHeight - 150;
+        int maxH =
+            getHeight() - menuBarHeight - transportBarHeight - 2 * (panelGap + panelPadding) - toolBarHeight - 150;
         controllerLaneHeight = juce::jlimit(minH, maxH, controllerLaneHeightOnDragStart - deltaY);
         resized();
     };
@@ -260,7 +261,7 @@ MainComponent::MainComponent()
     trackListDivider.onDrag = [this](int deltaX)
     {
         int minW = 80;
-        int maxW = juce::jmax(minW, getWidth() - eventListWidth - 200);
+        int maxW = juce::jmax(minW, getWidth() - 2 * panelGap - eventListWidth - 200);
         trackListWidth = juce::jlimit(minW, maxW, trackListWidthOnDragStart + deltaX);
         resized();
     };
@@ -270,7 +271,7 @@ MainComponent::MainComponent()
     eventListDivider.onDrag = [this](int deltaX)
     {
         int minW = 80;
-        int maxW = juce::jmax(minW, getWidth() - trackListWidth - 200);
+        int maxW = juce::jmax(minW, getWidth() - 2 * panelGap - trackListWidth - 200);
         eventListWidth = juce::jlimit(minW, maxW, eventListWidthOnDragStart - deltaX);
         resized();
     };
@@ -357,7 +358,10 @@ MainComponent::MainComponent()
     controllerLane.setWantsKeyboardFocus(true);
     selectToolButton.setWantsKeyboardFocus(true);
     editToolButton.setWantsKeyboardFocus(true);
-    addAndMakeVisible(focusBorder);
+    addAndMakeVisible(trackListFrame);
+    addAndMakeVisible(pianoRollFrame);
+    addAndMakeVisible(eventListFrame);
+    updateFocusBorder();
     juce::Desktop::getInstance().addFocusChangeListener(this);
 
     commandManager.registerAllCommandsForTarget(this);
@@ -389,6 +393,10 @@ void MainComponent::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+
+    g.setColour(surface::bg2);
+    for (auto* frame : {&trackListFrame, &pianoRollFrame, &eventListFrame})
+        g.fillRect(frame->getBounds());
 
     g.setColour(surface::surface2);
     g.fillRect(toolBarBounds);
@@ -426,20 +434,24 @@ void MainComponent::resized()
     auto area = getLocalBounds();
     menuBar.setBounds(area.removeFromTop(menuBarHeight));
     transportBar.setBounds(area.removeFromBottom(transportBarHeight));
+    area.reduce(panelGap, panelGap);
 
     int clampedTrackListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - eventListWidth - 200), trackListWidth);
     auto trackListColumn = area.removeFromLeft(clampedTrackListW);
-    trackListPanelBounds = trackListColumn;
+    trackListFrame.setBounds(trackListColumn);
+    trackListColumn.reduce(panelPadding, panelPadding);
     trackListHeaderBounds = trackListColumn.removeFromTop(toolBarHeight);
     trackListViewport.setBounds(trackListColumn);
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
-    trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
+    trackListDivider.setBounds(area.removeFromLeft(panelGap));
     int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
     auto eventListColumn = area.removeFromRight(clampedEventListW);
-    eventListPanelBounds = eventListColumn;
+    eventListFrame.setBounds(eventListColumn);
+    eventListColumn.reduce(panelPadding, panelPadding);
     eventList.setBounds(eventListColumn);
-    eventListDivider.setBounds(area.removeFromRight(dividerThickness));
-    pianoRollPanelBounds = area;
+    eventListDivider.setBounds(area.removeFromRight(panelGap));
+    pianoRollFrame.setBounds(area);
+    area.reduce(panelPadding, panelPadding);
 
     auto toolBarArea = area.removeFromTop(toolBarHeight);
     toolBarBounds = toolBarArea;
@@ -474,8 +486,6 @@ void MainComponent::resized()
                                 zoomStripLength);
     horizontalZoomStrip.setBounds(controllerLaneViewport.getRight() - zoomStripLength,
                                   controllerLaneViewport.getBottom() - sbThickness, zoomStripLength, sbThickness);
-
-    updateFocusBorder();
 }
 
 void MainComponent::parentHierarchyChanged()
@@ -795,22 +805,9 @@ void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
 
 void MainComponent::updateFocusBorder()
 {
-    juce::Rectangle<int> target;
-    switch (focusedPanel)
-    {
-    case FocusPanel::TrackList:
-        target = trackListPanelBounds;
-        break;
-    case FocusPanel::PianoRoll:
-        target = pianoRollPanelBounds;
-        break;
-    case FocusPanel::EventList:
-        target = eventListPanelBounds;
-        break;
-    }
-
-    focusBorder.setBounds(target);
-    focusBorder.setVisible(!target.isEmpty());
+    trackListFrame.setFocused(focusedPanel == FocusPanel::TrackList);
+    pianoRollFrame.setFocused(focusedPanel == FocusPanel::PianoRoll);
+    eventListFrame.setFocused(focusedPanel == FocusPanel::EventList);
 }
 
 void MainComponent::onVBlank()

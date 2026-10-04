@@ -19,7 +19,7 @@
 #include "ui/plugin/TrackOutputController.h"
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
-#include "ui/widgets/FocusBorder.h"
+#include "ui/widgets/PanelFrame.h"
 #include "ui/widgets/ToolButton.h"
 #include "ui/widgets/ZoomStrip.h"
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -117,8 +117,8 @@ private:
     ControllerLaneViewport controllerLaneViewport;
 
     Divider controllerLaneDivider{Divider::Horizontal};
-    Divider trackListDivider{Divider::Vertical};
-    Divider eventListDivider{Divider::Vertical};
+    Divider trackListDivider{Divider::Vertical, Divider::Gutter};
+    Divider eventListDivider{Divider::Vertical, Divider::Gutter};
     ZoomStrip horizontalZoomStrip{ZoomStrip::Horizontal};
     ZoomStrip verticalZoomStrip{ZoomStrip::Vertical};
     int controllerLaneHeight = 120;
@@ -138,10 +138,9 @@ private:
         EventList
     };
     FocusPanel focusedPanel = FocusPanel::PianoRoll;
-    FocusBorder focusBorder;
-    juce::Rectangle<int> trackListPanelBounds;
-    juce::Rectangle<int> pianoRollPanelBounds;
-    juce::Rectangle<int> eventListPanelBounds;
+    PanelFrame trackListFrame;
+    PanelFrame pianoRollFrame;
+    PanelFrame eventListFrame;
 
     juce::ApplicationCommandManager commandManager;
 
@@ -169,6 +168,8 @@ private:
     static constexpr int transportBarHeight = 64;
     static constexpr int toolBarHeight = 32;
     static constexpr int dividerThickness = 5;
+    static constexpr int panelGap = 6;
+    static constexpr int panelPadding = 4;
     static constexpr int zoomStripLength = 100;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)

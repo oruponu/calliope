@@ -13,7 +13,13 @@ public:
         Vertical
     };
 
-    explicit Divider(Orientation o = Horizontal) : orientation(o)
+    enum Style
+    {
+        Bar,
+        Gutter
+    };
+
+    explicit Divider(Orientation o = Horizontal, Style s = Bar) : orientation(o), style(s)
     {
         setMouseCursor(o == Horizontal ? juce::MouseCursor::UpDownResizeCursor
                                        : juce::MouseCursor::LeftRightResizeCursor);
@@ -26,10 +32,14 @@ public:
 
 private:
     Orientation orientation;
+    Style style;
 };
 
 inline void Divider::paint(juce::Graphics& g)
 {
+    if (style == Gutter)
+        return;
+
     using namespace calliope::theme;
     g.setColour(border::strong);
     g.fillRect(getLocalBounds());
