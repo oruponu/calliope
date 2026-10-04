@@ -1,5 +1,6 @@
 #include "model/MidiSequence.h"
 #include <catch2/catch_test_macros.hpp>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -40,6 +41,7 @@ TEST_CASE("each track property setter notifies tracksChanged once", "[model][not
     RecordingListener listener;
     MidiSequence seq;
     seq.addTrack();
+    const TrackId other = seq.addTrack().getId();
     seq.addListener(&listener);
 
     seq.setTrackMuted(0, true);
@@ -47,8 +49,8 @@ TEST_CASE("each track property setter notifies tracksChanged once", "[model][not
     seq.setTrackName(0, "Lead");
     seq.setTrackChannel(0, 2);
     seq.setTrackOutputDestination(0, MidiTrack::OutputDestination::None);
-    seq.setTrackRouteTarget(0, std::nullopt);
-    seq.setTrackPluginAssignment(0, nullptr);
+    seq.setTrackRouteTarget(0, other);
+    seq.setTrackPluginAssignment(0, std::make_shared<const PluginAssignment>(PluginAssignment{"<PLUGIN/>", {}}));
 
     CHECK(listener.calls == std::vector<std::string>(7, "tracks"));
     CHECK(seq.getTrack(0).isMuted());
@@ -56,6 +58,25 @@ TEST_CASE("each track property setter notifies tracksChanged once", "[model][not
     CHECK(seq.getTrack(0).getName() == "Lead");
     CHECK(seq.getTrack(0).getChannel() == 2);
     CHECK(seq.getTrack(0).getOutputDestination() == MidiTrack::OutputDestination::None);
+}
+
+TEST_CASE("track property setters given the current value do not notify", "[model][notification]")
+{
+    RecordingListener listener;
+    MidiSequence seq;
+    seq.addTrack();
+    seq.addListener(&listener);
+    const MidiTrack track = seq.getTrack(0);
+
+    seq.setTrackMuted(0, track.isMuted());
+    seq.setTrackSolo(0, track.isSolo());
+    seq.setTrackName(0, track.getName());
+    seq.setTrackChannel(0, track.getChannel());
+    seq.setTrackOutputDestination(0, track.getOutputDestination());
+    seq.setTrackRouteTarget(0, track.getRouteTarget());
+    seq.setTrackPluginAssignment(0, track.getPluginAssignment());
+
+    CHECK(listener.calls.empty());
 }
 
 TEST_CASE("note edits notify notesChanged with the track index", "[model][notification]")

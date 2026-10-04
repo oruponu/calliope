@@ -109,42 +109,56 @@ TrackId MidiSequence::resolveRouteTarget(int index) const
 
 void MidiSequence::setTrackMuted(int index, bool muted)
 {
+    if (tracks[index].isMuted() == muted)
+        return;
     tracks[index].setMuted(muted);
     notifyTracksChanged();
 }
 
 void MidiSequence::setTrackSolo(int index, bool solo)
 {
+    if (tracks[index].isSolo() == solo)
+        return;
     tracks[index].setSolo(solo);
     notifyTracksChanged();
 }
 
 void MidiSequence::setTrackName(int index, const std::string& name)
 {
+    if (tracks[index].getName() == name)
+        return;
     tracks[index].setName(name);
     notifyTracksChanged();
 }
 
 void MidiSequence::setTrackChannel(int index, int channel)
 {
+    if (tracks[index].getChannel() == channel)
+        return;
     tracks[index].setChannel(channel);
     notifyTracksChanged();
 }
 
 void MidiSequence::setTrackOutputDestination(int index, MidiTrack::OutputDestination destination)
 {
+    if (tracks[index].getOutputDestination() == destination)
+        return;
     tracks[index].setOutputDestination(destination);
     notifyTracksChanged();
 }
 
 void MidiSequence::setTrackRouteTarget(int index, std::optional<TrackId> target)
 {
+    if (tracks[index].getRouteTarget() == target)
+        return;
     tracks[index].setRouteTarget(target);
     notifyTracksChanged();
 }
 
 void MidiSequence::setTrackPluginAssignment(int index, std::shared_ptr<const PluginAssignment> assignment)
 {
+    if (tracks[index].getPluginAssignment() == assignment)
+        return;
     tracks[index].setPluginAssignment(std::move(assignment));
     notifyTracksChanged();
 }
