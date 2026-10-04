@@ -87,7 +87,6 @@ target_compile_features(CalliopeTests PRIVATE cxx_std_20)
 
 target_compile_definitions(CalliopeTests PRIVATE
     JUCE_USE_CURL=0
-    CATCH_CONFIG_NO_CPP17_BYTE
 )
 
 target_link_libraries(CalliopeTests PRIVATE
