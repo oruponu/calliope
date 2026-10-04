@@ -13,9 +13,9 @@ public:
     ~Document() override;
 
     void newDocument();
-    void markChanged();
     bool importMidi(const juce::File& file);
     bool exportMidi(const juce::File& file) const;
+    void markChanged();
 
     MidiSequence& getSequence() { return sequence; }
     const MidiSequence& getSequence() const { return sequence; }
@@ -34,11 +34,11 @@ protected:
     void setLastDocumentOpened(const juce::File& file) override;
 
 private:
-    void notifyWillReplaceSequence();
     void notesChanged(int trackIndex) override;
     void tracksChanged() override;
     void tempoChanged() override;
     void timelineMetadataChanged() override;
+    void notifyWillReplaceSequence();
     void noteChangeOutsideHistory();
     void updateChangedFlag();
 

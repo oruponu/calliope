@@ -24,8 +24,8 @@ public:
     std::function<void()> onSelectionTaken;
 
     void setSequence(MidiSequence* seq) override;
-    void clearChordSelection();
     bool hasSelection() const;
+    void clearChordSelection();
     void deleteSelectedChords();
     void copySelectedChords();
     void cutSelectedChords();
@@ -33,15 +33,12 @@ public:
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
-    void mouseMove(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
+    void mouseMove(const juce::MouseEvent& e) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
 
 private:
-    void cancelDrag() override;
-    const std::vector<ChordChange>& displayedChanges() const;
-
     static constexpr int spanTop = 3;
     static constexpr int resizeEdgeWidth = 6;
 
@@ -103,6 +100,10 @@ private:
         int toggleIndex = -1;
     };
     using DragState = std::variant<Idle, Moving, EndResizing, StartResizing, JointDragging, RangeSelecting>;
+
+    void cancelDrag() override;
+    const std::vector<ChordChange>& displayedChanges() const;
+
     int spanHeight() const { return getHeight() - spanTop * 2; }
 
     juce::Rectangle<int> chordSpanRect(int index) const;

@@ -45,10 +45,6 @@ public:
     void setLoopRegion(bool enabled, int startTick, int endTick);
 
     std::function<void(int startTick, int endTick)> onLoopRegionChanged;
-    void paint(juce::Graphics& g) override;
-    void resized() override;
-    void moved() override;
-
     std::function<void(int tick)> onPlayheadMoved;
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
     std::function<void(const MidiNote&)> onNotePreview;
@@ -64,9 +60,9 @@ public:
     void setSelectedNotes(const std::set<NoteRef>& notes);
     int getActiveTrackIndex() const;
 
+    void deleteSelectedNotes();
     void copySelectedNotes();
     void cutSelectedNotes();
-    void deleteSelectedNotes();
     void pasteNotes(int atTick);
     void selectAllNotes();
     void nudgeSelectedNotesPitch(int deltaNote);
@@ -77,8 +73,8 @@ public:
     void deleteSelectedChords();
     bool duplicateSelectedNotesWithPitchOffset(int deltaNote);
     void moveSelectionToAdjacentNote(int direction);
-    void cutSelection();
     void copySelection();
+    void cutSelection();
     void paste(int atTick);
     bool hasSelection() const
     {
@@ -93,6 +89,9 @@ public:
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
     bool hasNotesInActiveTrack() const;
 
+    void paint(juce::Graphics& g) override;
+    void resized() override;
+    void moved() override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;

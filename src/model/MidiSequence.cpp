@@ -17,6 +17,17 @@ MidiSequence::ChangeBatch::~ChangeBatch()
         sequence.flushPendingNotifications();
 }
 
+void MidiSequence::addListener(Listener* listener)
+{
+    if (listener != nullptr && std::find(listeners.begin(), listeners.end(), listener) == listeners.end())
+        listeners.push_back(listener);
+}
+
+void MidiSequence::removeListener(Listener* listener)
+{
+    listeners.erase(std::remove(listeners.begin(), listeners.end(), listener), listeners.end());
+}
+
 void MidiSequence::replaceContents(SequenceContents contents)
 {
     // Issue ids from this sequence's counter so that ids are never reused across documents.
@@ -162,23 +173,6 @@ void MidiSequence::setNote(int trackIndex, int noteIndex, const MidiNote& note)
     notifyNotesChanged(trackIndex);
 }
 
-KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
-{
-    auto reversed = std::views::reverse(keySignatureChanges);
-    auto it = std::ranges::find_if(reversed, [tick](const KeySignatureChange& ks) { return ks.tick <= tick; });
-    return it != reversed.end() ? *it : KeySignatureChange{0, 0, false};
-}
-
-const std::vector<KeySignatureChange>& MidiSequence::getKeySignatureChanges() const
-{
-    return keySignatureChanges;
-}
-
-const std::vector<ChordChange>& MidiSequence::getChordChanges() const
-{
-    return chordChanges;
-}
-
 const TimelineMap& MidiSequence::getTimeline() const
 {
     return timeline;
@@ -196,27 +190,33 @@ void MidiSequence::setTimeSignatureChanges(std::vector<TimeSignatureChange> chan
     notifyTimelineMetadataChanged();
 }
 
+KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
+{
+    auto reversed = std::views::reverse(keySignatureChanges);
+    auto it = std::ranges::find_if(reversed, [tick](const KeySignatureChange& ks) { return ks.tick <= tick; });
+    return it != reversed.end() ? *it : KeySignatureChange{0, 0, false};
+}
+
+const std::vector<KeySignatureChange>& MidiSequence::getKeySignatureChanges() const
+{
+    return keySignatureChanges;
+}
+
 void MidiSequence::setKeySignatureChanges(std::vector<KeySignatureChange> changes)
 {
     keySignatureChanges = std::move(changes);
     notifyTimelineMetadataChanged();
 }
 
+const std::vector<ChordChange>& MidiSequence::getChordChanges() const
+{
+    return chordChanges;
+}
+
 void MidiSequence::setChordChanges(std::vector<ChordChange> changes)
 {
     chordChanges = std::move(changes);
     notifyTimelineMetadataChanged();
-}
-
-void MidiSequence::addListener(Listener* listener)
-{
-    if (listener != nullptr && std::find(listeners.begin(), listeners.end(), listener) == listeners.end())
-        listeners.push_back(listener);
-}
-
-void MidiSequence::removeListener(Listener* listener)
-{
-    listeners.erase(std::remove(listeners.begin(), listeners.end(), listener), listeners.end());
 }
 
 template <typename Callback> void MidiSequence::forEachListener(Callback callback)
@@ -244,13 +244,6 @@ void MidiSequence::notifyTracksChanged()
         return;
     }
     forEachListener([](Listener& l) { l.tracksChanged(); });
-}
-
-void MidiSequence::notifyTrackStructureChanged()
-{
-    if (batchDepth > 0)
-        pending.trackStructure = true;
-    notifyTracksChanged();
 }
 
 void MidiSequence::notifyTempoChanged()
@@ -281,6 +274,13 @@ void MidiSequence::notifySequenceReset()
         return;
     }
     forEachListener([](Listener& l) { l.sequenceReset(); });
+}
+
+void MidiSequence::notifyTrackStructureChanged()
+{
+    if (batchDepth > 0)
+        pending.trackStructure = true;
+    notifyTracksChanged();
 }
 
 void MidiSequence::flushPendingNotifications()

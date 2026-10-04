@@ -119,37 +119,6 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
     repaint();
 }
 
-juce::Rectangle<int> TimeSignatureStrip::timeSignatureLabelRect(int index) const
-{
-    const auto& changes = displayedChanges();
-    const auto& ts = changes[static_cast<size_t>(index)];
-    int x = geometry.tickToX(ts.tick);
-    int textX = (index == 0 && ts.tick == 0) ? viewLeftX + labelWidth() + 4 : x + 4;
-    return {textX, 0, 40, getHeight()};
-}
-
-int TimeSignatureStrip::hitTestTimeSignaturePoint(int x, int y) const
-{
-    if (!sequence)
-        return -1;
-
-    if (y < 0 || y >= getHeight())
-        return -1;
-
-    if (x < viewLeftX + labelWidth())
-        return -1;
-
-    const auto& changes = displayedChanges();
-    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-    {
-        if (geometry.tickToX(changes[static_cast<size_t>(i)].tick) + 4 < viewLeftX - 40)
-            continue;
-        if (timeSignatureLabelRect(i).contains(x, y))
-            return i;
-    }
-    return -1;
-}
-
 void TimeSignatureStrip::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -425,6 +394,53 @@ void TimeSignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
     openTimeSignatureEditor(barStart, effective.numerator, effective.denominator, true, anchor);
 }
 
+void TimeSignatureStrip::cancelDrag()
+{
+    if (!std::holds_alternative<PointDragging>(drag))
+        return;
+    drag = Idle{};
+    if (onTimeSignaturePreview)
+        onTimeSignaturePreview(nullptr);
+}
+
+const std::vector<TimeSignatureChange>& TimeSignatureStrip::displayedChanges() const
+{
+    if (const auto* dragging = std::get_if<PointDragging>(&drag))
+        return dragging->preview;
+    return sequence->getTimeline().getTimeSignatureChanges();
+}
+
+juce::Rectangle<int> TimeSignatureStrip::timeSignatureLabelRect(int index) const
+{
+    const auto& changes = displayedChanges();
+    const auto& ts = changes[static_cast<size_t>(index)];
+    int x = geometry.tickToX(ts.tick);
+    int textX = (index == 0 && ts.tick == 0) ? viewLeftX + labelWidth() + 4 : x + 4;
+    return {textX, 0, 40, getHeight()};
+}
+
+int TimeSignatureStrip::hitTestTimeSignaturePoint(int x, int y) const
+{
+    if (!sequence)
+        return -1;
+
+    if (y < 0 || y >= getHeight())
+        return -1;
+
+    if (x < viewLeftX + labelWidth())
+        return -1;
+
+    const auto& changes = displayedChanges();
+    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+    {
+        if (geometry.tickToX(changes[static_cast<size_t>(i)].tick) + 4 < viewLeftX - 40)
+            continue;
+        if (timeSignatureLabelRect(i).contains(x, y))
+            return i;
+    }
+    return -1;
+}
+
 void TimeSignatureStrip::openTimeSignatureEditor(int tick, int num, int den, bool isNew,
                                                  juce::Rectangle<int> anchorInLocal)
 {
@@ -479,20 +495,4 @@ void TimeSignatureStrip::cancelTimeSignatureEdit()
 {
     editSession.finish();
     repaint();
-}
-
-void TimeSignatureStrip::cancelDrag()
-{
-    if (!std::holds_alternative<PointDragging>(drag))
-        return;
-    drag = Idle{};
-    if (onTimeSignaturePreview)
-        onTimeSignaturePreview(nullptr);
-}
-
-const std::vector<TimeSignatureChange>& TimeSignatureStrip::displayedChanges() const
-{
-    if (const auto* dragging = std::get_if<PointDragging>(&drag))
-        return dragging->preview;
-    return sequence->getTimeline().getTimeSignatureChanges();
 }

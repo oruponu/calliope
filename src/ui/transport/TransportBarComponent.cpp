@@ -160,6 +160,181 @@ TransportBarComponent::~TransportBarComponent()
     document.getSequence().removeListener(this);
 }
 
+void TransportBarComponent::paint(juce::Graphics& g)
+{
+    using namespace calliope::theme;
+    g.setColour(surface::bg2);
+    g.fillRect(getLocalBounds());
+    g.setColour(border::strong);
+    g.drawHorizontalLine(0, 0.0f, static_cast<float>(getWidth()));
+
+    auto drawInfoBox = [&](juce::Rectangle<int> b)
+    {
+        if (b.isEmpty())
+            return;
+        g.setColour(surface::surface);
+        g.fillRoundedRectangle(b.toFloat(), radius::r2);
+        g.setColour(border::normal);
+        g.drawRoundedRectangle(b.toFloat().reduced(0.5f), radius::r2, 1.0f);
+    };
+    drawInfoBox(positionBoxBounds);
+    drawInfoBox(infoBoxBounds);
+
+    if (!infoBoxBounds.isEmpty())
+    {
+        g.setColour(border::soft);
+        auto top = static_cast<float>(infoBoxBounds.getY()) + 1.0f;
+        auto bottom = static_cast<float>(infoBoxBounds.getBottom()) - 1.0f;
+        g.drawVerticalLine(infoDividerX1, top, bottom);
+        g.drawVerticalLine(infoDividerX2, top, bottom);
+    }
+}
+
+void TransportBarComponent::resized()
+{
+    auto toolbar = getLocalBounds();
+
+    const int posW = 176;
+    const int btnW = 172;
+    const int tsW = 68;
+    const int keyW = 60;
+    const int tempoW = 96;
+    const int infoW = tsW + keyW + tempoW;
+    const int g1 = 20, g2 = 20;
+    const int contentWidth = posW + g1 + btnW + g2 + infoW;
+
+    auto content = toolbar.withSizeKeepingCentre(contentWidth, getHeight());
+
+    const int boxH = 44;
+    const int boxPadX = 8;
+    const int boxPadTop = 5;
+    const int headerH = 13;
+
+    auto layoutSegment = [&](juce::Rectangle<int> segment, juce::Label& header, juce::Label& value)
+    {
+        auto inner = segment.reduced(boxPadX, 0);
+        inner.removeFromTop(boxPadTop);
+        header.setBounds(inner.removeFromTop(headerH));
+        value.setBounds(inner.removeFromTop(boxH - boxPadTop - headerH));
+    };
+
+    auto posBox = content.removeFromLeft(posW).withSizeKeepingCentre(posW, boxH);
+    positionBoxBounds = posBox;
+    {
+        auto inner = posBox.reduced(boxPadX, 0);
+        inner.removeFromTop(boxPadTop);
+        positionHeaderLabel.setBounds(inner.removeFromTop(headerH));
+        auto valueRow = inner.removeFromTop(boxH - boxPadTop - headerH);
+
+        using namespace calliope::theme;
+        auto valueFont = font::mono(font::sizeDisplay).boldened();
+        auto widthOf = [&](const char* s) { return juce::GlyphArrangement::getStringWidthInt(valueFont, s); };
+
+        const int pad = 4;
+        int barW = widthOf("000") + pad;
+        int beatW = widthOf("00") + pad;
+        int tickW = widthOf("0000") + pad;
+        int dotW = widthOf(".");
+
+        int groupW = barW + dotW + beatW + dotW + tickW;
+        auto group = valueRow.withSizeKeepingCentre(groupW, valueRow.getHeight());
+        positionBarLabel.setBounds(group.removeFromLeft(barW));
+        positionDot1.setBounds(group.removeFromLeft(dotW));
+        positionBeatLabel.setBounds(group.removeFromLeft(beatW));
+        positionDot2.setBounds(group.removeFromLeft(dotW));
+        positionTickLabel.setBounds(group.removeFromLeft(tickW));
+    }
+    content.removeFromLeft(g1);
+
+    auto btnSection = content.removeFromLeft(btnW);
+    auto btnArea = btnSection.withSizeKeepingCentre(btnW, 40);
+    returnToStartButton.setBounds(btnArea.removeFromLeft(40));
+    btnArea.removeFromLeft(4);
+    stopButton.setBounds(btnArea.removeFromLeft(40));
+    btnArea.removeFromLeft(4);
+    playButton.setBounds(btnArea.removeFromLeft(40));
+    btnArea.removeFromLeft(4);
+    loopButton.setBounds(btnArea.removeFromLeft(40));
+    content.removeFromLeft(g2);
+
+    auto infoBox = content.removeFromLeft(infoW).withSizeKeepingCentre(infoW, boxH);
+    infoBoxBounds = infoBox;
+    auto timeSeg = infoBox.removeFromLeft(tsW);
+    auto keySeg = infoBox.removeFromLeft(keyW);
+    auto tempoSeg = infoBox;
+    infoDividerX1 = timeSeg.getRight();
+    infoDividerX2 = keySeg.getRight();
+    {
+        auto inner = timeSeg.reduced(boxPadX, 0);
+        inner.removeFromTop(boxPadTop);
+        timeSigHeaderLabel.setBounds(inner.removeFromTop(headerH));
+        auto valueRow = inner.removeFromTop(boxH - boxPadTop - headerH);
+
+        using namespace calliope::theme;
+        auto valueFont = font::mono(font::sizeDisplay).boldened();
+        auto widthOf = [&](const char* s) { return juce::GlyphArrangement::getStringWidthInt(valueFont, s); };
+
+        const int pad = 4;
+        int numW = widthOf("00") + pad;
+        int denW = widthOf("00") + pad;
+        int slashW = widthOf("/");
+
+        int groupW = numW + slashW + denW;
+        auto group = valueRow.withSizeKeepingCentre(groupW, valueRow.getHeight());
+        timeSigNumLabel.setBounds(group.removeFromLeft(numW));
+        timeSigSlashLabel.setBounds(group.removeFromLeft(slashW));
+        timeSigDenLabel.setBounds(group.removeFromLeft(denW));
+    }
+    layoutSegment(keySeg, keyHeaderLabel, keyValueLabel);
+    layoutSegment(tempoSeg, tempoHeaderLabel, tempoValueLabel);
+}
+
+void TransportBarComponent::updateDisplay()
+{
+    int tick = static_cast<int>(playbackEngine.getCurrentTick());
+
+    auto bbt = document.getSequence().getTimeline().tickToBarBeatTick(tick);
+    if (positionBarLabel.getCurrentTextEditor() == nullptr)
+        positionBarLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3), juce::dontSendNotification);
+    if (positionBeatLabel.getCurrentTextEditor() == nullptr)
+        positionBeatLabel.setText(juce::String(bbt.beat).paddedLeft('0', 2), juce::dontSendNotification);
+    if (positionTickLabel.getCurrentTextEditor() == nullptr)
+        positionTickLabel.setText(juce::String(bbt.tick).paddedLeft('0', 4), juce::dontSendNotification);
+
+    auto ts = document.getSequence().getTimeline().getTimeSignatureAt(tick);
+    if (timeSigNumLabel.getCurrentTextEditor() == nullptr)
+        timeSigNumLabel.setText(juce::String(ts.numerator), juce::dontSendNotification);
+    if (timeSigDenLabel.getCurrentTextEditor() == nullptr)
+        timeSigDenLabel.setText(juce::String(ts.denominator), juce::dontSendNotification);
+
+    if (keyValueLabel.getCurrentTextEditor() == nullptr)
+    {
+        if (document.getSequence().getKeySignatureChanges().empty())
+            keyValueLabel.setText("-", juce::dontSendNotification);
+        else
+        {
+            auto ks = document.getSequence().getKeySignatureAt(tick);
+            keyValueLabel.setText(KeySignatureName::toString(ks.sharpsOrFlats, ks.isMinor), juce::dontSendNotification);
+        }
+    }
+
+    if (tempoValueLabel.getCurrentTextEditor() == nullptr)
+    {
+        double tempo = document.getSequence().getTimeline().getTempoAt(tick);
+        tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
+    }
+}
+
+void TransportBarComponent::setPlaying(bool playing)
+{
+    playButton.setActive(playing);
+}
+
+void TransportBarComponent::setLoopActive(bool active)
+{
+    loopButton.setActive(active);
+}
+
 void TransportBarComponent::togglePlay()
 {
     if (playbackEngine.isPlaying())
@@ -173,17 +348,6 @@ void TransportBarComponent::togglePlay()
         if (onPlaybackStateChanged)
             onPlaybackStateChanged(true);
     }
-}
-
-void TransportBarComponent::stopAndNotify()
-{
-    playbackEngine.stop();
-    playButton.setActive(false);
-    if (onPlaybackStateChanged)
-        onPlaybackStateChanged(false);
-    if (onPlayheadMoved)
-        onPlayheadMoved(playbackEngine.getCurrentTick());
-    updateDisplay();
 }
 
 void TransportBarComponent::toggleLoop()
@@ -215,14 +379,25 @@ void TransportBarComponent::jumpToTick(int tick)
         onScrollToPlayhead(tick);
 }
 
-void TransportBarComponent::setPlaying(bool playing)
+void TransportBarComponent::tempoChanged()
 {
-    playButton.setActive(playing);
+    updateDisplay();
 }
 
-void TransportBarComponent::setLoopActive(bool active)
+void TransportBarComponent::timelineMetadataChanged()
 {
-    loopButton.setActive(active);
+    updateDisplay();
+}
+
+void TransportBarComponent::stopAndNotify()
+{
+    playbackEngine.stop();
+    playButton.setActive(false);
+    if (onPlaybackStateChanged)
+        onPlaybackStateChanged(false);
+    if (onPlayheadMoved)
+        onPlayheadMoved(playbackEngine.getCurrentTick());
+    updateDisplay();
 }
 
 void TransportBarComponent::commitPositionEdit()
@@ -399,179 +574,4 @@ void TransportBarComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool is
     KeySignatureEdits::add(after, ks.tick, sharpsOrFlats, isMinor);
     document.getHistory().perform(
         new ReplaceListAction<KeySignatureChange>(&document.getSequence(), std::move(before), std::move(after)));
-}
-
-void TransportBarComponent::updateDisplay()
-{
-    int tick = static_cast<int>(playbackEngine.getCurrentTick());
-
-    auto bbt = document.getSequence().getTimeline().tickToBarBeatTick(tick);
-    if (positionBarLabel.getCurrentTextEditor() == nullptr)
-        positionBarLabel.setText(juce::String(bbt.bar).paddedLeft('0', 3), juce::dontSendNotification);
-    if (positionBeatLabel.getCurrentTextEditor() == nullptr)
-        positionBeatLabel.setText(juce::String(bbt.beat).paddedLeft('0', 2), juce::dontSendNotification);
-    if (positionTickLabel.getCurrentTextEditor() == nullptr)
-        positionTickLabel.setText(juce::String(bbt.tick).paddedLeft('0', 4), juce::dontSendNotification);
-
-    auto ts = document.getSequence().getTimeline().getTimeSignatureAt(tick);
-    if (timeSigNumLabel.getCurrentTextEditor() == nullptr)
-        timeSigNumLabel.setText(juce::String(ts.numerator), juce::dontSendNotification);
-    if (timeSigDenLabel.getCurrentTextEditor() == nullptr)
-        timeSigDenLabel.setText(juce::String(ts.denominator), juce::dontSendNotification);
-
-    if (keyValueLabel.getCurrentTextEditor() == nullptr)
-    {
-        if (document.getSequence().getKeySignatureChanges().empty())
-            keyValueLabel.setText("-", juce::dontSendNotification);
-        else
-        {
-            auto ks = document.getSequence().getKeySignatureAt(tick);
-            keyValueLabel.setText(KeySignatureName::toString(ks.sharpsOrFlats, ks.isMinor), juce::dontSendNotification);
-        }
-    }
-
-    if (tempoValueLabel.getCurrentTextEditor() == nullptr)
-    {
-        double tempo = document.getSequence().getTimeline().getTempoAt(tick);
-        tempoValueLabel.setText(juce::String(tempo, 2), juce::dontSendNotification);
-    }
-}
-
-void TransportBarComponent::tempoChanged()
-{
-    updateDisplay();
-}
-
-void TransportBarComponent::timelineMetadataChanged()
-{
-    updateDisplay();
-}
-
-void TransportBarComponent::paint(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    g.setColour(surface::bg2);
-    g.fillRect(getLocalBounds());
-    g.setColour(border::strong);
-    g.drawHorizontalLine(0, 0.0f, static_cast<float>(getWidth()));
-
-    auto drawInfoBox = [&](juce::Rectangle<int> b)
-    {
-        if (b.isEmpty())
-            return;
-        g.setColour(surface::surface);
-        g.fillRoundedRectangle(b.toFloat(), radius::r2);
-        g.setColour(border::normal);
-        g.drawRoundedRectangle(b.toFloat().reduced(0.5f), radius::r2, 1.0f);
-    };
-    drawInfoBox(positionBoxBounds);
-    drawInfoBox(infoBoxBounds);
-
-    if (!infoBoxBounds.isEmpty())
-    {
-        g.setColour(border::soft);
-        auto top = static_cast<float>(infoBoxBounds.getY()) + 1.0f;
-        auto bottom = static_cast<float>(infoBoxBounds.getBottom()) - 1.0f;
-        g.drawVerticalLine(infoDividerX1, top, bottom);
-        g.drawVerticalLine(infoDividerX2, top, bottom);
-    }
-}
-
-void TransportBarComponent::resized()
-{
-    auto toolbar = getLocalBounds();
-
-    const int posW = 176;
-    const int btnW = 172;
-    const int tsW = 68;
-    const int keyW = 60;
-    const int tempoW = 96;
-    const int infoW = tsW + keyW + tempoW;
-    const int g1 = 20, g2 = 20;
-    const int contentWidth = posW + g1 + btnW + g2 + infoW;
-
-    auto content = toolbar.withSizeKeepingCentre(contentWidth, getHeight());
-
-    const int boxH = 44;
-    const int boxPadX = 8;
-    const int boxPadTop = 5;
-    const int headerH = 13;
-
-    auto layoutSegment = [&](juce::Rectangle<int> segment, juce::Label& header, juce::Label& value)
-    {
-        auto inner = segment.reduced(boxPadX, 0);
-        inner.removeFromTop(boxPadTop);
-        header.setBounds(inner.removeFromTop(headerH));
-        value.setBounds(inner.removeFromTop(boxH - boxPadTop - headerH));
-    };
-
-    auto posBox = content.removeFromLeft(posW).withSizeKeepingCentre(posW, boxH);
-    positionBoxBounds = posBox;
-    {
-        auto inner = posBox.reduced(boxPadX, 0);
-        inner.removeFromTop(boxPadTop);
-        positionHeaderLabel.setBounds(inner.removeFromTop(headerH));
-        auto valueRow = inner.removeFromTop(boxH - boxPadTop - headerH);
-
-        using namespace calliope::theme;
-        auto valueFont = font::mono(font::sizeDisplay).boldened();
-        auto widthOf = [&](const char* s) { return juce::GlyphArrangement::getStringWidthInt(valueFont, s); };
-
-        const int pad = 4;
-        int barW = widthOf("000") + pad;
-        int beatW = widthOf("00") + pad;
-        int tickW = widthOf("0000") + pad;
-        int dotW = widthOf(".");
-
-        int groupW = barW + dotW + beatW + dotW + tickW;
-        auto group = valueRow.withSizeKeepingCentre(groupW, valueRow.getHeight());
-        positionBarLabel.setBounds(group.removeFromLeft(barW));
-        positionDot1.setBounds(group.removeFromLeft(dotW));
-        positionBeatLabel.setBounds(group.removeFromLeft(beatW));
-        positionDot2.setBounds(group.removeFromLeft(dotW));
-        positionTickLabel.setBounds(group.removeFromLeft(tickW));
-    }
-    content.removeFromLeft(g1);
-
-    auto btnSection = content.removeFromLeft(btnW);
-    auto btnArea = btnSection.withSizeKeepingCentre(btnW, 40);
-    returnToStartButton.setBounds(btnArea.removeFromLeft(40));
-    btnArea.removeFromLeft(4);
-    stopButton.setBounds(btnArea.removeFromLeft(40));
-    btnArea.removeFromLeft(4);
-    playButton.setBounds(btnArea.removeFromLeft(40));
-    btnArea.removeFromLeft(4);
-    loopButton.setBounds(btnArea.removeFromLeft(40));
-    content.removeFromLeft(g2);
-
-    auto infoBox = content.removeFromLeft(infoW).withSizeKeepingCentre(infoW, boxH);
-    infoBoxBounds = infoBox;
-    auto timeSeg = infoBox.removeFromLeft(tsW);
-    auto keySeg = infoBox.removeFromLeft(keyW);
-    auto tempoSeg = infoBox;
-    infoDividerX1 = timeSeg.getRight();
-    infoDividerX2 = keySeg.getRight();
-    {
-        auto inner = timeSeg.reduced(boxPadX, 0);
-        inner.removeFromTop(boxPadTop);
-        timeSigHeaderLabel.setBounds(inner.removeFromTop(headerH));
-        auto valueRow = inner.removeFromTop(boxH - boxPadTop - headerH);
-
-        using namespace calliope::theme;
-        auto valueFont = font::mono(font::sizeDisplay).boldened();
-        auto widthOf = [&](const char* s) { return juce::GlyphArrangement::getStringWidthInt(valueFont, s); };
-
-        const int pad = 4;
-        int numW = widthOf("00") + pad;
-        int denW = widthOf("00") + pad;
-        int slashW = widthOf("/");
-
-        int groupW = numW + slashW + denW;
-        auto group = valueRow.withSizeKeepingCentre(groupW, valueRow.getHeight());
-        timeSigNumLabel.setBounds(group.removeFromLeft(numW));
-        timeSigSlashLabel.setBounds(group.removeFromLeft(slashW));
-        timeSigDenLabel.setBounds(group.removeFromLeft(denW));
-    }
-    layoutSegment(keySeg, keyHeaderLabel, keyValueLabel);
-    layoutSegment(tempoSeg, tempoHeaderLabel, tempoValueLabel);
 }

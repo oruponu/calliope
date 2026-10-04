@@ -28,6 +28,30 @@ private:
 };
 } // namespace
 
+PlaybackEngine::ScopedPause::ScopedPause(PlaybackEngine& engineRef) : engine(engineRef)
+{
+    if (engine.pauseDepth++ > 0)
+        return;
+
+    engine.resumeTimerAfterPause = engine.isTimerRunning();
+    if (engine.resumeTimerAfterPause)
+        engine.stopTimer();
+}
+
+PlaybackEngine::ScopedPause::~ScopedPause()
+{
+    if (--engine.pauseDepth > 0)
+        return;
+
+    if (!std::exchange(engine.resumeTimerAfterPause, false) || !engine.playing)
+        return;
+
+    engine.rebuildSnapshot();
+    engine.lastSeenSnapshot.reset();
+    engine.lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
+    engine.startTimer(1);
+}
+
 PlaybackEngine::PlaybackEngine() = default;
 
 PlaybackEngine::~PlaybackEngine()
@@ -73,35 +97,6 @@ void PlaybackEngine::play()
     lastSeenSnapshot.reset();
     lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
     startTimer(1);
-}
-
-PlaybackEngine::ScopedPause::ScopedPause(PlaybackEngine& engineRef) : engine(engineRef)
-{
-    if (engine.pauseDepth++ > 0)
-        return;
-
-    engine.resumeTimerAfterPause = engine.isTimerRunning();
-    if (engine.resumeTimerAfterPause)
-        engine.stopTimer();
-}
-
-PlaybackEngine::ScopedPause::~ScopedPause()
-{
-    if (--engine.pauseDepth > 0)
-        return;
-
-    if (!std::exchange(engine.resumeTimerAfterPause, false) || !engine.playing)
-        return;
-
-    engine.rebuildSnapshot();
-    engine.lastSeenSnapshot.reset();
-    engine.lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
-    engine.startTimer(1);
-}
-
-bool PlaybackEngine::isPaused() const
-{
-    return pauseDepth > 0;
 }
 
 void PlaybackEngine::stop()
@@ -196,6 +191,11 @@ void PlaybackEngine::releaseActiveNotesForTrack(TrackId trackId)
 {
     FanOut sink(listeners);
     processor.releaseActiveNotesForTrack(trackId, sink);
+}
+
+bool PlaybackEngine::isPaused() const
+{
+    return pauseDepth > 0;
 }
 
 void PlaybackEngine::hiResTimerCallback()

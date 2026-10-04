@@ -6,9 +6,6 @@
 class ControllerLaneViewport : public juce::Viewport
 {
 public:
-    std::function<void()> onVisibleAreaChanged;
-    std::function<void()> onReachedEnd;
-
     ControllerLaneViewport()
     {
         getHorizontalScrollBar().addMouseListener(&scrollBarListener, false);
@@ -26,6 +23,9 @@ public:
         scrollBarRightInset = inset;
         applyScrollBarInset();
     }
+
+    std::function<void()> onVisibleAreaChanged;
+    std::function<void()> onReachedEnd;
 
     void visibleAreaChanged(const juce::Rectangle<int>&) override
     {

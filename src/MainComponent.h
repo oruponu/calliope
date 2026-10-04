@@ -64,11 +64,16 @@ private:
     void tracksChanged() override;
 
     void setActiveTool(PianoRollComponent::EditMode mode);
+    void updateFocusBorder();
     void onVBlank();
     void scrollToPlayhead(int tick);
     void scrollNoteIntoView(int startTick, int noteNumber);
     void scrollViewVertically(int deltaY);
     void scrollViewHorizontally(int deltaX);
+    void setHorizontalZoom(int newBeatWidth, int anchorXInViewport);
+    void setVerticalZoom(int newNoteHeight, int anchorYInViewport);
+    void zoomHorizontal(float factor, int anchorXInViewport);
+    void zoomVertical(float factor, int anchorYInViewport);
     void newFile();
     void saveFile();
     void saveFileAs();
@@ -137,12 +142,6 @@ private:
     juce::Rectangle<int> trackListPanelBounds;
     juce::Rectangle<int> pianoRollPanelBounds;
     juce::Rectangle<int> eventListPanelBounds;
-    void updateFocusBorder();
-
-    void setHorizontalZoom(int newBeatWidth, int anchorXInViewport);
-    void setVerticalZoom(int newNoteHeight, int anchorYInViewport);
-    void zoomHorizontal(float factor, int anchorXInViewport);
-    void zoomVertical(float factor, int anchorYInViewport);
 
     juce::ApplicationCommandManager commandManager;
 

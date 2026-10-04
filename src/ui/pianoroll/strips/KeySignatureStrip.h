@@ -62,8 +62,8 @@ private:
 
     void cancelDrag() override;
     const std::vector<KeySignatureChange>& displayedChanges() const;
-    int hitTestKeySignaturePoint(int x, int y) const;
     juce::Rectangle<int> keySignatureLabelRect(int index) const;
+    int hitTestKeySignaturePoint(int x, int y) const;
     void deleteSelectedKeySignaturesImpl(const juce::String& transactionName);
     void openKeySignatureEditor(int tick, int sharpsOrFlats, bool isMinor, bool isNew,
                                 juce::Rectangle<int> anchorInLocal);

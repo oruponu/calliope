@@ -126,37 +126,6 @@ void KeySignatureStrip::pasteKeySignatures(int atTick)
     repaint();
 }
 
-juce::Rectangle<int> KeySignatureStrip::keySignatureLabelRect(int index) const
-{
-    const auto& changes = displayedChanges();
-    const auto& ks = changes[static_cast<size_t>(index)];
-    int x = geometry.tickToX(ks.tick);
-    int textX = (index == 0 && ks.tick == 0) ? viewLeftX + labelWidth() + 4 : x + 4;
-    return {textX, 0, 40, getHeight()};
-}
-
-int KeySignatureStrip::hitTestKeySignaturePoint(int x, int y) const
-{
-    if (!sequence)
-        return -1;
-
-    if (y < 0 || y >= getHeight())
-        return -1;
-
-    if (x < viewLeftX + labelWidth())
-        return -1;
-
-    const auto& changes = displayedChanges();
-    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-    {
-        if (geometry.tickToX(changes[static_cast<size_t>(i)].tick) + 4 < viewLeftX - 40)
-            continue;
-        if (keySignatureLabelRect(i).contains(x, y))
-            return i;
-    }
-    return -1;
-}
-
 void KeySignatureStrip::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -417,6 +386,50 @@ void KeySignatureStrip::mouseDoubleClick(const juce::MouseEvent& e)
     openKeySignatureEditor(barStart, effective.sharpsOrFlats, effective.isMinor, true, anchor);
 }
 
+void KeySignatureStrip::cancelDrag()
+{
+    if (std::holds_alternative<PointDragging>(drag))
+        drag = Idle{};
+}
+
+const std::vector<KeySignatureChange>& KeySignatureStrip::displayedChanges() const
+{
+    if (const auto* dragging = std::get_if<PointDragging>(&drag))
+        return dragging->preview;
+    return sequence->getKeySignatureChanges();
+}
+
+juce::Rectangle<int> KeySignatureStrip::keySignatureLabelRect(int index) const
+{
+    const auto& changes = displayedChanges();
+    const auto& ks = changes[static_cast<size_t>(index)];
+    int x = geometry.tickToX(ks.tick);
+    int textX = (index == 0 && ks.tick == 0) ? viewLeftX + labelWidth() + 4 : x + 4;
+    return {textX, 0, 40, getHeight()};
+}
+
+int KeySignatureStrip::hitTestKeySignaturePoint(int x, int y) const
+{
+    if (!sequence)
+        return -1;
+
+    if (y < 0 || y >= getHeight())
+        return -1;
+
+    if (x < viewLeftX + labelWidth())
+        return -1;
+
+    const auto& changes = displayedChanges();
+    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+    {
+        if (geometry.tickToX(changes[static_cast<size_t>(i)].tick) + 4 < viewLeftX - 40)
+            continue;
+        if (keySignatureLabelRect(i).contains(x, y))
+            return i;
+    }
+    return -1;
+}
+
 void KeySignatureStrip::openKeySignatureEditor(int tick, int sharpsOrFlats, bool isMinor, bool isNew,
                                                juce::Rectangle<int> anchorInLocal)
 {
@@ -471,17 +484,4 @@ void KeySignatureStrip::cancelKeySignatureEdit()
 {
     editSession.finish();
     repaint();
-}
-
-void KeySignatureStrip::cancelDrag()
-{
-    if (std::holds_alternative<PointDragging>(drag))
-        drag = Idle{};
-}
-
-const std::vector<KeySignatureChange>& KeySignatureStrip::displayedChanges() const
-{
-    if (const auto* dragging = std::get_if<PointDragging>(&drag))
-        return dragging->preview;
-    return sequence->getKeySignatureChanges();
 }

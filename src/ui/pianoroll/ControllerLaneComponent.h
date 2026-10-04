@@ -63,6 +63,7 @@ private:
     void drawLeftPanel(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawVelocity(juce::Graphics& g);
+    int displayedVelocity(int trackIndex, int noteIndex) const;
     void drawControlChange(juce::Graphics& g);
     void drawPitchBend(juce::Graphics& g);
     void drawProgramChange(juce::Graphics& g);
@@ -104,7 +105,6 @@ private:
         std::map<int, int> preview;
     };
     std::variant<Idle, VelocityDragging> drag;
-    int displayedVelocity(int trackIndex, int noteIndex) const;
 
     static constexpr int topPadding = 6;
     static constexpr int bottomPadding = 6;

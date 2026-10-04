@@ -9,161 +9,490 @@
 #include <variant>
 #include <vector>
 
-void PianoRollComponent::startNotePreview(const MidiNote& note)
+PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistory(undoHistoryRef)
 {
-    stopNotePreview();
-    previewNote = note;
-    isPreviewing = true;
-    if (onNotePreview)
-        onNotePreview(previewNote);
+    addAndMakeVisible(loopStrip);
+    loopStrip.onLoopRegionChanged = [this](int startTick, int endTick)
+    {
+        setLoopRegion(loopEnabled, startTick, endTick);
+        if (onLoopRegionChanged)
+            onLoopRegionChanged(startTick, endTick);
+    };
+    addAndMakeVisible(ruler);
+    ruler.onSeek = [this](int tick)
+    {
+        setPlayheadTick(tick);
+        if (onPlayheadMoved)
+            onPlayheadMoved(tick);
+    };
+    ruler.onWheelZoom = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
+    {
+        if (onRulerWheel)
+            onRulerWheel(e, w);
+    };
+    ruler.onDragZoom = [this](const juce::MouseEvent& e, int deltaY)
+    {
+        if (onRulerDrag)
+            onRulerDrag(e, deltaY);
+    };
+    addAndMakeVisible(tempoStrip);
+    tempoStrip.onSelectionTaken = [this]
+    {
+        clearNoteSelection();
+        timeSigStrip.clearTimeSignatureSelection();
+        keyStrip.clearKeySignatureSelection();
+        chordStrip.clearChordSelection();
+        repaint();
+    };
+    addAndMakeVisible(timeSigStrip);
+    timeSigStrip.onSelectionTaken = [this]
+    {
+        clearNoteSelection();
+        tempoStrip.clearTempoSelection();
+        keyStrip.clearKeySignatureSelection();
+        chordStrip.clearChordSelection();
+        repaint();
+    };
+    timeSigStrip.onTimeSignaturePreview = [this](const std::vector<TimeSignatureChange>* preview)
+    {
+        displayedTimeline.setTimeSignaturePreview(preview);
+        repaint();
+    };
+    addAndMakeVisible(keyStrip);
+    keyStrip.onSelectionTaken = [this]
+    {
+        clearNoteSelection();
+        tempoStrip.clearTempoSelection();
+        timeSigStrip.clearTimeSignatureSelection();
+        chordStrip.clearChordSelection();
+        repaint();
+    };
+    addAndMakeVisible(chordStrip);
+    chordStrip.onSelectionTaken = [this]
+    {
+        clearNoteSelection();
+        tempoStrip.clearTempoSelection();
+        timeSigStrip.clearTimeSignatureSelection();
+        keyStrip.clearKeySignatureSelection();
+        repaint();
+    };
+}
+
+PianoRollComponent::~PianoRollComponent()
+{
+    if (sequence != nullptr)
+        sequence->removeListener(this);
+}
+
+void PianoRollComponent::setSequence(MidiSequence* seq)
+{
+    if (sequence != nullptr)
+        sequence->removeListener(this);
+    sequence = seq;
+    displayedTimeline.setSequence(seq);
+    geometry.setTicksPerQuarterNote(sequence != nullptr ? sequence->getTimeline().getTicksPerQuarterNote() : 0);
+    loopStrip.setSequence(seq);
+    ruler.setSequence(seq);
+    tempoStrip.setSequence(seq);
+    timeSigStrip.setSequence(seq);
+    keyStrip.setSequence(seq);
+    chordStrip.setSequence(seq);
+    if (sequence != nullptr)
+        sequence->addListener(this);
+
+    contentBeats = 16;
+    if (sequence && sequence->getNumTracks() > 0)
+    {
+        int lastTick = 0;
+        for (int t = 0; t < sequence->getNumTracks(); ++t)
+        {
+            const auto& track = sequence->getTrack(t);
+            for (int i = 0; i < track.getNumNotes(); ++i)
+            {
+                int end = track.getNote(i).endTick();
+                if (end > lastTick)
+                    lastTick = end;
+            }
+        }
+        contentBeats = std::max(contentBeats, lastTick / sequence->getTimeline().getTicksPerQuarterNote() + 4);
+    }
+
+    updateSize();
     repaint();
 }
 
-void PianoRollComponent::stopNotePreview()
+void PianoRollComponent::setPlayheadTick(double tick)
 {
-    if (!isPreviewing)
+    auto toX = [this](double t) -> int
+    {
+        if (!sequence)
+            return keyboardWidth;
+        return keyboardWidth + static_cast<int>(t / sequence->getTimeline().getTicksPerQuarterNote() * beatWidth);
+    };
+
+    int oldX = toX(playheadTick);
+    playheadTick = tick;
+    int newX = toX(playheadTick);
+
+    int margin = 2;
+    int h = getHeight();
+    repaint(oldX - margin, 0, margin * 2 + 2, h);
+    repaint(newX - margin, 0, margin * 2 + 2, h);
+    loopStrip.setPlayheadTick(tick);
+    ruler.setPlayheadTick(tick);
+    tempoStrip.setPlayheadTick(tick);
+    timeSigStrip.setPlayheadTick(tick);
+    keyStrip.setPlayheadTick(tick);
+    chordStrip.setPlayheadTick(tick);
+}
+
+void PianoRollComponent::setEditMode(EditMode mode)
+{
+    baseEditMode = mode;
+    editMode = toolSwapActive ? swapTool(mode) : mode;
+    resetNoteDrag();
+    repaint();
+}
+
+PianoRollComponent::EditMode PianoRollComponent::getEditMode() const
+{
+    return editMode;
+}
+
+void PianoRollComponent::setLoopRegion(bool enabled, int startTick, int endTick)
+{
+    loopEnabled = enabled;
+    loopStartTick = startTick;
+    loopEndTick = endTick;
+    repaint();
+    loopStrip.setLoopRegion(enabled, startTick, endTick);
+    ruler.setLoopRegion(enabled, startTick, endTick);
+    tempoStrip.setLoopRegion(enabled, startTick, endTick);
+    timeSigStrip.setLoopRegion(enabled, startTick, endTick);
+    keyStrip.setLoopRegion(enabled, startTick, endTick);
+    chordStrip.setLoopRegion(enabled, startTick, endTick);
+}
+
+void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices)
+{
+    activeTrackIndex = activeIndex;
+    selectedTrackIndices = selectedIndices;
+    selectedNote = {};
+    selectedNotes.clear();
+    resetNoteDrag();
+    repaint();
+}
+
+void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
+{
+    if (!notes.empty())
+    {
+        clearTempoSelection();
+        clearTimeSignatureSelection();
+        clearKeySignatureSelection();
+        clearChordSelection();
+    }
+    selectedNotes = notes;
+    selectedNote = {};
+    repaint();
+}
+
+int PianoRollComponent::getActiveTrackIndex() const
+{
+    return activeTrackIndex;
+}
+
+void PianoRollComponent::deleteSelectedNotes()
+{
+    if (!sequence || selectedNotes.empty())
         return;
-    if (onNotePreviewEnd)
-        onNotePreviewEnd(previewNote);
-    isPreviewing = false;
+
+    int survivorOldIndex = -1;
+    if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks())
+    {
+        auto& track = sequence->getTrack(activeTrackIndex);
+        const int n = track.getNumNotes();
+        if (n > 0)
+        {
+            std::vector<int> order(n);
+            for (int i = 0; i < n; ++i)
+                order[i] = i;
+            std::sort(order.begin(), order.end(),
+                      [&track](int a, int b)
+                      {
+                          const auto& na = track.getNote(a);
+                          const auto& nb = track.getNote(b);
+                          if (na.startTick != nb.startTick)
+                              return na.startTick < nb.startTick;
+                          if (na.noteNumber != nb.noteNumber)
+                              return na.noteNumber < nb.noteNumber;
+                          return a < b;
+                      });
+
+            int minPos = -1;
+            int maxPos = -1;
+            for (int p = 0; p < n; ++p)
+            {
+                if (selectedNotes.contains({activeTrackIndex, order[p]}))
+                {
+                    if (minPos < 0)
+                        minPos = p;
+                    maxPos = p;
+                }
+            }
+
+            if (maxPos >= 0)
+            {
+                if (maxPos + 1 < n)
+                    survivorOldIndex = order[maxPos + 1];
+                else if (minPos - 1 >= 0)
+                    survivorOldIndex = order[minPos - 1];
+            }
+        }
+    }
+
+    int deletedBeforeSurvivor = 0;
+    if (survivorOldIndex >= 0)
+    {
+        for (const auto& ref : selectedNotes)
+            if (ref.trackIndex == activeTrackIndex && ref.noteIndex < survivorOldIndex)
+                ++deletedBeforeSurvivor;
+    }
+
+    undoHistory.beginNewTransaction("Delete Notes");
+    undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
+
+    selectedNotes.clear();
+    if (survivorOldIndex >= 0)
+    {
+        const NoteRef survivor{activeTrackIndex, survivorOldIndex - deletedBeforeSurvivor};
+        selectedNotes.insert(survivor);
+        selectedNote = survivor;
+
+        const auto& note = sequence->getTrack(survivor.trackIndex).getNote(survivor.noteIndex);
+        if (onScrollToNote)
+            onScrollToNote(note.startTick, note.noteNumber);
+    }
+    else
+    {
+        selectedNote = {};
+    }
+
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::copySelectedNotes()
+{
+    if (!sequence || selectedNotes.empty())
+        return;
+
+    int minTick = std::numeric_limits<int>::max();
+    for (const auto& ref : selectedNotes)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        if (note.startTick < minTick)
+            minTick = note.startTick;
+    }
+
+    std::vector<MidiNote> notes;
+    for (const auto& ref : selectedNotes)
+    {
+        MidiNote note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        note.startTick -= minTick;
+        notes.push_back(note);
+    }
+    clipboard.setNotes(std::move(notes));
+}
+
+void PianoRollComponent::cutSelectedNotes()
+{
+    if (!sequence || selectedNotes.empty())
+        return;
+
+    copySelectedNotes();
+
+    undoHistory.beginNewTransaction("Cut Notes");
+    undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
+
+    selectedNotes.clear();
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::pasteNotes(int atTick)
+{
+    if (!sequence || !clipboard.hasNotes() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return;
+
+    std::vector<MidiNote> notesToAdd;
+    for (const auto& note : clipboard.getNotes())
+    {
+        MidiNote n = note;
+        n.startTick += atTick;
+        notesToAdd.push_back(n);
+    }
+
+    clearTempoSelection();
+    clearTimeSignatureSelection();
+    clearKeySignatureSelection();
+    clearChordSelection();
+    selectedNotes.clear();
+
+    undoHistory.beginNewTransaction("Paste Notes");
+    auto* action = new MultiNoteAddAction(sequence, activeTrackIndex, notesToAdd);
+    undoHistory.perform(action);
+    int start = action->getAddedStartIndex();
+    for (int i = 0; i < action->getAddedCount(); ++i)
+        selectedNotes.insert({activeTrackIndex, start + i});
+
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::selectAllNotes()
+{
+    if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return;
+
+    clearTempoSelection();
+    clearTimeSignatureSelection();
+    clearKeySignatureSelection();
+    clearChordSelection();
+    selectedNotes.clear();
+    const auto& track = sequence->getTrack(activeTrackIndex);
+    for (int i = 0; i < track.getNumNotes(); ++i)
+        selectedNotes.insert({activeTrackIndex, i});
+
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
+{
+    if (!sequence || selectedNotes.empty() || deltaNote == 0)
+        return;
+
+    if (!NoteEdits::canShiftPitch(collectSelectedNotes(), deltaNote))
+        return;
+
+    undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
+    std::vector<NoteModification> mods;
+    for (const auto& ref : selectedNotes)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        MidiNote beforeNote = note;
+        MidiNote afterNote = note;
+        afterNote.noteNumber = note.noteNumber + deltaNote;
+        mods.push_back({ref.trackIndex, ref.noteIndex, beforeNote, afterNote});
+    }
+    if (!mods.empty())
+        undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+
+    NoteRef previewRef =
+        (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
+    const auto& previewNoteRef = sequence->getTrack(previewRef.trackIndex).getNote(previewRef.noteIndex);
+    startNotePreview(previewNoteRef);
+    startTimer(previewHoldMs);
+
+    if (onScrollToNote)
+        onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
+
     repaint();
 }
 
-void PianoRollComponent::timerCallback()
+void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
 {
-    stopTimer();
-    stopNotePreview();
+    if (!sequence || selectedNotes.empty() || deltaTick == 0)
+        return;
+
+    if (!NoteEdits::canShiftTime(collectSelectedNotes(), deltaTick))
+        return;
+
+    undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
+    std::vector<NoteModification> mods;
+    for (const auto& ref : selectedNotes)
+    {
+        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        MidiNote beforeNote = note;
+        MidiNote afterNote = note;
+        afterNote.startTick = note.startTick + deltaTick;
+        mods.push_back({ref.trackIndex, ref.noteIndex, beforeNote, afterNote});
+    }
+    if (!mods.empty())
+        undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+
+    NoteRef anchorRef =
+        (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
+    const auto& anchorNote = sequence->getTrack(anchorRef.trackIndex).getNote(anchorRef.noteIndex);
+
+    if (onScrollToNote)
+        onScrollToNote(anchorNote.startTick, anchorNote.noteNumber);
+
+    repaint();
 }
 
-bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
+void PianoRollComponent::deleteSelectedTempoPoints()
 {
-    if (key == juce::KeyPress::leftKey)
-    {
-        moveSelectionToAdjacentNote(-1);
-        return true;
-    }
-    if (key == juce::KeyPress::rightKey)
-    {
-        moveSelectionToAdjacentNote(1);
-        return true;
-    }
+    tempoStrip.deleteSelectedTempoPoints();
+}
 
-    if (key == juce::KeyPress::backspaceKey || key == juce::KeyPress::deleteKey)
-    {
-        if (tempoStrip.hasSelection())
-        {
-            deleteSelectedTempoPoints();
-            return true;
-        }
-        if (timeSigStrip.hasSelection())
-        {
-            deleteSelectedTimeSignatures();
-            return true;
-        }
-        if (keyStrip.hasSelection())
-        {
-            deleteSelectedKeySignatures();
-            return true;
-        }
-        if (chordStrip.hasSelection())
-        {
-            deleteSelectedChords();
-            return true;
-        }
-        if (selectedNotes.empty())
-            return false;
-        deleteSelectedNotes();
-        return true;
-    }
+void PianoRollComponent::deleteSelectedTimeSignatures()
+{
+    timeSigStrip.deleteSelectedTimeSignatures();
+}
 
-    if (key.getModifiers().isCommandDown())
-    {
-        if (key.getKeyCode() == juce::KeyPress::upKey)
-        {
-            if (onScrollVertical)
-                onScrollVertical(-defaultNoteHeight);
-            return true;
-        }
-        if (key.getKeyCode() == juce::KeyPress::downKey)
-        {
-            if (onScrollVertical)
-                onScrollVertical(defaultNoteHeight);
-            return true;
-        }
-        if (key.getKeyCode() == juce::KeyPress::leftKey)
-        {
-            if (onScrollHorizontal)
-                onScrollHorizontal(-defaultNoteHeight);
-            return true;
-        }
-        if (key.getKeyCode() == juce::KeyPress::rightKey)
-        {
-            if (onScrollHorizontal)
-                onScrollHorizontal(defaultNoteHeight);
-            return true;
-        }
-    }
+void PianoRollComponent::deleteSelectedKeySignatures()
+{
+    keyStrip.deleteSelectedKeySignatures();
+}
 
-    if (key.getModifiers().isAltDown())
-    {
-        const bool isUp = key.getKeyCode() == juce::KeyPress::upKey;
-        const bool isDown = key.getKeyCode() == juce::KeyPress::downKey;
-        if (isUp || isDown)
-        {
-            const int magnitude = key.getModifiers().isShiftDown() ? 12 : 1;
-            const int delta = isUp ? magnitude : -magnitude;
-            if (!selectedNotes.empty())
-            {
-                if (altDuplicateDone)
-                    nudgeSelectedNotesPitch(delta);
-                else if (duplicateSelectedNotesWithPitchOffset(delta))
-                    altDuplicateDone = true;
-            }
-            return true;
-        }
+void PianoRollComponent::deleteSelectedChords()
+{
+    chordStrip.deleteSelectedChords();
+}
 
-        const bool isLeft = key.getKeyCode() == juce::KeyPress::leftKey;
-        const bool isRight = key.getKeyCode() == juce::KeyPress::rightKey;
-        if (isLeft || isRight)
-        {
-            if (!selectedNotes.empty() && sequence)
-            {
-                const int grid = sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator;
-                nudgeSelectedNotesTime(isRight ? grid : -grid);
-            }
-            return true;
-        }
-    }
+bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
+{
+    if (!sequence || selectedNotes.empty() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return false;
 
-    if (key.getModifiers().isShiftDown())
-    {
-        if (key.getKeyCode() == juce::KeyPress::upKey)
-        {
-            if (!selectedNotes.empty())
-                nudgeSelectedNotesPitch(12);
-            return true;
-        }
-        if (key.getKeyCode() == juce::KeyPress::downKey)
-        {
-            if (!selectedNotes.empty())
-                nudgeSelectedNotesPitch(-12);
-            return true;
-        }
-    }
+    auto notesToAdd = collectSelectedNotes();
+    if (!NoteEdits::canShiftPitch(notesToAdd, deltaNote))
+        return false;
 
-    if (key == juce::KeyPress::upKey)
-    {
-        if (!selectedNotes.empty())
-            nudgeSelectedNotesPitch(1);
-        return true;
-    }
-    if (key == juce::KeyPress::downKey)
-    {
-        if (!selectedNotes.empty())
-            nudgeSelectedNotesPitch(-1);
-        return true;
-    }
-    return false;
+    for (auto& note : notesToAdd)
+        note.noteNumber += deltaNote;
+
+    selectedNotes.clear();
+
+    undoHistory.beginNewTransaction(notesToAdd.size() > 1 ? "Duplicate Notes" : "Duplicate Note");
+    auto* action = new MultiNoteAddAction(sequence, activeTrackIndex, notesToAdd);
+    undoHistory.perform(action);
+    int start = action->getAddedStartIndex();
+    for (int i = 0; i < action->getAddedCount(); ++i)
+        selectedNotes.insert({activeTrackIndex, start + i});
+
+    if (selectedNotes.empty())
+        return false;
+    selectedNote = *selectedNotes.begin();
+
+    const auto& previewNoteRef = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
+    startNotePreview(previewNoteRef);
+    startTimer(previewHoldMs);
+
+    if (onScrollToNote)
+        onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
+
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+
+    return true;
 }
 
 void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
@@ -258,544 +587,18 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
         onNoteSelectionChanged(selectedNotes);
 }
 
-void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
+void PianoRollComponent::copySelection()
 {
-    if (!sequence || selectedNotes.empty() || deltaNote == 0)
-        return;
-
-    if (!NoteEdits::canShiftPitch(collectSelectedNotes(), deltaNote))
-        return;
-
-    undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
-    std::vector<NoteModification> mods;
-    for (const auto& ref : selectedNotes)
-    {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        MidiNote beforeNote = note;
-        MidiNote afterNote = note;
-        afterNote.noteNumber = note.noteNumber + deltaNote;
-        mods.push_back({ref.trackIndex, ref.noteIndex, beforeNote, afterNote});
-    }
-    if (!mods.empty())
-        undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
-
-    NoteRef previewRef =
-        (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
-    const auto& previewNoteRef = sequence->getTrack(previewRef.trackIndex).getNote(previewRef.noteIndex);
-    startNotePreview(previewNoteRef);
-    startTimer(previewHoldMs);
-
-    if (onScrollToNote)
-        onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
-
-    repaint();
-}
-
-void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
-{
-    if (!sequence || selectedNotes.empty() || deltaTick == 0)
-        return;
-
-    if (!NoteEdits::canShiftTime(collectSelectedNotes(), deltaTick))
-        return;
-
-    undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
-    std::vector<NoteModification> mods;
-    for (const auto& ref : selectedNotes)
-    {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        MidiNote beforeNote = note;
-        MidiNote afterNote = note;
-        afterNote.startTick = note.startTick + deltaTick;
-        mods.push_back({ref.trackIndex, ref.noteIndex, beforeNote, afterNote});
-    }
-    if (!mods.empty())
-        undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
-
-    NoteRef anchorRef =
-        (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
-    const auto& anchorNote = sequence->getTrack(anchorRef.trackIndex).getNote(anchorRef.noteIndex);
-
-    if (onScrollToNote)
-        onScrollToNote(anchorNote.startTick, anchorNote.noteNumber);
-
-    repaint();
-}
-
-bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
-{
-    if (!sequence || selectedNotes.empty() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
-        return false;
-
-    auto notesToAdd = collectSelectedNotes();
-    if (!NoteEdits::canShiftPitch(notesToAdd, deltaNote))
-        return false;
-
-    for (auto& note : notesToAdd)
-        note.noteNumber += deltaNote;
-
-    selectedNotes.clear();
-
-    undoHistory.beginNewTransaction(notesToAdd.size() > 1 ? "Duplicate Notes" : "Duplicate Note");
-    auto* action = new MultiNoteAddAction(sequence, activeTrackIndex, notesToAdd);
-    undoHistory.perform(action);
-    int start = action->getAddedStartIndex();
-    for (int i = 0; i < action->getAddedCount(); ++i)
-        selectedNotes.insert({activeTrackIndex, start + i});
-
-    if (selectedNotes.empty())
-        return false;
-    selectedNote = *selectedNotes.begin();
-
-    const auto& previewNoteRef = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
-    startNotePreview(previewNoteRef);
-    startTimer(previewHoldMs);
-
-    if (onScrollToNote)
-        onScrollToNote(previewNoteRef.startTick, previewNoteRef.noteNumber);
-
-    repaint();
-    if (onNoteSelectionChanged)
-        onNoteSelectionChanged(selectedNotes);
-
-    return true;
-}
-
-PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistory(undoHistoryRef)
-{
-    addAndMakeVisible(loopStrip);
-    loopStrip.onLoopRegionChanged = [this](int startTick, int endTick)
-    {
-        setLoopRegion(loopEnabled, startTick, endTick);
-        if (onLoopRegionChanged)
-            onLoopRegionChanged(startTick, endTick);
-    };
-    addAndMakeVisible(ruler);
-    ruler.onSeek = [this](int tick)
-    {
-        setPlayheadTick(tick);
-        if (onPlayheadMoved)
-            onPlayheadMoved(tick);
-    };
-    ruler.onWheelZoom = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
-    {
-        if (onRulerWheel)
-            onRulerWheel(e, w);
-    };
-    ruler.onDragZoom = [this](const juce::MouseEvent& e, int deltaY)
-    {
-        if (onRulerDrag)
-            onRulerDrag(e, deltaY);
-    };
-    addAndMakeVisible(tempoStrip);
-    tempoStrip.onSelectionTaken = [this]
-    {
-        clearNoteSelection();
-        timeSigStrip.clearTimeSignatureSelection();
-        keyStrip.clearKeySignatureSelection();
-        chordStrip.clearChordSelection();
-        repaint();
-    };
-    addAndMakeVisible(timeSigStrip);
-    timeSigStrip.onSelectionTaken = [this]
-    {
-        clearNoteSelection();
-        tempoStrip.clearTempoSelection();
-        keyStrip.clearKeySignatureSelection();
-        chordStrip.clearChordSelection();
-        repaint();
-    };
-    timeSigStrip.onTimeSignaturePreview = [this](const std::vector<TimeSignatureChange>* preview)
-    {
-        displayedTimeline.setTimeSignaturePreview(preview);
-        repaint();
-    };
-    addAndMakeVisible(keyStrip);
-    keyStrip.onSelectionTaken = [this]
-    {
-        clearNoteSelection();
-        tempoStrip.clearTempoSelection();
-        timeSigStrip.clearTimeSignatureSelection();
-        chordStrip.clearChordSelection();
-        repaint();
-    };
-    addAndMakeVisible(chordStrip);
-    chordStrip.onSelectionTaken = [this]
-    {
-        clearNoteSelection();
-        tempoStrip.clearTempoSelection();
-        timeSigStrip.clearTimeSignatureSelection();
-        keyStrip.clearKeySignatureSelection();
-        repaint();
-    };
-}
-
-PianoRollComponent::~PianoRollComponent()
-{
-    if (sequence != nullptr)
-        sequence->removeListener(this);
-}
-
-void PianoRollComponent::resized()
-{
-    updateStripPositions();
-}
-
-void PianoRollComponent::moved()
-{
-    updateStripPositions();
-}
-
-void PianoRollComponent::updateStripPositions()
-{
-    int viewX = 0;
-    int viewY = 0;
-    if (findParentComponentOfClass<juce::Viewport>() != nullptr)
-    {
-        const auto viewPosition = getLocalPoint(getParentComponent(), juce::Point<int>{});
-        viewX = viewPosition.x;
-        viewY = viewPosition.y;
-    }
-
-    loopStrip.setBounds(0, viewY, getWidth(), LoopStrip::height);
-    loopStrip.setViewLeftX(viewX);
-    ruler.setBounds(0, viewY + LoopStrip::height, getWidth(), RulerStrip::height);
-    ruler.setViewLeftX(viewX);
-    tempoStrip.setBounds(0, viewY + LoopStrip::height + RulerStrip::height, getWidth(), TempoTrackStrip::height);
-    tempoStrip.setViewLeftX(viewX);
-    timeSigStrip.setBounds(0, viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height, getWidth(),
-                           TimeSignatureStrip::height);
-    timeSigStrip.setViewLeftX(viewX);
-    keyStrip.setBounds(
-        0, viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height + TimeSignatureStrip::height,
-        getWidth(), KeySignatureStrip::height);
-    keyStrip.setViewLeftX(viewX);
-    chordStrip.setBounds(0,
-                         viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height +
-                             TimeSignatureStrip::height + KeySignatureStrip::height,
-                         getWidth(), ChordStrip::height);
-    chordStrip.setViewLeftX(viewX);
-}
-
-void PianoRollComponent::repaintStrips()
-{
-    loopStrip.repaint();
-    ruler.repaint();
-    tempoStrip.repaint();
-    timeSigStrip.repaint();
-    keyStrip.repaint();
-    chordStrip.repaint();
-}
-
-void PianoRollComponent::notesChanged(int)
-{
-    cancelEditDrag();
-    repaint();
-}
-void PianoRollComponent::tracksChanged()
-{
-    cancelEditDrag();
-    repaint();
-}
-void PianoRollComponent::tempoChanged()
-{
-    cancelEditDrag();
-    repaint();
-}
-void PianoRollComponent::timelineMetadataChanged()
-{
-    cancelEditDrag();
-    repaint();
-}
-void PianoRollComponent::sequenceReset()
-{
-    cancelEditDrag();
-    repaint();
-}
-
-void PianoRollComponent::setSequence(MidiSequence* seq)
-{
-    if (sequence != nullptr)
-        sequence->removeListener(this);
-    sequence = seq;
-    displayedTimeline.setSequence(seq);
-    geometry.setTicksPerQuarterNote(sequence != nullptr ? sequence->getTimeline().getTicksPerQuarterNote() : 0);
-    loopStrip.setSequence(seq);
-    ruler.setSequence(seq);
-    tempoStrip.setSequence(seq);
-    timeSigStrip.setSequence(seq);
-    keyStrip.setSequence(seq);
-    chordStrip.setSequence(seq);
-    if (sequence != nullptr)
-        sequence->addListener(this);
-
-    contentBeats = 16;
-    if (sequence && sequence->getNumTracks() > 0)
-    {
-        int lastTick = 0;
-        for (int t = 0; t < sequence->getNumTracks(); ++t)
-        {
-            const auto& track = sequence->getTrack(t);
-            for (int i = 0; i < track.getNumNotes(); ++i)
-            {
-                int end = track.getNote(i).endTick();
-                if (end > lastTick)
-                    lastTick = end;
-            }
-        }
-        contentBeats = std::max(contentBeats, lastTick / sequence->getTimeline().getTicksPerQuarterNote() + 4);
-    }
-
-    updateSize();
-    repaint();
-}
-
-void PianoRollComponent::setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices)
-{
-    activeTrackIndex = activeIndex;
-    selectedTrackIndices = selectedIndices;
-    selectedNote = {};
-    selectedNotes.clear();
-    resetNoteDrag();
-    repaint();
-}
-
-void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
-{
-    if (!notes.empty())
-    {
-        clearTempoSelection();
-        clearTimeSignatureSelection();
-        clearKeySignatureSelection();
-        clearChordSelection();
-    }
-    selectedNotes = notes;
-    selectedNote = {};
-    repaint();
-}
-
-void PianoRollComponent::setEditMode(EditMode mode)
-{
-    baseEditMode = mode;
-    editMode = toolSwapActive ? swapTool(mode) : mode;
-    resetNoteDrag();
-    repaint();
-}
-
-PianoRollComponent::EditMode PianoRollComponent::getEditMode() const
-{
-    return editMode;
-}
-
-PianoRollComponent::EditMode PianoRollComponent::swapTool(EditMode mode)
-{
-    return mode == EditMode::Edit ? EditMode::Select : EditMode::Edit;
-}
-
-void PianoRollComponent::updateEffectiveEditMode()
-{
-    const auto desired = toolSwapActive ? swapTool(baseEditMode) : baseEditMode;
-    if (desired == editMode)
-        return;
-
-    editMode = desired;
-    repaint();
-}
-
-void PianoRollComponent::modifierKeysChanged(const juce::ModifierKeys& modifiers)
-{
-    const bool altDown = modifiers.isAltDown();
-    if (altKeyDown && !altDown)
-        altDuplicateDone = false;
-    altKeyDown = altDown;
-
-    const bool modifierDown = modifiers.isCommandDown();
-    if (modifierDown == toolSwapActive)
-        return;
-
-    toolSwapActive = modifierDown;
-
-    if (!std::holds_alternative<Idle>(drag))
-        return;
-
-    updateEffectiveEditMode();
-}
-
-bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
-{
-    return selectedNotes.contains(ref);
-}
-
-std::vector<MidiNote> PianoRollComponent::collectSelectedNotes() const
-{
-    std::vector<MidiNote> notes;
-    notes.reserve(selectedNotes.size());
-    for (const auto& ref : selectedNotes)
-        notes.push_back(sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex));
-    return notes;
-}
-
-std::vector<PianoRollComponent::NoteRef> PianoRollComponent::findNotesInRect(const juce::Rectangle<int>& rect) const
-{
-    std::vector<NoteRef> result;
-    if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
-        return result;
-
-    const auto& track = sequence->getTrack(activeTrackIndex);
-    for (int i = 0; i < track.getNumNotes(); ++i)
-    {
-        const auto& note = track.getNote(i);
-        int nx = tickToX(note.startTick);
-        int ny = noteToY(note.noteNumber);
-        int nw = tickToWidth(note.duration);
-        juce::Rectangle<int> noteRect(nx, ny, nw, noteHeight);
-        if (rect.intersects(noteRect))
-            result.push_back({activeTrackIndex, i});
-    }
-    return result;
-}
-
-void PianoRollComponent::drawRubberBand(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    const auto* band = std::get_if<RubberBand>(&drag);
-    if (band == nullptr || band->rect.isEmpty())
-        return;
-
-    g.setColour(accent::soft);
-    g.fillRect(band->rect);
-    g.setColour(accent::base.withAlpha(0.6f));
-    g.drawRect(band->rect, 1);
-}
-
-int PianoRollComponent::getActiveTrackIndex() const
-{
-    return activeTrackIndex;
-}
-
-void PianoRollComponent::copySelectedNotes()
-{
-    if (!sequence || selectedNotes.empty())
-        return;
-
-    int minTick = std::numeric_limits<int>::max();
-    for (const auto& ref : selectedNotes)
-    {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        if (note.startTick < minTick)
-            minTick = note.startTick;
-    }
-
-    std::vector<MidiNote> notes;
-    for (const auto& ref : selectedNotes)
-    {
-        MidiNote note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        note.startTick -= minTick;
-        notes.push_back(note);
-    }
-    clipboard.setNotes(std::move(notes));
-}
-
-void PianoRollComponent::cutSelectedNotes()
-{
-    if (!sequence || selectedNotes.empty())
-        return;
-
-    copySelectedNotes();
-
-    undoHistory.beginNewTransaction("Cut Notes");
-    undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
-
-    selectedNotes.clear();
-    repaint();
-    if (onNoteSelectionChanged)
-        onNoteSelectionChanged(selectedNotes);
-}
-
-void PianoRollComponent::deleteSelectedNotes()
-{
-    if (!sequence || selectedNotes.empty())
-        return;
-
-    int survivorOldIndex = -1;
-    if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks())
-    {
-        auto& track = sequence->getTrack(activeTrackIndex);
-        const int n = track.getNumNotes();
-        if (n > 0)
-        {
-            std::vector<int> order(n);
-            for (int i = 0; i < n; ++i)
-                order[i] = i;
-            std::sort(order.begin(), order.end(),
-                      [&track](int a, int b)
-                      {
-                          const auto& na = track.getNote(a);
-                          const auto& nb = track.getNote(b);
-                          if (na.startTick != nb.startTick)
-                              return na.startTick < nb.startTick;
-                          if (na.noteNumber != nb.noteNumber)
-                              return na.noteNumber < nb.noteNumber;
-                          return a < b;
-                      });
-
-            int minPos = -1;
-            int maxPos = -1;
-            for (int p = 0; p < n; ++p)
-            {
-                if (selectedNotes.contains({activeTrackIndex, order[p]}))
-                {
-                    if (minPos < 0)
-                        minPos = p;
-                    maxPos = p;
-                }
-            }
-
-            if (maxPos >= 0)
-            {
-                if (maxPos + 1 < n)
-                    survivorOldIndex = order[maxPos + 1];
-                else if (minPos - 1 >= 0)
-                    survivorOldIndex = order[minPos - 1];
-            }
-        }
-    }
-
-    int deletedBeforeSurvivor = 0;
-    if (survivorOldIndex >= 0)
-    {
-        for (const auto& ref : selectedNotes)
-            if (ref.trackIndex == activeTrackIndex && ref.noteIndex < survivorOldIndex)
-                ++deletedBeforeSurvivor;
-    }
-
-    undoHistory.beginNewTransaction("Delete Notes");
-    undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
-
-    selectedNotes.clear();
-    if (survivorOldIndex >= 0)
-    {
-        const NoteRef survivor{activeTrackIndex, survivorOldIndex - deletedBeforeSurvivor};
-        selectedNotes.insert(survivor);
-        selectedNote = survivor;
-
-        const auto& note = sequence->getTrack(survivor.trackIndex).getNote(survivor.noteIndex);
-        if (onScrollToNote)
-            onScrollToNote(note.startTick, note.noteNumber);
-    }
+    if (tempoStrip.hasSelection())
+        tempoStrip.copySelectedTempoPoints();
+    else if (timeSigStrip.hasSelection())
+        timeSigStrip.copySelectedTimeSignatures();
+    else if (keyStrip.hasSelection())
+        keyStrip.copySelectedKeySignatures();
+    else if (chordStrip.hasSelection())
+        chordStrip.copySelectedChords();
     else
-    {
-        selectedNote = {};
-    }
-
-    repaint();
-    if (onNoteSelectionChanged)
-        onNoteSelectionChanged(selectedNotes);
-}
-
-void PianoRollComponent::deleteSelectedTempoPoints()
-{
-    tempoStrip.deleteSelectedTempoPoints();
+        copySelectedNotes();
 }
 
 void PianoRollComponent::cutSelection()
@@ -810,20 +613,6 @@ void PianoRollComponent::cutSelection()
         chordStrip.cutSelectedChords();
     else
         cutSelectedNotes();
-}
-
-void PianoRollComponent::copySelection()
-{
-    if (tempoStrip.hasSelection())
-        tempoStrip.copySelectedTempoPoints();
-    else if (timeSigStrip.hasSelection())
-        timeSigStrip.copySelectedTimeSignatures();
-    else if (keyStrip.hasSelection())
-        keyStrip.copySelectedKeySignatures();
-    else if (chordStrip.hasSelection())
-        chordStrip.copySelectedChords();
-    else
-        copySelectedNotes();
 }
 
 void PianoRollComponent::paste(int atTick)
@@ -868,133 +657,12 @@ void PianoRollComponent::paste(int atTick)
         pasteNotes(atTick);
 }
 
-void PianoRollComponent::clearNoteSelection()
-{
-    if (selectedNotes.empty() && !selectedNote.isValid())
-        return;
-
-    selectedNotes.clear();
-    selectedNote = {};
-    if (onNoteSelectionChanged)
-        onNoteSelectionChanged(selectedNotes);
-}
-
-void PianoRollComponent::clearTempoSelection()
-{
-    tempoStrip.clearTempoSelection();
-}
-
-void PianoRollComponent::clearTimeSignatureSelection()
-{
-    timeSigStrip.clearTimeSignatureSelection();
-}
-
-void PianoRollComponent::clearKeySignatureSelection()
-{
-    keyStrip.clearKeySignatureSelection();
-}
-
-void PianoRollComponent::clearChordSelection()
-{
-    chordStrip.clearChordSelection();
-}
-
-void PianoRollComponent::deleteSelectedTimeSignatures()
-{
-    timeSigStrip.deleteSelectedTimeSignatures();
-}
-
-void PianoRollComponent::deleteSelectedKeySignatures()
-{
-    keyStrip.deleteSelectedKeySignatures();
-}
-
-void PianoRollComponent::deleteSelectedChords()
-{
-    chordStrip.deleteSelectedChords();
-}
-
-void PianoRollComponent::selectAllNotes()
-{
-    if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
-        return;
-
-    clearTempoSelection();
-    clearTimeSignatureSelection();
-    clearKeySignatureSelection();
-    clearChordSelection();
-    selectedNotes.clear();
-    const auto& track = sequence->getTrack(activeTrackIndex);
-    for (int i = 0; i < track.getNumNotes(); ++i)
-        selectedNotes.insert({activeTrackIndex, i});
-
-    repaint();
-    if (onNoteSelectionChanged)
-        onNoteSelectionChanged(selectedNotes);
-}
-
 bool PianoRollComponent::hasNotesInActiveTrack() const
 {
     if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return false;
 
     return sequence->getTrack(activeTrackIndex).getNumNotes() > 0;
-}
-
-void PianoRollComponent::pasteNotes(int atTick)
-{
-    if (!sequence || !clipboard.hasNotes() || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
-        return;
-
-    std::vector<MidiNote> notesToAdd;
-    for (const auto& note : clipboard.getNotes())
-    {
-        MidiNote n = note;
-        n.startTick += atTick;
-        notesToAdd.push_back(n);
-    }
-
-    clearTempoSelection();
-    clearTimeSignatureSelection();
-    clearKeySignatureSelection();
-    clearChordSelection();
-    selectedNotes.clear();
-
-    undoHistory.beginNewTransaction("Paste Notes");
-    auto* action = new MultiNoteAddAction(sequence, activeTrackIndex, notesToAdd);
-    undoHistory.perform(action);
-    int start = action->getAddedStartIndex();
-    for (int i = 0; i < action->getAddedCount(); ++i)
-        selectedNotes.insert({activeTrackIndex, start + i});
-
-    repaint();
-    if (onNoteSelectionChanged)
-        onNoteSelectionChanged(selectedNotes);
-}
-
-void PianoRollComponent::setPlayheadTick(double tick)
-{
-    auto toX = [this](double t) -> int
-    {
-        if (!sequence)
-            return keyboardWidth;
-        return keyboardWidth + static_cast<int>(t / sequence->getTimeline().getTicksPerQuarterNote() * beatWidth);
-    };
-
-    int oldX = toX(playheadTick);
-    playheadTick = tick;
-    int newX = toX(playheadTick);
-
-    int margin = 2;
-    int h = getHeight();
-    repaint(oldX - margin, 0, margin * 2 + 2, h);
-    repaint(newX - margin, 0, margin * 2 + 2, h);
-    loopStrip.setPlayheadTick(tick);
-    ruler.setPlayheadTick(tick);
-    tempoStrip.setPlayheadTick(tick);
-    timeSigStrip.setPlayheadTick(tick);
-    keyStrip.setPlayheadTick(tick);
-    chordStrip.setPlayheadTick(tick);
 }
 
 void PianoRollComponent::paint(juce::Graphics& g)
@@ -1008,6 +676,16 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawRubberBand(g);
     drawPlayhead(g);
     drawKeyboard(g);
+}
+
+void PianoRollComponent::resized()
+{
+    updateStripPositions();
+}
+
+void PianoRollComponent::moved()
+{
+    updateStripPositions();
 }
 
 void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
@@ -1355,6 +1033,291 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
     }
 }
 
+void PianoRollComponent::modifierKeysChanged(const juce::ModifierKeys& modifiers)
+{
+    const bool altDown = modifiers.isAltDown();
+    if (altKeyDown && !altDown)
+        altDuplicateDone = false;
+    altKeyDown = altDown;
+
+    const bool modifierDown = modifiers.isCommandDown();
+    if (modifierDown == toolSwapActive)
+        return;
+
+    toolSwapActive = modifierDown;
+
+    if (!std::holds_alternative<Idle>(drag))
+        return;
+
+    updateEffectiveEditMode();
+}
+
+bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::leftKey)
+    {
+        moveSelectionToAdjacentNote(-1);
+        return true;
+    }
+    if (key == juce::KeyPress::rightKey)
+    {
+        moveSelectionToAdjacentNote(1);
+        return true;
+    }
+
+    if (key == juce::KeyPress::backspaceKey || key == juce::KeyPress::deleteKey)
+    {
+        if (tempoStrip.hasSelection())
+        {
+            deleteSelectedTempoPoints();
+            return true;
+        }
+        if (timeSigStrip.hasSelection())
+        {
+            deleteSelectedTimeSignatures();
+            return true;
+        }
+        if (keyStrip.hasSelection())
+        {
+            deleteSelectedKeySignatures();
+            return true;
+        }
+        if (chordStrip.hasSelection())
+        {
+            deleteSelectedChords();
+            return true;
+        }
+        if (selectedNotes.empty())
+            return false;
+        deleteSelectedNotes();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown())
+    {
+        if (key.getKeyCode() == juce::KeyPress::upKey)
+        {
+            if (onScrollVertical)
+                onScrollVertical(-defaultNoteHeight);
+            return true;
+        }
+        if (key.getKeyCode() == juce::KeyPress::downKey)
+        {
+            if (onScrollVertical)
+                onScrollVertical(defaultNoteHeight);
+            return true;
+        }
+        if (key.getKeyCode() == juce::KeyPress::leftKey)
+        {
+            if (onScrollHorizontal)
+                onScrollHorizontal(-defaultNoteHeight);
+            return true;
+        }
+        if (key.getKeyCode() == juce::KeyPress::rightKey)
+        {
+            if (onScrollHorizontal)
+                onScrollHorizontal(defaultNoteHeight);
+            return true;
+        }
+    }
+
+    if (key.getModifiers().isAltDown())
+    {
+        const bool isUp = key.getKeyCode() == juce::KeyPress::upKey;
+        const bool isDown = key.getKeyCode() == juce::KeyPress::downKey;
+        if (isUp || isDown)
+        {
+            const int magnitude = key.getModifiers().isShiftDown() ? 12 : 1;
+            const int delta = isUp ? magnitude : -magnitude;
+            if (!selectedNotes.empty())
+            {
+                if (altDuplicateDone)
+                    nudgeSelectedNotesPitch(delta);
+                else if (duplicateSelectedNotesWithPitchOffset(delta))
+                    altDuplicateDone = true;
+            }
+            return true;
+        }
+
+        const bool isLeft = key.getKeyCode() == juce::KeyPress::leftKey;
+        const bool isRight = key.getKeyCode() == juce::KeyPress::rightKey;
+        if (isLeft || isRight)
+        {
+            if (!selectedNotes.empty() && sequence)
+            {
+                const int grid = sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator;
+                nudgeSelectedNotesTime(isRight ? grid : -grid);
+            }
+            return true;
+        }
+    }
+
+    if (key.getModifiers().isShiftDown())
+    {
+        if (key.getKeyCode() == juce::KeyPress::upKey)
+        {
+            if (!selectedNotes.empty())
+                nudgeSelectedNotesPitch(12);
+            return true;
+        }
+        if (key.getKeyCode() == juce::KeyPress::downKey)
+        {
+            if (!selectedNotes.empty())
+                nudgeSelectedNotesPitch(-12);
+            return true;
+        }
+    }
+
+    if (key == juce::KeyPress::upKey)
+    {
+        if (!selectedNotes.empty())
+            nudgeSelectedNotesPitch(1);
+        return true;
+    }
+    if (key == juce::KeyPress::downKey)
+    {
+        if (!selectedNotes.empty())
+            nudgeSelectedNotesPitch(-1);
+        return true;
+    }
+    return false;
+}
+
+void PianoRollComponent::setBeatWidth(int w)
+{
+    beatWidth = juce::jlimit(minBeatWidth, maxBeatWidth, w);
+    geometry.setBeatWidth(beatWidth);
+    repaintStrips();
+    updateSize();
+    repaint();
+    if (onZoomChanged)
+        onZoomChanged();
+}
+
+void PianoRollComponent::setNoteHeight(int h)
+{
+    noteHeight = juce::jlimit(minNoteHeight, maxNoteHeight, h);
+    updateSize();
+    repaint();
+    if (onZoomChanged)
+        onZoomChanged();
+}
+
+void PianoRollComponent::setQuantizeDenominator(int denom)
+{
+    quantizeDenominator = denom;
+    geometry.setQuantizeDenominator(denom);
+    repaintStrips();
+    repaint();
+}
+
+int PianoRollComponent::tickToX(int tick) const
+{
+    return geometry.tickToX(tick);
+}
+
+int PianoRollComponent::noteToY(int noteNumber) const
+{
+    return gridTopOffset + (totalNotes - 1 - noteNumber) * noteHeight;
+}
+
+int PianoRollComponent::xToTick(int x) const
+{
+    return geometry.xToTick(x);
+}
+
+int PianoRollComponent::yToNote(int y) const
+{
+    return totalNotes - 1 - ((y - gridTopOffset) / noteHeight);
+}
+
+void PianoRollComponent::updateSize()
+{
+    if (!sequence)
+        return;
+
+    int width = keyboardWidth + contentBeats * beatWidth;
+
+    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+        width = std::max(width, vp->getMaximumVisibleWidth());
+
+    int height = gridTopOffset + totalNotes * noteHeight;
+    setSize(width, height);
+}
+
+void PianoRollComponent::extendContent()
+{
+    contentBeats += 32;
+    updateSize();
+}
+
+void PianoRollComponent::notesChanged(int)
+{
+    cancelEditDrag();
+    repaint();
+}
+void PianoRollComponent::tracksChanged()
+{
+    cancelEditDrag();
+    repaint();
+}
+void PianoRollComponent::tempoChanged()
+{
+    cancelEditDrag();
+    repaint();
+}
+void PianoRollComponent::timelineMetadataChanged()
+{
+    cancelEditDrag();
+    repaint();
+}
+void PianoRollComponent::sequenceReset()
+{
+    cancelEditDrag();
+    repaint();
+}
+
+void PianoRollComponent::updateStripPositions()
+{
+    int viewX = 0;
+    int viewY = 0;
+    if (findParentComponentOfClass<juce::Viewport>() != nullptr)
+    {
+        const auto viewPosition = getLocalPoint(getParentComponent(), juce::Point<int>{});
+        viewX = viewPosition.x;
+        viewY = viewPosition.y;
+    }
+
+    loopStrip.setBounds(0, viewY, getWidth(), LoopStrip::height);
+    loopStrip.setViewLeftX(viewX);
+    ruler.setBounds(0, viewY + LoopStrip::height, getWidth(), RulerStrip::height);
+    ruler.setViewLeftX(viewX);
+    tempoStrip.setBounds(0, viewY + LoopStrip::height + RulerStrip::height, getWidth(), TempoTrackStrip::height);
+    tempoStrip.setViewLeftX(viewX);
+    timeSigStrip.setBounds(0, viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height, getWidth(),
+                           TimeSignatureStrip::height);
+    timeSigStrip.setViewLeftX(viewX);
+    keyStrip.setBounds(
+        0, viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height + TimeSignatureStrip::height,
+        getWidth(), KeySignatureStrip::height);
+    keyStrip.setViewLeftX(viewX);
+    chordStrip.setBounds(0,
+                         viewY + LoopStrip::height + RulerStrip::height + TempoTrackStrip::height +
+                             TimeSignatureStrip::height + KeySignatureStrip::height,
+                         getWidth(), ChordStrip::height);
+    chordStrip.setViewLeftX(viewX);
+}
+
+void PianoRollComponent::repaintStrips()
+{
+    loopStrip.repaint();
+    ruler.repaint();
+    tempoStrip.repaint();
+    timeSigStrip.repaint();
+    keyStrip.repaint();
+    chordStrip.repaint();
+}
+
 void PianoRollComponent::drawKeyboard(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -1529,23 +1492,6 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
     }
 }
 
-MidiNote PianoRollComponent::displayedNote(int trackIndex, int noteIndex) const
-{
-    auto note = sequence->getTrack(trackIndex).getNote(noteIndex);
-    if (const auto* resizing = std::get_if<Resizing>(&drag))
-    {
-        // beginResize builds the targets from a std::set, so they are sorted by ref.
-        const NoteRef ref{trackIndex, noteIndex};
-        auto it = std::ranges::lower_bound(resizing->targets, ref, {}, &ResizeTarget::ref);
-        if (it != resizing->targets.end() && it->ref == ref)
-        {
-            note.startTick = it->previewStartTick;
-            note.duration = it->previewDuration;
-        }
-    }
-    return note;
-}
-
 void PianoRollComponent::drawNotes(juce::Graphics& g)
 {
     if (!sequence)
@@ -1670,6 +1616,23 @@ void PianoRollComponent::drawActiveTrackNote(juce::Graphics& g, const juce::Rect
     }
 }
 
+MidiNote PianoRollComponent::displayedNote(int trackIndex, int noteIndex) const
+{
+    auto note = sequence->getTrack(trackIndex).getNote(noteIndex);
+    if (const auto* resizing = std::get_if<Resizing>(&drag))
+    {
+        // beginResize builds the targets from a std::set, so they are sorted by ref.
+        const NoteRef ref{trackIndex, noteIndex};
+        auto it = std::ranges::lower_bound(resizing->targets, ref, {}, &ResizeTarget::ref);
+        if (it != resizing->targets.end() && it->ref == ref)
+        {
+            note.startTick = it->previewStartTick;
+            note.duration = it->previewDuration;
+        }
+    }
+    return note;
+}
+
 void PianoRollComponent::drawMoveGhosts(juce::Graphics& g)
 {
     const auto* moving = std::get_if<Moving>(&drag);
@@ -1743,20 +1706,6 @@ void PianoRollComponent::drawPlayhead(juce::Graphics& g)
     g.drawLine(x, static_cast<float>(clip.getY()), x, static_cast<float>(clip.getBottom()), 1.0f);
 }
 
-void PianoRollComponent::setLoopRegion(bool enabled, int startTick, int endTick)
-{
-    loopEnabled = enabled;
-    loopStartTick = startTick;
-    loopEndTick = endTick;
-    repaint();
-    loopStrip.setLoopRegion(enabled, startTick, endTick);
-    ruler.setLoopRegion(enabled, startTick, endTick);
-    tempoStrip.setLoopRegion(enabled, startTick, endTick);
-    timeSigStrip.setLoopRegion(enabled, startTick, endTick);
-    keyStrip.setLoopRegion(enabled, startTick, endTick);
-    chordStrip.setLoopRegion(enabled, startTick, endTick);
-}
-
 void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -1782,43 +1731,63 @@ void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
     g.drawVerticalLine(static_cast<int>(x2), gridTop, bottom);
 }
 
-void PianoRollComponent::updateSize()
-{
-    if (!sequence)
-        return;
-
-    int width = keyboardWidth + contentBeats * beatWidth;
-
-    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
-        width = std::max(width, vp->getMaximumVisibleWidth());
-
-    int height = gridTopOffset + totalNotes * noteHeight;
-    setSize(width, height);
-}
-
-int PianoRollComponent::noteToY(int noteNumber) const
-{
-    return gridTopOffset + (totalNotes - 1 - noteNumber) * noteHeight;
-}
-
-int PianoRollComponent::tickToX(int tick) const
-{
-    return geometry.tickToX(tick);
-}
-
 int PianoRollComponent::tickToWidth(int durationTicks) const
 {
     return geometry.tickToWidth(durationTicks);
 }
 
-int PianoRollComponent::xToTick(int x) const
+int PianoRollComponent::roundTickToGrid(int tick) const
 {
-    return geometry.xToTick(x);
+    return geometry.roundTickToGrid(tick);
 }
 
-int PianoRollComponent::yToNote(int y) const
+int PianoRollComponent::floorTickToGrid(int tick) const
 {
-    return totalNotes - 1 - ((y - gridTopOffset) / noteHeight);
+    return geometry.floorTickToGrid(tick);
+}
+
+PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
+{
+    if (!sequence)
+        return {};
+
+    if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks() &&
+        selectedTrackIndices.contains(activeTrackIndex))
+    {
+        const auto& track = sequence->getTrack(activeTrackIndex);
+        for (int i = 0; i < track.getNumNotes(); ++i)
+        {
+            const auto& note = track.getNote(i);
+            int nx = tickToX(note.startTick);
+            int ny = noteToY(note.noteNumber);
+            int nw = tickToWidth(note.duration);
+
+            if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
+                return {activeTrackIndex, i};
+        }
+    }
+
+    for (int trackIdx : selectedTrackIndices)
+    {
+        if (trackIdx == activeTrackIndex)
+            continue;
+        if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
+            continue;
+
+        const auto& track = sequence->getTrack(trackIdx);
+        for (int i = 0; i < track.getNumNotes(); ++i)
+        {
+            const auto& note = track.getNote(i);
+            int nx = tickToX(note.startTick);
+            int ny = noteToY(note.noteNumber);
+            int nw = tickToWidth(note.duration);
+
+            if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
+                return {trackIdx, i};
+        }
+    }
+
+    return {};
 }
 
 int PianoRollComponent::keyboardNoteAtPosition(int x, int y) const
@@ -1867,48 +1836,152 @@ int PianoRollComponent::keyboardNoteAtPosition(int x, int y) const
     return -1;
 }
 
-int PianoRollComponent::roundTickToGrid(int tick) const
+PianoRollComponent::ResizeEdge PianoRollComponent::edgeAt(int x, const MidiNote& note) const
 {
-    return geometry.roundTickToGrid(tick);
+    int leftX = tickToX(note.startTick);
+    int rightX = tickToX(note.endTick());
+
+    bool nearRight = std::abs(x - rightX) <= resizeEdgeWidth;
+    bool nearLeft = std::abs(x - leftX) <= resizeEdgeWidth;
+
+    if (nearRight)
+        return ResizeEdge::Right;
+    if (nearLeft && x < (leftX + rightX) / 2)
+        return ResizeEdge::Left;
+    return ResizeEdge::None;
 }
 
-int PianoRollComponent::floorTickToGrid(int tick) const
+int PianoRollComponent::getKeyboardLeft() const
 {
-    return geometry.floorTickToGrid(tick);
+    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+        return vp->getViewPositionX();
+    return 0;
 }
 
-void PianoRollComponent::setQuantizeDenominator(int denom)
+int PianoRollComponent::getRulerTop() const
 {
-    quantizeDenominator = denom;
-    geometry.setQuantizeDenominator(denom);
-    repaintStrips();
+    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
+        return vp->getViewPositionY();
+    return 0;
+}
+
+bool PianoRollComponent::isBlackKey(int noteNumber)
+{
+    int n = noteNumber % 12;
+    return n == 1 || n == 3 || n == 6 || n == 8 || n == 10;
+}
+
+juce::String PianoRollComponent::getNoteName(int noteNumber)
+{
+    static const char* names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+    int octave = (noteNumber / 12) - 1;
+    return juce::String(names[noteNumber % 12]) + juce::String(octave);
+}
+
+bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
+{
+    return selectedNotes.contains(ref);
+}
+
+std::vector<MidiNote> PianoRollComponent::collectSelectedNotes() const
+{
+    std::vector<MidiNote> notes;
+    notes.reserve(selectedNotes.size());
+    for (const auto& ref : selectedNotes)
+        notes.push_back(sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex));
+    return notes;
+}
+
+void PianoRollComponent::clearNoteSelection()
+{
+    if (selectedNotes.empty() && !selectedNote.isValid())
+        return;
+
+    selectedNotes.clear();
+    selectedNote = {};
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
+}
+
+void PianoRollComponent::clearTempoSelection()
+{
+    tempoStrip.clearTempoSelection();
+}
+
+void PianoRollComponent::clearTimeSignatureSelection()
+{
+    timeSigStrip.clearTimeSignatureSelection();
+}
+
+void PianoRollComponent::clearKeySignatureSelection()
+{
+    keyStrip.clearKeySignatureSelection();
+}
+
+void PianoRollComponent::clearChordSelection()
+{
+    chordStrip.clearChordSelection();
+}
+
+void PianoRollComponent::drawRubberBand(juce::Graphics& g)
+{
+    using namespace calliope::theme;
+    const auto* band = std::get_if<RubberBand>(&drag);
+    if (band == nullptr || band->rect.isEmpty())
+        return;
+
+    g.setColour(accent::soft);
+    g.fillRect(band->rect);
+    g.setColour(accent::base.withAlpha(0.6f));
+    g.drawRect(band->rect, 1);
+}
+
+std::vector<PianoRollComponent::NoteRef> PianoRollComponent::findNotesInRect(const juce::Rectangle<int>& rect) const
+{
+    std::vector<NoteRef> result;
+    if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return result;
+
+    const auto& track = sequence->getTrack(activeTrackIndex);
+    for (int i = 0; i < track.getNumNotes(); ++i)
+    {
+        const auto& note = track.getNote(i);
+        int nx = tickToX(note.startTick);
+        int ny = noteToY(note.noteNumber);
+        int nw = tickToWidth(note.duration);
+        juce::Rectangle<int> noteRect(nx, ny, nw, noteHeight);
+        if (rect.intersects(noteRect))
+            result.push_back({activeTrackIndex, i});
+    }
+    return result;
+}
+
+PianoRollComponent::EditMode PianoRollComponent::swapTool(EditMode mode)
+{
+    return mode == EditMode::Edit ? EditMode::Select : EditMode::Edit;
+}
+
+void PianoRollComponent::updateEffectiveEditMode()
+{
+    const auto desired = toolSwapActive ? swapTool(baseEditMode) : baseEditMode;
+    if (desired == editMode)
+        return;
+
+    editMode = desired;
     repaint();
 }
 
-void PianoRollComponent::setBeatWidth(int w)
+void PianoRollComponent::resetNoteDrag()
 {
-    beatWidth = juce::jlimit(minBeatWidth, maxBeatWidth, w);
-    geometry.setBeatWidth(beatWidth);
-    repaintStrips();
-    updateSize();
-    repaint();
-    if (onZoomChanged)
-        onZoomChanged();
+    if (!std::holds_alternative<KeyboardPreviewing>(drag))
+        drag = Idle{};
 }
 
-void PianoRollComponent::setNoteHeight(int h)
+void PianoRollComponent::cancelEditDrag()
 {
-    noteHeight = juce::jlimit(minNoteHeight, maxNoteHeight, h);
-    updateSize();
-    repaint();
-    if (onZoomChanged)
-        onZoomChanged();
-}
-
-void PianoRollComponent::extendContent()
-{
-    contentBeats += 32;
-    updateSize();
+    if (std::holds_alternative<Moving>(drag) || std::holds_alternative<Resizing>(drag) ||
+        std::holds_alternative<Creating>(drag))
+        drag = Idle{};
 }
 
 void PianoRollComponent::beginResize(const NoteRef& hit, ResizeEdge edge)
@@ -1952,101 +2025,28 @@ void PianoRollComponent::beginMove(const NoteRef& anchor, const juce::MouseEvent
     drag = Moving{std::move(moveTargets), anchorNote.startTick, xToTick(e.x), yToNote(e.y)};
 }
 
-void PianoRollComponent::resetNoteDrag()
+void PianoRollComponent::startNotePreview(const MidiNote& note)
 {
-    if (!std::holds_alternative<KeyboardPreviewing>(drag))
-        drag = Idle{};
+    stopNotePreview();
+    previewNote = note;
+    isPreviewing = true;
+    if (onNotePreview)
+        onNotePreview(previewNote);
+    repaint();
 }
 
-void PianoRollComponent::cancelEditDrag()
+void PianoRollComponent::stopNotePreview()
 {
-    if (std::holds_alternative<Moving>(drag) || std::holds_alternative<Resizing>(drag) ||
-        std::holds_alternative<Creating>(drag))
-        drag = Idle{};
+    if (!isPreviewing)
+        return;
+    if (onNotePreviewEnd)
+        onNotePreviewEnd(previewNote);
+    isPreviewing = false;
+    repaint();
 }
 
-PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
+void PianoRollComponent::timerCallback()
 {
-    if (!sequence)
-        return {};
-
-    if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks() &&
-        selectedTrackIndices.contains(activeTrackIndex))
-    {
-        const auto& track = sequence->getTrack(activeTrackIndex);
-        for (int i = 0; i < track.getNumNotes(); ++i)
-        {
-            const auto& note = track.getNote(i);
-            int nx = tickToX(note.startTick);
-            int ny = noteToY(note.noteNumber);
-            int nw = tickToWidth(note.duration);
-
-            if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
-                return {activeTrackIndex, i};
-        }
-    }
-
-    for (int trackIdx : selectedTrackIndices)
-    {
-        if (trackIdx == activeTrackIndex)
-            continue;
-        if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
-            continue;
-
-        const auto& track = sequence->getTrack(trackIdx);
-        for (int i = 0; i < track.getNumNotes(); ++i)
-        {
-            const auto& note = track.getNote(i);
-            int nx = tickToX(note.startTick);
-            int ny = noteToY(note.noteNumber);
-            int nw = tickToWidth(note.duration);
-
-            if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
-                return {trackIdx, i};
-        }
-    }
-
-    return {};
-}
-
-PianoRollComponent::ResizeEdge PianoRollComponent::edgeAt(int x, const MidiNote& note) const
-{
-    int leftX = tickToX(note.startTick);
-    int rightX = tickToX(note.endTick());
-
-    bool nearRight = std::abs(x - rightX) <= resizeEdgeWidth;
-    bool nearLeft = std::abs(x - leftX) <= resizeEdgeWidth;
-
-    if (nearRight)
-        return ResizeEdge::Right;
-    if (nearLeft && x < (leftX + rightX) / 2)
-        return ResizeEdge::Left;
-    return ResizeEdge::None;
-}
-
-int PianoRollComponent::getKeyboardLeft() const
-{
-    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
-        return vp->getViewPositionX();
-    return 0;
-}
-
-int PianoRollComponent::getRulerTop() const
-{
-    if (auto* vp = findParentComponentOfClass<juce::Viewport>())
-        return vp->getViewPositionY();
-    return 0;
-}
-
-bool PianoRollComponent::isBlackKey(int noteNumber)
-{
-    int n = noteNumber % 12;
-    return n == 1 || n == 3 || n == 6 || n == 8 || n == 10;
-}
-
-juce::String PianoRollComponent::getNoteName(int noteNumber)
-{
-    static const char* names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-    int octave = (noteNumber / 12) - 1;
-    return juce::String(names[noteNumber % 12]) + juce::String(octave);
+    stopTimer();
+    stopNotePreview();
 }

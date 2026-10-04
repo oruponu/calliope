@@ -22,17 +22,6 @@ TrackListComponent::~TrackListComponent()
         sequence->removeListener(this);
 }
 
-void TrackListComponent::notesChanged(int)
-{
-    updateSize();
-    repaint();
-}
-void TrackListComponent::tracksChanged()
-{
-    updateSize();
-    repaint();
-}
-
 void TrackListComponent::setSequence(MidiSequence* seq)
 {
     cancelNameEdit();
@@ -69,51 +58,6 @@ void TrackListComponent::refresh()
         notifySelectionChanged();
 }
 
-bool TrackListComponent::reconcileSelectionWithTracks()
-{
-    int numTracks = sequence ? sequence->getNumTracks() : 0;
-    auto previousSelection = selectedTrackIndices;
-    int previousActive = activeTrackIndex;
-
-    if (numTracks <= 0)
-    {
-        selectedTrackIndices.clear();
-        activeTrackIndex = -1;
-        anchorTrackIndex = -1;
-    }
-    else
-    {
-        for (auto it = selectedTrackIndices.begin(); it != selectedTrackIndices.end();)
-        {
-            if (*it < 0 || *it >= numTracks)
-                it = selectedTrackIndices.erase(it);
-            else
-                ++it;
-        }
-
-        anchorTrackIndex = juce::jlimit(0, numTracks - 1, anchorTrackIndex);
-
-        if (selectedTrackIndices.empty())
-        {
-            activeTrackIndex = juce::jlimit(0, numTracks - 1, activeTrackIndex);
-            selectedTrackIndices.insert(activeTrackIndex);
-        }
-        else if (!selectedTrackIndices.contains(activeTrackIndex))
-        {
-            activeTrackIndex = *selectedTrackIndices.rbegin();
-        }
-    }
-
-    return selectedTrackIndices != previousSelection || activeTrackIndex != previousActive;
-}
-
-void TrackListComponent::updateSize()
-{
-    int numTracks = sequence ? sequence->getNumTracks() : 0;
-    int requiredHeight = numTracks * trackRowHeight + addButtonRowHeight;
-    setSize(getWidth(), juce::jmax(requiredHeight, getParentHeight()));
-}
-
 int TrackListComponent::getActiveTrackIndex() const
 {
     return activeTrackIndex;
@@ -144,12 +88,6 @@ void TrackListComponent::setSelectedTrackIndices(const std::set<int>& indices)
 {
     selectedTrackIndices = indices;
     repaint();
-}
-
-void TrackListComponent::notifySelectionChanged()
-{
-    if (onTrackSelected)
-        onTrackSelected(activeTrackIndex, selectedTrackIndices);
 }
 
 void TrackListComponent::paint(juce::Graphics& g)
@@ -461,60 +399,14 @@ void TrackListComponent::mouseDoubleClick(const juce::MouseEvent& e)
         beginEditingName(row);
 }
 
-void TrackListComponent::beginEditingName(int rowIndex)
+void TrackListComponent::notesChanged(int)
 {
-    if (!sequence || rowIndex < 0 || rowIndex >= sequence->getNumTracks())
-        return;
-
-    cancelNameEdit();
-
-    const auto& track = sequence->getTrack(rowIndex);
-    juce::String initialText =
-        track.getName().empty() ? "Track " + juce::String(rowIndex + 1) : juce::String(track.getName());
-
-    editingRow = rowIndex;
-    nameEditor = std::make_unique<juce::TextEditor>();
-    nameEditor->setBounds(getNameLabelBounds(rowIndex));
-    nameEditor->setFont(calliope::theme::font::sans(calliope::theme::font::sizeLG));
-    nameEditor->setText(initialText, juce::dontSendNotification);
-    nameEditor->setSelectAllWhenFocused(true);
-    nameEditor->onReturnKey = [this]() { commitNameEdit(); };
-    nameEditor->onFocusLost = [this]() { commitNameEdit(); };
-    nameEditor->onEscapeKey = [this]() { cancelNameEdit(); };
-    addAndMakeVisible(*nameEditor);
-    nameEditor->grabKeyboardFocus();
-    nameEditor->selectAll();
+    updateSize();
     repaint();
 }
-
-void TrackListComponent::commitNameEdit()
+void TrackListComponent::tracksChanged()
 {
-    if (!nameEditor || editingRow < 0)
-        return;
-
-    int row = editingRow;
-    juce::String newName = nameEditor->getText().trim();
-
-    editingRow = -1;
-    auto editor = std::move(nameEditor);
-    editor.reset();
-
-    if (sequence && row < sequence->getNumTracks())
-    {
-        juce::String currentName = juce::String(sequence->getTrack(row).getName());
-        if (newName != currentName && onTrackRenamed)
-            onTrackRenamed(row, newName);
-    }
-    repaint();
-}
-
-void TrackListComponent::cancelNameEdit()
-{
-    if (!nameEditor)
-        return;
-    editingRow = -1;
-    auto editor = std::move(nameEditor);
-    editor.reset();
+    updateSize();
     repaint();
 }
 
@@ -571,4 +463,112 @@ juce::Rectangle<int> TrackListComponent::getAddButtonBounds() const
     int numTracks = sequence ? sequence->getNumTracks() : 0;
     int y = numTracks * trackRowHeight;
     return {0, y, getWidth(), addButtonRowHeight};
+}
+
+void TrackListComponent::updateSize()
+{
+    int numTracks = sequence ? sequence->getNumTracks() : 0;
+    int requiredHeight = numTracks * trackRowHeight + addButtonRowHeight;
+    setSize(getWidth(), juce::jmax(requiredHeight, getParentHeight()));
+}
+
+void TrackListComponent::notifySelectionChanged()
+{
+    if (onTrackSelected)
+        onTrackSelected(activeTrackIndex, selectedTrackIndices);
+}
+
+bool TrackListComponent::reconcileSelectionWithTracks()
+{
+    int numTracks = sequence ? sequence->getNumTracks() : 0;
+    auto previousSelection = selectedTrackIndices;
+    int previousActive = activeTrackIndex;
+
+    if (numTracks <= 0)
+    {
+        selectedTrackIndices.clear();
+        activeTrackIndex = -1;
+        anchorTrackIndex = -1;
+    }
+    else
+    {
+        for (auto it = selectedTrackIndices.begin(); it != selectedTrackIndices.end();)
+        {
+            if (*it < 0 || *it >= numTracks)
+                it = selectedTrackIndices.erase(it);
+            else
+                ++it;
+        }
+
+        anchorTrackIndex = juce::jlimit(0, numTracks - 1, anchorTrackIndex);
+
+        if (selectedTrackIndices.empty())
+        {
+            activeTrackIndex = juce::jlimit(0, numTracks - 1, activeTrackIndex);
+            selectedTrackIndices.insert(activeTrackIndex);
+        }
+        else if (!selectedTrackIndices.contains(activeTrackIndex))
+        {
+            activeTrackIndex = *selectedTrackIndices.rbegin();
+        }
+    }
+
+    return selectedTrackIndices != previousSelection || activeTrackIndex != previousActive;
+}
+
+void TrackListComponent::beginEditingName(int rowIndex)
+{
+    if (!sequence || rowIndex < 0 || rowIndex >= sequence->getNumTracks())
+        return;
+
+    cancelNameEdit();
+
+    const auto& track = sequence->getTrack(rowIndex);
+    juce::String initialText =
+        track.getName().empty() ? "Track " + juce::String(rowIndex + 1) : juce::String(track.getName());
+
+    editingRow = rowIndex;
+    nameEditor = std::make_unique<juce::TextEditor>();
+    nameEditor->setBounds(getNameLabelBounds(rowIndex));
+    nameEditor->setFont(calliope::theme::font::sans(calliope::theme::font::sizeLG));
+    nameEditor->setText(initialText, juce::dontSendNotification);
+    nameEditor->setSelectAllWhenFocused(true);
+    nameEditor->onReturnKey = [this]() { commitNameEdit(); };
+    nameEditor->onFocusLost = [this]() { commitNameEdit(); };
+    nameEditor->onEscapeKey = [this]() { cancelNameEdit(); };
+    addAndMakeVisible(*nameEditor);
+    nameEditor->grabKeyboardFocus();
+    nameEditor->selectAll();
+    repaint();
+}
+
+void TrackListComponent::commitNameEdit()
+{
+    if (!nameEditor || editingRow < 0)
+        return;
+
+    int row = editingRow;
+    juce::String newName = nameEditor->getText().trim();
+
+    editingRow = -1;
+    auto editor = std::move(nameEditor);
+    editor.reset();
+
+    if (sequence && row < sequence->getNumTracks())
+    {
+        juce::String currentName = juce::String(sequence->getTrack(row).getName());
+        if (newName != currentName && onTrackRenamed)
+            onTrackRenamed(row, newName);
+    }
+    repaint();
+}
+
+void TrackListComponent::cancelNameEdit()
+{
+    if (!nameEditor)
+        return;
+    editingRow = -1;
+    auto editor = std::move(nameEditor);
+    editor.reset();
+    repaint();
 }

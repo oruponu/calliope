@@ -52,37 +52,6 @@ void TimelineStrip::setViewLeftX(int x)
     repaint(viewLeftX, 0, labelWidth(), getHeight());
 }
 
-void TimelineStrip::notesChanged(int)
-{
-    modelChanged();
-}
-
-void TimelineStrip::tracksChanged()
-{
-    modelChanged();
-}
-
-void TimelineStrip::tempoChanged()
-{
-    modelChanged();
-}
-
-void TimelineStrip::timelineMetadataChanged()
-{
-    modelChanged();
-}
-
-void TimelineStrip::sequenceReset()
-{
-    modelChanged();
-}
-
-void TimelineStrip::modelChanged()
-{
-    cancelDrag();
-    repaint();
-}
-
 float TimelineStrip::playheadX() const
 {
     if (sequence == nullptr)
@@ -200,4 +169,35 @@ void TimelineStrip::drawRangeBand(juce::Graphics& g, const RangeSelectGesture& g
     g.fillRect(band);
     g.setColour(borderColour);
     g.drawRect(band, 1.0f);
+}
+
+void TimelineStrip::notesChanged(int)
+{
+    modelChanged();
+}
+
+void TimelineStrip::tracksChanged()
+{
+    modelChanged();
+}
+
+void TimelineStrip::tempoChanged()
+{
+    modelChanged();
+}
+
+void TimelineStrip::timelineMetadataChanged()
+{
+    modelChanged();
+}
+
+void TimelineStrip::sequenceReset()
+{
+    modelChanged();
+}
+
+void TimelineStrip::modelChanged()
+{
+    cancelDrag();
+    repaint();
 }

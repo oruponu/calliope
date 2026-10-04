@@ -50,33 +50,6 @@ ControllerLaneComponent::~ControllerLaneComponent()
         sequence->removeListener(this);
 }
 
-void ControllerLaneComponent::notesChanged(int)
-{
-    drag = Idle{};
-    repaint();
-}
-void ControllerLaneComponent::tracksChanged()
-{
-    drag = Idle{};
-    repaint();
-}
-void ControllerLaneComponent::tempoChanged()
-{
-    drag = Idle{};
-    repaint();
-}
-void ControllerLaneComponent::timelineMetadataChanged()
-{
-    drag = Idle{};
-    repaint();
-}
-
-void ControllerLaneComponent::sequenceReset()
-{
-    drag = Idle{};
-    repaint();
-}
-
 void ControllerLaneComponent::setSequence(MidiSequence* seq)
 {
     if (sequence != nullptr)
@@ -184,51 +157,6 @@ void ControllerLaneComponent::updateSize()
     setSize(width, getHeight());
 }
 
-int ControllerLaneComponent::tickToX(int tick) const
-{
-    if (!sequence)
-        return leftPanelWidth;
-
-    double beatsFromTick = static_cast<double>(tick) / sequence->getTimeline().getTicksPerQuarterNote();
-    return leftPanelWidth + static_cast<int>(beatsFromTick * beatWidth);
-}
-
-int ControllerLaneComponent::xToTick(int x) const
-{
-    if (!sequence)
-        return 0;
-
-    double beats = static_cast<double>(x - leftPanelWidth) / beatWidth;
-    return static_cast<int>(beats * sequence->getTimeline().getTicksPerQuarterNote());
-}
-
-int ControllerLaneComponent::getDrawAreaTop() const
-{
-    return topPadding;
-}
-
-int ControllerLaneComponent::getDrawAreaBottom() const
-{
-    return getHeight() - bottomPadding;
-}
-
-int ControllerLaneComponent::getDrawAreaHeight() const
-{
-    return getDrawAreaBottom() - getDrawAreaTop();
-}
-
-int ControllerLaneComponent::valueToY(int value) const
-{
-    float ratio = static_cast<float>(value) / 127.0f;
-    return getDrawAreaBottom() - static_cast<int>(ratio * getDrawAreaHeight());
-}
-
-int ControllerLaneComponent::yToValue(int y) const
-{
-    float ratio = static_cast<float>(getDrawAreaBottom() - y) / static_cast<float>(getDrawAreaHeight());
-    return juce::jlimit(0, 127, static_cast<int>(ratio * 127.0f));
-}
-
 void ControllerLaneComponent::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -258,6 +186,190 @@ void ControllerLaneComponent::paint(juce::Graphics& g)
     drawLoopRegion(g);
     drawPlayhead(g);
     drawLeftPanel(g);
+}
+
+void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
+{
+    if (!sequence)
+        return;
+    if (activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
+        return;
+
+    if (e.mods.isPopupMenu())
+    {
+        juce::PopupMenu menu;
+        menu.addItem(1, "Velocity", true, displayMode == DisplayMode::Velocity);
+
+        juce::PopupMenu ccMenu;
+        struct CCEntry
+        {
+            int cc;
+            const char* name;
+        };
+        CCEntry commonCCs[] = {
+            {1, "CC 1 (Modulation)"}, {7, "CC 7 (Volume)"},   {10, "CC 10 (Pan)"},    {11, "CC 11 (Expression)"},
+            {64, "CC 64 (Sustain)"},  {91, "CC 91 (Reverb)"}, {93, "CC 93 (Chorus)"},
+        };
+        for (const auto& cc : commonCCs)
+            ccMenu.addItem(100 + cc.cc, cc.name, true, displayMode == DisplayMode::ControlChange && ccNumber == cc.cc);
+        menu.addSubMenu("Control Change", ccMenu);
+
+        menu.addItem(2, "Pitch Bend", true, displayMode == DisplayMode::PitchBend);
+        menu.addItem(3, "Program Change", true, displayMode == DisplayMode::ProgramChange);
+
+        auto screenPos = e.getScreenPosition();
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({screenPos.x, screenPos.y, 1, 1}),
+                           [this](int result)
+                           {
+                               if (result == 1)
+                                   setDisplayMode(DisplayMode::Velocity);
+                               else if (result == 2)
+                                   setDisplayMode(DisplayMode::PitchBend);
+                               else if (result == 3)
+                                   setDisplayMode(DisplayMode::ProgramChange);
+                               else if (result >= 100)
+                               {
+                                   setCCNumber(result - 100);
+                                   setDisplayMode(DisplayMode::ControlChange);
+                               }
+                           });
+        return;
+    }
+
+    if (e.x < leftPanelWidth)
+        return;
+
+    if (displayMode != DisplayMode::Velocity)
+        return;
+
+    const auto& track = sequence->getTrack(activeTrackIndex);
+    int newVelocity = yToValue(e.y);
+
+    int bestIdx = -1;
+    int bestDist = INT_MAX;
+    for (int i = 0; i < track.getNumNotes(); ++i)
+    {
+        int nx = tickToX(track.getNote(i).startTick);
+        if (e.x >= nx && e.x < nx + velocityBarWidth)
+        {
+            int dist = std::abs(nx - e.x);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                bestIdx = i;
+            }
+        }
+    }
+
+    if (bestIdx >= 0)
+    {
+        drag = VelocityDragging{activeTrackIndex, e.x, {{bestIdx, newVelocity}}};
+        repaint();
+    }
+}
+
+void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
+{
+    auto* dragging = std::get_if<VelocityDragging>(&drag);
+    if (dragging == nullptr || !sequence)
+        return;
+    if (dragging->trackIndex < 0 || dragging->trackIndex >= sequence->getNumTracks())
+        return;
+
+    if (displayMode != DisplayMode::Velocity)
+        return;
+
+    const auto& track = sequence->getTrack(dragging->trackIndex);
+    int newVelocity = yToValue(e.y);
+
+    int startX = std::min(dragging->lastDragX, e.x);
+    int endX = std::max(dragging->lastDragX, e.x);
+
+    bool changed = false;
+    for (int i = 0; i < track.getNumNotes(); ++i)
+    {
+        int nx = tickToX(track.getNote(i).startTick);
+        if (nx + velocityBarWidth >= startX && nx <= endX)
+        {
+            dragging->preview[i] = newVelocity;
+            changed = true;
+        }
+    }
+
+    dragging->lastDragX = e.x;
+
+    if (changed)
+        repaint();
+}
+
+void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
+{
+    auto state = std::exchange(drag, Idle{});
+    const auto* dragging = std::get_if<VelocityDragging>(&state);
+    if (dragging == nullptr || !sequence || dragging->trackIndex < 0 ||
+        dragging->trackIndex >= sequence->getNumTracks())
+        return;
+
+    const auto& track = sequence->getTrack(dragging->trackIndex);
+    std::vector<VelocityChange> changes;
+    for (const auto& [noteIndex, velocity] : dragging->preview)
+    {
+        if (noteIndex >= track.getNumNotes())
+            continue;
+        const int current = track.getNote(noteIndex).velocity;
+        if (current != velocity)
+            changes.push_back({noteIndex, current, velocity});
+    }
+
+    if (!changes.empty())
+    {
+        undoHistory.beginNewTransaction("Edit Velocity");
+        undoHistory.perform(new VelocityEditAction(sequence, dragging->trackIndex, std::move(changes)));
+    }
+}
+
+void ControllerLaneComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
+{
+    if (onMouseWheel)
+        onMouseWheel(e, w);
+    else
+        Component::mouseWheelMove(e, w);
+}
+
+int ControllerLaneComponent::tickToX(int tick) const
+{
+    if (!sequence)
+        return leftPanelWidth;
+
+    double beatsFromTick = static_cast<double>(tick) / sequence->getTimeline().getTicksPerQuarterNote();
+    return leftPanelWidth + static_cast<int>(beatsFromTick * beatWidth);
+}
+
+void ControllerLaneComponent::notesChanged(int)
+{
+    drag = Idle{};
+    repaint();
+}
+void ControllerLaneComponent::tracksChanged()
+{
+    drag = Idle{};
+    repaint();
+}
+void ControllerLaneComponent::tempoChanged()
+{
+    drag = Idle{};
+    repaint();
+}
+void ControllerLaneComponent::timelineMetadataChanged()
+{
+    drag = Idle{};
+    repaint();
+}
+
+void ControllerLaneComponent::sequenceReset()
+{
+    drag = Idle{};
+    repaint();
 }
 
 void ControllerLaneComponent::drawLeftPanel(juce::Graphics& g)
@@ -369,15 +481,6 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
     }
 }
 
-int ControllerLaneComponent::displayedVelocity(int trackIndex, int noteIndex) const
-{
-    if (const auto* dragging = std::get_if<VelocityDragging>(&drag);
-        dragging != nullptr && dragging->trackIndex == trackIndex)
-        if (auto it = dragging->preview.find(noteIndex); it != dragging->preview.end())
-            return it->second;
-    return sequence->getTrack(trackIndex).getNote(noteIndex).velocity;
-}
-
 void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
 {
     if (!sequence)
@@ -421,6 +524,15 @@ void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
             }
         }
     }
+}
+
+int ControllerLaneComponent::displayedVelocity(int trackIndex, int noteIndex) const
+{
+    if (const auto* dragging = std::get_if<VelocityDragging>(&drag);
+        dragging != nullptr && dragging->trackIndex == trackIndex)
+        if (auto it = dragging->preview.find(noteIndex); it != dragging->preview.end())
+            return it->second;
+    return sequence->getTrack(trackIndex).getNote(noteIndex).velocity;
 }
 
 void ControllerLaneComponent::drawControlChange(juce::Graphics& g)
@@ -623,150 +735,38 @@ void ControllerLaneComponent::drawLoopRegion(juce::Graphics& g)
     g.drawVerticalLine(x2, 0.0f, static_cast<float>(getHeight()));
 }
 
-void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
+int ControllerLaneComponent::xToTick(int x) const
 {
     if (!sequence)
-        return;
-    if (activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
-        return;
+        return 0;
 
-    if (e.mods.isPopupMenu())
-    {
-        juce::PopupMenu menu;
-        menu.addItem(1, "Velocity", true, displayMode == DisplayMode::Velocity);
-
-        juce::PopupMenu ccMenu;
-        struct CCEntry
-        {
-            int cc;
-            const char* name;
-        };
-        CCEntry commonCCs[] = {
-            {1, "CC 1 (Modulation)"}, {7, "CC 7 (Volume)"},   {10, "CC 10 (Pan)"},    {11, "CC 11 (Expression)"},
-            {64, "CC 64 (Sustain)"},  {91, "CC 91 (Reverb)"}, {93, "CC 93 (Chorus)"},
-        };
-        for (const auto& cc : commonCCs)
-            ccMenu.addItem(100 + cc.cc, cc.name, true, displayMode == DisplayMode::ControlChange && ccNumber == cc.cc);
-        menu.addSubMenu("Control Change", ccMenu);
-
-        menu.addItem(2, "Pitch Bend", true, displayMode == DisplayMode::PitchBend);
-        menu.addItem(3, "Program Change", true, displayMode == DisplayMode::ProgramChange);
-
-        auto screenPos = e.getScreenPosition();
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({screenPos.x, screenPos.y, 1, 1}),
-                           [this](int result)
-                           {
-                               if (result == 1)
-                                   setDisplayMode(DisplayMode::Velocity);
-                               else if (result == 2)
-                                   setDisplayMode(DisplayMode::PitchBend);
-                               else if (result == 3)
-                                   setDisplayMode(DisplayMode::ProgramChange);
-                               else if (result >= 100)
-                               {
-                                   setCCNumber(result - 100);
-                                   setDisplayMode(DisplayMode::ControlChange);
-                               }
-                           });
-        return;
-    }
-
-    if (e.x < leftPanelWidth)
-        return;
-
-    if (displayMode != DisplayMode::Velocity)
-        return;
-
-    const auto& track = sequence->getTrack(activeTrackIndex);
-    int newVelocity = yToValue(e.y);
-
-    int bestIdx = -1;
-    int bestDist = INT_MAX;
-    for (int i = 0; i < track.getNumNotes(); ++i)
-    {
-        int nx = tickToX(track.getNote(i).startTick);
-        if (e.x >= nx && e.x < nx + velocityBarWidth)
-        {
-            int dist = std::abs(nx - e.x);
-            if (dist < bestDist)
-            {
-                bestDist = dist;
-                bestIdx = i;
-            }
-        }
-    }
-
-    if (bestIdx >= 0)
-    {
-        drag = VelocityDragging{activeTrackIndex, e.x, {{bestIdx, newVelocity}}};
-        repaint();
-    }
+    double beats = static_cast<double>(x - leftPanelWidth) / beatWidth;
+    return static_cast<int>(beats * sequence->getTimeline().getTicksPerQuarterNote());
 }
 
-void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
+int ControllerLaneComponent::valueToY(int value) const
 {
-    auto* dragging = std::get_if<VelocityDragging>(&drag);
-    if (dragging == nullptr || !sequence)
-        return;
-    if (dragging->trackIndex < 0 || dragging->trackIndex >= sequence->getNumTracks())
-        return;
-
-    if (displayMode != DisplayMode::Velocity)
-        return;
-
-    const auto& track = sequence->getTrack(dragging->trackIndex);
-    int newVelocity = yToValue(e.y);
-
-    int startX = std::min(dragging->lastDragX, e.x);
-    int endX = std::max(dragging->lastDragX, e.x);
-
-    bool changed = false;
-    for (int i = 0; i < track.getNumNotes(); ++i)
-    {
-        int nx = tickToX(track.getNote(i).startTick);
-        if (nx + velocityBarWidth >= startX && nx <= endX)
-        {
-            dragging->preview[i] = newVelocity;
-            changed = true;
-        }
-    }
-
-    dragging->lastDragX = e.x;
-
-    if (changed)
-        repaint();
+    float ratio = static_cast<float>(value) / 127.0f;
+    return getDrawAreaBottom() - static_cast<int>(ratio * getDrawAreaHeight());
 }
 
-void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
+int ControllerLaneComponent::yToValue(int y) const
 {
-    auto state = std::exchange(drag, Idle{});
-    const auto* dragging = std::get_if<VelocityDragging>(&state);
-    if (dragging == nullptr || !sequence || dragging->trackIndex < 0 ||
-        dragging->trackIndex >= sequence->getNumTracks())
-        return;
-
-    const auto& track = sequence->getTrack(dragging->trackIndex);
-    std::vector<VelocityChange> changes;
-    for (const auto& [noteIndex, velocity] : dragging->preview)
-    {
-        if (noteIndex >= track.getNumNotes())
-            continue;
-        const int current = track.getNote(noteIndex).velocity;
-        if (current != velocity)
-            changes.push_back({noteIndex, current, velocity});
-    }
-
-    if (!changes.empty())
-    {
-        undoHistory.beginNewTransaction("Edit Velocity");
-        undoHistory.perform(new VelocityEditAction(sequence, dragging->trackIndex, std::move(changes)));
-    }
+    float ratio = static_cast<float>(getDrawAreaBottom() - y) / static_cast<float>(getDrawAreaHeight());
+    return juce::jlimit(0, 127, static_cast<int>(ratio * 127.0f));
 }
 
-void ControllerLaneComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
+int ControllerLaneComponent::getDrawAreaTop() const
 {
-    if (onMouseWheel)
-        onMouseWheel(e, w);
-    else
-        Component::mouseWheelMove(e, w);
+    return topPadding;
+}
+
+int ControllerLaneComponent::getDrawAreaBottom() const
+{
+    return getHeight() - bottomPadding;
+}
+
+int ControllerLaneComponent::getDrawAreaHeight() const
+{
+    return getDrawAreaBottom() - getDrawAreaTop();
 }

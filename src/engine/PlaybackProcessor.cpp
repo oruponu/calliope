@@ -11,20 +11,6 @@ void PlaybackProcessor::resetCursors(const PlaybackSnapshot& snap, int tick)
                                 snap.events.begin());
 }
 
-void PlaybackProcessor::offExpired(int toTick, PlaybackListener& sink)
-{
-    std::vector<ScheduledNote> expired;
-    {
-        std::lock_guard<std::mutex> lock(activeNotesMutex);
-        auto it = std::stable_partition(activeNotes.begin(), activeNotes.end(),
-                                        [&](const ScheduledNote& a) { return a.note.endTick() > toTick; });
-        expired.assign(it, activeNotes.end());
-        activeNotes.erase(it, activeNotes.end());
-    }
-    for (const auto& a : expired)
-        sink.onNoteOff(a.ctx, a.note);
-}
-
 void PlaybackProcessor::process(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink)
 {
     offExpired(toTick, sink);
@@ -77,4 +63,18 @@ void PlaybackProcessor::releaseActiveNotesForTrack(TrackId trackId, PlaybackList
     for (auto i = it; i != activeNotes.end(); ++i)
         sink.onNoteOff(i->ctx, i->note);
     activeNotes.erase(it, activeNotes.end());
+}
+
+void PlaybackProcessor::offExpired(int toTick, PlaybackListener& sink)
+{
+    std::vector<ScheduledNote> expired;
+    {
+        std::lock_guard<std::mutex> lock(activeNotesMutex);
+        auto it = std::stable_partition(activeNotes.begin(), activeNotes.end(),
+                                        [&](const ScheduledNote& a) { return a.note.endTick() > toTick; });
+        expired.assign(it, activeNotes.end());
+        activeNotes.erase(it, activeNotes.end());
+    }
+    for (const auto& a : expired)
+        sink.onNoteOff(a.ctx, a.note);
 }

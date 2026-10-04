@@ -112,77 +112,6 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
     repaint();
 }
 
-float TempoTrackStrip::tempoBpmToY(double bpm) const
-{
-    int graphTop = 3;
-    int graphBottom = getHeight() - 4;
-
-    double range = TimelineMap::maxBpm - TimelineMap::minBpm;
-    double normalized = (bpm - TimelineMap::minBpm) / range;
-    return static_cast<float>(graphBottom - normalized * (graphBottom - graphTop));
-}
-
-bool TempoTrackStrip::hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const
-{
-    if (!sequence)
-        return false;
-
-    if (y < 0 || y >= getHeight())
-        return false;
-
-    if (x < viewLeftX + labelWidth())
-        return false;
-
-    constexpr int tolerance = 5;
-    double activeBpm = sequence->getTimeline().getTempoAt(geometry.xToTick(x));
-    float lineY = tempoBpmToY(activeBpm);
-    if (std::abs(static_cast<float>(y) - lineY) > tolerance)
-        return false;
-
-    int tick = std::max(0, geometry.roundTickToGrid(geometry.xToTick(x)));
-    outTick = tick;
-    outBpm = sequence->getTimeline().getTempoAt(tick);
-    return true;
-}
-
-double TempoTrackStrip::tempoYToBpm(int y) const
-{
-    int graphTop = 3;
-    int graphBottom = getHeight() - 4;
-
-    double range = TimelineMap::maxBpm - TimelineMap::minBpm;
-    double normalized = static_cast<double>(graphBottom - y) / static_cast<double>(graphBottom - graphTop);
-    return TimelineMap::minBpm + normalized * range;
-}
-
-int TempoTrackStrip::hitTestTempoPoint(int x, int y) const
-{
-    if (!sequence)
-        return -1;
-
-    if (y < 0 || y >= getHeight())
-        return -1;
-
-    if (x < viewLeftX + labelWidth())
-        return -1;
-
-    const auto& changes = displayedChanges();
-    constexpr float hitRadius = 6.0f;
-    float bandTop = 3.0f;
-    float bandBottom = static_cast<float>(getHeight() - 4);
-
-    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
-    {
-        float px = static_cast<float>(geometry.tickToX(changes[i].tick));
-        float py = std::clamp(tempoBpmToY(changes[i].bpm), bandTop, bandBottom);
-        float dx = static_cast<float>(x) - px;
-        float dy = static_cast<float>(y) - py;
-        if (dx * dx + dy * dy <= hitRadius * hitRadius)
-            return i;
-    }
-    return -1;
-}
-
 void TempoTrackStrip::paint(juce::Graphics& g)
 {
     using namespace calliope::theme;
@@ -427,4 +356,75 @@ const std::vector<TempoChange>& TempoTrackStrip::displayedChanges() const
     if (const auto* dragging = std::get_if<PointDragging>(&drag))
         return dragging->preview;
     return sequence->getTimeline().getTempoChanges();
+}
+
+float TempoTrackStrip::tempoBpmToY(double bpm) const
+{
+    int graphTop = 3;
+    int graphBottom = getHeight() - 4;
+
+    double range = TimelineMap::maxBpm - TimelineMap::minBpm;
+    double normalized = (bpm - TimelineMap::minBpm) / range;
+    return static_cast<float>(graphBottom - normalized * (graphBottom - graphTop));
+}
+
+double TempoTrackStrip::tempoYToBpm(int y) const
+{
+    int graphTop = 3;
+    int graphBottom = getHeight() - 4;
+
+    double range = TimelineMap::maxBpm - TimelineMap::minBpm;
+    double normalized = static_cast<double>(graphBottom - y) / static_cast<double>(graphBottom - graphTop);
+    return TimelineMap::minBpm + normalized * range;
+}
+
+int TempoTrackStrip::hitTestTempoPoint(int x, int y) const
+{
+    if (!sequence)
+        return -1;
+
+    if (y < 0 || y >= getHeight())
+        return -1;
+
+    if (x < viewLeftX + labelWidth())
+        return -1;
+
+    const auto& changes = displayedChanges();
+    constexpr float hitRadius = 6.0f;
+    float bandTop = 3.0f;
+    float bandBottom = static_cast<float>(getHeight() - 4);
+
+    for (int i = 0; i < static_cast<int>(changes.size()); ++i)
+    {
+        float px = static_cast<float>(geometry.tickToX(changes[i].tick));
+        float py = std::clamp(tempoBpmToY(changes[i].bpm), bandTop, bandBottom);
+        float dx = static_cast<float>(x) - px;
+        float dy = static_cast<float>(y) - py;
+        if (dx * dx + dy * dy <= hitRadius * hitRadius)
+            return i;
+    }
+    return -1;
+}
+
+bool TempoTrackStrip::hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const
+{
+    if (!sequence)
+        return false;
+
+    if (y < 0 || y >= getHeight())
+        return false;
+
+    if (x < viewLeftX + labelWidth())
+        return false;
+
+    constexpr int tolerance = 5;
+    double activeBpm = sequence->getTimeline().getTempoAt(geometry.xToTick(x));
+    float lineY = tempoBpmToY(activeBpm);
+    if (std::abs(static_cast<float>(y) - lineY) > tolerance)
+        return false;
+
+    int tick = std::max(0, geometry.roundTickToGrid(geometry.xToTick(x)));
+    outTick = tick;
+    outBpm = sequence->getTimeline().getTempoAt(tick);
+    return true;
 }

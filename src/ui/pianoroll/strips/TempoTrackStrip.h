@@ -52,11 +52,11 @@ private:
 
     void cancelDrag() override;
     const std::vector<TempoChange>& displayedChanges() const;
-    void deleteSelectedTempoPointsImpl(const juce::String& transactionName);
     float tempoBpmToY(double bpm) const;
     double tempoYToBpm(int y) const;
     int hitTestTempoPoint(int x, int y) const;
     bool hitTestTempoLine(int x, int y, int& outTick, double& outBpm) const;
+    void deleteSelectedTempoPointsImpl(const juce::String& transactionName);
 
     EditClipboard& clipboard;
     UndoHistory& undoHistory;

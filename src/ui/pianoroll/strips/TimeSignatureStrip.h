@@ -63,8 +63,8 @@ private:
 
     void cancelDrag() override;
     const std::vector<TimeSignatureChange>& displayedChanges() const;
-    int hitTestTimeSignaturePoint(int x, int y) const;
     juce::Rectangle<int> timeSignatureLabelRect(int index) const;
+    int hitTestTimeSignaturePoint(int x, int y) const;
     void deleteSelectedTimeSignaturesImpl(const juce::String& transactionName);
     void openTimeSignatureEditor(int tick, int num, int den, bool isNew, juce::Rectangle<int> anchorInLocal);
     void commitTimeSignatureEdit(int num, int den);

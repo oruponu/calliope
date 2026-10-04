@@ -52,11 +52,6 @@ bool MidiDeviceOutput::open(const juce::String& deviceIdentifier)
     return false;
 }
 
-juce::String MidiDeviceOutput::getCurrentDeviceIdentifier() const
-{
-    return currentDeviceIdentifier;
-}
-
 void MidiDeviceOutput::close()
 {
     std::lock_guard<std::mutex> lock(sendMutex);
@@ -74,6 +69,11 @@ void MidiDeviceOutput::reset()
         return;
 
     sendResetMessages(*midiOutput);
+}
+
+juce::String MidiDeviceOutput::getCurrentDeviceIdentifier() const
+{
+    return currentDeviceIdentifier;
 }
 
 void MidiDeviceOutput::onNoteOn(const PlaybackTrackContext& ctx, const MidiNote& note)

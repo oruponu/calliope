@@ -51,6 +51,12 @@ bool Document::exportMidi(const juce::File& file) const
     return MidiFileIO::save(sequence, file);
 }
 
+void Document::markChanged()
+{
+    changedOutsideHistory = true;
+    updateChangedFlag();
+}
+
 juce::String Document::getDocumentTitle()
 {
     return getFile() == juce::File{} ? juce::String("Untitled") : getFile().getFileName();
@@ -91,18 +97,6 @@ void Document::setLastDocumentOpened(const juce::File& file)
     getAppProperties().getUserSettings()->setValue(kLastDocumentKey, file.getFullPathName());
 }
 
-void Document::notifyWillReplaceSequence()
-{
-    if (onWillReplaceSequence)
-        onWillReplaceSequence();
-}
-
-void Document::markChanged()
-{
-    changedOutsideHistory = true;
-    updateChangedFlag();
-}
-
 void Document::notesChanged(int)
 {
     noteChangeOutsideHistory();
@@ -121,6 +115,12 @@ void Document::tempoChanged()
 void Document::timelineMetadataChanged()
 {
     noteChangeOutsideHistory();
+}
+
+void Document::notifyWillReplaceSequence()
+{
+    if (onWillReplaceSequence)
+        onWillReplaceSequence();
 }
 
 void Document::noteChangeOutsideHistory()

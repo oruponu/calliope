@@ -41,12 +41,12 @@ private:
     void tracksChanged() override;
 
     int getRowIndexAt(int y) const;
+    juce::Rectangle<int> getEditorButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getMuteButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getSoloButtonBounds(int rowIndex) const;
-    juce::Rectangle<int> getPluginLabelBounds(int rowIndex) const;
-    juce::Rectangle<int> getEditorButtonBounds(int rowIndex) const;
-    juce::Rectangle<int> getChannelLabelBounds(int rowIndex) const;
     juce::Rectangle<int> getNameLabelBounds(int rowIndex) const;
+    juce::Rectangle<int> getPluginLabelBounds(int rowIndex) const;
+    juce::Rectangle<int> getChannelLabelBounds(int rowIndex) const;
     juce::Rectangle<int> getAddButtonBounds() const;
     void updateSize();
     void notifySelectionChanged();

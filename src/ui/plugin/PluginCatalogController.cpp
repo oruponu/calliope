@@ -15,15 +15,6 @@ PluginCatalogController::~PluginCatalogController()
     knownPluginList.removeChangeListener(this);
 }
 
-void PluginCatalogController::changeListenerCallback(juce::ChangeBroadcaster* source)
-{
-    if (source == &knownPluginList)
-    {
-        if (auto xml = knownPluginList.createXml())
-            getAppProperties().getUserSettings()->setValue("knownPluginList", xml.get());
-    }
-}
-
 juce::Array<juce::PluginDescription> PluginCatalogController::getTypes() const
 {
     return knownPluginList.getTypes();
@@ -43,4 +34,13 @@ void PluginCatalogController::showManageDialog()
     options.useNativeTitleBar = true;
     options.resizable = true;
     options.launchAsync();
+}
+
+void PluginCatalogController::changeListenerCallback(juce::ChangeBroadcaster* source)
+{
+    if (source == &knownPluginList)
+    {
+        if (auto xml = knownPluginList.createXml())
+            getAppProperties().getUserSettings()->setValue("knownPluginList", xml.get());
+    }
 }

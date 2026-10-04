@@ -18,13 +18,6 @@ bool isMidiFile(const juce::File& file)
 }
 } // namespace
 
-void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
-{
-    editToolButton.setActive(mode == PianoRollComponent::EditMode::Edit);
-    selectToolButton.setActive(mode == PianoRollComponent::EditMode::Select);
-    pianoRoll.setEditMode(mode);
-}
-
 MainComponent::MainComponent()
 {
     if (!midiOutput.open(getAppProperties().getUserSettings()->getValue("midiOutputDeviceId")))
@@ -375,11 +368,6 @@ MainComponent::MainComponent()
     viewport.setViewPosition(0, c4Y);
 }
 
-void MainComponent::tracksChanged()
-{
-    repaint(trackListHeaderBounds);
-}
-
 MainComponent::~MainComponent()
 {
     document.getSequence().removeListener(this);
@@ -395,6 +383,112 @@ MainComponent::~MainComponent()
     audioPlayer.setProcessor(nullptr);
     audioDeviceManager.removeAudioCallback(&audioPlayer);
     audioDeviceManager.closeAudioDevice();
+}
+
+void MainComponent::paint(juce::Graphics& g)
+{
+    using namespace calliope::theme;
+    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+
+    g.setColour(surface::surface2);
+    g.fillRect(toolBarBounds);
+    g.setColour(border::strong);
+    g.drawHorizontalLine(toolBarBounds.getBottom() - 1, static_cast<float>(toolBarBounds.getX()),
+                         static_cast<float>(toolBarBounds.getRight()));
+    g.drawVerticalLine(toolBarSeparatorX, static_cast<float>(toolBarBounds.getY() + 8),
+                       static_cast<float>(toolBarBounds.getBottom() - 8));
+
+    if (!trackListHeaderBounds.isEmpty())
+    {
+        g.setColour(surface::bg2);
+        g.fillRect(trackListHeaderBounds);
+        g.setColour(border::soft);
+        g.drawHorizontalLine(trackListHeaderBounds.getBottom() - 1, static_cast<float>(trackListHeaderBounds.getX()),
+                             static_cast<float>(trackListHeaderBounds.getRight()));
+        int numTracks = document.getSequence().getNumTracks();
+        g.setColour(text::t3);
+        g.setFont(font::sans(font::sizeXS));
+        g.drawText(juce::String::fromUTF8("TRACKS \xc2\xb7 ") + juce::String(numTracks),
+                   trackListHeaderBounds.reduced(12, 0), juce::Justification::centredLeft);
+    }
+
+    if (fileDragOver)
+    {
+        g.setColour(surface::press);
+        g.fillRect(getLocalBounds());
+        g.setColour(accent::base);
+        g.drawRect(getLocalBounds(), 2);
+    }
+}
+
+void MainComponent::resized()
+{
+    auto area = getLocalBounds();
+    menuBar.setBounds(area.removeFromTop(menuBarHeight));
+    transportBar.setBounds(area.removeFromBottom(transportBarHeight));
+
+    int clampedTrackListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - eventListWidth - 200), trackListWidth);
+    auto trackListColumn = area.removeFromLeft(clampedTrackListW);
+    trackListPanelBounds = trackListColumn;
+    trackListHeaderBounds = trackListColumn.removeFromTop(toolBarHeight);
+    trackListViewport.setBounds(trackListColumn);
+    trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
+    trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
+    int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
+    auto eventListColumn = area.removeFromRight(clampedEventListW);
+    eventListPanelBounds = eventListColumn;
+    eventList.setBounds(eventListColumn);
+    eventListDivider.setBounds(area.removeFromRight(dividerThickness));
+    pianoRollPanelBounds = area;
+
+    auto toolBarArea = area.removeFromTop(toolBarHeight);
+    toolBarBounds = toolBarArea;
+    {
+        const int btnSize = 28;
+        const int pad = 4;
+        auto toolBtnArea =
+            toolBarArea.withTrimmedLeft(pad * 2).withSizeKeepingCentre(toolBarArea.getWidth() - pad * 2, btnSize);
+        selectToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
+        toolBtnArea.removeFromLeft(pad);
+        editToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
+        toolBtnArea.removeFromLeft(pad * 2);
+        toolBarSeparatorX = toolBtnArea.getX();
+        toolBtnArea.removeFromLeft(pad * 2);
+        quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70).withSizeKeepingCentre(70, 26));
+    }
+
+    int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
+    auto editorArea = area.removeFromBottom(clampedEditorH);
+    auto divArea = area.removeFromBottom(dividerThickness);
+
+    viewport.setBounds(area);
+    pianoRoll.updateSize();
+    controllerLaneDivider.setBounds(divArea);
+    controllerLaneViewport.setBounds(editorArea);
+    controllerLane.setSize(std::max(controllerLane.getWidth(), editorArea.getWidth()),
+                           controllerLaneViewport.getMaximumVisibleHeight());
+    controllerLane.updateSize();
+
+    int sbThickness = viewport.getScrollBarThickness();
+    verticalZoomStrip.setBounds(viewport.getRight() - sbThickness, viewport.getBottom() - zoomStripLength, sbThickness,
+                                zoomStripLength);
+    horizontalZoomStrip.setBounds(controllerLaneViewport.getRight() - zoomStripLength,
+                                  controllerLaneViewport.getBottom() - sbThickness, zoomStripLength, sbThickness);
+
+    updateFocusBorder();
+}
+
+void MainComponent::parentHierarchyChanged()
+{
+    if (auto* topLevel = getTopLevelComponent())
+        topLevel->addKeyListener(commandManager.getKeyMappings());
+    updateTitleBar();
+}
+
+void MainComponent::mouseDown(const juce::MouseEvent& e)
+{
+    if (toolBarBounds.contains(e.getPosition()))
+        pianoRoll.grabKeyboardFocus();
 }
 
 void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
@@ -434,39 +528,6 @@ void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
 
     focusedPanel = detected;
     updateFocusBorder();
-}
-
-void MainComponent::updateFocusBorder()
-{
-    juce::Rectangle<int> target;
-    switch (focusedPanel)
-    {
-    case FocusPanel::TrackList:
-        target = trackListPanelBounds;
-        break;
-    case FocusPanel::PianoRoll:
-        target = pianoRollPanelBounds;
-        break;
-    case FocusPanel::EventList:
-        target = eventListPanelBounds;
-        break;
-    }
-
-    focusBorder.setBounds(target);
-    focusBorder.setVisible(!target.isEmpty());
-}
-
-void MainComponent::parentHierarchyChanged()
-{
-    if (auto* topLevel = getTopLevelComponent())
-        topLevel->addKeyListener(commandManager.getKeyMappings());
-    updateTitleBar();
-}
-
-void MainComponent::mouseDown(const juce::MouseEvent& e)
-{
-    if (toolBarBounds.contains(e.getPosition()))
-        pianoRoll.grabKeyboardFocus();
 }
 
 juce::ApplicationCommandTarget* MainComponent::getNextCommandTarget()
@@ -651,42 +712,6 @@ bool MainComponent::perform(const InvocationInfo& info)
     }
 }
 
-void MainComponent::paint(juce::Graphics& g)
-{
-    using namespace calliope::theme;
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
-
-    g.setColour(surface::surface2);
-    g.fillRect(toolBarBounds);
-    g.setColour(border::strong);
-    g.drawHorizontalLine(toolBarBounds.getBottom() - 1, static_cast<float>(toolBarBounds.getX()),
-                         static_cast<float>(toolBarBounds.getRight()));
-    g.drawVerticalLine(toolBarSeparatorX, static_cast<float>(toolBarBounds.getY() + 8),
-                       static_cast<float>(toolBarBounds.getBottom() - 8));
-
-    if (!trackListHeaderBounds.isEmpty())
-    {
-        g.setColour(surface::bg2);
-        g.fillRect(trackListHeaderBounds);
-        g.setColour(border::soft);
-        g.drawHorizontalLine(trackListHeaderBounds.getBottom() - 1, static_cast<float>(trackListHeaderBounds.getX()),
-                             static_cast<float>(trackListHeaderBounds.getRight()));
-        int numTracks = document.getSequence().getNumTracks();
-        g.setColour(text::t3);
-        g.setFont(font::sans(font::sizeXS));
-        g.drawText(juce::String::fromUTF8("TRACKS \xc2\xb7 ") + juce::String(numTracks),
-                   trackListHeaderBounds.reduced(12, 0), juce::Justification::centredLeft);
-    }
-
-    if (fileDragOver)
-    {
-        g.setColour(surface::press);
-        g.fillRect(getLocalBounds());
-        g.setColour(accent::base);
-        g.drawRect(getLocalBounds(), 2);
-    }
-}
-
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files)
 {
     for (auto& path : files)
@@ -739,61 +764,53 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
     }
 }
 
-void MainComponent::resized()
+void MainComponent::saveIfNeededThen(std::function<void()> next)
 {
-    auto area = getLocalBounds();
-    menuBar.setBounds(area.removeFromTop(menuBarHeight));
-    transportBar.setBounds(area.removeFromBottom(transportBarHeight));
+    if (fileOperationInProgress)
+        return;
 
-    int clampedTrackListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - eventListWidth - 200), trackListWidth);
-    auto trackListColumn = area.removeFromLeft(clampedTrackListW);
-    trackListPanelBounds = trackListColumn;
-    trackListHeaderBounds = trackListColumn.removeFromTop(toolBarHeight);
-    trackListViewport.setBounds(trackListColumn);
-    trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
-    trackListDivider.setBounds(area.removeFromLeft(dividerThickness));
-    int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
-    auto eventListColumn = area.removeFromRight(clampedEventListW);
-    eventListPanelBounds = eventListColumn;
-    eventList.setBounds(eventListColumn);
-    eventListDivider.setBounds(area.removeFromRight(dividerThickness));
-    pianoRollPanelBounds = area;
+    fileOperationInProgress = true;
+    pluginHost.flushPendingStateChanges();
+    document.saveIfNeededAndUserAgreesAsync(
+        [this, next = std::move(next)](juce::FileBasedDocument::SaveResult result)
+        {
+            if (result == juce::FileBasedDocument::savedOk)
+                next();
+            else
+                finishFileOperation();
+        });
+}
 
-    auto toolBarArea = area.removeFromTop(toolBarHeight);
-    toolBarBounds = toolBarArea;
+void MainComponent::tracksChanged()
+{
+    repaint(trackListHeaderBounds);
+}
+
+void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
+{
+    editToolButton.setActive(mode == PianoRollComponent::EditMode::Edit);
+    selectToolButton.setActive(mode == PianoRollComponent::EditMode::Select);
+    pianoRoll.setEditMode(mode);
+}
+
+void MainComponent::updateFocusBorder()
+{
+    juce::Rectangle<int> target;
+    switch (focusedPanel)
     {
-        const int btnSize = 28;
-        const int pad = 4;
-        auto toolBtnArea =
-            toolBarArea.withTrimmedLeft(pad * 2).withSizeKeepingCentre(toolBarArea.getWidth() - pad * 2, btnSize);
-        selectToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
-        toolBtnArea.removeFromLeft(pad);
-        editToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
-        toolBtnArea.removeFromLeft(pad * 2);
-        toolBarSeparatorX = toolBtnArea.getX();
-        toolBtnArea.removeFromLeft(pad * 2);
-        quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70).withSizeKeepingCentre(70, 26));
+    case FocusPanel::TrackList:
+        target = trackListPanelBounds;
+        break;
+    case FocusPanel::PianoRoll:
+        target = pianoRollPanelBounds;
+        break;
+    case FocusPanel::EventList:
+        target = eventListPanelBounds;
+        break;
     }
 
-    int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
-    auto editorArea = area.removeFromBottom(clampedEditorH);
-    auto divArea = area.removeFromBottom(dividerThickness);
-
-    viewport.setBounds(area);
-    pianoRoll.updateSize();
-    controllerLaneDivider.setBounds(divArea);
-    controllerLaneViewport.setBounds(editorArea);
-    controllerLane.setSize(std::max(controllerLane.getWidth(), editorArea.getWidth()),
-                           controllerLaneViewport.getMaximumVisibleHeight());
-    controllerLane.updateSize();
-
-    int sbThickness = viewport.getScrollBarThickness();
-    verticalZoomStrip.setBounds(viewport.getRight() - sbThickness, viewport.getBottom() - zoomStripLength, sbThickness,
-                                zoomStripLength);
-    horizontalZoomStrip.setBounds(controllerLaneViewport.getRight() - zoomStripLength,
-                                  controllerLaneViewport.getBottom() - sbThickness, zoomStripLength, sbThickness);
-
-    updateFocusBorder();
+    focusBorder.setBounds(target);
+    focusBorder.setVisible(!target.isEmpty());
 }
 
 void MainComponent::onVBlank()
@@ -1048,28 +1065,6 @@ void MainComponent::showPluginLoadFailures()
         nullptr);
 }
 
-void MainComponent::saveIfNeededThen(std::function<void()> next)
-{
-    if (fileOperationInProgress)
-        return;
-
-    fileOperationInProgress = true;
-    pluginHost.flushPendingStateChanges();
-    document.saveIfNeededAndUserAgreesAsync(
-        [this, next = std::move(next)](juce::FileBasedDocument::SaveResult result)
-        {
-            if (result == juce::FileBasedDocument::savedOk)
-                next();
-            else
-                finishFileOperation();
-        });
-}
-
-void MainComponent::finishFileOperation()
-{
-    fileOperationInProgress = false;
-}
-
 void MainComponent::showAudioSettings()
 {
     auto* selector = new juce::AudioDeviceSelectorComponent(audioDeviceManager, 0, 0, 2, 2, false, false, true, false);
@@ -1091,13 +1086,6 @@ void MainComponent::stopPlayback()
     midiOutput.reset();
     transportBar.setPlaying(false);
     vblankAttachment.reset();
-}
-
-PlaybackTrackContext MainComponent::makeTrackContext(int trackIndex) const
-{
-    if (trackIndex < 0 || trackIndex >= document.getSequence().getNumTracks())
-        return {};
-    return makePlaybackTrackContext(document.getSequence(), trackIndex);
 }
 
 void MainComponent::onSequenceLoaded()
@@ -1142,4 +1130,16 @@ void MainComponent::updateTitleBar()
         auto marker = juce::String(document.hasChangedSinceSaved() ? "*" : "");
         window->setName(marker + document.getDocumentTitle() + " - " + appName);
     }
+}
+
+void MainComponent::finishFileOperation()
+{
+    fileOperationInProgress = false;
+}
+
+PlaybackTrackContext MainComponent::makeTrackContext(int trackIndex) const
+{
+    if (trackIndex < 0 || trackIndex >= document.getSequence().getNumTracks())
+        return {};
+    return makePlaybackTrackContext(document.getSequence(), trackIndex);
 }
