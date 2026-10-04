@@ -23,6 +23,15 @@ TEST_CASE("track ids are never the default value", "[model][trackid]")
     CHECK(seq.addTrack().getId() != TrackId{});
 }
 
+TEST_CASE("addTrack assigns a fresh id even to a track that already has one", "[model][trackid]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    const MidiTrack copy = seq.getTrack(0);
+    seq.addTrack(copy);
+    CHECK(seq.getTrack(1).getId() != seq.getTrack(0).getId());
+}
+
 TEST_CASE("insertTrack keeps the id of the inserted track", "[model][trackid]")
 {
     MidiSequence seq;
@@ -33,6 +42,16 @@ TEST_CASE("insertTrack keeps the id of the inserted track", "[model][trackid]")
     seq.insertTrack(0, saved);
     CHECK(seq.getTrack(0).getId() == saved.getId());
     CHECK(seq.indexOf(saved.getId()) == 0);
+}
+
+TEST_CASE("ids are not reused after removeTrack", "[model][trackid]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    const TrackId removed = seq.addTrack().getId();
+    seq.removeTrack(1);
+    const TrackId added = seq.addTrack().getId();
+    CHECK(added != removed);
 }
 
 TEST_CASE("ids are not reused after replaceContents", "[model][trackid]")
@@ -61,16 +80,6 @@ TEST_CASE("replaceContents links route targets given as provisional ids", "[mode
     CHECK(seq.getTrack(1).getRouteTarget() == seq.getTrack(0).getId());
 }
 
-TEST_CASE("ids are not reused after removeTrack", "[model][trackid]")
-{
-    MidiSequence seq;
-    seq.addTrack();
-    const TrackId removed = seq.addTrack().getId();
-    seq.removeTrack(1);
-    const TrackId added = seq.addTrack().getId();
-    CHECK(added != removed);
-}
-
 TEST_CASE("indexOf follows tracks and returns -1 for unknown ids", "[model][trackid]")
 {
     MidiSequence seq;
@@ -82,13 +91,4 @@ TEST_CASE("indexOf follows tracks and returns -1 for unknown ids", "[model][trac
     CHECK(seq.indexOf(c) == 1);
     CHECK(seq.indexOf(a) == -1);
     CHECK(seq.indexOf(TrackId{}) == -1);
-}
-
-TEST_CASE("addTrack assigns a fresh id even to a track that already has one", "[model][trackid]")
-{
-    MidiSequence seq;
-    seq.addTrack();
-    const MidiTrack copy = seq.getTrack(0);
-    seq.addTrack(copy);
-    CHECK(seq.getTrack(1).getId() != seq.getTrack(0).getId());
 }

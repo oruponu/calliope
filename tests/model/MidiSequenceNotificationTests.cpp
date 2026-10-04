@@ -212,6 +212,21 @@ TEST_CASE("nested batches notify only when the outermost batch ends", "[model][n
     CHECK(listener.calls == std::vector<std::string>{"tracks"});
 }
 
+TEST_CASE("replacing contents notifies sequenceReset once", "[model][notification]")
+{
+    RecordingListener listener;
+    MidiSequence seq;
+    seq.addListener(&listener);
+
+    SequenceContents contents;
+    contents.tracks.emplace_back();
+    contents.tracks.emplace_back();
+    seq.replaceContents(std::move(contents));
+
+    CHECK(listener.calls == std::vector<std::string>{"reset"});
+    CHECK(seq.getNumTracks() == 2);
+}
+
 TEST_CASE("replacing contents inside a batch notifies only sequenceReset", "[model][notification]")
 {
     RecordingListener listener;
@@ -227,21 +242,6 @@ TEST_CASE("replacing contents inside a batch notifies only sequenceReset", "[mod
     }
 
     CHECK(listener.calls == std::vector<std::string>{"reset"});
-}
-
-TEST_CASE("replacing contents notifies sequenceReset once", "[model][notification]")
-{
-    RecordingListener listener;
-    MidiSequence seq;
-    seq.addListener(&listener);
-
-    SequenceContents contents;
-    contents.tracks.emplace_back();
-    contents.tracks.emplace_back();
-    seq.replaceContents(std::move(contents));
-
-    CHECK(listener.calls == std::vector<std::string>{"reset"});
-    CHECK(seq.getNumTracks() == 2);
 }
 
 TEST_CASE("replacing contents renumbers route targets and drops unknown ones", "[model][sequence]")

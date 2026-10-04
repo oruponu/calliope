@@ -179,6 +179,18 @@ TEST_CASE("chords are written as root, type and bass", "[notation][chord]")
     CHECK(ChordSymbol::toString({0, 0x31, 2, 0x30, 0}) == "Cmaj7");
 }
 
+TEST_CASE("no-chord has three encodings", "[notation][chord]")
+{
+    CHECK(ChordSymbol::toString({0, none, 0, none, none}).empty());
+    CHECK(ChordSymbol::toString({0, 0x30, 0, none, none}).empty());
+    CHECK(ChordSymbol::toString({0, 0x31, ChordChange::typeCount, none, none}).empty());
+}
+
+TEST_CASE("a root with an invalid accidental is shown as a placeholder", "[notation][chord]")
+{
+    CHECK(ChordSymbol::toString({0, 0x71, 0, none, none}) == "--");
+}
+
 TEST_CASE("chords are split into root, type and bass", "[notation][chord]")
 {
     const auto parts = ChordSymbol::toParts({0, 0x41, 27, 0x33, 0});
@@ -209,16 +221,4 @@ TEST_CASE("a root with an invalid accidental is split as a placeholder only", "[
     CHECK(parts.root == "--");
     CHECK(parts.type.empty());
     CHECK(parts.bass.empty());
-}
-
-TEST_CASE("no-chord has three encodings", "[notation][chord]")
-{
-    CHECK(ChordSymbol::toString({0, none, 0, none, none}).empty());
-    CHECK(ChordSymbol::toString({0, 0x30, 0, none, none}).empty());
-    CHECK(ChordSymbol::toString({0, 0x31, ChordChange::typeCount, none, none}).empty());
-}
-
-TEST_CASE("a root with an invalid accidental is shown as a placeholder", "[notation][chord]")
-{
-    CHECK(ChordSymbol::toString({0, 0x71, 0, none, none}) == "--");
 }

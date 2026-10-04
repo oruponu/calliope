@@ -32,17 +32,6 @@ TEST_CASE("before the first tempo change the default tempo applies", "[timeline]
     CHECK(empty.bpm == 120.0);
 }
 
-TEST_CASE("a negative tick resolves to the initial tempo, time signature and key", "[timeline][lookup]")
-{
-    MidiSequence seq;
-    CHECK(seq.getTimeline().getTempoAt(-1) == 120.0);
-    const auto change = seq.getTimeline().getTempoChangeAt(-1);
-    CHECK(change.tick == 0);
-    CHECK(change.bpm == 120.0);
-    CHECK(seq.getTimeline().getTimeSignatureAt(-1) == TimeSignatureChange{0, 4, 4});
-    CHECK(seq.getKeySignatureAt(-1) == KeySignatureChange{0, 0, false});
-}
-
 TEST_CASE("the time signature at a tick is the last change at or before it", "[timeline][lookup]")
 {
     MidiSequence seq;
@@ -75,4 +64,15 @@ TEST_CASE("without a key change C major applies", "[timeline][lookup]")
     CHECK(seq.getKeySignatureAt(0) == KeySignatureChange{0, 0, false});
     seq.setKeySignatureChanges({{1920, 2, false}});
     CHECK(seq.getKeySignatureAt(1919) == KeySignatureChange{0, 0, false});
+}
+
+TEST_CASE("a negative tick resolves to the initial tempo, time signature and key", "[timeline][lookup]")
+{
+    MidiSequence seq;
+    CHECK(seq.getTimeline().getTempoAt(-1) == 120.0);
+    const auto change = seq.getTimeline().getTempoChangeAt(-1);
+    CHECK(change.tick == 0);
+    CHECK(change.bpm == 120.0);
+    CHECK(seq.getTimeline().getTimeSignatureAt(-1) == TimeSignatureChange{0, 4, 4});
+    CHECK(seq.getKeySignatureAt(-1) == KeySignatureChange{0, 0, false});
 }
