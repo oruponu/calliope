@@ -24,6 +24,24 @@ void Document::newDocument()
     history.markSaved();
 }
 
+bool Document::importMidi(const juce::File& file)
+{
+    notifyWillReplaceSequence();
+    auto contents = MidiFileIO::load(file);
+    if (!contents)
+        return false;
+    sequence.replaceContents(std::move(*contents));
+    setFile({});
+    history.clear();
+    history.markSaved();
+    return true;
+}
+
+bool Document::exportMidi(const juce::File& file) const
+{
+    return MidiFileIO::save(sequence, file);
+}
+
 juce::String Document::getDocumentTitle()
 {
     return getFile() == juce::File{} ? juce::String("Untitled") : getFile().getFileName();

@@ -11,6 +11,8 @@ public:
     Document();
 
     void newDocument();
+    bool importMidi(const juce::File& file);
+    bool exportMidi(const juce::File& file) const;
 
     MidiSequence& getSequence() { return sequence; }
     const MidiSequence& getSequence() const { return sequence; }

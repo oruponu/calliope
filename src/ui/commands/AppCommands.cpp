@@ -2,13 +2,13 @@
 
 void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
-    commands.addArray({newFile_,           openFile,          saveFile_,      saveFileAs,      quitApp,
-                       togglePlay,         returnToStart,     prevBar,        nextBar,         switchToEditTool,
-                       switchToSelectTool, undoAction,        redoAction,     cutAction,       copyAction,
-                       pasteAction,        selectAllAction,   moveNotesUp,    moveNotesDown,   moveSelectionPrev,
-                       moveSelectionNext,  scrollViewUp,      scrollViewDown, scrollViewLeft,  scrollViewRight,
-                       zoomInHorizontal,   zoomOutHorizontal, zoomInVertical, zoomOutVertical, zoomReset,
-                       toggleLoop});
+    commands.addArray({newFile_,        openFile,          saveFile_,          saveFileAs,        importMidi,
+                       exportMidi,      quitApp,           togglePlay,         returnToStart,     prevBar,
+                       nextBar,         switchToEditTool,  switchToSelectTool, undoAction,        redoAction,
+                       cutAction,       copyAction,        pasteAction,        selectAllAction,   moveNotesUp,
+                       moveNotesDown,   moveSelectionPrev, moveSelectionNext,  scrollViewUp,      scrollViewDown,
+                       scrollViewLeft,  scrollViewRight,   zoomInHorizontal,   zoomOutHorizontal, zoomInVertical,
+                       zoomOutVertical, zoomReset,         toggleLoop});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -30,6 +30,12 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
     case saveFileAs:
         result.setInfo("Save As...", "", "File", 0);
         result.addDefaultKeypress('S', juce::ModifierKeys::commandModifier | juce::ModifierKeys::shiftModifier);
+        break;
+    case importMidi:
+        result.setInfo("Import MIDI...", "", "File", 0);
+        break;
+    case exportMidi:
+        result.setInfo("Export MIDI...", "", "File", 0);
         break;
     case quitApp:
         result.setInfo("Exit", "", "File", 0);

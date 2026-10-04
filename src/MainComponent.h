@@ -72,6 +72,9 @@ private:
     void saveFile();
     void saveFileAs();
     void loadFile();
+    void importMidi();
+    void importMidiFile(const juce::File& file);
+    void exportMidi();
     void showAudioSettings();
     void stopPlayback();
     void onSequenceLoaded();
@@ -155,6 +158,8 @@ private:
     bool fileDragOver = false;
     bool updatingFromEventList = false;
     bool fileOperationInProgress = false;
+    std::unique_ptr<juce::FileChooser> midiFileChooser;
+    juce::ScopedMessageBox alertBox;
 
     static constexpr int menuBarHeight = 30;
     static constexpr int transportBarHeight = 64;

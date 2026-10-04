@@ -37,7 +37,9 @@ struct AppCommands
         zoomReset,
         toggleLoop,
         audioSettings_,
-        saveFileAs
+        saveFileAs,
+        importMidi,
+        exportMidi
     };
 
     static void getAllCommands(juce::Array<juce::CommandID>& commands);

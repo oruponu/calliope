@@ -31,6 +31,9 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
         menu.addCommandItem(&commandManager, AppCommands::saveFile_);
         menu.addCommandItem(&commandManager, AppCommands::saveFileAs);
         menu.addSeparator();
+        menu.addCommandItem(&commandManager, AppCommands::importMidi);
+        menu.addCommandItem(&commandManager, AppCommands::exportMidi);
+        menu.addSeparator();
         menu.addCommandItem(&commandManager, AppCommands::quitApp);
     }
     else if (menuIndex == 1)

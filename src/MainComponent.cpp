@@ -519,6 +519,12 @@ bool MainComponent::perform(const InvocationInfo& info)
     case AppCommands::saveFileAs:
         saveFileAs();
         return true;
+    case AppCommands::importMidi:
+        importMidi();
+        return true;
+    case AppCommands::exportMidi:
+        exportMidi();
+        return true;
     case AppCommands::quitApp:
         juce::JUCEApplication::getInstance()->systemRequestedQuit();
         return true;
@@ -923,6 +929,65 @@ void MainComponent::loadFile()
                                                         finishFileOperation();
                                                     });
         });
+}
+
+void MainComponent::importMidi()
+{
+    saveIfNeededThen(
+        [this]
+        {
+            midiFileChooser = std::make_unique<juce::FileChooser>("Import MIDI File", juce::File{}, "*.mid;*.midi");
+            midiFileChooser->launchAsync(juce::FileBrowserComponent::openMode |
+                                             juce::FileBrowserComponent::canSelectFiles,
+                                         [this](const juce::FileChooser& chooser)
+                                         {
+                                             if (const auto file = chooser.getResult(); file != juce::File{})
+                                                 importMidiFile(file);
+                                             finishFileOperation();
+                                         });
+        });
+}
+
+void MainComponent::importMidiFile(const juce::File& file)
+{
+    if (!document.importMidi(file))
+    {
+        alertBox = juce::AlertWindow::showScopedAsync(juce::MessageBoxOptions()
+                                                          .withIconType(juce::MessageBoxIconType::WarningIcon)
+                                                          .withTitle("Import MIDI")
+                                                          .withMessage("The file could not be read as a MIDI file.")
+                                                          .withButton("OK"),
+                                                      nullptr);
+        return;
+    }
+    onSequenceLoaded();
+    updateTitleBar();
+}
+
+void MainComponent::exportMidi()
+{
+    if (fileOperationInProgress)
+        return;
+    fileOperationInProgress = true;
+
+    const auto initialFile =
+        document.getFile() == juce::File{} ? juce::File{} : document.getFile().withFileExtension(".mid");
+    midiFileChooser = std::make_unique<juce::FileChooser>("Export MIDI File", initialFile, "*.mid");
+    midiFileChooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles |
+                                     juce::FileBrowserComponent::warnAboutOverwriting,
+                                 [this](const juce::FileChooser& chooser)
+                                 {
+                                     const auto file = chooser.getResult();
+                                     if (file != juce::File{} && !document.exportMidi(file))
+                                         alertBox = juce::AlertWindow::showScopedAsync(
+                                             juce::MessageBoxOptions()
+                                                 .withIconType(juce::MessageBoxIconType::WarningIcon)
+                                                 .withTitle("Export MIDI")
+                                                 .withMessage("The MIDI file could not be written.")
+                                                 .withButton("OK"),
+                                             nullptr);
+                                     finishFileOperation();
+                                 });
 }
 
 void MainComponent::saveIfNeededThen(std::function<void()> next)
