@@ -25,6 +25,7 @@ public:
 
     std::function<void()> onWillReplaceSequence;
     ProjectXml::PluginStateSource pluginStateSource;
+    std::function<void()> onWillSave;
 
 protected:
     juce::Result loadDocument(const juce::File& file) override;

@@ -5,6 +5,7 @@
 #include "engine/PlaybackEngine.h"
 #include "engine/PlaybackSync.h"
 #include "model/MidiSequence.h"
+#include "plugin/PluginStateChangeWatcher.h"
 #include "plugin/VstPluginHost.h"
 #include "ui/EventListComponent.h"
 #include "ui/TrackListComponent.h"
@@ -89,9 +90,11 @@ private:
     PlaybackSync playbackSync{playbackEngine, document.getSequence()};
     MidiDeviceOutput midiOutput;
     juce::AudioDeviceManager audioDeviceManager;
+    // Declared before the graph so that it is destroyed after every plugin the graph owns.
+    PluginStateChangeWatcher pluginStateWatcher;
     juce::AudioProcessorGraph audioGraph;
     juce::AudioProcessorPlayer audioPlayer;
-    VstPluginHost pluginHost;
+    VstPluginHost pluginHost{pluginStateWatcher};
     PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
     TrackOutputController trackOutput{pluginHost, document, playbackEngine, pluginCatalog, [this] { stopPlayback(); }};
     PluginEditorController editorController{pluginHost};

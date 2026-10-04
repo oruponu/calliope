@@ -46,6 +46,7 @@ target_sources(Calliope PRIVATE
     src/notation/ChordSymbol.cpp
     src/notation/KeySignatureName.cpp
     src/plugin/PluginAssignmentCodec.cpp
+    src/plugin/PluginStateChangeWatcher.cpp
     src/plugin/PluginSyncPlan.cpp
     src/plugin/VstPluginHost.cpp
     src/ui/EventListComponent.cpp

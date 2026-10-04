@@ -71,6 +71,8 @@ juce::Result Document::loadDocument(const juce::File& file)
 
 juce::Result Document::saveDocument(const juce::File& file)
 {
+    if (onWillSave)
+        onWillSave();
     if (!ProjectFileIO::save(sequence, pluginStateSource, file))
         return juce::Result::fail("The project could not be written.");
     changedOutsideHistory = false;

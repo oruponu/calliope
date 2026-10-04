@@ -40,9 +40,14 @@ public:
 };
 } // namespace
 
-VstPluginHost::VstPluginHost()
+VstPluginHost::VstPluginHost(PluginStateChangeWatcher& watcher) : stateWatcher(watcher)
 {
     juce::addDefaultFormatsToManager(formatManager);
+    stateWatcher.onChanged = [this]
+    {
+        if (onPluginStateChanged)
+            onPluginStateChanged();
+    };
 }
 
 void VstPluginHost::prepare(juce::AudioProcessorGraph& g)
@@ -69,6 +74,11 @@ std::optional<juce::PluginDescription> VstPluginHost::describePluginFile(const j
 
 VstPluginHost::~VstPluginHost()
 {
+    for (const auto& [trackId, _] : instances)
+        if (auto* processor = getPluginProcessor(trackId))
+            stateWatcher.unwatch(*processor);
+    // The watcher outlives the host, so a report still pending must not call back into it.
+    stateWatcher.onChanged = nullptr;
     if (sequence != nullptr)
         sequence->removeListener(this);
 }
@@ -143,6 +153,7 @@ bool VstPluginHost::createInstance(TrackId trackId, const juce::PluginDescriptio
         graph->addConnection({{pluginNode->nodeID, ch}, {audioOutNodeId, ch}});
 
     instances[trackId] = Instance{pluginNode->nodeID, midiSourceNode->nodeID, collectorPtr, {}};
+    stateWatcher.watch(*pluginNode->getProcessor());
     return true;
 }
 
@@ -153,6 +164,9 @@ void VstPluginHost::destroyInstance(TrackId trackId)
     auto it = instances.find(trackId);
     if (it == instances.end())
         return;
+
+    if (auto* processor = getPluginProcessor(trackId))
+        stateWatcher.unwatch(*processor);
 
     if (onPluginDetached)
         onPluginDetached(trackId);
@@ -183,6 +197,7 @@ void VstPluginHost::sequenceReset()
 
     retiredStates.clear();
     failedIds.clear();
+    stateWatcher.discardPending();
     syncWithSequence();
 }
 
@@ -329,4 +344,9 @@ void VstPluginHost::onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent
     }
 
     collector->addMessageToQueue(msg);
+}
+
+void VstPluginHost::flushPendingStateChanges()
+{
+    stateWatcher.flush();
 }

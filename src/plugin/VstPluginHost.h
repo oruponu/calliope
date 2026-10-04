@@ -4,6 +4,7 @@
 #include "model/MidiSequence.h"
 #include "model/PluginAssignment.h"
 #include "model/TrackId.h"
+#include "plugin/PluginStateChangeWatcher.h"
 #include "plugin/RetiredStateStore.h"
 #include <cstddef>
 #include <functional>
@@ -20,7 +21,7 @@ class PlaybackEngine;
 class VstPluginHost : public PlaybackListener, public MidiSequence::Listener
 {
 public:
-    VstPluginHost();
+    explicit VstPluginHost(PluginStateChangeWatcher& watcher);
     ~VstPluginHost() override;
 
     void prepare(juce::AudioProcessorGraph& graph);
@@ -42,7 +43,10 @@ public:
     void onNoteOff(const PlaybackTrackContext& ctx, const MidiNote& note) override;
     void onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event) override;
 
+    void flushPendingStateChanges();
+
     std::function<void(TrackId)> onPluginDetached;
+    std::function<void()> onPluginStateChanged;
 
 private:
     struct Instance
@@ -68,4 +72,5 @@ private:
     std::unordered_map<TrackId, Instance> instances;
     RetiredStateStore<juce::MemoryBlock> retiredStates;
     std::unordered_set<TrackId> failedIds;
+    PluginStateChangeWatcher& stateWatcher;
 };

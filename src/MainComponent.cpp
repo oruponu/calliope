@@ -46,6 +46,8 @@ MainComponent::MainComponent()
     pluginHost.setSequence(&document.getSequence());
     pluginHost.setPlaybackEngine(&playbackEngine);
     document.pluginStateSource = [this](TrackId trackId) { return pluginHost.getPluginState(trackId); };
+    pluginHost.onPluginStateChanged = [this] { document.markChanged(); };
+    document.onWillSave = [this] { pluginHost.flushPendingStateChanges(); };
 
     playbackEngine.setSequence(&document.getSequence());
     playbackEngine.addListener(&midiOutput);
@@ -1052,6 +1054,7 @@ void MainComponent::saveIfNeededThen(std::function<void()> next)
         return;
 
     fileOperationInProgress = true;
+    pluginHost.flushPendingStateChanges();
     document.saveIfNeededAndUserAgreesAsync(
         [this, next = std::move(next)](juce::FileBasedDocument::SaveResult result)
         {
