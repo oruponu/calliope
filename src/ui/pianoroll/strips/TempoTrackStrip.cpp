@@ -46,16 +46,7 @@ void TempoTrackStrip::deleteSelectedTempoPointsImpl(const juce::String& transact
         return;
 
     auto before = sequence->getTimeline().getTempoChanges();
-    const int count = static_cast<int>(before.size());
-
-    std::vector<TempoChange> after;
-    after.reserve(before.size());
-    for (int i = 0; i < count; ++i)
-    {
-        const bool remove = selection.contains(i) && before[i].tick != 0;
-        if (!remove)
-            after.push_back(before[i]);
-    }
+    auto after = TempoEdits::afterDelete(before, selection.indices());
 
     if (after.size() == before.size())
         return;
@@ -103,21 +94,13 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
     if (!sequence || !clipboard.hasTempoPoints())
         return;
 
+    const auto& items = clipboard.getTempoPoints();
     auto before = sequence->getTimeline().getTempoChanges();
-    auto after = before;
+    auto after = TempoEdits::afterPaste(before, items, atTick);
 
     std::vector<int> pastedTicks;
-    for (const auto& p : clipboard.getTempoPoints())
-    {
-        const int tick = p.tick + atTick;
-        pastedTicks.push_back(tick);
-        auto it = std::ranges::find(after, tick, &TempoChange::tick);
-        if (it != after.end())
-            it->bpm = p.bpm;
-        else
-            after.push_back({tick, p.bpm});
-    }
-    std::ranges::sort(after, {}, &TempoChange::tick);
+    for (const auto& p : items)
+        pastedTicks.push_back(p.tick + atTick);
 
     const bool changed = (after != before);
     if (changed)

@@ -33,6 +33,8 @@ target_sources(CalliopeTests PRIVATE
     edit/NoteShiftTests.cpp
     edit/NoteStartResizeTests.cpp
     edit/TempoAddChangeTests.cpp
+    edit/TempoDeleteTests.cpp
+    edit/TempoPasteTests.cpp
     edit/TimeSignatureAddChangeTests.cpp
     edit/TimeSignatureDeleteTests.cpp
     edit/TimeSignatureMoveTests.cpp
