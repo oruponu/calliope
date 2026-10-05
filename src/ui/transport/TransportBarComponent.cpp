@@ -464,12 +464,11 @@ void TransportBarComponent::setTempoAtPlayhead(double bpm)
         return;
     }
 
-    document.getHistory().beginNewTransaction();
     auto before = document.getSequence().getTimeline().getTempoChanges();
     auto after = before;
     TempoEdits::add(after, tc.tick, clamped);
-    document.getHistory().perform(
-        new ReplaceListAction<TempoChange>(&document.getSequence(), std::move(before), std::move(after)));
+    performReplaceList(document.getHistory(), &document.getSequence(), "Edit Tempo Change", std::move(before),
+                       std::move(after));
 }
 
 void TransportBarComponent::commitTimeSignatureEdit()
@@ -518,12 +517,11 @@ void TransportBarComponent::setTimeSignatureAtPlayhead(int num, int den)
         return;
     }
 
-    document.getHistory().beginNewTransaction();
     auto before = document.getSequence().getTimeline().getTimeSignatureChanges();
     auto after = before;
     TimeSignatureEdits::add(after, ts.tick, num, den, document.getSequence().getTimeline().getTicksPerQuarterNote());
-    document.getHistory().perform(
-        new ReplaceListAction<TimeSignatureChange>(&document.getSequence(), std::move(before), std::move(after)));
+    performReplaceList(document.getHistory(), &document.getSequence(), "Edit Time Signature Change", std::move(before),
+                       std::move(after));
 }
 
 void TransportBarComponent::commitKeySignatureEdit()
@@ -568,10 +566,10 @@ void TransportBarComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool is
         return;
     }
 
-    document.getHistory().beginNewTransaction();
     auto before = document.getSequence().getKeySignatureChanges();
     auto after = before;
     KeySignatureEdits::add(after, ks.tick, sharpsOrFlats, isMinor);
-    document.getHistory().perform(
-        new ReplaceListAction<KeySignatureChange>(&document.getSequence(), std::move(before), std::move(after)));
+    performReplaceList(document.getHistory(), &document.getSequence(),
+                       hasActiveKey ? "Edit Key Signature Change" : "Add Key Signature Change", std::move(before),
+                       std::move(after));
 }
