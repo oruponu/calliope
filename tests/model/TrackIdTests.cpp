@@ -1,6 +1,5 @@
 #include "model/MidiSequence.h"
 #include <catch2/catch_test_macros.hpp>
-#include <cstdint>
 #include <utility>
 
 TEST_CASE("a track built with a provisional id reports that id", "[model][trackid]")
@@ -14,7 +13,7 @@ TEST_CASE("addTrack assigns distinct increasing ids", "[model][trackid]")
     const TrackId a = seq.addTrack().getId();
     const TrackId b = seq.addTrack().getId();
     CHECK(a != b);
-    CHECK(static_cast<std::uint32_t>(a) < static_cast<std::uint32_t>(b));
+    CHECK(std::to_underlying(a) < std::to_underlying(b));
 }
 
 TEST_CASE("track ids are never the default value", "[model][trackid]")
@@ -61,7 +60,7 @@ TEST_CASE("ids are not reused after replaceContents", "[model][trackid]")
     SequenceContents contents;
     contents.tracks.emplace_back();
     seq.replaceContents(std::move(contents));
-    CHECK(static_cast<std::uint32_t>(seq.getTrack(0).getId()) > static_cast<std::uint32_t>(before));
+    CHECK(std::to_underlying(seq.getTrack(0).getId()) > std::to_underlying(before));
 }
 
 TEST_CASE("replaceContents links route targets given as provisional ids", "[model][trackid]")

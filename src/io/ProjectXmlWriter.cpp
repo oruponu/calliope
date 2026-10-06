@@ -2,7 +2,7 @@
 #include "io/ProjectXmlNames.h"
 #include "io/XmlNumberText.h"
 #include <array>
-#include <cstdint>
+#include <cstddef>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -29,7 +29,7 @@ juce::String utf8(const std::string& text)
 
 int fileId(TrackId id)
 {
-    return static_cast<int>(static_cast<std::uint32_t>(id));
+    return static_cast<int>(std::to_underlying(id));
 }
 
 // Appending walks XmlElement's singly linked list of children, so prepend in reverse to keep writing linear.
