@@ -75,6 +75,24 @@ TEST_CASE("the timeline, key signatures and chords come back unchanged", "[io][p
     CHECK(loaded->chordChanges == seq.getChordChanges());
 }
 
+TEST_CASE("the timeline lists its tempos before its time signatures", "[io][projectxml]")
+{
+    SequenceContents contents;
+    contents.timeline.setTempoChanges({{0, 120.0}, {1920, 90.0}});
+    contents.timeline.setTimeSignatureChanges({{0, 4, 4}, {3840, 3, 4}});
+    MidiSequence seq;
+    seq.replaceContents(std::move(contents));
+
+    const auto written = ProjectXml::write(seq, {});
+    const auto* timeline = written->getChildByName("Timeline");
+
+    REQUIRE(timeline != nullptr);
+    std::vector<std::string> tags;
+    for (const auto* child : timeline->getChildIterator())
+        tags.push_back(child->getTagName().toStdString());
+    CHECK(tags == std::vector<std::string>{"Tempo", "Tempo", "TimeSignature", "TimeSignature"});
+}
+
 TEST_CASE("track settings come back unchanged", "[io][projectxml]")
 {
     MidiSequence seq;
