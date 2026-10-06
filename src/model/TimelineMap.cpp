@@ -1,7 +1,6 @@
 #include "model/TimelineMap.h"
 #include <algorithm>
 #include <cmath>
-#include <ranges>
 #include <utility>
 
 namespace
@@ -48,23 +47,21 @@ void TimelineMap::setTimeSignatureChanges(std::vector<TimeSignatureChange> chang
 
 double TimelineMap::getTempoAt(int tick) const
 {
-    auto reversed = std::views::reverse(tempoChanges);
-    auto it = std::ranges::find_if(reversed, [tick](const TempoChange& tc) { return tc.tick <= tick; });
-    return it != reversed.end() ? it->bpm : 120.0;
+    auto found = std::ranges::find_last_if(tempoChanges, [tick](const TempoChange& tc) { return tc.tick <= tick; });
+    return found.empty() ? 120.0 : found.front().bpm;
 }
 
 TempoChange TimelineMap::getTempoChangeAt(int tick) const
 {
-    auto reversed = std::views::reverse(tempoChanges);
-    auto it = std::ranges::find_if(reversed, [tick](const TempoChange& tc) { return tc.tick <= tick; });
-    return it != reversed.end() ? *it : TempoChange{0, 120.0};
+    auto found = std::ranges::find_last_if(tempoChanges, [tick](const TempoChange& tc) { return tc.tick <= tick; });
+    return found.empty() ? TempoChange{0, 120.0} : found.front();
 }
 
 TimeSignatureChange TimelineMap::getTimeSignatureAt(int tick) const
 {
-    auto reversed = std::views::reverse(timeSignatureChanges);
-    auto it = std::ranges::find_if(reversed, [tick](const TimeSignatureChange& ts) { return ts.tick <= tick; });
-    return it != reversed.end() ? *it : TimeSignatureChange{0, 4, 4};
+    auto found = std::ranges::find_last_if(timeSignatureChanges,
+                                           [tick](const TimeSignatureChange& ts) { return ts.tick <= tick; });
+    return found.empty() ? TimeSignatureChange{0, 4, 4} : found.front();
 }
 
 double TimelineMap::ticksToSeconds(int ticks) const

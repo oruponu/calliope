@@ -1,5 +1,6 @@
 #include "edit/ChordTrackEdits.h"
 #include <algorithm>
+#include <span>
 
 namespace
 {
@@ -191,21 +192,16 @@ std::vector<ChordChange> ChordTrackEdits::afterResize(const std::vector<ChordCha
             terminator.tick = end;
         }
 
-        bool tailFound = false;
-        ChordChange tail{};
-        for (size_t i = nextIndex; i < before.size(); ++i)
-        {
-            const auto& cc = before[i];
-            if (cc.tick >= end || cc.isNoChord())
-                continue;
-            tailFound = (i + 1 >= before.size()) || before[i + 1].tick > end;
-            tail = cc;
-        }
+        const auto fromTail =
+            std::ranges::find_last_if(std::span(before).subspan(nextIndex),
+                                      [end](const ChordChange& cc) { return cc.tick < end && !cc.isNoChord(); });
+        const bool tailFound = !fromTail.empty() && (fromTail.size() == 1 || fromTail[1].tick > end);
 
         std::erase_if(changes,
                       [chordTick, end](const ChordChange& cc) { return cc.tick > chordTick && cc.tick < end; });
         if (tailFound)
         {
+            ChordChange tail = fromTail.front();
             tail.tick = end;
             changes.push_back(tail);
         }
@@ -430,20 +426,15 @@ std::vector<ChordChange> ChordTrackEdits::afterPaste(const std::vector<ChordChan
         const int startTick = anchorTick + sorted[k].tickOffset;
         const int endTick = anchorTick + sorted[last].tickOffset + sorted[last].length;
 
-        bool tailFound = false;
-        ChordChange tail{};
-        for (size_t i = 0; i < before.size(); ++i)
-        {
-            const auto& cc = before[i];
-            if (cc.tick < startTick || cc.tick >= endTick || cc.isNoChord())
-                continue;
-            tailFound = (i + 1 >= before.size()) || before[i + 1].tick > endTick;
-            tail = cc;
-        }
+        const auto fromTail =
+            std::ranges::find_last_if(before, [startTick, endTick](const ChordChange& cc)
+                                      { return cc.tick >= startTick && cc.tick < endTick && !cc.isNoChord(); });
+        const bool tailFound = !fromTail.empty() && (fromTail.size() == 1 || fromTail[1].tick > endTick);
         std::erase_if(changes, [startTick, endTick](const ChordChange& cc)
                       { return cc.tick >= startTick && cc.tick < endTick; });
         if (tailFound)
         {
+            ChordChange tail = fromTail.front();
             tail.tick = endTick;
             changes.push_back(tail);
             std::ranges::sort(changes, {}, &ChordChange::tick);

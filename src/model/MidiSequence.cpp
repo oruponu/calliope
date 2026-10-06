@@ -3,7 +3,6 @@
 #include <cassert>
 #include <iterator>
 #include <map>
-#include <ranges>
 #include <utility>
 
 MidiSequence::ChangeBatch::ChangeBatch(MidiSequence& sequenceRef) : sequence(sequenceRef)
@@ -206,9 +205,9 @@ void MidiSequence::setTimeSignatureChanges(std::vector<TimeSignatureChange> chan
 
 KeySignatureChange MidiSequence::getKeySignatureAt(int tick) const
 {
-    auto reversed = std::views::reverse(keySignatureChanges);
-    auto it = std::ranges::find_if(reversed, [tick](const KeySignatureChange& ks) { return ks.tick <= tick; });
-    return it != reversed.end() ? *it : KeySignatureChange{0, 0, false};
+    auto found = std::ranges::find_last_if(keySignatureChanges,
+                                           [tick](const KeySignatureChange& ks) { return ks.tick <= tick; });
+    return found.empty() ? KeySignatureChange{0, 0, false} : found.front();
 }
 
 const std::vector<KeySignatureChange>& MidiSequence::getKeySignatureChanges() const
