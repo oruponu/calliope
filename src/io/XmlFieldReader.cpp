@@ -14,16 +14,14 @@ std::optional<std::string> attributeText(const juce::XmlElement& element, const 
 
 int XmlFieldReader::integer(const juce::XmlElement& element, const char* name)
 {
-    const auto text = attributeText(element, name);
-    const auto value = text ? XmlNumberText::parseInt(*text) : std::nullopt;
+    const auto value = attributeText(element, name).and_then(XmlNumberText::parseInt);
     require(value.has_value());
     return value.value_or(0);
 }
 
 double XmlFieldReader::finiteDouble(const juce::XmlElement& element, const char* name)
 {
-    const auto text = attributeText(element, name);
-    const auto value = text ? XmlNumberText::parseFiniteDouble(*text) : std::nullopt;
+    const auto value = attributeText(element, name).and_then(XmlNumberText::parseFiniteDouble);
     require(value.has_value());
     return value.value_or(0.0);
 }
