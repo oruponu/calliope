@@ -13,7 +13,7 @@ Calliope は、[JUCE](https://juce.com/) ベースの MIDI シーケンサーで
 
 - [CMake](https://cmake.org/) 3.22 以上
 - [Ninja](https://ninja-build.org/)
-- C++20 対応コンパイラ
+- C++23 対応コンパイラ
 
 ## ビルド
 

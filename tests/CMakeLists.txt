@@ -83,7 +83,7 @@ target_include_directories(CalliopeTests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_compile_features(CalliopeTests PRIVATE cxx_std_20)
+target_compile_features(CalliopeTests PRIVATE cxx_std_23)
 
 target_compile_definitions(CalliopeTests PRIVATE
     JUCE_USE_CURL=0

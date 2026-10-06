@@ -76,7 +76,7 @@ target_sources(Calliope PRIVATE
 
 target_include_directories(Calliope PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-target_compile_features(Calliope PRIVATE cxx_std_20)
+target_compile_features(Calliope PRIVATE cxx_std_23)
 
 target_compile_definitions(Calliope PRIVATE
     JUCE_WEB_BROWSER=0
@@ -104,6 +104,6 @@ option(CALLIOPE_BUILD_TESTS "Build unit tests" ON)
 if(CALLIOPE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(external/Catch2)
-    target_compile_features(Catch2 PUBLIC cxx_std_20)
+    target_compile_features(Catch2 PUBLIC cxx_std_23)
     add_subdirectory(tests)
 endif()
