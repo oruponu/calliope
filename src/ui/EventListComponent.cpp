@@ -197,8 +197,10 @@ void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int 
     g.fillRect(0, 0, width, height);
     if (rowIsSelected)
     {
-        g.setColour(accent::soft);
+        g.setColour(surface::selection);
         g.fillRect(0, 0, width, height);
+        g.setColour(accent::base);
+        g.fillRect(0, 0, 2, height);
     }
 
     constexpr int dotSize = 8;

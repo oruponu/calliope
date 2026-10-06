@@ -105,8 +105,10 @@ void TrackListComponent::paint(juce::Graphics& g)
         auto highlightBounds = juce::Rectangle<int>(4, y + 2, getWidth() - 8, trackRowHeight - 4).toFloat();
         if (i == activeTrackIndex)
         {
-            g.setColour(accent::soft);
+            g.setColour(surface::selection);
             g.fillRoundedRectangle(highlightBounds, radius::r2);
+            g.setColour(accent::dim);
+            g.drawRoundedRectangle(highlightBounds.reduced(0.5f), radius::r2, 1.0f);
         }
         else if (selectedTrackIndices.contains(i))
         {
