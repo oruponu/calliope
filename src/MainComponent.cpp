@@ -4,6 +4,7 @@
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
 #include "undo/TrackActions.h"
+#include <ranges>
 
 namespace
 {
@@ -59,9 +60,9 @@ MainComponent::MainComponent()
     {
         if (updatingFromEventList)
             return;
-        std::set<std::pair<int, int>> noteRefs;
-        for (const auto& ref : selected)
-            noteRefs.insert({ref.trackIndex, ref.noteIndex});
+        const auto noteRefs =
+            selected | std::views::transform([](const auto& ref) { return std::pair{ref.trackIndex, ref.noteIndex}; }) |
+            std::ranges::to<std::set>();
         eventList.setSelectedNotes(noteRefs);
     };
     pianoRoll.onNotePreview = [this](const MidiNote& note)
@@ -288,9 +289,10 @@ MainComponent::MainComponent()
     eventList.onNoteSelectionFromList = [this](const auto& noteRefs)
     {
         updatingFromEventList = true;
-        std::set<PianoRollComponent::NoteRef> notes;
-        for (const auto& [trackIdx, noteIdx] : noteRefs)
-            notes.insert({trackIdx, noteIdx});
+        const auto notes =
+            noteRefs |
+            std::views::transform([](const auto& ref) { return PianoRollComponent::NoteRef{ref.first, ref.second}; }) |
+            std::ranges::to<std::set>();
         pianoRoll.setSelectedNotes(notes);
         updatingFromEventList = false;
     };
@@ -1101,9 +1103,7 @@ void MainComponent::onSequenceLoaded()
     pianoRoll.setLoopRegion(false, 0, 0);
     controllerLane.setLoopRegion(false, 0, 0);
 
-    std::set<int> allTracks;
-    for (int i = 0; i < document.getSequence().getNumTracks(); ++i)
-        allTracks.insert(i);
+    const auto allTracks = std::views::iota(0, document.getSequence().getNumTracks()) | std::ranges::to<std::set>();
 
     pianoRoll.setSequence(&document.getSequence());
     pianoRoll.setSelectedTracks(0, allTracks);

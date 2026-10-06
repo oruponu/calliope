@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <ranges>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -214,9 +215,7 @@ void PianoRollComponent::deleteSelectedNotes()
         const int n = track.getNumNotes();
         if (n > 0)
         {
-            std::vector<int> order(n);
-            for (int i = 0; i < n; ++i)
-                order[i] = i;
+            auto order = std::views::iota(0, n) | std::ranges::to<std::vector>();
             std::sort(order.begin(), order.end(),
                       [&track](int a, int b)
                       {
@@ -505,9 +504,7 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
     if (n == 0)
         return;
 
-    std::vector<int> order(n);
-    for (int i = 0; i < n; ++i)
-        order[i] = i;
+    auto order = std::views::iota(0, n) | std::ranges::to<std::vector>();
     std::sort(order.begin(), order.end(),
               [&track](int a, int b)
               {
@@ -910,10 +907,11 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     int deltaNote = currentNote - moving->dragStartNote;
     int snappedDeltaTick = roundTickToGrid(moving->anchorStartTick + rawDeltaTick) - moving->anchorStartTick;
 
-    std::vector<MidiNote> origins;
-    origins.reserve(moving->targets.size());
-    for (const auto& t : moving->targets)
-        origins.push_back({.noteNumber = t.noteNumber, .startTick = t.startTick});
+    const auto origins =
+        moving->targets |
+        std::views::transform([](const MoveTarget& t)
+                              { return MidiNote{.noteNumber = t.noteNumber, .startTick = t.startTick}; }) |
+        std::ranges::to<std::vector>();
     const auto shift = NoteEdits::clampShift(origins, {snappedDeltaTick, deltaNote});
 
     moving->deltaTick = shift.deltaTick;
@@ -1887,11 +1885,10 @@ bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
 
 std::vector<MidiNote> PianoRollComponent::collectSelectedNotes() const
 {
-    std::vector<MidiNote> notes;
-    notes.reserve(selectedNotes.size());
-    for (const auto& ref : selectedNotes)
-        notes.push_back(sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex));
-    return notes;
+    return selectedNotes |
+           std::views::transform([this](const NoteRef& ref)
+                                 { return sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex); }) |
+           std::ranges::to<std::vector>();
 }
 
 void PianoRollComponent::clearNoteSelection()

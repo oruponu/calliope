@@ -4,6 +4,7 @@
 #include "plugin/PluginAssignmentCodec.h"
 #include "plugin/PluginSyncPlan.h"
 #include <optional>
+#include <ranges>
 
 namespace
 {
@@ -213,10 +214,7 @@ void VstPluginHost::sequenceReset()
     if (playbackEngine != nullptr && !instances.empty())
         pause.emplace(*playbackEngine);
 
-    std::vector<TrackId> trackIds;
-    trackIds.reserve(instances.size());
-    for (const auto& [trackId, _] : instances)
-        trackIds.push_back(trackId);
+    const auto trackIds = instances | std::views::keys | std::ranges::to<std::vector>();
     for (TrackId trackId : trackIds)
         destroyInstance(trackId);
 
@@ -231,10 +229,7 @@ void VstPluginHost::syncWithSequence()
     if (sequence == nullptr)
         return;
 
-    std::vector<TrackId> liveIds;
-    liveIds.reserve(instances.size());
-    for (const auto& [trackId, _] : instances)
-        liveIds.push_back(trackId);
+    const auto liveIds = instances | std::views::keys | std::ranges::to<std::vector>();
 
     const auto plan = planPluginSync(*sequence, liveIds, failedIds);
 

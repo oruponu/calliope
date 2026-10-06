@@ -1,5 +1,6 @@
 #include "notation/ChordSymbol.h"
 #include <cctype>
+#include <ranges>
 
 namespace
 {
@@ -58,10 +59,8 @@ std::string ChordSymbol::rootToString(int root)
 
 bool ChordSymbol::rootFromString(const std::string& text, int& root)
 {
-    std::string s;
-    for (char c : text)
-        if (!std::isspace(static_cast<unsigned char>(c)))
-            s += c;
+    auto s = text | std::views::filter([](char c) { return !std::isspace(static_cast<unsigned char>(c)); }) |
+             std::ranges::to<std::string>();
 
     if (s.empty())
         return false;
@@ -105,10 +104,8 @@ std::string ChordSymbol::typeToString(int type)
 
 bool ChordSymbol::typeFromString(const std::string& text, int& type)
 {
-    std::string s;
-    for (char c : text)
-        if (!std::isspace(static_cast<unsigned char>(c)))
-            s += c;
+    auto s = text | std::views::filter([](char c) { return !std::isspace(static_cast<unsigned char>(c)); }) |
+             std::ranges::to<std::string>();
 
     for (int i = 0; i < ChordChange::typeCount; ++i)
     {

@@ -1,5 +1,6 @@
 #include "ui/TrackListComponent.h"
 #include "ui/theme/TrackColours.h"
+#include <ranges>
 
 namespace
 {
@@ -34,9 +35,7 @@ void TrackListComponent::setSequence(MidiSequence* seq)
     {
         activeTrackIndex = 0;
         anchorTrackIndex = 0;
-        selectedTrackIndices.clear();
-        for (int i = 0; i < seq->getNumTracks(); ++i)
-            selectedTrackIndices.insert(i);
+        selectedTrackIndices = std::views::iota(0, seq->getNumTracks()) | std::ranges::to<std::set>();
     }
     else
     {

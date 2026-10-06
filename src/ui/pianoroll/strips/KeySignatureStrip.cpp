@@ -5,6 +5,7 @@
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
 #include <memory>
+#include <ranges>
 #include <set>
 #include <utility>
 #include <variant>
@@ -311,7 +312,7 @@ void KeySignatureStrip::mouseUp(const juce::MouseEvent&)
             performReplaceList(undoHistory, sequence, "Move Key Signature Change", dragging->before, changes);
             if (onSelectionTaken)
                 onSelectionTaken();
-            selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
+            selection.assign(std::ranges::to<std::set>(dragging->group));
         }
         else if (validIndex && !dragging->moved)
         {

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <ranges>
 
 namespace
 {
@@ -36,10 +37,10 @@ void TimeSignatureEdits::add(std::vector<TimeSignatureChange>& changes, int tick
     timeline.setTicksPerQuarterNote(ppq);
     timeline.setTimeSignatureChanges(changes);
 
-    std::vector<int> bars;
-    bars.reserve(changes.size());
-    for (const auto& ts : changes)
-        bars.push_back(timeline.tickToBarBeatTick(ts.tick).bar);
+    auto bars = changes |
+                std::views::transform([&timeline](const TimeSignatureChange& ts)
+                                      { return timeline.tickToBarBeatTick(ts.tick).bar; }) |
+                std::ranges::to<std::vector>();
 
     const int targetBar = timeline.tickToBarBeatTick(tick).bar;
     const auto sameBar = std::ranges::find_last(bars, targetBar);

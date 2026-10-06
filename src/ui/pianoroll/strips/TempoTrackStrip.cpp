@@ -4,6 +4,7 @@
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
 #include <cmath>
+#include <ranges>
 #include <set>
 #include <utility>
 #include <variant>
@@ -319,7 +320,7 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
         if (dragging->moved)
         {
             performReplaceList(undoHistory, sequence, "Move Tempo Change", dragging->before, dragging->preview);
-            selection.assign(std::set<int>(dragging->group.begin(), dragging->group.end()));
+            selection.assign(std::ranges::to<std::set>(dragging->group));
         }
         else if (dragging->index >= 0)
         {

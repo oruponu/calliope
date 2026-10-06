@@ -1,5 +1,6 @@
 #include "edit/ChordTrackEdits.h"
 #include <algorithm>
+#include <ranges>
 #include <span>
 
 namespace
@@ -398,10 +399,9 @@ std::vector<ChordChange> ChordTrackEdits::afterDelete(const std::vector<ChordCha
 std::vector<ChordChange> ChordTrackEdits::afterPaste(const std::vector<ChordChange>& before,
                                                      const std::vector<RelativeChord>& items, int anchorTick)
 {
-    std::vector<RelativeChord> sorted;
-    for (const auto& item : items)
-        if (item.tickOffset >= 0 && item.length >= 0)
-            sorted.push_back(item);
+    auto sorted =
+        items | std::views::filter([](const RelativeChord& item) { return item.tickOffset >= 0 && item.length >= 0; }) |
+        std::ranges::to<std::vector>();
     std::ranges::sort(sorted, {}, &RelativeChord::tickOffset);
     sorted.erase(std::unique(sorted.begin(), sorted.end(), [](const RelativeChord& a, const RelativeChord& b)
                              { return a.tickOffset == b.tickOffset; }),

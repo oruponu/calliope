@@ -1,5 +1,6 @@
 #include "notation/KeySignatureName.h"
 #include <cctype>
+#include <ranges>
 
 namespace
 {
@@ -19,10 +20,8 @@ std::string KeySignatureName::toString(int sharpsOrFlats, bool isMinor)
 
 bool KeySignatureName::fromString(const std::string& text, int& sharpsOrFlats, bool& isMinor)
 {
-    std::string s;
-    for (char c : text)
-        if (!std::isspace(static_cast<unsigned char>(c)))
-            s += c;
+    auto s = text | std::views::filter([](char c) { return !std::isspace(static_cast<unsigned char>(c)); }) |
+             std::ranges::to<std::string>();
 
     if (s.empty())
         return false;
