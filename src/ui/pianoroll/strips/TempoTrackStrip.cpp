@@ -253,9 +253,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
     if (!e.mods.isShiftDown() && hitTestTempoLine(e.x, e.y, tempoTick, tempoBpm))
     {
         const auto& changes = sequence->getTimeline().getTempoChanges();
-        bool exists = std::any_of(changes.begin(), changes.end(),
-                                  [tempoTick](const TempoChange& tc) { return tc.tick == tempoTick; });
-        if (!exists)
+        if (!std::ranges::contains(changes, tempoTick, &TempoChange::tick))
         {
             auto before = sequence->getTimeline().getTempoChanges();
             auto after = before;

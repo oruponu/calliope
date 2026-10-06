@@ -19,8 +19,7 @@ PluginSyncPlan planPluginSync(const MidiSequence& sequence, const std::vector<Tr
     {
         const auto& track = sequence.getTrack(i);
         const TrackId id = track.getId();
-        if (track.getPluginAssignment() != nullptr && std::ranges::find(liveIds, id) == liveIds.end() &&
-            !failedIds.contains(id))
+        if (track.getPluginAssignment() != nullptr && !std::ranges::contains(liveIds, id) && !failedIds.contains(id))
             plan.toCreate.push_back(id);
     }
 

@@ -205,7 +205,7 @@ std::vector<ChordChange> ChordTrackEdits::afterResize(const std::vector<ChordCha
             tail.tick = end;
             changes.push_back(tail);
         }
-        else if (std::ranges::none_of(changes, [end](const ChordChange& cc) { return cc.tick == end; }))
+        else if (!std::ranges::contains(changes, end, &ChordChange::tick))
         {
             changes.push_back(terminator);
         }
@@ -340,7 +340,7 @@ std::vector<ChordChange> ChordTrackEdits::afterMove(const std::vector<ChordChang
         if (mc.open)
             continue;
         const int endTick = mc.body.tick + mc.length + delta;
-        if (std::ranges::any_of(changes, [endTick](const ChordChange& cc) { return cc.tick == endTick; }))
+        if (std::ranges::contains(changes, endTick, &ChordChange::tick))
             continue;
         if (mc.hasTerminator)
         {
@@ -459,7 +459,7 @@ std::vector<ChordChange> ChordTrackEdits::afterPaste(const std::vector<ChordChan
         if (item.length == 0)
             continue;
         const int endTick = anchorTick + item.tickOffset + item.length;
-        if (std::ranges::any_of(changes, [endTick](const ChordChange& cc) { return cc.tick == endTick; }))
+        if (std::ranges::contains(changes, endTick, &ChordChange::tick))
             continue;
         changes.push_back(ChordChange::noChord(endTick));
     }

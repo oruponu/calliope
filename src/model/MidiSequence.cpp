@@ -18,7 +18,7 @@ MidiSequence::ChangeBatch::~ChangeBatch()
 
 void MidiSequence::addListener(Listener* listener)
 {
-    if (listener != nullptr && std::find(listeners.begin(), listeners.end(), listener) == listeners.end())
+    if (listener != nullptr && !std::ranges::contains(listeners, listener))
         listeners.push_back(listener);
 }
 
