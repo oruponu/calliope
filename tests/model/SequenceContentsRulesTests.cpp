@@ -149,7 +149,9 @@ TEST_CASE("a bar must fit in an int", "[model][contentsrules]")
 
 TEST_CASE("four quarter notes of ticks must fit in an int", "[model][contentsrules]")
 {
-    auto contents = validContents();
+    auto contents = withTimeSignatures({{0, 1, 4}});
+    contents.timeline.setTicksPerQuarterNote(intMax / 4);
+    CHECK(SequenceContentsRules::accepts(contents));
     contents.timeline.setTicksPerQuarterNote(intMax / 4 + 1);
     CHECK_FALSE(SequenceContentsRules::accepts(contents));
 }
