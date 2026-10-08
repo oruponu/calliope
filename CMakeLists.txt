@@ -22,6 +22,7 @@ juce_add_binary_data(CalliopeData
 target_sources(Calliope PRIVATE
     src/Main.cpp
     src/MainComponent.cpp
+    src/audio/ClickVoice.cpp
     src/audio/MidiDeviceOutput.cpp
     src/document/Document.cpp
     src/edit/ChordTrackEdits.cpp

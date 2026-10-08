@@ -1,6 +1,7 @@
 juce_add_console_app(CalliopeTests)
 
 target_sources(CalliopeTests PRIVATE
+    ${PROJECT_SOURCE_DIR}/src/audio/ClickVoice.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/ChordTrackEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/NoteEdits.cpp
@@ -26,6 +27,7 @@ target_sources(CalliopeTests PRIVATE
 )
 
 target_sources(CalliopeTests PRIVATE
+    audio/ClickVoiceTests.cpp
     edit/ChordAddChangeTests.cpp
     edit/ChordAddSpanTests.cpp
     edit/ChordAddTests.cpp
