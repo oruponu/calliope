@@ -8,7 +8,7 @@ void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
                        cutAction,       copyAction,        pasteAction,        selectAllAction,   moveNotesUp,
                        moveNotesDown,   moveSelectionPrev, moveSelectionNext,  scrollViewUp,      scrollViewDown,
                        scrollViewLeft,  scrollViewRight,   zoomInHorizontal,   zoomOutHorizontal, zoomInVertical,
-                       zoomOutVertical, zoomReset,         toggleLoop});
+                       zoomOutVertical, zoomReset,         toggleLoop,         toggleMetronome});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -143,6 +143,10 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
     case toggleLoop:
         result.setInfo("Toggle Loop", "", "Transport", 0);
         result.addDefaultKeypress('/', 0);
+        break;
+    case toggleMetronome:
+        result.setInfo("Toggle Metronome", "", "Transport", 0);
+        result.addDefaultKeypress('C', 0);
         break;
     default:
         break;

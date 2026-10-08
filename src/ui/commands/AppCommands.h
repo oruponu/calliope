@@ -39,7 +39,8 @@ struct AppCommands
         audioSettings_,
         saveFileAs,
         importMidi,
-        exportMidi
+        exportMidi,
+        toggleMetronome
     };
 
     static void getAllCommands(juce::Array<juce::CommandID>& commands);

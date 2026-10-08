@@ -1,4 +1,5 @@
 #include "engine/PlaybackSnapshot.h"
+#include "support/TimeSignatureTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
@@ -120,4 +121,13 @@ TEST_CASE("getTempoAt defaults to 120 when there are no tempo changes", "[engine
     REQUIRE(snap.tempoChanges.empty());
     CHECK_THAT(snap.getTempoAt(0), WithinAbs(120.0, 1e-9));
     CHECK_THAT(snap.getTempoAt(10000), WithinAbs(120.0, 1e-9));
+}
+
+TEST_CASE("time signature changes are copied into the snapshot", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    timesigtest::setTimeSignatures(seq, {{1, 4, 4}, {3, 3, 4}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK(snap.timeSignatureChanges == timesigtest::timeSigs({{1, 4, 4}, {3, 3, 4}}));
 }

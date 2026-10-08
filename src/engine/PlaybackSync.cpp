@@ -27,6 +27,11 @@ void PlaybackSync::tempoChanged()
     triggerAsyncUpdate();
 }
 
+void PlaybackSync::timelineMetadataChanged()
+{
+    triggerAsyncUpdate();
+}
+
 void PlaybackSync::sequenceReset()
 {
     triggerAsyncUpdate();

@@ -28,6 +28,7 @@ target_sources(CalliopeTests PRIVATE
 
 target_sources(CalliopeTests PRIVATE
     audio/ClickVoiceTests.cpp
+    audio/MetronomeVolumeTests.cpp
     edit/ChordAddChangeTests.cpp
     edit/ChordAddSpanTests.cpp
     edit/ChordAddTests.cpp

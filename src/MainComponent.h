@@ -1,5 +1,6 @@
 #pragma once
 
+#include "audio/Metronome.h"
 #include "audio/MidiDeviceOutput.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
@@ -100,6 +101,7 @@ private:
     PluginStateChangeWatcher pluginStateWatcher;
     juce::AudioProcessorGraph audioGraph;
     juce::AudioProcessorPlayer audioPlayer;
+    Metronome metronome;
     VstPluginHost pluginHost{pluginStateWatcher};
     PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
     TrackOutputController trackOutput{pluginHost, document, playbackEngine, pluginCatalog, [this] { stopPlayback(); }};

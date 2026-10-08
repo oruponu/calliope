@@ -31,6 +31,7 @@ struct PlaybackSnapshot
     std::vector<ScheduledNote> notes;
     std::vector<ScheduledEvent> events;
     std::vector<TempoChange> tempoChanges;
+    std::vector<TimeSignatureChange> timeSignatureChanges;
     int ticksPerQuarterNote = TimelineMap::defaultTicksPerQuarterNote;
 
     double getTempoAt(int tick) const;

@@ -1,4 +1,5 @@
 #include "engine/PlaybackEngine.h"
+#include "engine/MetronomeClicks.h"
 #include <utility>
 
 namespace
@@ -187,6 +188,19 @@ void PlaybackEngine::removeListener(PlaybackListener* listener)
     std::erase(listeners, listener);
 }
 
+void PlaybackEngine::setMetronomeListener(MetronomeListener* listener)
+{
+    metronomeListener.store(listener);
+}
+void PlaybackEngine::setMetronomeEnabled(bool enabled)
+{
+    metronomeEnabled.store(enabled);
+}
+bool PlaybackEngine::isMetronomeEnabled() const
+{
+    return metronomeEnabled.load();
+}
+
 void PlaybackEngine::releaseActiveNotesForTrack(TrackId trackId)
 {
     FanOut sink(listeners);
@@ -236,7 +250,7 @@ void PlaybackEngine::hiResTimerCallback()
     const int le = loopEndOf(lr);
     if (loopEnabled.load() && le > ls && newPos >= le)
     {
-        processor.process(*snap, previousTick, le, sink);
+        processRange(*snap, previousTick, le, sink);
         processor.sendAllNoteOffs(sink);
 
         double overshoot = newPos - le;
@@ -248,12 +262,24 @@ void PlaybackEngine::hiResTimerCallback()
 
         const int headEnd = (int)wrapped;
         if (headEnd > ls)
-            processor.process(*snap, ls, headEnd, sink);
+            processRange(*snap, ls, headEnd, sink);
         return;
     }
 
     tickPosition.store(newPos);
     const int currentTick = (int)newPos;
     if (currentTick > previousTick)
-        processor.process(*snap, previousTick, currentTick, sink);
+        processRange(*snap, previousTick, currentTick, sink);
+}
+
+void PlaybackEngine::processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink)
+{
+    processor.process(snap, fromTick, toTick, sink);
+
+    auto* listener = metronomeListener.load();
+    if (listener == nullptr || !metronomeEnabled.load())
+        return;
+    for (const auto& click :
+         metronomeClicksInRange(snap.timeSignatureChanges, snap.ticksPerQuarterNote, fromTick, toTick))
+        listener->onMetronomeClick(click.accent);
 }

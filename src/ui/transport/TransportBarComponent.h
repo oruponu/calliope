@@ -24,6 +24,8 @@ public:
     void setLoopActive(bool active);
     void togglePlay();
     void toggleLoop();
+    void setMetronomeActive(bool active);
+    void toggleMetronome();
     void returnToStart();
     void jumpToTick(int tick);
 
@@ -33,6 +35,7 @@ public:
     std::function<void()> onReturnToStart;
     std::function<void(bool playing)> onPlaybackStateChanged;
     std::function<void(bool enabled, int startTick, int endTick)> onLoopRegionChanged;
+    std::function<void(bool enabled)> onMetronomeToggled;
 
 private:
     void tempoChanged() override;
@@ -71,6 +74,7 @@ private:
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
     TransportButton loopButton{TransportButton::Loop};
+    TransportButton metronomeButton{TransportButton::Metronome};
 
     juce::Label positionHeaderLabel{"", "POSITION"};
     WheelLabel positionBarLabel;

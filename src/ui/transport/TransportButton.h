@@ -12,7 +12,8 @@ public:
         ReturnToStart,
         Stop,
         Play,
-        Loop
+        Loop,
+        Metronome
     };
     TransportButton(Type t) : type(t) { setRepaintsOnMouseActivity(true); }
     Type getType() const { return type; }
@@ -44,7 +45,7 @@ inline void TransportButton::paint(juce::Graphics& g)
         boxBorder = accent::base;
         iconColour = surface::bg;
     }
-    else if (type == Loop && active)
+    else if ((type == Loop || type == Metronome) && active)
     {
         boxColour = accent::soft;
         boxBorder = accent::dim;
@@ -125,11 +126,34 @@ inline void TransportButton::paint(juce::Graphics& g)
         ra.addTriangle(cx - gap + a, cy - hh, cx - gap, cy - hh - a, cx - gap, cy - hh + a);
         g.fillPath(ra);
     }
+    else if (type == Metronome)
+    {
+        auto cx = bounds.getCentreX();
+        auto cy = bounds.getCentreY();
+        float h = bounds.getHeight() * 0.42f;
+        float topW = h * 0.3f;
+        float baseW = h * 0.8f;
+        float top = cy - h / 2;
+        float bottom = cy + h / 2;
+
+        juce::Path body;
+        body.startNewSubPath(cx - topW / 2, top);
+        body.lineTo(cx + topW / 2, top);
+        body.lineTo(cx + baseW / 2, bottom);
+        body.lineTo(cx - baseW / 2, bottom);
+        body.closeSubPath();
+        g.strokePath(body, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved));
+
+        juce::Path arm;
+        arm.startNewSubPath(cx, bottom - h * 0.25f);
+        arm.lineTo(cx + h * 0.32f, top - h * 0.05f);
+        g.strokePath(arm, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
 }
 
 inline void TransportButton::mouseUp(const juce::MouseEvent& e)
 {
-    if (active && type != Loop)
+    if (active && type != Loop && type != Metronome)
         return;
     if (getLocalBounds().contains(e.getPosition()) && onClick)
         onClick();

@@ -26,6 +26,9 @@ TransportBarComponent::TransportBarComponent(Document& documentRef, PlaybackEngi
     addAndMakeVisible(loopButton);
     loopButton.onClick = [this]() { toggleLoop(); };
 
+    addAndMakeVisible(metronomeButton);
+    metronomeButton.onClick = [this]() { toggleMetronome(); };
+
     auto headerColour = text::t2;
     auto headerFont = font::sans(font::sizeXS);
 
@@ -195,7 +198,7 @@ void TransportBarComponent::resized()
     auto toolbar = getLocalBounds();
 
     const int posW = 176;
-    const int btnW = 172;
+    const int btnW = 216;
     const int tsW = 68;
     const int keyW = 60;
     const int tempoW = 96;
@@ -255,6 +258,8 @@ void TransportBarComponent::resized()
     playButton.setBounds(btnArea.removeFromLeft(40));
     btnArea.removeFromLeft(4);
     loopButton.setBounds(btnArea.removeFromLeft(40));
+    btnArea.removeFromLeft(4);
+    metronomeButton.setBounds(btnArea.removeFromLeft(40));
     content.removeFromLeft(g2);
 
     auto infoBox = content.removeFromLeft(infoW).withSizeKeepingCentre(infoW, boxH);
@@ -357,6 +362,20 @@ void TransportBarComponent::toggleLoop()
     loopButton.setActive(newState);
     if (onLoopRegionChanged)
         onLoopRegionChanged(newState, playbackEngine.getLoopStartTick(), playbackEngine.getLoopEndTick());
+}
+
+void TransportBarComponent::setMetronomeActive(bool active)
+{
+    metronomeButton.setActive(active);
+}
+
+void TransportBarComponent::toggleMetronome()
+{
+    const bool newState = !playbackEngine.isMetronomeEnabled();
+    playbackEngine.setMetronomeEnabled(newState);
+    metronomeButton.setActive(newState);
+    if (onMetronomeToggled)
+        onMetronomeToggled(newState);
 }
 
 void TransportBarComponent::returnToStart()

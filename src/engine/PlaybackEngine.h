@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/MetronomeListener.h"
 #include "engine/PlaybackListener.h"
 #include "engine/PlaybackProcessor.h"
 #include "engine/PlaybackSnapshot.h"
@@ -49,12 +50,17 @@ public:
     void addListener(PlaybackListener* listener);
     void removeListener(PlaybackListener* listener);
 
+    void setMetronomeListener(MetronomeListener* listener);
+    void setMetronomeEnabled(bool enabled);
+    bool isMetronomeEnabled() const;
+
     void releaseActiveNotesForTrack(TrackId trackId);
 
     bool isPaused() const;
 
 private:
     void hiResTimerCallback() override;
+    void processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink);
 
     const MidiSequence* sequence = nullptr;
 
@@ -64,6 +70,8 @@ private:
 
     std::atomic<bool> loopEnabled{false};
     std::atomic<std::uint64_t> loopRange{0};
+    std::atomic<MetronomeListener*> metronomeListener{nullptr};
+    std::atomic<bool> metronomeEnabled{false};
 
     double lastCallbackTimeMs = 0.0;
     std::shared_ptr<const PlaybackSnapshot> lastSeenSnapshot;

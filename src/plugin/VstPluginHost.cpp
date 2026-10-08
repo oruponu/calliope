@@ -62,14 +62,10 @@ VstPluginHost::~VstPluginHost()
         sequence->removeListener(this);
 }
 
-void VstPluginHost::prepare(juce::AudioProcessorGraph& g)
+void VstPluginHost::prepare(juce::AudioProcessorGraph& g, juce::AudioProcessorGraph::NodeID audioOut)
 {
     graph = &g;
-
-    using IOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
-    auto audioOut = graph->addNode(std::make_unique<IOProcessor>(IOProcessor::audioOutputNode));
-
-    audioOutNodeId = audioOut->nodeID;
+    audioOutNodeId = audioOut;
 }
 
 void VstPluginHost::setSequence(MidiSequence* seq)

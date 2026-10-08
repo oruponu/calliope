@@ -24,7 +24,7 @@ public:
     explicit VstPluginHost(PluginStateChangeWatcher& watcher);
     ~VstPluginHost() override;
 
-    void prepare(juce::AudioProcessorGraph& graph);
+    void prepare(juce::AudioProcessorGraph& graph, juce::AudioProcessorGraph::NodeID audioOutNodeId);
     void setSequence(MidiSequence* sequence);
     void setPlaybackEngine(PlaybackEngine* engine);
 

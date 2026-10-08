@@ -21,6 +21,7 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq)
     snap.tempoChanges = seq.getTimeline().getTempoChanges();
     std::stable_sort(snap.tempoChanges.begin(), snap.tempoChanges.end(),
                      [](const TempoChange& a, const TempoChange& b) { return a.tick < b.tick; });
+    snap.timeSignatureChanges = seq.getTimeline().getTimeSignatureChanges();
 
     const bool anySolo = seq.isAnySolo();
     const int numTracks = seq.getNumTracks();

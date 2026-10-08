@@ -28,10 +28,14 @@ MainComponent::MainComponent()
     audioDeviceManager.initialise(0, 2, savedAudioState.get(), true);
     audioDeviceManager.addChangeListener(this);
 
-    pluginHost.prepare(audioGraph);
+    using IOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
+    const auto audioOutNodeId = audioGraph.addNode(std::make_unique<IOProcessor>(IOProcessor::audioOutputNode))->nodeID;
+    pluginHost.prepare(audioGraph, audioOutNodeId);
 
     audioDeviceManager.addAudioCallback(&audioPlayer);
     audioPlayer.setProcessor(&audioGraph);
+    // The graph has no output channels until the player prepares it, so connections made earlier are rejected.
+    metronome.prepare(audioGraph, audioOutNodeId);
 
     document.newDocument();
     document.getSequence().addListener(this);
@@ -46,6 +50,9 @@ MainComponent::MainComponent()
     playbackEngine.setSequence(&document.getSequence());
     playbackEngine.addListener(&midiOutput);
     playbackEngine.addListener(&pluginHost);
+    playbackEngine.setMetronomeListener(&metronome);
+    const bool metronomeEnabled = getAppProperties().getUserSettings()->getBoolValue("metronomeEnabled", false);
+    playbackEngine.setMetronomeEnabled(metronomeEnabled);
 
     pianoRoll.setSequence(&document.getSequence());
 
@@ -322,6 +329,9 @@ MainComponent::MainComponent()
         pianoRoll.setLoopRegion(enabled, startTick, endTick);
         controllerLane.setLoopRegion(enabled, startTick, endTick);
     };
+    transportBar.setMetronomeActive(playbackEngine.isMetronomeEnabled());
+    transportBar.onMetronomeToggled = [](bool enabled)
+    { getAppProperties().getUserSettings()->setValue("metronomeEnabled", enabled); };
 
     pianoRoll.onLoopRegionChanged = [this](int startTick, int endTick)
     {
@@ -383,6 +393,7 @@ MainComponent::~MainComponent()
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();
+    playbackEngine.setMetronomeListener(nullptr);
     playbackEngine.removeListener(&pluginHost);
     playbackEngine.removeListener(&midiOutput);
     midiOutput.close();
@@ -725,6 +736,9 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::toggleLoop:
         transportBar.toggleLoop();
+        return true;
+    case AppCommands::toggleMetronome:
+        transportBar.toggleMetronome();
         return true;
     default:
         return false;

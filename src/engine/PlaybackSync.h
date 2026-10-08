@@ -17,6 +17,7 @@ private:
     void notesChanged(int trackIndex) override;
     void tracksChanged() override;
     void tempoChanged() override;
+    void timelineMetadataChanged() override;
     void sequenceReset() override;
     void handleAsyncUpdate() override;
 
