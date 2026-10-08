@@ -29,6 +29,7 @@ target_sources(Calliope PRIVATE
     src/edit/NoteEdits.cpp
     src/edit/TempoEdits.cpp
     src/edit/TimeSignatureEdits.cpp
+    src/engine/MetronomeClicks.cpp
     src/engine/PlaybackEngine.cpp
     src/engine/PlaybackProcessor.cpp
     src/engine/PlaybackSnapshot.cpp

@@ -6,6 +6,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/NoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/MetronomeClicks.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
@@ -49,6 +50,7 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignatureDeleteTests.cpp
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
+    engine/MetronomeClicksTests.cpp
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp
     io/MidiFileLoadTests.cpp
