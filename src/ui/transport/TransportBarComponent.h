@@ -1,6 +1,8 @@
 #pragma once
 
+#include "audio/MetronomeVolume.h"
 #include "model/MidiSequence.h"
+#include "ui/transport/MetronomeButton.h"
 #include "ui/transport/TransportButton.h"
 #include "ui/widgets/WheelLabel.h"
 #include <functional>
@@ -26,6 +28,7 @@ public:
     void toggleLoop();
     void setMetronomeActive(bool active);
     void toggleMetronome();
+    void setMetronomeVolume(int percent);
     void returnToStart();
     void jumpToTick(int tick);
 
@@ -36,6 +39,7 @@ public:
     std::function<void(bool playing)> onPlaybackStateChanged;
     std::function<void(bool enabled, int startTick, int endTick)> onLoopRegionChanged;
     std::function<void(bool enabled)> onMetronomeToggled;
+    std::function<void(int percent)> onMetronomeVolumeChanged;
 
 private:
     void tempoChanged() override;
@@ -66,6 +70,7 @@ private:
     void commitKeySignatureEdit();
     void nudgeKeySignature(int direction);
     void setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor);
+    void nudgeMetronomeVolume(int direction);
 
     Document& document;
     PlaybackEngine& playbackEngine;
@@ -74,7 +79,8 @@ private:
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
     TransportButton loopButton{TransportButton::Loop};
-    TransportButton metronomeButton{TransportButton::Metronome};
+    MetronomeButton metronomeButton;
+    int metronomeVolume = MetronomeVolume::defaultPercent;
 
     juce::Label positionHeaderLabel{"", "POSITION"};
     WheelLabel positionBarLabel;

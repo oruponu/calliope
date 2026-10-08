@@ -28,6 +28,7 @@ TransportBarComponent::TransportBarComponent(Document& documentRef, PlaybackEngi
 
     addAndMakeVisible(metronomeButton);
     metronomeButton.onClick = [this]() { toggleMetronome(); };
+    metronomeButton.onWheel = [this](int direction) { nudgeMetronomeVolume(direction); };
 
     auto headerColour = text::t2;
     auto headerFont = font::sans(font::sizeXS);
@@ -376,6 +377,19 @@ void TransportBarComponent::toggleMetronome()
     metronomeButton.setActive(newState);
     if (onMetronomeToggled)
         onMetronomeToggled(newState);
+}
+
+void TransportBarComponent::setMetronomeVolume(int percent)
+{
+    metronomeVolume = percent;
+}
+
+void TransportBarComponent::nudgeMetronomeVolume(int direction)
+{
+    metronomeVolume = MetronomeVolume::nudged(metronomeVolume, direction);
+    metronomeButton.showVolume(metronomeVolume);
+    if (onMetronomeVolumeChanged)
+        onMetronomeVolumeChanged(metronomeVolume);
 }
 
 void TransportBarComponent::returnToStart()

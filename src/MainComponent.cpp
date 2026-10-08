@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "AppProperties.h"
+#include "audio/MetronomeVolume.h"
 #include "plugin/PluginAssignmentCodec.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
@@ -332,6 +333,15 @@ MainComponent::MainComponent()
     transportBar.setMetronomeActive(playbackEngine.isMetronomeEnabled());
     transportBar.onMetronomeToggled = [](bool enabled)
     { getAppProperties().getUserSettings()->setValue("metronomeEnabled", enabled); };
+    const int metronomeVolume = MetronomeVolume::clamped(
+        getAppProperties().getUserSettings()->getIntValue("metronomeVolume", MetronomeVolume::defaultPercent));
+    metronome.setVolume(metronomeVolume);
+    transportBar.setMetronomeVolume(metronomeVolume);
+    transportBar.onMetronomeVolumeChanged = [this](int percent)
+    {
+        metronome.setVolume(percent);
+        getAppProperties().getUserSettings()->setValue("metronomeVolume", percent);
+    };
 
     pianoRoll.onLoopRegionChanged = [this](int startTick, int endTick)
     {
