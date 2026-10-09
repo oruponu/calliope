@@ -129,3 +129,13 @@ void MidiDeviceOutput::onMidiEvent(const PlaybackTrackContext& ctx, const MidiEv
 
     midiOutput->sendMessageNow(msg);
 }
+
+void MidiDeviceOutput::sendLive(const PlaybackTrackContext& ctx, const juce::MidiMessage& message)
+{
+    std::lock_guard<std::mutex> lock(sendMutex);
+    if (!midiOutput)
+        return;
+    if (ctx.destination != MidiTrack::OutputDestination::MidiDevice)
+        return;
+    midiOutput->sendMessageNow(message);
+}

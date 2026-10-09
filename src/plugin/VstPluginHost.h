@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/LiveMidiSink.h"
 #include "engine/PlaybackListener.h"
 #include "model/MidiSequence.h"
 #include "model/PluginAssignment.h"
@@ -11,6 +12,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -18,7 +20,7 @@
 
 class PlaybackEngine;
 
-class VstPluginHost : public PlaybackListener, public MidiSequence::Listener
+class VstPluginHost : public PlaybackListener, public LiveMidiSink, public MidiSequence::Listener
 {
 public:
     explicit VstPluginHost(PluginStateChangeWatcher& watcher);
@@ -42,6 +44,7 @@ public:
     void onNoteOn(const PlaybackTrackContext& ctx, const MidiNote& note) override;
     void onNoteOff(const PlaybackTrackContext& ctx, const MidiNote& note) override;
     void onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event) override;
+    void sendLive(const PlaybackTrackContext& ctx, const juce::MidiMessage& message) override;
 
     void flushPendingStateChanges();
 
@@ -69,6 +72,10 @@ private:
     juce::AudioProcessorGraph::NodeID audioOutNodeId;
     MidiSequence* sequence = nullptr;
     PlaybackEngine* playbackEngine = nullptr;
+    // The playback timer is kept out of `instances` by pausing the engine, which does not stop the MIDI
+    // input thread. sendLive holds this while it uses a collector, so a node can be removed as soon as its
+    // entry has been erased under this lock.
+    std::mutex liveMutex;
     std::unordered_map<TrackId, Instance> instances;
     RetiredStateStore<juce::MemoryBlock> retiredStates;
     std::unordered_set<TrackId> failedIds;

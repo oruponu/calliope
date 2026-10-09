@@ -9,9 +9,11 @@
 
 MainMenuModel::MainMenuModel(juce::ApplicationCommandManager& commandManagerRef,
                              PluginCatalogController& pluginCatalogRef, TrackOutputController& trackOutputRef,
-                             MidiDeviceOutput& midiOutputRef, std::function<void()> showAudioSettingsCallback)
+                             MidiDeviceOutput& midiOutputRef, juce::AudioDeviceManager& audioDeviceManagerRef,
+                             std::function<void()> showAudioSettingsCallback)
     : commandManager(commandManagerRef), pluginCatalog(pluginCatalogRef), trackOutput(trackOutputRef),
-      midiOutput(midiOutputRef), showAudioSettings(std::move(showAudioSettingsCallback))
+      midiOutput(midiOutputRef), audioDeviceManager(audioDeviceManagerRef),
+      showAudioSettings(std::move(showAudioSettingsCallback))
 {
     setApplicationCommandManagerToWatch(&commandManager);
 }
@@ -70,6 +72,30 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
         menu.addItem(audioSettingsItem);
 
         menu.addSeparator();
+
+        juce::PopupMenu midiInputMenu;
+        const auto inputs = juce::MidiInput::getAvailableDevices();
+
+        if (inputs.isEmpty())
+        {
+            midiInputMenu.addItem(juce::PopupMenu::Item("(No devices available)").setEnabled(false));
+        }
+        else
+        {
+            for (const auto& device : inputs)
+            {
+                midiInputMenu.addItem(juce::PopupMenu::Item(device.name)
+                                          .setTicked(audioDeviceManager.isMidiInputDeviceEnabled(device.identifier))
+                                          .setAction(
+                                              [this, id = device.identifier]()
+                                              {
+                                                  audioDeviceManager.setMidiInputDeviceEnabled(
+                                                      id, !audioDeviceManager.isMidiInputDeviceEnabled(id));
+                                              }));
+            }
+        }
+
+        menu.addSubMenu("MIDI Input", midiInputMenu);
 
         juce::PopupMenu midiOutputMenu;
         auto devices = juce::MidiOutput::getAvailableDevices();

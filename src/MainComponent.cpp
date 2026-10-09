@@ -28,6 +28,7 @@ MainComponent::MainComponent()
     auto savedAudioState = getAppProperties().getUserSettings()->getXmlValue("audioDeviceState");
     audioDeviceManager.initialise(0, 2, savedAudioState.get(), true);
     audioDeviceManager.addChangeListener(this);
+    audioDeviceManager.addMidiInputDeviceCallback({}, &midiThru);
 
     using IOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
     const auto audioOutNodeId = audioGraph.addNode(std::make_unique<IOProcessor>(IOProcessor::audioOutputNode))->nodeID;
@@ -138,6 +139,7 @@ MainComponent::MainComponent()
         pianoRoll.setSelectedTracks(activeIdx, selected);
         controllerLane.setSelectedTracks(activeIdx, selected);
         eventList.setSelectedTracks(selected);
+        midiThruSync.activeTrackChanged();
     };
     trackList.pluginNameForTrack = [this](int trackIndex)
     { return pluginHost.getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
@@ -400,6 +402,7 @@ MainComponent::~MainComponent()
     document.removeChangeListener(this);
     juce::Desktop::getInstance().removeFocusChangeListener(this);
     audioDeviceManager.removeChangeListener(this);
+    audioDeviceManager.removeMidiInputDeviceCallback({}, &midiThru);
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();

@@ -26,6 +26,8 @@ target_sources(Calliope PRIVATE
     src/audio/Metronome.cpp
     src/audio/MetronomeProcessor.cpp
     src/audio/MidiDeviceOutput.cpp
+    src/audio/MidiThru.cpp
+    src/audio/MidiThruSync.cpp
     src/document/Document.cpp
     src/edit/ChordTrackEdits.cpp
     src/edit/KeySignatureEdits.cpp

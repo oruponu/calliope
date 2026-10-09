@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -13,7 +14,7 @@ class MainMenuModel : public juce::MenuBarModel
 public:
     MainMenuModel(juce::ApplicationCommandManager& commandManager, PluginCatalogController& pluginCatalog,
                   TrackOutputController& trackOutput, MidiDeviceOutput& midiOutput,
-                  std::function<void()> showAudioSettingsCallback);
+                  juce::AudioDeviceManager& audioDeviceManager, std::function<void()> showAudioSettingsCallback);
 
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int menuIndex, const juce::String& menuName) override;
@@ -32,6 +33,7 @@ private:
     PluginCatalogController& pluginCatalog;
     TrackOutputController& trackOutput;
     MidiDeviceOutput& midiOutput;
+    juce::AudioDeviceManager& audioDeviceManager;
     std::function<void()> showAudioSettings;
     juce::Array<juce::PluginDescription> pluginMenuSnapshot;
 

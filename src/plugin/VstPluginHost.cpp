@@ -194,6 +194,13 @@ void VstPluginHost::onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent
     collector->addMessageToQueue(msg);
 }
 
+void VstPluginHost::sendLive(const PlaybackTrackContext& ctx, const juce::MidiMessage& message)
+{
+    std::lock_guard<std::mutex> lock(liveMutex);
+    if (auto* collector = resolveCollector(ctx))
+        collector->addMessageToQueue(message);
+}
+
 void VstPluginHost::flushPendingStateChanges()
 {
     stateWatcher.flush();
@@ -308,7 +315,10 @@ bool VstPluginHost::createInstance(TrackId trackId, const juce::PluginDescriptio
     for (int ch = 0; ch < channelsToConnect; ++ch)
         graph->addConnection({{pluginNode->nodeID, ch}, {audioOutNodeId, ch}});
 
-    instances[trackId] = Instance{pluginNode->nodeID, midiSourceNode->nodeID, collectorPtr, {}};
+    {
+        std::lock_guard<std::mutex> lock(liveMutex);
+        instances[trackId] = Instance{pluginNode->nodeID, midiSourceNode->nodeID, collectorPtr, {}};
+    }
     stateWatcher.watch(*pluginNode->getProcessor());
     return true;
 }
@@ -328,7 +338,10 @@ void VstPluginHost::destroyInstance(TrackId trackId)
         onPluginDetached(trackId);
 
     const Instance instance = it->second;
-    instances.erase(it);
+    {
+        std::lock_guard<std::mutex> lock(liveMutex);
+        instances.erase(it);
+    }
     graph->removeNode(instance.sourceNode);
     graph->removeNode(instance.pluginNode);
 }

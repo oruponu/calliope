@@ -2,6 +2,8 @@
 
 #include "audio/Metronome.h"
 #include "audio/MidiDeviceOutput.h"
+#include "audio/MidiThru.h"
+#include "audio/MidiThruSync.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/PlaybackSync.h"
@@ -103,6 +105,7 @@ private:
     juce::AudioProcessorPlayer audioPlayer;
     Metronome metronome;
     VstPluginHost pluginHost{pluginStateWatcher};
+    MidiThru midiThru{{&midiOutput, &pluginHost}};
     PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
     TrackOutputController trackOutput{pluginHost, document, playbackEngine, pluginCatalog, [this] { stopPlayback(); }};
     PluginEditorController editorController{pluginHost};
@@ -112,6 +115,7 @@ private:
     PianoRollComponent pianoRoll{document.getHistory()};
     PianoRollViewport viewport;
     TrackListComponent trackList;
+    MidiThruSync midiThruSync{document.getSequence(), midiThru, [this] { return trackList.getActiveTrackIndex(); }};
     juce::Viewport trackListViewport;
     juce::Rectangle<int> trackListHeaderBounds;
 
@@ -147,8 +151,8 @@ private:
 
     juce::ApplicationCommandManager commandManager;
 
-    MainMenuModel mainMenuModel{commandManager, pluginCatalog, trackOutput, midiOutput,
-                                [this] { showAudioSettings(); }};
+    MainMenuModel mainMenuModel{commandManager, pluginCatalog,      trackOutput,
+                                midiOutput,     audioDeviceManager, [this] { showAudioSettings(); }};
 
     juce::MenuBarComponent menuBar;
 
