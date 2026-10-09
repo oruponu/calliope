@@ -23,16 +23,13 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq)
                      [](const TempoChange& a, const TempoChange& b) { return a.tick < b.tick; });
     snap.timeSignatureChanges = seq.getTimeline().getTimeSignatureChanges();
 
-    const bool anySolo = seq.isAnySolo();
     const int numTracks = seq.getNumTracks();
 
     for (int t = 0; t < numTracks; ++t)
     {
+        if (!isTrackAudible(seq, t))
+            continue;
         const auto& track = seq.getTrack(t);
-        if (track.isMuted())
-            continue;
-        if (anySolo && !track.isSolo())
-            continue;
 
         const PlaybackTrackContext ctx = makePlaybackTrackContext(seq, t);
 
@@ -48,6 +45,14 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq)
                      [](const ScheduledEvent& a, const ScheduledEvent& b) { return a.event.tick < b.event.tick; });
 
     return snap;
+}
+
+bool isTrackAudible(const MidiSequence& seq, int trackIndex)
+{
+    const auto& track = seq.getTrack(trackIndex);
+    if (track.isMuted())
+        return false;
+    return !seq.isAnySolo() || track.isSolo();
 }
 
 PlaybackTrackContext makePlaybackTrackContext(const MidiSequence& seq, int trackIndex)

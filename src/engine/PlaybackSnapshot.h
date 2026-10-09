@@ -12,6 +12,7 @@ struct PlaybackTrackContext
     int channel = 1;
     TrackId routeTarget{};
     MidiTrack::OutputDestination destination = MidiTrack::OutputDestination::MidiDevice;
+    bool operator==(const PlaybackTrackContext&) const = default;
 };
 
 struct ScheduledNote
@@ -37,5 +38,7 @@ struct PlaybackSnapshot
     double getTempoAt(int tick) const;
     static PlaybackSnapshot build(const MidiSequence& seq);
 };
+
+bool isTrackAudible(const MidiSequence& seq, int trackIndex);
 
 PlaybackTrackContext makePlaybackTrackContext(const MidiSequence& seq, int trackIndex);

@@ -37,6 +37,7 @@ target_sources(Calliope PRIVATE
     src/engine/PlaybackProcessor.cpp
     src/engine/PlaybackSnapshot.cpp
     src/engine/PlaybackSync.cpp
+    src/engine/ThruTarget.cpp
     src/io/MidiFileIO.cpp
     src/io/ProjectFileIO.cpp
     src/io/ProjectXmlReader.cpp

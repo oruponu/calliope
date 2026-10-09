@@ -75,6 +75,30 @@ TEST_CASE("mute wins over solo on the same track", "[engine][snapshot]")
     CHECK(snap.notes[0].ctx.trackId == seq.getTrack(2).getId());
 }
 
+TEST_CASE("without solo only muted tracks are inaudible", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    seq.addTrack();
+    seq.setTrackMuted(1, true);
+    CHECK(isTrackAudible(seq, 0));
+    CHECK_FALSE(isTrackAudible(seq, 1));
+}
+
+TEST_CASE("with solo only unmuted solo tracks are audible", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    seq.addTrack();
+    seq.addTrack();
+    seq.setTrackSolo(1, true);
+    seq.setTrackSolo(2, true);
+    seq.setTrackMuted(2, true);
+    CHECK_FALSE(isTrackAudible(seq, 0));
+    CHECK(isTrackAudible(seq, 1));
+    CHECK_FALSE(isTrackAudible(seq, 2));
+}
+
 TEST_CASE("routeTarget carries the id of an existing target track", "[engine][snapshot]")
 {
     MidiSequence seq;
