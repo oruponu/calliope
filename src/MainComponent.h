@@ -2,8 +2,10 @@
 
 #include "audio/Metronome.h"
 #include "audio/MidiDeviceOutput.h"
+#include "audio/MidiInputReconnector.h"
 #include "audio/MidiThru.h"
 #include "audio/MidiThruSync.h"
+#include "audio/UserDisabledMidiInputs.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/PlaybackSync.h"
@@ -106,6 +108,10 @@ private:
     Metronome metronome;
     VstPluginHost pluginHost{pluginStateWatcher};
     MidiThru midiThru{{&midiOutput, &pluginHost}};
+    MidiInputReconnector midiInputReconnector{audioDeviceManager,
+                                              [this](const juce::String& id) { midiThru.releaseSource(id); }};
+    UserDisabledMidiInputs userDisabledMidiInputs{audioDeviceManager,
+                                                  [this](const juce::String& id) { midiThru.releaseSource(id); }};
     PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
     TrackOutputController trackOutput{pluginHost, document, playbackEngine, pluginCatalog, [this] { stopPlayback(); }};
     PluginEditorController editorController{pluginHost};
@@ -151,8 +157,13 @@ private:
 
     juce::ApplicationCommandManager commandManager;
 
-    MainMenuModel mainMenuModel{commandManager, pluginCatalog,      trackOutput,
-                                midiOutput,     audioDeviceManager, [this] { showAudioSettings(); }};
+    MainMenuModel mainMenuModel{commandManager,
+                                pluginCatalog,
+                                trackOutput,
+                                midiOutput,
+                                audioDeviceManager,
+                                userDisabledMidiInputs,
+                                [this] { showAudioSettings(); }};
 
     juce::MenuBarComponent menuBar;
 

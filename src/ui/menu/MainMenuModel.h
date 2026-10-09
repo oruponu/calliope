@@ -8,13 +8,15 @@
 class MidiDeviceOutput;
 class PluginCatalogController;
 class TrackOutputController;
+class UserDisabledMidiInputs;
 
 class MainMenuModel : public juce::MenuBarModel
 {
 public:
     MainMenuModel(juce::ApplicationCommandManager& commandManager, PluginCatalogController& pluginCatalog,
                   TrackOutputController& trackOutput, MidiDeviceOutput& midiOutput,
-                  juce::AudioDeviceManager& audioDeviceManager, std::function<void()> showAudioSettingsCallback);
+                  juce::AudioDeviceManager& audioDeviceManager, UserDisabledMidiInputs& userDisabledMidiInputs,
+                  std::function<void()> showAudioSettingsCallback);
 
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int menuIndex, const juce::String& menuName) override;
@@ -34,6 +36,7 @@ private:
     TrackOutputController& trackOutput;
     MidiDeviceOutput& midiOutput;
     juce::AudioDeviceManager& audioDeviceManager;
+    UserDisabledMidiInputs& userDisabledMidiInputs;
     std::function<void()> showAudioSettings;
     juce::Array<juce::PluginDescription> pluginMenuSnapshot;
 

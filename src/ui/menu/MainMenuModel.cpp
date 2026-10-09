@@ -1,6 +1,7 @@
 #include "ui/menu/MainMenuModel.h"
 #include "AppProperties.h"
 #include "audio/MidiDeviceOutput.h"
+#include "audio/UserDisabledMidiInputs.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/plugin/PluginCatalogController.h"
 #include "ui/plugin/TrackOutputController.h"
@@ -10,10 +11,11 @@
 MainMenuModel::MainMenuModel(juce::ApplicationCommandManager& commandManagerRef,
                              PluginCatalogController& pluginCatalogRef, TrackOutputController& trackOutputRef,
                              MidiDeviceOutput& midiOutputRef, juce::AudioDeviceManager& audioDeviceManagerRef,
+                             UserDisabledMidiInputs& userDisabledMidiInputsRef,
                              std::function<void()> showAudioSettingsCallback)
     : commandManager(commandManagerRef), pluginCatalog(pluginCatalogRef), trackOutput(trackOutputRef),
       midiOutput(midiOutputRef), audioDeviceManager(audioDeviceManagerRef),
-      showAudioSettings(std::move(showAudioSettingsCallback))
+      userDisabledMidiInputs(userDisabledMidiInputsRef), showAudioSettings(std::move(showAudioSettingsCallback))
 {
     setApplicationCommandManagerToWatch(&commandManager);
 }
@@ -89,8 +91,8 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
                                           .setAction(
                                               [this, id = device.identifier]()
                                               {
-                                                  audioDeviceManager.setMidiInputDeviceEnabled(
-                                                      id, !audioDeviceManager.isMidiInputDeviceEnabled(id));
+                                                  const bool enable = !audioDeviceManager.isMidiInputDeviceEnabled(id);
+                                                  userDisabledMidiInputs.setEnabled(id, enable);
                                               }));
             }
         }
