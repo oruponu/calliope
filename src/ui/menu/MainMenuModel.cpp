@@ -30,9 +30,9 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
     juce::PopupMenu menu;
     if (menuIndex == 0)
     {
-        menu.addCommandItem(&commandManager, AppCommands::newFile_);
+        menu.addCommandItem(&commandManager, AppCommands::newFile);
         menu.addCommandItem(&commandManager, AppCommands::openFile);
-        menu.addCommandItem(&commandManager, AppCommands::saveFile_);
+        menu.addCommandItem(&commandManager, AppCommands::saveFile);
         menu.addCommandItem(&commandManager, AppCommands::saveFileAs);
         menu.addSeparator();
         menu.addCommandItem(&commandManager, AppCommands::importMidi);
@@ -42,14 +42,14 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
     }
     else if (menuIndex == 1)
     {
-        menu.addCommandItem(&commandManager, AppCommands::undoAction);
-        menu.addCommandItem(&commandManager, AppCommands::redoAction);
+        menu.addCommandItem(&commandManager, AppCommands::undo);
+        menu.addCommandItem(&commandManager, AppCommands::redo);
         menu.addSeparator();
-        menu.addCommandItem(&commandManager, AppCommands::cutAction);
-        menu.addCommandItem(&commandManager, AppCommands::copyAction);
-        menu.addCommandItem(&commandManager, AppCommands::pasteAction);
+        menu.addCommandItem(&commandManager, AppCommands::cut);
+        menu.addCommandItem(&commandManager, AppCommands::copy);
+        menu.addCommandItem(&commandManager, AppCommands::paste);
         menu.addSeparator();
-        menu.addCommandItem(&commandManager, AppCommands::selectAllAction);
+        menu.addCommandItem(&commandManager, AppCommands::selectAll);
     }
     else if (menuIndex == 2)
     {
@@ -68,7 +68,7 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
     else if (menuIndex == 4)
     {
         juce::PopupMenu::Item audioSettingsItem;
-        audioSettingsItem.itemID = AppCommands::audioSettings_;
+        audioSettingsItem.itemID = AppCommands::openAudioSettings;
         audioSettingsItem.text = "Audio Settings...";
         audioSettingsItem.action = [this]() { showAudioSettings(); };
         menu.addItem(audioSettingsItem);

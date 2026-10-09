@@ -2,20 +2,47 @@
 
 void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
 {
-    commands.addArray({newFile_,        openFile,          saveFile_,          saveFileAs,        importMidi,
-                       exportMidi,      quitApp,           togglePlay,         returnToStart,     prevBar,
-                       nextBar,         switchToEditTool,  switchToSelectTool, undoAction,        redoAction,
-                       cutAction,       copyAction,        pasteAction,        selectAllAction,   moveNotesUp,
-                       moveNotesDown,   moveSelectionPrev, moveSelectionNext,  scrollViewUp,      scrollViewDown,
-                       scrollViewLeft,  scrollViewRight,   zoomInHorizontal,   zoomOutHorizontal, zoomInVertical,
-                       zoomOutVertical, zoomReset,         toggleLoop,         toggleMetronome});
+    commands.addArray({newFile,
+                       openFile,
+                       saveFile,
+                       saveFileAs,
+                       importMidi,
+                       exportMidi,
+                       quitApp,
+                       togglePlay,
+                       returnToStart,
+                       prevBar,
+                       nextBar,
+                       switchToEditTool,
+                       switchToSelectTool,
+                       undo,
+                       redo,
+                       cut,
+                       copy,
+                       paste,
+                       selectAll,
+                       moveNotesUp,
+                       moveNotesDown,
+                       moveSelectionPrev,
+                       moveSelectionNext,
+                       scrollViewUp,
+                       scrollViewDown,
+                       scrollViewLeft,
+                       scrollViewRight,
+                       zoomInHorizontal,
+                       zoomOutHorizontal,
+                       zoomInVertical,
+                       zoomOutVertical,
+                       zoomReset,
+                       toggleLoop,
+                       toggleMetronome});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
 {
     switch (commandID)
     {
-    case newFile_:
+    case newFile:
         result.setInfo("New", "", "File", 0);
         result.addDefaultKeypress('N', juce::ModifierKeys::commandModifier);
         break;
@@ -23,7 +50,7 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
         result.setInfo("Open...", "", "File", 0);
         result.addDefaultKeypress('O', juce::ModifierKeys::commandModifier);
         break;
-    case saveFile_:
+    case saveFile:
         result.setInfo("Save", "", "File", 0);
         result.addDefaultKeypress('S', juce::ModifierKeys::commandModifier);
         break;
@@ -64,27 +91,27 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
         result.setInfo("Edit Tool", "", "Tools", 0);
         result.addDefaultKeypress('2', 0);
         break;
-    case undoAction:
+    case undo:
         result.setInfo("Undo", "", "Edit", 0);
         result.addDefaultKeypress('Z', juce::ModifierKeys::commandModifier);
         break;
-    case redoAction:
+    case redo:
         result.setInfo("Redo", "", "Edit", 0);
         result.addDefaultKeypress('Y', juce::ModifierKeys::commandModifier);
         break;
-    case cutAction:
+    case cut:
         result.setInfo("Cut", "", "Edit", 0);
         result.addDefaultKeypress('X', juce::ModifierKeys::commandModifier);
         break;
-    case copyAction:
+    case copy:
         result.setInfo("Copy", "", "Edit", 0);
         result.addDefaultKeypress('C', juce::ModifierKeys::commandModifier);
         break;
-    case pasteAction:
+    case paste:
         result.setInfo("Paste", "", "Edit", 0);
         result.addDefaultKeypress('V', juce::ModifierKeys::commandModifier);
         break;
-    case selectAllAction:
+    case selectAll:
         result.setInfo("Select All", "", "Edit", 0);
         result.addDefaultKeypress('A', juce::ModifierKeys::commandModifier);
         break;

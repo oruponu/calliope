@@ -589,20 +589,20 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
 
     switch (commandID)
     {
-    case AppCommands::undoAction:
+    case AppCommands::undo:
         result.setActive(document.getHistory().canUndo());
         break;
-    case AppCommands::redoAction:
+    case AppCommands::redo:
         result.setActive(document.getHistory().canRedo());
         break;
-    case AppCommands::cutAction:
-    case AppCommands::copyAction:
+    case AppCommands::cut:
+    case AppCommands::copy:
         result.setActive(pianoRoll.hasSelection());
         break;
-    case AppCommands::pasteAction:
+    case AppCommands::paste:
         result.setActive(pianoRoll.hasClipboardContent());
         break;
-    case AppCommands::selectAllAction:
+    case AppCommands::selectAll:
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
         break;
     case AppCommands::moveNotesUp:
@@ -628,13 +628,13 @@ bool MainComponent::perform(const InvocationInfo& info)
 {
     switch (info.commandID)
     {
-    case AppCommands::newFile_:
+    case AppCommands::newFile:
         newFile();
         return true;
     case AppCommands::openFile:
         loadFile();
         return true;
-    case AppCommands::saveFile_:
+    case AppCommands::saveFile:
         saveFile();
         return true;
     case AppCommands::saveFileAs:
@@ -676,26 +676,26 @@ bool MainComponent::perform(const InvocationInfo& info)
     case AppCommands::switchToSelectTool:
         setActiveTool(PianoRollComponent::EditMode::Select);
         return true;
-    case AppCommands::undoAction:
+    case AppCommands::undo:
         document.getHistory().undo();
         trackList.refresh();
         pianoRoll.setSelectedNotes({});
         return true;
-    case AppCommands::redoAction:
+    case AppCommands::redo:
         document.getHistory().redo();
         trackList.refresh();
         pianoRoll.setSelectedNotes({});
         return true;
-    case AppCommands::cutAction:
+    case AppCommands::cut:
         pianoRoll.cutSelection();
         return true;
-    case AppCommands::copyAction:
+    case AppCommands::copy:
         pianoRoll.copySelection();
         return true;
-    case AppCommands::pasteAction:
+    case AppCommands::paste:
         pianoRoll.paste(static_cast<int>(playbackEngine.getCurrentTick()));
         return true;
-    case AppCommands::selectAllAction:
+    case AppCommands::selectAll:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.selectAllNotes();
         return true;
