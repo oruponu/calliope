@@ -10,6 +10,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/engine/MetronomeClicks.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/ThruRouter.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ThruTarget.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
     ${PROJECT_SOURCE_DIR}/src/io/ProjectFileIO.cpp
@@ -57,6 +58,7 @@ target_sources(CalliopeTests PRIVATE
     engine/MetronomeClicksTests.cpp
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp
+    engine/ThruRouterTests.cpp
     engine/ThruTargetTests.cpp
     io/MidiFileLoadTests.cpp
     io/MidiFileRoundTripTests.cpp
