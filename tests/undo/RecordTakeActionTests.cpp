@@ -1,8 +1,10 @@
 #include "model/MidiSequence.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
+#include "support/NoteRefStringMaker.h"
 #include "undo/RecordTakeAction.h"
 #include <catch2/catch_test_macros.hpp>
+#include <map>
 #include <vector>
 
 namespace
@@ -103,4 +105,26 @@ TEST_CASE("a take across two tracks is added and undone together", "[undo][recor
     action.undo();
     CHECK(seq.getTrack(0).getNumNotes() == 0);
     CHECK(seq.getTrack(1).getNumNotes() == 0);
+}
+
+TEST_CASE("each recorded note id is mapped to where it was added", "[undo][record]")
+{
+    MidiSequence seq;
+    const TrackId first = seq.addTrack(trackWith({{60, 100, 0, 480}, {62, 100, 480, 480}}, {})).getId();
+    const TrackId second = seq.addTrack().getId();
+    RecordTakeAction action(&seq, Take{{first, {{{64, 90, 0, 240}, {65, 90, 240, 240}}, {}, {5, 3}}},
+                                       {second, {{{67, 90, 0, 240}}, {}, {8}}}});
+
+    action.perform();
+    CHECK(action.getCommittedNotes() == std::map<int, NoteRef>{{3, {0, 3}}, {5, {0, 2}}, {8, {1, 0}}});
+}
+
+TEST_CASE("a recorded track that no longer exists maps no ids", "[undo][record]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    RecordTakeAction action(&seq, Take{{TrackId{99}, {{{64, 90, 0, 240}}, {}, {5}}}});
+
+    action.perform();
+    CHECK(action.getCommittedNotes().empty());
 }

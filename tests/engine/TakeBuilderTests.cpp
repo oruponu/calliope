@@ -47,6 +47,21 @@ std::vector<MidiEvent> eventsOn(const TakeBuilder& builder, TrackId track)
     return eventsOn(builder.getTake(), track);
 }
 
+std::vector<int> idsOn(const TakeBuilder& builder, TrackId track)
+{
+    const auto& take = builder.getTake();
+    const auto it = take.find(track);
+    return it == take.end() ? std::vector<int>{} : it->second.noteIds;
+}
+
+int heldIdOf(const TakeBuilder& builder, int noteNumber)
+{
+    for (const auto& held : builder.getHeldNotes())
+        if (held.noteNumber == noteNumber)
+            return held.id;
+    return 0;
+}
+
 TakeBuilder startedOn(std::optional<TrackId> target)
 {
     TakeBuilder builder;
@@ -82,7 +97,7 @@ TEST_CASE("a held note is shown until it is released", "[engine][take]")
 {
     auto builder = startedOn(piano);
     builder.handle("a", noteOn(60), {1, 100});
-    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 100}});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 100, 1}});
     builder.handle("a", noteOff(60), {1, 200});
     CHECK(builder.getHeldNotes().empty());
 }
@@ -260,7 +275,7 @@ TEST_CASE("releasing a source closes its notes and the pedal it holds", "[engine
     builder.releaseSource("a", 300);
     CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 0, 300}});
     CHECK(eventsOn(builder, piano) == std::vector<MidiEvent>{ccEvent(50, 64, 127), ccEvent(300, 64, 0)});
-    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 62, 90, 0}});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 62, 90, 0, 2}});
 }
 
 TEST_CASE("releasing a source that does not hold the pedal leaves it down", "[engine][take]")
@@ -304,4 +319,175 @@ TEST_CASE("an event changes the content revision but not the note revision", "[e
     builder.handle("a", noteOn(60), {1, 20});
     builder.handle("a", noteOff(60), {1, 30});
     CHECK(builder.getNoteRevision() != notes);
+}
+
+TEST_CASE("each note-on gets an id that it keeps after release", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 100});
+    builder.handle("a", noteOn(62), {1, 120});
+    CHECK(heldIdOf(builder, 60) == 1);
+    CHECK(heldIdOf(builder, 62) == 2);
+    builder.handle("a", noteOff(62), {1, 200});
+    builder.handle("a", noteOff(60), {1, 300});
+    CHECK(idsOn(builder, piano) == std::vector<int>{2, 1});
+}
+
+TEST_CASE("the next segment does not reuse ids", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 100});
+    builder.end(200);
+    builder.begin(piano, {1, 0});
+    builder.handle("a", noteOn(60), {1, 300});
+    CHECK(heldIdOf(builder, 60) == 2);
+}
+
+TEST_CASE("an edit moves a finished note and keeps its length", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 100});
+    builder.handle("a", noteOff(60), {1, 580});
+    builder.editNotes({{1, {.startTick = 240, .noteNumber = 64}}}, 1000);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{64, 90, 240, 480}});
+}
+
+TEST_CASE("an edit of the start that keeps the end resizes a finished note", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 100});
+    builder.handle("a", noteOff(60), {1, 580});
+    builder.editNotes({{1, {.startTick = 200, .keepEnd = true}}}, 1000);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 200, 380}});
+}
+
+TEST_CASE("an edit of the end resizes a finished note", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 100});
+    builder.handle("a", noteOff(60), {1, 580});
+    builder.editNotes({{1, {.endTick = 340}}}, 1000);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 100, 240}});
+}
+
+TEST_CASE("an edit changes the velocity of a finished note", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 100});
+    builder.handle("a", noteOff(60), {1, 580});
+    builder.editNotes({{1, {.velocity = 30}}}, 1000);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 30, 100, 480}});
+}
+
+TEST_CASE("removing a finished note drops it and its id", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 100});
+    builder.handle("a", noteOff(60), {1, 580});
+    builder.handle("a", noteOn(62), {1, 600});
+    builder.handle("a", noteOff(62), {1, 800});
+    builder.removeNotes({1});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{62, 90, 600, 200}});
+    CHECK(idsOn(builder, piano) == std::vector<int>{2});
+}
+
+TEST_CASE("a held note moved earlier stays held from the new start", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.startTick = 240}}}, 960);
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 240, 1}});
+    CHECK(notesOn(builder, piano).empty());
+    builder.handle("a", noteOff(60), {1, 1200});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 240, 960}});
+}
+
+TEST_CASE("a held note moved later but before the playhead stays held", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.startTick = 720}}}, 960);
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 720, 1}});
+}
+
+TEST_CASE("a held note moved to the playhead or later ends with its length at that moment", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.startTick = 960}}}, 960);
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 960, 480}});
+    CHECK(idsOn(builder, piano) == std::vector<int>{1});
+}
+
+TEST_CASE("setting the end of a held note ends it there", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.endTick = 720}}}, 960);
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 480, 240}});
+}
+
+TEST_CASE("the key of a held note ended by an edit no longer closes a note", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.endTick = 720}}}, 960);
+    builder.handle("a", noteOff(60), {1, 1200});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 480, 240}});
+}
+
+TEST_CASE("the key of a removed held note no longer closes a note but can record again", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.removeNotes({1});
+    builder.handle("a", noteOff(60), {1, 600});
+    CHECK(notesOn(builder, piano).empty());
+    builder.handle("a", noteOn(60), {1, 700});
+    builder.handle("a", noteOff(60), {1, 900});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 700, 200}});
+    CHECK(idsOn(builder, piano) == std::vector<int>{2});
+}
+
+TEST_CASE("a held note given a new pitch closes at that pitch", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.noteNumber = 67}}}, 600);
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 67, 90, 480, 1}});
+    builder.handle("a", noteOff(60), {1, 960});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{67, 90, 480, 480}});
+}
+
+TEST_CASE("a pass boundary closes a moved held note from its new start", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.startTick = 240}}}, 960);
+    builder.closeHeld(2, 1920);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 240, 1680}});
+    CHECK(idsOn(builder, piano) == std::vector<int>{1});
+}
+
+TEST_CASE("edits and removals of unknown ids are ignored", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 100});
+    builder.handle("a", noteOff(60), {1, 580});
+    builder.editNotes({{99, {.startTick = 0}}}, 0);
+    builder.removeNotes({99});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 100, 480}});
+}
+
+TEST_CASE("only ending a held note by an edit changes the note revision", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    const int before = builder.getNoteRevision();
+    builder.editNotes({{1, {.startTick = 240}}}, 960);
+    CHECK(builder.getNoteRevision() == before);
+    builder.editNotes({{1, {.startTick = 960}}}, 960);
+    CHECK(builder.getNoteRevision() != before);
 }

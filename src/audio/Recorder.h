@@ -1,11 +1,14 @@
 #pragma once
 
+#include "edit/NoteRef.h"
 #include "engine/RecordingInbox.h"
 #include "engine/RecordingLayer.h"
+#include "engine/RecordingLayerEditor.h"
 #include "engine/TakeBuilder.h"
 #include "model/MidiSequence.h"
 #include <functional>
 #include <juce_events/juce_events.h>
+#include <map>
 #include <optional>
 #include <vector>
 
@@ -14,7 +17,11 @@ class UndoHistory;
 
 // Runs recording segments on the message thread: drains the inbox into the take, follows the active track, and
 // commits each segment as one undoable "Record" step.
-class Recorder : public RecordingLayer, private MidiSequence::Listener, private juce::AsyncUpdater, private juce::Timer
+class Recorder : public RecordingLayer,
+                 public RecordingLayerEditor,
+                 private MidiSequence::Listener,
+                 private juce::AsyncUpdater,
+                 private juce::Timer
 {
 public:
     Recorder(MidiSequence& sequenceRef, UndoHistory& undoHistoryRef, PlaybackEngine& engineRef,
@@ -36,8 +43,16 @@ public:
     const Take& getTake() const override;
     std::vector<HeldTakeNote> getHeldNotes() const override;
 
+    // Ignored unless recording.
+    void editRecordedNotes(const std::vector<RecordedNoteEdit>& edits) override;
+    void removeRecordedNotes(const std::vector<int>& ids) override;
+
     std::function<void()> onLayerChanged;
     std::function<void(bool recording)> onRecordingChanged;
+
+    // Called once the "Record" step is performed and before the layer is cleared, with where each recorded note id
+    // was added.
+    std::function<void(const std::map<int, NoteRef>& committed)> onCommitted;
 
 private:
     void tracksChanged() override;

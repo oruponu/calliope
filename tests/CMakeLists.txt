@@ -59,6 +59,7 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
     engine/MetronomeClicksTests.cpp
+    engine/NoteFieldEditTests.cpp
     engine/PlaybackClockTests.cpp
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp

@@ -10,6 +10,8 @@ struct TakeTrack
 {
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
+    // The recorded note id of each note, in the same order.
+    std::vector<int> noteIds;
 
     bool empty() const { return notes.empty() && events.empty(); }
 };
@@ -23,6 +25,7 @@ struct HeldTakeNote
     int noteNumber = 0;
     int velocity = 0;
     int startTick = 0;
+    int id = 0;
 
     bool operator==(const HeldTakeNote&) const = default;
 };

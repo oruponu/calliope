@@ -1,9 +1,11 @@
 #pragma once
 
+#include "edit/NoteRef.h"
 #include "engine/Take.h"
 #include "model/MidiSequence.h"
 #include <algorithm>
 #include <juce_data_structures/juce_data_structures.h>
+#include <map>
 #include <ranges>
 #include <utility>
 #include <vector>
@@ -68,6 +70,20 @@ public:
         for (const auto& [id, recorded] : take)
             units += static_cast<int>(recorded.notes.size() + recorded.events.size());
         return std::max(1, units);
+    }
+
+    // After perform: where each recorded note id was added.
+    std::map<int, NoteRef> getCommittedNotes() const
+    {
+        std::map<int, NoteRef> committed;
+        for (const auto& placement : placements)
+        {
+            const int trackIndex = sequence->indexOf(placement.track);
+            const auto& ids = take.at(placement.track).noteIds;
+            for (int i = 0; i < static_cast<int>(ids.size()); ++i)
+                committed[ids[static_cast<size_t>(i)]] = {trackIndex, placement.firstNoteIndex + i};
+        }
+        return committed;
     }
 
 private:

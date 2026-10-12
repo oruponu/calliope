@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/PlaybackClock.h"
+#include "engine/RecordedNoteEdit.h"
 #include "engine/Take.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <map>
@@ -21,6 +22,10 @@ public:
     void closeHeld(int pass, int closeTick);
     void releaseSource(const std::string& sourceId, int tick);
     Take end(int tick);
+    // Edits recorded notes by id and ignores ids no longer recorded. A held note stays held unless the edit sets its
+    // end or moves its start to playheadTick or later; it then ends, and releasing its key does nothing.
+    void editNotes(const std::vector<RecordedNoteEdit>& edits, int playheadTick);
+    void removeNotes(const std::vector<int>& ids);
 
     const Take& getTake() const { return take; }
     std::vector<HeldTakeNote> getHeldNotes() const;
@@ -38,9 +43,13 @@ private:
     struct HeldNote
     {
         TrackId track{};
+        // Follows pitch edits; the NoteKey keeps the key that was pressed.
+        int noteNumber = 0;
         int velocity = 0;
         int startTick = 0;
+        int id = 0;
     };
+    using HeldNotes = std::map<NoteKey, HeldNote>;
 
     struct RecordedPedal
     {
@@ -50,13 +59,17 @@ private:
 
     void finishNote(const NoteKey& key, int tick);
     void finishAllNotes(int tick);
+    void endHeldNote(HeldNotes::iterator it, int startTick, int duration);
+    void editHeldNote(HeldNotes::iterator it, const NoteFieldEdit& edit, int playheadTick);
+    HeldNotes::iterator findHeld(int id);
+    MidiNote* findFinished(int id);
     void releasePedal(TrackId track, int controller, int tick);
     void releaseAllPedals(int tick);
     void addEvent(TrackId track, const MidiEvent& event);
 
     std::optional<TrackId> target;
     int pass = 0;
-    std::map<NoteKey, HeldNote> heldNotes;
+    HeldNotes heldNotes;
     // Tracked with or without a target, since the pedal is physically down either way.
     std::set<PedalKey> pedalsDown;
     // The last hold pedal value, and its tick, recorded on each (track, controller) in this segment.
@@ -64,4 +77,6 @@ private:
     Take take;
     int contentRevision = 0;
     int noteRevision = 0;
+    // Never reset, so a reference left from an earlier segment cannot reach a note of a later one.
+    int nextNoteId = 1;
 };

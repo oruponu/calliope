@@ -101,6 +101,29 @@ std::vector<HeldTakeNote> Recorder::getHeldNotes() const
     return builder.getHeldNotes();
 }
 
+void Recorder::editRecordedNotes(const std::vector<RecordedNoteEdit>& edits)
+{
+    if (!recording || edits.empty())
+        return;
+    // A key released just before the edit is still queued; process it first so the note keeps its released length.
+    const auto drained = inbox.drainAt(now());
+    process(drained.items);
+    const int contentBefore = builder.getContentRevision();
+    const int notesBefore = builder.getNoteRevision();
+    builder.editNotes(edits, drained.position.tick);
+    layerChanged(contentBefore, notesBefore);
+}
+
+void Recorder::removeRecordedNotes(const std::vector<int>& ids)
+{
+    if (!recording || ids.empty())
+        return;
+    const int contentBefore = builder.getContentRevision();
+    const int notesBefore = builder.getNoteRevision();
+    builder.removeNotes(ids);
+    layerChanged(contentBefore, notesBefore);
+}
+
 void Recorder::tracksChanged()
 {
     triggerAsyncUpdate();
@@ -178,7 +201,9 @@ void Recorder::commit(Take take)
     if (take.empty())
         return;
     undoHistory.beginNewTransaction("Record");
-    undoHistory.perform(new RecordTakeAction(&sequence, std::move(take)));
+    auto* action = new RecordTakeAction(&sequence, std::move(take));
+    if (undoHistory.perform(action) && onCommitted)
+        onCommitted(action->getCommittedNotes());
 }
 
 std::optional<TrackId> Recorder::resolveTarget() const
