@@ -30,6 +30,7 @@ target_sources(Calliope PRIVATE
     src/audio/UserDisabledMidiInputs.cpp
     src/audio/MidiThru.cpp
     src/audio/MidiThruSync.cpp
+    src/audio/Recorder.cpp
     src/document/Document.cpp
     src/edit/ChordTrackEdits.cpp
     src/edit/KeySignatureEdits.cpp

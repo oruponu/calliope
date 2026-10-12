@@ -206,7 +206,7 @@ void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int 
     constexpr int dotSize = 8;
     const int dotX = kPadLeft;
     const int dotY = (height - dotSize) / 2;
-    g.setColour(TrackColours::getColour(item.trackIndex));
+    g.setColour(item.isRecording ? status::danger : TrackColours::getColour(item.trackIndex));
     g.fillRoundedRectangle(static_cast<float>(dotX), static_cast<float>(dotY), static_cast<float>(dotSize),
                            static_cast<float>(dotSize), 2.0f);
 
@@ -218,7 +218,7 @@ void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int 
 
     auto bbt = sequence->getTimeline().tickToBarBeatTick(item.tick);
 
-    g.setColour(text::t1);
+    g.setColour(item.isRecording ? text::t3 : text::t1);
     g.setFont(font::sans(font::sizeSM));
 
     g.drawText(formatPosition(bbt), positionX, 0, kColPosition, height, juce::Justification::centredLeft);
@@ -257,6 +257,47 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
     }
 }
 
+void EventListComponent::setRecordingLayer(const RecordingLayer* layer)
+{
+    recordingLayer = layer;
+    rebuildList();
+}
+
+void EventListComponent::recordingLayerChanged()
+{
+    rebuildList();
+}
+
+EventListItem EventListComponent::eventItem(const MidiEvent& event, int trackIndex, int sourceIndex)
+{
+    EventListItem item;
+    item.tick = event.tick;
+    item.trackIndex = trackIndex;
+    item.sourceIndex = sourceIndex;
+    item.data1 = event.data1;
+    item.data2 = event.data2;
+
+    switch (event.type)
+    {
+    case MidiEvent::Type::ControlChange:
+        item.kind = EventListItem::ControlChange;
+        break;
+    case MidiEvent::Type::ProgramChange:
+        item.kind = EventListItem::ProgramChange;
+        break;
+    case MidiEvent::Type::PitchBend:
+        item.kind = EventListItem::PitchBend;
+        break;
+    case MidiEvent::Type::ChannelPressure:
+        item.kind = EventListItem::ChannelPressure;
+        break;
+    case MidiEvent::Type::KeyPressure:
+        item.kind = EventListItem::KeyPressure;
+        break;
+    }
+    return item;
+}
+
 void EventListComponent::rebuildList()
 {
     items.clear();
@@ -292,46 +333,31 @@ void EventListComponent::rebuildList()
 
         for (int i = 0; i < track.getNumEvents(); ++i)
         {
-            const auto& ev = track.getEvent(i);
-            EventListItem item;
-            item.tick = ev.tick;
-            item.trackIndex = trackIdx;
-            item.sourceIndex = i;
-            item.data1 = ev.data1;
-            item.data2 = ev.data2;
+            items.push_back(eventItem(track.getEvent(i), trackIdx, i));
+        }
 
-            switch (ev.type)
-            {
-            case MidiEvent::Type::ControlChange:
-                item.kind = EventListItem::ControlChange;
-                break;
-            case MidiEvent::Type::ProgramChange:
-                item.kind = EventListItem::ProgramChange;
-                break;
-            case MidiEvent::Type::PitchBend:
-                item.kind = EventListItem::PitchBend;
-                break;
-            case MidiEvent::Type::ChannelPressure:
-                item.kind = EventListItem::ChannelPressure;
-                break;
-            case MidiEvent::Type::KeyPressure:
-                item.kind = EventListItem::KeyPressure;
-                break;
-            }
-
-            items.push_back(item);
+        if (recordingLayer != nullptr)
+        {
+            const auto& take = recordingLayer->getTake();
+            if (const auto recorded = take.find(track.getId()); recorded != take.end())
+                for (const auto& event : recorded->second.events)
+                {
+                    auto item = eventItem(event, trackIdx, -1);
+                    item.isRecording = true;
+                    items.push_back(item);
+                }
         }
     }
 
-    std::sort(items.begin(), items.end(),
-              [](const EventListItem& a, const EventListItem& b)
-              {
-                  if (a.tick != b.tick)
-                      return a.tick < b.tick;
-                  if (a.trackIndex != b.trackIndex)
-                      return a.trackIndex < b.trackIndex;
-                  return a.kind < b.kind;
-              });
+    std::stable_sort(items.begin(), items.end(),
+                     [](const EventListItem& a, const EventListItem& b)
+                     {
+                         if (a.tick != b.tick)
+                             return a.tick < b.tick;
+                         if (a.trackIndex != b.trackIndex)
+                             return a.trackIndex < b.trackIndex;
+                         return a.kind < b.kind;
+                     });
 
     listBox.updateContent();
     listBox.repaint();

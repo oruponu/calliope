@@ -13,7 +13,8 @@ public:
         Stop,
         Play,
         Loop,
-        Metronome
+        Metronome,
+        Record
     };
     TransportButton(Type t) : type(t) { setRepaintsOnMouseActivity(true); }
     Type getType() const { return type; }
@@ -45,6 +46,12 @@ inline void TransportButton::paint(juce::Graphics& g)
         boxBorder = accent::base;
         iconColour = surface::bg;
     }
+    else if (type == Record && active)
+    {
+        boxColour = status::danger.withAlpha(0.18f);
+        boxBorder = status::danger;
+        iconColour = status::danger;
+    }
     else if ((type == Loop || type == Metronome) && active)
     {
         boxColour = accent::soft;
@@ -56,6 +63,8 @@ inline void TransportButton::paint(juce::Graphics& g)
         boxColour = hover ? surface::surface3 : surface::surface2;
         boxBorder = hover ? border::strong : border::normal;
         iconColour = hover ? text::t1 : text::t2;
+        if (type == Record)
+            iconColour = status::danger.withAlpha(hover ? 1.0f : 0.75f);
     }
 
     g.setColour(boxColour);
@@ -149,11 +158,16 @@ inline void TransportButton::paint(juce::Graphics& g)
         arm.lineTo(cx + h * 0.32f, top - h * 0.05f);
         g.strokePath(arm, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
+    else if (type == Record)
+    {
+        auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) * 0.36f;
+        g.fillEllipse(bounds.withSizeKeepingCentre(size, size));
+    }
 }
 
 inline void TransportButton::mouseUp(const juce::MouseEvent& e)
 {
-    if (active && type != Loop && type != Metronome)
+    if (active && type != Loop && type != Metronome && type != Record)
         return;
     if (getLocalBounds().contains(e.getPosition()) && onClick)
         onClick();

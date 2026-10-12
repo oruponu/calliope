@@ -1,11 +1,13 @@
 #pragma once
 
+#include "engine/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include "undo/UndoHistory.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <map>
+#include <optional>
 #include <set>
 #include <variant>
 #include <vector>
@@ -34,6 +36,7 @@ public:
     void setBeatWidth(int w);
     void setRightPadding(int px);
     void setQuantizeDenominator(int denom);
+    void setRecordingLayer(const RecordingLayer* layer);
     void updateSize();
 
     DisplayMode getDisplayMode() const { return displayMode; }
@@ -69,6 +72,10 @@ private:
     void drawProgramChange(juce::Graphics& g);
     void drawStepGraph(juce::Graphics& g, const std::vector<std::pair<int, int>>& events, juce::Colour colour,
                        float alpha, std::function<int(int)> toY);
+    std::vector<std::pair<int, int>>
+    recordedValues(int trackIndex, const std::function<std::optional<int>(const MidiEvent&)>& valueOf) const;
+    void drawProgramBlocks(juce::Graphics& g, const std::vector<std::pair<int, int>>& events, juce::Colour colour,
+                           float alpha);
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
 
@@ -93,6 +100,7 @@ private:
     int rightPadding = 0;
 
     int quantizeDenominator = 4;
+    const RecordingLayer* recordingLayer = nullptr;
 
     UndoHistory& undoHistory;
     struct Idle

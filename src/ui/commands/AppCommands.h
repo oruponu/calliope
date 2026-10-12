@@ -40,7 +40,8 @@ struct AppCommands
         saveFileAs,
         importMidi,
         exportMidi,
-        toggleMetronome
+        toggleMetronome,
+        toggleRecord
     };
 
     static void getAllCommands(juce::Array<juce::CommandID>& commands);

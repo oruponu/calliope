@@ -29,6 +29,7 @@ MainComponent::MainComponent()
     audioDeviceManager.initialise(0, 2, savedAudioState.get(), true);
     audioDeviceManager.addChangeListener(this);
     audioDeviceManager.addMidiInputDeviceCallback({}, &midiThru);
+    audioDeviceManager.addMidiInputDeviceCallback({}, &recordingInput);
 
     using IOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
     const auto audioOutNodeId = audioGraph.addNode(std::make_unique<IOProcessor>(IOProcessor::audioOutputNode))->nodeID;
@@ -140,6 +141,7 @@ MainComponent::MainComponent()
         controllerLane.setSelectedTracks(activeIdx, selected);
         eventList.setSelectedTracks(selected);
         midiThruSync.activeTrackChanged();
+        recorder.activeTrackChanged();
     };
     trackList.pluginNameForTrack = [this](int trackIndex)
     { return pluginHost.getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
@@ -332,6 +334,17 @@ MainComponent::MainComponent()
         pianoRoll.setLoopRegion(enabled, startTick, endTick);
         controllerLane.setLoopRegion(enabled, startTick, endTick);
     };
+    transportBar.onRecordToggled = [this] { toggleRecording(); };
+    recorder.onRecordingChanged = [this](bool recording) { transportBar.setRecordActive(recording); };
+    pianoRoll.setRecordingLayer(&recorder);
+    controllerLane.setRecordingLayer(&recorder);
+    eventList.setRecordingLayer(&recorder);
+    recorder.onLayerChanged = [this]
+    {
+        pianoRoll.recordingLayerChanged();
+        controllerLane.repaint();
+        eventList.recordingLayerChanged();
+    };
     transportBar.setMetronomeActive(playbackEngine.isMetronomeEnabled());
     transportBar.onMetronomeToggled = [](bool enabled)
     { getAppProperties().getUserSettings()->setValue("metronomeEnabled", enabled); };
@@ -403,9 +416,13 @@ MainComponent::~MainComponent()
     juce::Desktop::getInstance().removeFocusChangeListener(this);
     audioDeviceManager.removeChangeListener(this);
     audioDeviceManager.removeMidiInputDeviceCallback({}, &midiThru);
+    audioDeviceManager.removeMidiInputDeviceCallback({}, &recordingInput);
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();
+    pianoRoll.setRecordingLayer(nullptr);
+    controllerLane.setRecordingLayer(nullptr);
+    eventList.setRecordingLayer(nullptr);
     playbackEngine.setMetronomeListener(nullptr);
     playbackEngine.removeListener(&pluginHost);
     playbackEngine.removeListener(&midiOutput);
@@ -753,6 +770,9 @@ bool MainComponent::perform(const InvocationInfo& info)
     case AppCommands::toggleMetronome:
         transportBar.toggleMetronome();
         return true;
+    case AppCommands::toggleRecord:
+        transportBar.toggleRecord();
+        return true;
     default:
         return false;
     }
@@ -815,6 +835,8 @@ void MainComponent::saveIfNeededThen(std::function<void()> next)
     if (fileOperationInProgress)
         return;
 
+    // Commit the recording first so the save prompt covers it.
+    recorder.finish();
     fileOperationInProgress = true;
     pluginHost.flushPendingStateChanges();
     document.saveIfNeededAndUserAgreesAsync(
@@ -1119,6 +1141,20 @@ void MainComponent::stopPlayback()
     midiOutput.reset();
     transportBar.setPlaying(false);
     vblankAttachment.reset();
+}
+
+void MainComponent::releaseInputSource(const juce::String& deviceIdentifier)
+{
+    midiThru.releaseSource(deviceIdentifier);
+    recorder.releaseSource(deviceIdentifier);
+}
+
+void MainComponent::toggleRecording()
+{
+    if (recorder.isRecording())
+        recorder.finish();
+    else
+        recorder.start();
 }
 
 void MainComponent::onSequenceLoaded()

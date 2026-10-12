@@ -5,10 +5,13 @@
 #include "audio/MidiInputReconnector.h"
 #include "audio/MidiThru.h"
 #include "audio/MidiThruSync.h"
+#include "audio/Recorder.h"
+#include "audio/RecordingInput.h"
 #include "audio/UserDisabledMidiInputs.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/PlaybackSync.h"
+#include "engine/RecordingInbox.h"
 #include "model/MidiSequence.h"
 #include "plugin/PluginStateChangeWatcher.h"
 #include "plugin/VstPluginHost.h"
@@ -91,12 +94,16 @@ private:
     void showPluginLoadFailures();
     void showAudioSettings();
     void stopPlayback();
+    void releaseInputSource(const juce::String& deviceIdentifier);
+    void toggleRecording();
     void onSequenceLoaded();
     void updateTitleBar();
     void finishFileOperation();
     PlaybackTrackContext makeTrackContext(int trackIndex) const;
 
     Document document;
+    // Declared before the engine, which keeps a pointer to it, so that it outlives the engine.
+    RecordingInbox recordingInbox;
     PlaybackEngine playbackEngine;
     PlaybackSync playbackSync{playbackEngine, document.getSequence()};
     MidiDeviceOutput midiOutput;
@@ -108,10 +115,11 @@ private:
     Metronome metronome;
     VstPluginHost pluginHost{pluginStateWatcher};
     MidiThru midiThru{{&midiOutput, &pluginHost}};
+    RecordingInput recordingInput{recordingInbox};
     MidiInputReconnector midiInputReconnector{audioDeviceManager,
-                                              [this](const juce::String& id) { midiThru.releaseSource(id); }};
+                                              [this](const juce::String& id) { releaseInputSource(id); }};
     UserDisabledMidiInputs userDisabledMidiInputs{audioDeviceManager,
-                                                  [this](const juce::String& id) { midiThru.releaseSource(id); }};
+                                                  [this](const juce::String& id) { releaseInputSource(id); }};
     PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
     TrackOutputController trackOutput{pluginHost, document, playbackEngine, pluginCatalog, [this] { stopPlayback(); }};
     PluginEditorController editorController{pluginHost};
@@ -122,6 +130,8 @@ private:
     PianoRollViewport viewport;
     TrackListComponent trackList;
     MidiThruSync midiThruSync{document.getSequence(), midiThru, [this] { return trackList.getActiveTrackIndex(); }};
+    Recorder recorder{document.getSequence(), document.getHistory(), playbackEngine, recordingInbox,
+                      [this] { return trackList.getActiveTrackIndex(); }};
     juce::Viewport trackListViewport;
     juce::Rectangle<int> trackListHeaderBounds;
 

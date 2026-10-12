@@ -119,6 +119,31 @@ void ControllerLaneComponent::setLoopRegion(bool enabled, int startTick, int end
     repaint();
 }
 
+void ControllerLaneComponent::setRecordingLayer(const RecordingLayer* layer)
+{
+    recordingLayer = layer;
+    repaint();
+}
+
+std::vector<std::pair<int, int>>
+ControllerLaneComponent::recordedValues(int trackIndex,
+                                        const std::function<std::optional<int>(const MidiEvent&)>& valueOf) const
+{
+    std::vector<std::pair<int, int>> values;
+    if (recordingLayer == nullptr)
+        return values;
+    const auto& take = recordingLayer->getTake();
+    const auto recorded = take.find(sequence->getTrack(trackIndex).getId());
+    if (recorded == take.end())
+        return values;
+    for (const auto& event : recorded->second.events)
+        if (const auto value = valueOf(event))
+            values.push_back({event.tick, *value});
+    // Later loop passes record earlier ticks, so the take is not in tick order.
+    std::ranges::stable_sort(values, {}, &std::pair<int, int>::first);
+    return values;
+}
+
 void ControllerLaneComponent::setContentBeats(int beats)
 {
     contentBeats = beats;
@@ -555,12 +580,20 @@ void ControllerLaneComponent::drawControlChange(juce::Graphics& g)
                 events.push_back({event.tick, event.data2});
         }
 
-        if (events.empty())
-            continue;
-
         auto colour = TrackColours::getColour(trackIdx);
         float alpha = (trackIdx == activeTrackIndex) ? 0.85f : 0.3f;
-        drawStepGraph(g, events, colour, alpha, [this](int v) { return valueToY(v); });
+        if (!events.empty())
+            drawStepGraph(g, events, colour, alpha, [this](int v) { return valueToY(v); });
+
+        const auto recorded = recordedValues(trackIdx,
+                                             [this](const MidiEvent& e) -> std::optional<int>
+                                             {
+                                                 if (e.type == MidiEvent::Type::ControlChange && e.data1 == ccNumber)
+                                                     return e.data2;
+                                                 return std::nullopt;
+                                             });
+        if (!recorded.empty())
+            drawStepGraph(g, recorded, calliope::theme::status::danger, 0.85f, [this](int v) { return valueToY(v); });
     }
 }
 
@@ -571,6 +604,11 @@ void ControllerLaneComponent::drawPitchBend(juce::Graphics& g)
 
     int centerY = (getDrawAreaTop() + getDrawAreaBottom()) / 2;
     int halfHeight = getDrawAreaHeight() / 2;
+    const auto toY = [centerY, halfHeight](int v)
+    {
+        float signed_ = static_cast<float>(v - 8192) / 8192.0f;
+        return centerY - static_cast<int>(signed_ * halfHeight);
+    };
 
     for (int trackIdx : selectedTrackIndices)
     {
@@ -587,31 +625,27 @@ void ControllerLaneComponent::drawPitchBend(juce::Graphics& g)
                 events.push_back({event.tick, event.data1});
         }
 
-        if (events.empty())
-            continue;
-
         auto colour = TrackColours::getColour(trackIdx);
         float alpha = (trackIdx == activeTrackIndex) ? 0.85f : 0.3f;
-        drawStepGraph(g, events, colour, alpha,
-                      [centerY, halfHeight](int v)
-                      {
-                          float signed_ = static_cast<float>(v - 8192) / 8192.0f;
-                          return centerY - static_cast<int>(signed_ * halfHeight);
-                      });
+        if (!events.empty())
+            drawStepGraph(g, events, colour, alpha, toY);
+
+        const auto recorded = recordedValues(trackIdx,
+                                             [](const MidiEvent& e) -> std::optional<int>
+                                             {
+                                                 if (e.type == MidiEvent::Type::PitchBend)
+                                                     return e.data1;
+                                                 return std::nullopt;
+                                             });
+        if (!recorded.empty())
+            drawStepGraph(g, recorded, calliope::theme::status::danger, 0.85f, toY);
     }
 }
 
 void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
 {
-    using namespace calliope::theme;
     if (!sequence)
         return;
-
-    auto* vp = findParentComponentOfClass<juce::Viewport>();
-    int visibleLeft = vp ? vp->getViewPositionX() : 0;
-    int visibleRight = vp ? visibleLeft + vp->getViewWidth() : getWidth();
-
-    auto blockArea = juce::Rectangle<int>(0, getDrawAreaTop(), getWidth(), getDrawAreaHeight()).reduced(0, 2);
 
     for (int trackIdx : selectedTrackIndices)
     {
@@ -630,38 +664,57 @@ void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
                 events.push_back({event.tick, event.data1});
         }
 
-        if (events.empty())
+        auto colour = TrackColours::getColour(trackIdx);
+        if (!events.empty())
+            drawProgramBlocks(g, events, colour, alpha);
+
+        const auto recorded = recordedValues(trackIdx,
+                                             [](const MidiEvent& e) -> std::optional<int>
+                                             {
+                                                 if (e.type == MidiEvent::Type::ProgramChange)
+                                                     return e.data1;
+                                                 return std::nullopt;
+                                             });
+        if (!recorded.empty())
+            drawProgramBlocks(g, recorded, calliope::theme::status::danger, 0.85f);
+    }
+}
+
+void ControllerLaneComponent::drawProgramBlocks(juce::Graphics& g, const std::vector<std::pair<int, int>>& events,
+                                                juce::Colour colour, float alpha)
+{
+    using namespace calliope::theme;
+    auto* vp = findParentComponentOfClass<juce::Viewport>();
+    int visibleLeft = vp ? vp->getViewPositionX() : 0;
+    int visibleRight = vp ? visibleLeft + vp->getViewWidth() : getWidth();
+    auto blockArea = juce::Rectangle<int>(0, getDrawAreaTop(), getWidth(), getDrawAreaHeight()).reduced(0, 2);
+
+    g.setFont(font::sans(font::sizeSM));
+    for (size_t i = 0; i < events.size(); ++i)
+    {
+        int x1 = tickToX(events[i].first);
+        int x2 = (i + 1 < events.size()) ? tickToX(events[i + 1].first) : getWidth();
+
+        if (x2 < visibleLeft || x1 > visibleRight)
             continue;
 
-        auto colour = TrackColours::getColour(trackIdx);
-        g.setFont(font::sans(font::sizeSM));
+        auto rect = blockArea.withLeft(x1).withRight(x2).toFloat();
 
-        for (size_t i = 0; i < events.size(); ++i)
-        {
-            int x1 = tickToX(events[i].first);
-            int x2 = (i + 1 < events.size()) ? tickToX(events[i + 1].first) : getWidth();
+        g.setColour(colour.withAlpha(alpha * 0.25f));
+        g.fillRoundedRectangle(rect, 3.0f);
 
-            if (x2 < visibleLeft || x1 > visibleRight)
-                continue;
+        g.setColour(colour.withAlpha(alpha * 0.7f));
+        g.drawRoundedRectangle(rect, 3.0f, 1.0f);
 
-            auto rect = blockArea.withLeft(x1).withRight(x2).toFloat();
+        int pgm = events[i].second;
+        juce::String text = juce::String(pgm);
+        if (pgm >= 0 && pgm < 128)
+            text += " " + juce::String(gmProgramNames[pgm]);
 
-            g.setColour(colour.withAlpha(alpha * 0.25f));
-            g.fillRoundedRectangle(rect, 3.0f);
-
-            g.setColour(colour.withAlpha(alpha * 0.7f));
-            g.drawRoundedRectangle(rect, 3.0f, 1.0f);
-
-            int pgm = events[i].second;
-            juce::String text = juce::String(pgm);
-            if (pgm >= 0 && pgm < 128)
-                text += " " + juce::String(gmProgramNames[pgm]);
-
-            g.setColour(text::t1.withAlpha(alpha));
-            auto textRect = rect.reduced(5.0f, 0.0f);
-            if (textRect.getWidth() > 10.0f)
-                g.drawText(text, textRect, juce::Justification::centredLeft, true);
-        }
+        g.setColour(text::t1.withAlpha(alpha));
+        auto textRect = rect.reduced(5.0f, 0.0f);
+        if (textRect.getWidth() > 10.0f)
+            g.drawText(text, textRect, juce::Justification::centredLeft, true);
     }
 }
 

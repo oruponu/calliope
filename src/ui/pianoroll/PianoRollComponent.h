@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/EditClipboard.h"
@@ -40,6 +41,8 @@ public:
 
     void setSequence(MidiSequence* seq);
     void setPlayheadTick(double tick);
+    void setRecordingLayer(const RecordingLayer* layer);
+    void recordingLayerChanged();
     void setEditMode(EditMode mode);
     EditMode getEditMode() const;
     void setLoopRegion(bool enabled, int startTick, int endTick);
@@ -150,6 +153,9 @@ private:
     void drawKeyboard(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawNotes(juce::Graphics& g);
+    void drawRecordingLayer(juce::Graphics& g);
+    void drawRecordedNote(juce::Graphics& g, const juce::Rectangle<int>& clip, const MidiNote& note,
+                          juce::Colour trackColour);
     void drawActiveTrackNote(juce::Graphics& g, const juce::Rectangle<int>& clip, const MidiNote& note,
                              juce::Colour baseColour, bool isSelected, bool isDrum);
     MidiNote displayedNote(int trackIndex, int noteIndex) const;
@@ -181,6 +187,7 @@ private:
     TimelineGeometry geometry{keyboardWidth};
     DisplayedTimeline displayedTimeline;
     MidiSequence* sequence = nullptr;
+    const RecordingLayer* recordingLayer = nullptr;
     UndoHistory& undoHistory;
     double playheadTick = 0.0;
     std::set<int> selectedTrackIndices = {0};

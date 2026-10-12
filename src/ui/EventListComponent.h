@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <set>
@@ -26,6 +27,7 @@ struct EventListItem
     int velocity = 0;
     int data1 = 0;
     int data2 = 0;
+    bool isRecording = false;
 };
 
 class EventListComponent : public juce::Component, public MidiSequence::Listener, private juce::ListBoxModel
@@ -39,6 +41,8 @@ public:
     void refresh();
     void setPlayheadTick(double tick);
     void setSelectedNotes(const std::set<std::pair<int, int>>& selected);
+    void setRecordingLayer(const RecordingLayer* layer);
+    void recordingLayerChanged();
 
     std::function<void(int tick)> onEventSelected;
     std::function<void(const std::set<std::pair<int, int>>& noteRefs)> onNoteSelectionFromList;
@@ -62,6 +66,7 @@ private:
 
     void rebuildList();
 
+    static EventListItem eventItem(const MidiEvent& event, int trackIndex, int sourceIndex);
     static juce::String formatPosition(const BarBeatTick& bbt);
     static juce::String formatEvent(const EventListItem& item);
     static juce::String formatLength(const EventListItem& item);
@@ -69,6 +74,7 @@ private:
     static juce::String noteNumberToName(int noteNumber);
 
     MidiSequence* sequence = nullptr;
+    const RecordingLayer* recordingLayer = nullptr;
     std::set<int> selectedTracks;
     std::vector<EventListItem> items;
 

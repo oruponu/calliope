@@ -35,7 +35,8 @@ void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
                        zoomOutVertical,
                        zoomReset,
                        toggleLoop,
-                       toggleMetronome});
+                       toggleMetronome,
+                       toggleRecord});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -174,6 +175,10 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
     case toggleMetronome:
         result.setInfo("Toggle Metronome", "", "Transport", 0);
         result.addDefaultKeypress('C', 0);
+        break;
+    case toggleRecord:
+        result.setInfo("Record", "", "Transport", 0);
+        result.addDefaultKeypress('R', 0);
         break;
     default:
         break;

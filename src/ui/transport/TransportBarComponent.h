@@ -28,6 +28,8 @@ public:
     void toggleLoop();
     void setMetronomeActive(bool active);
     void toggleMetronome();
+    void toggleRecord();
+    void setRecordActive(bool active);
     void setMetronomeVolume(int percent);
     void returnToStart();
     void jumpToTick(int tick);
@@ -40,6 +42,8 @@ public:
     std::function<void(bool enabled, int startTick, int endTick)> onLoopRegionChanged;
     std::function<void(bool enabled)> onMetronomeToggled;
     std::function<void(int percent)> onMetronomeVolumeChanged;
+    // Starts or ends recording; playback has already started if it was stopped.
+    std::function<void()> onRecordToggled;
 
 private:
     void tempoChanged() override;
@@ -78,6 +82,7 @@ private:
     TransportButton returnToStartButton{TransportButton::ReturnToStart};
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
+    TransportButton recordButton{TransportButton::Record};
     TransportButton loopButton{TransportButton::Loop};
     MetronomeButton metronomeButton;
     int metronomeVolume = MetronomeVolume::defaultPercent;

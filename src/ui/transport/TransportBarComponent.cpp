@@ -23,6 +23,9 @@ TransportBarComponent::TransportBarComponent(Document& documentRef, PlaybackEngi
     addAndMakeVisible(stopButton);
     stopButton.onClick = [this]() { stopAndNotify(); };
 
+    addAndMakeVisible(recordButton);
+    recordButton.onClick = [this]() { toggleRecord(); };
+
     addAndMakeVisible(loopButton);
     loopButton.onClick = [this]() { toggleLoop(); };
 
@@ -199,7 +202,7 @@ void TransportBarComponent::resized()
     auto toolbar = getLocalBounds();
 
     const int posW = 176;
-    const int btnW = 216;
+    const int btnW = 260;
     const int tsW = 68;
     const int keyW = 60;
     const int tempoW = 96;
@@ -257,6 +260,8 @@ void TransportBarComponent::resized()
     stopButton.setBounds(btnArea.removeFromLeft(40));
     btnArea.removeFromLeft(4);
     playButton.setBounds(btnArea.removeFromLeft(40));
+    btnArea.removeFromLeft(4);
+    recordButton.setBounds(btnArea.removeFromLeft(40));
     btnArea.removeFromLeft(4);
     loopButton.setBounds(btnArea.removeFromLeft(40));
     btnArea.removeFromLeft(4);
@@ -377,6 +382,19 @@ void TransportBarComponent::toggleMetronome()
     metronomeButton.setActive(newState);
     if (onMetronomeToggled)
         onMetronomeToggled(newState);
+}
+
+void TransportBarComponent::toggleRecord()
+{
+    if (!playbackEngine.isPlaying())
+        togglePlay();
+    if (onRecordToggled)
+        onRecordToggled();
+}
+
+void TransportBarComponent::setRecordActive(bool active)
+{
+    recordButton.setActive(active);
 }
 
 void TransportBarComponent::setMetronomeVolume(int percent)

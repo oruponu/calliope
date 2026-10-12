@@ -139,12 +139,74 @@ void PianoRollComponent::setPlayheadTick(double tick)
     int h = getHeight();
     repaint(oldX - margin, 0, margin * 2 + 2, h);
     repaint(newX - margin, 0, margin * 2 + 2, h);
+    if (recordingLayer != nullptr && newX != oldX)
+    {
+        const int left = std::min(oldX, newX) - margin;
+        const int right = std::max(oldX, newX) + margin;
+        for (const auto& held : recordingLayer->getHeldNotes())
+            repaint(left, noteToY(held.noteNumber), right - left + 2, noteHeight);
+    }
     loopStrip.setPlayheadTick(tick);
     ruler.setPlayheadTick(tick);
     tempoStrip.setPlayheadTick(tick);
     timeSigStrip.setPlayheadTick(tick);
     keyStrip.setPlayheadTick(tick);
     chordStrip.setPlayheadTick(tick);
+}
+
+void PianoRollComponent::setRecordingLayer(const RecordingLayer* layer)
+{
+    recordingLayer = layer;
+    repaint();
+}
+
+void PianoRollComponent::recordingLayerChanged()
+{
+    repaint();
+}
+
+void PianoRollComponent::drawRecordingLayer(juce::Graphics& g)
+{
+    if (!sequence || recordingLayer == nullptr)
+        return;
+
+    const auto clip = g.getClipBounds();
+    for (const auto& [trackId, recorded] : recordingLayer->getTake())
+    {
+        const int trackIdx = sequence->indexOf(trackId);
+        if (!selectedTrackIndices.contains(trackIdx))
+            continue;
+        for (const auto& note : recorded.notes)
+            drawRecordedNote(g, clip, note, TrackColours::getColour(trackIdx));
+    }
+
+    for (const auto& held : recordingLayer->getHeldNotes())
+    {
+        const int trackIdx = sequence->indexOf(held.track);
+        if (!selectedTrackIndices.contains(trackIdx))
+            continue;
+        const int endTick = std::max(held.startTick + 1, static_cast<int>(playheadTick));
+        drawRecordedNote(g, clip, {held.noteNumber, held.velocity, held.startTick, endTick - held.startTick},
+                         TrackColours::getColour(trackIdx));
+    }
+}
+
+void PianoRollComponent::drawRecordedNote(juce::Graphics& g, const juce::Rectangle<int>& clip, const MidiNote& note,
+                                          juce::Colour trackColour)
+{
+    using namespace calliope::theme;
+    const int x = tickToX(note.startTick);
+    const int y = noteToY(note.noteNumber);
+    const int w = std::max(2, tickToWidth(note.duration));
+    if (y + noteHeight < clip.getY() || y > clip.getBottom() || x + w < clip.getX() || x > clip.getRight())
+        return;
+
+    const juce::Rectangle<float> rect(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
+                                      static_cast<float>(noteHeight - 2));
+    g.setColour(trackColour.withAlpha(0.55f));
+    g.fillRoundedRectangle(rect, 2.0f);
+    g.setColour(status::danger);
+    g.drawRoundedRectangle(rect, 2.0f, 1.5f);
 }
 
 void PianoRollComponent::setEditMode(EditMode mode)
@@ -671,6 +733,7 @@ void PianoRollComponent::paint(juce::Graphics& g)
     drawGrid(g);
     drawLoopRegion(g);
     drawNotes(g);
+    drawRecordingLayer(g);
     drawMoveGhosts(g);
     drawRubberBand(g);
     drawPlayhead(g);
