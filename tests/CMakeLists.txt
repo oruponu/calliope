@@ -3,7 +3,9 @@ juce_add_console_app(CalliopeTests)
 target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/audio/ClickVoice.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/ChordTrackEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/EditableNotes.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/LayeredNoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/NoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
@@ -42,10 +44,12 @@ target_sources(CalliopeTests PRIVATE
     edit/ChordPasteTests.cpp
     edit/ChordResizeTests.cpp
     edit/ChordStartResizeTests.cpp
+    edit/EditableNotesTests.cpp
     edit/KeySignatureAddChangeTests.cpp
     edit/KeySignatureDeleteTests.cpp
     edit/KeySignatureMoveTests.cpp
     edit/KeySignaturePasteTests.cpp
+    edit/LayeredNoteEditsTests.cpp
     edit/NoteClampShiftTests.cpp
     edit/NoteEndResizeTests.cpp
     edit/NoteShiftTests.cpp

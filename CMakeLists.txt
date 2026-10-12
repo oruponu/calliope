@@ -33,7 +33,9 @@ target_sources(Calliope PRIVATE
     src/audio/Recorder.cpp
     src/document/Document.cpp
     src/edit/ChordTrackEdits.cpp
+    src/edit/EditableNotes.cpp
     src/edit/KeySignatureEdits.cpp
+    src/edit/LayeredNoteEdits.cpp
     src/edit/NoteEdits.cpp
     src/edit/TempoEdits.cpp
     src/edit/TimeSignatureEdits.cpp
