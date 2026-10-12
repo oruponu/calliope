@@ -223,7 +223,7 @@ void TakeBuilder::editHeldNote(HeldNotes::iterator it, const NoteFieldEdit& edit
         endHeldNote(it, start, std::max(1, *edit.endTick - start));
     }
     else if (edit.startTick && *edit.startTick >= playheadTick)
-        endHeldNote(it, *edit.startTick, std::max(1, playheadTick - held.startTick));
+        endHeldNote(it, *edit.startTick, std::max(1, edit.heldLength.value_or(playheadTick - held.startTick)));
     else if (edit.startTick)
         held.startTick = *edit.startTick;
 }

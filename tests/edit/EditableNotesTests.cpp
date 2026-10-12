@@ -125,3 +125,19 @@ TEST_CASE("notes are ordered by start, then pitch, then ref across both layers",
     const EditableNotes notes(seq, &layer, 1000);
     CHECK(notes.inTimeOrder(0) == std::vector<NoteRef>{{0, 1}, recorded(0, 9), {0, 0}, recorded(0, 7)});
 }
+
+TEST_CASE("only a recorded note whose key is still down is held", "[edit][editable-notes]")
+{
+    MidiSequence seq;
+    const TrackId id = seq.addTrack(trackWith({{60, 100, 0, 480}})).getId();
+    const TrackId other = seq.addTrack().getId();
+    FakeLayer layer;
+    layer.take[id] = {{{62, 80, 240, 120}}, {}, {7}};
+    layer.held = {{id, 64, 70, 480, 9}, {other, 65, 70, 480, 10}};
+    const EditableNotes notes(seq, &layer, 900);
+    CHECK(notes.isHeld(recorded(0, 9)));
+    CHECK_FALSE(notes.isHeld(recorded(0, 7)));
+    CHECK_FALSE(notes.isHeld({0, 0}));
+    CHECK_FALSE(notes.isHeld(recorded(0, 10)));
+    CHECK_FALSE(EditableNotes(seq, nullptr, 900).isHeld(recorded(0, 9)));
+}

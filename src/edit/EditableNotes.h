@@ -15,6 +15,8 @@ public:
     EditableNotes(const MidiSequence& sequence, const RecordingLayer* layer, int playheadTick);
 
     std::optional<MidiNote> find(const NoteRef& ref) const;
+    // A recorded note whose key is still down.
+    bool isHeld(const NoteRef& ref) const;
     // The sequence's notes in index order, then the recorded notes in take order, then the held notes.
     std::vector<std::pair<NoteRef, MidiNote>> onTrack(int trackIndex) const;
     // By start tick, then note number, then ref.

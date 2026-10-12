@@ -146,6 +146,11 @@ void PianoRollComponent::setPlayheadTick(double tick)
         const int right = std::max(oldX, newX) + margin;
         for (const auto& held : recordingLayer->getHeldNotes())
             repaint(left, noteToY(held.noteNumber), right - left + 2, noteHeight);
+        // The ghost of a dragged held note ends at the playhead on its own row.
+        if (const auto* moving = std::get_if<Moving>(&drag))
+            for (const auto& t : moving->targets)
+                if (t.ref.isRecorded())
+                    repaint(left, noteToY(t.noteNumber + moving->deltaNote), right - left + 2, noteHeight);
     }
     loopStrip.setPlayheadTick(tick);
     ruler.setPlayheadTick(tick);
@@ -1016,9 +1021,10 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
         {
             std::vector<NoteEdit> edits;
             for (const auto& t : moving->targets)
-                edits.push_back(
-                    {t.ref,
-                     {.startTick = t.startTick + moving->deltaTick, .noteNumber = t.noteNumber + moving->deltaNote}});
+                edits.push_back({t.ref,
+                                 {.startTick = t.startTick + moving->deltaTick,
+                                  .noteNumber = t.noteNumber + moving->deltaNote,
+                                  .heldLength = t.duration}});
             noteEdits().apply(edits, moving->targets.size() > 1 ? "Move Notes" : "Move Note");
         }
     }
@@ -1659,8 +1665,11 @@ MidiNote PianoRollComponent::displayedNote(const NoteRef& ref, MidiNote note) co
         auto it = std::ranges::lower_bound(resizing->targets, ref, {}, &ResizeTarget::ref);
         if (it != resizing->targets.end() && it->ref == ref)
         {
+            // A resize of the start keeps the current end, which for a held note follows the playhead.
+            const int end = note.endTick();
             note.startTick = it->previewStartTick;
-            note.duration = it->previewDuration;
+            note.duration =
+                resizing->edge == ResizeEdge::Left ? std::max(1, end - it->previewStartTick) : it->previewDuration;
         }
     }
     return note;
@@ -1675,6 +1684,8 @@ void PianoRollComponent::drawMoveGhosts(juce::Graphics& g)
         return;
 
     auto clip = g.getClipBounds();
+    const auto notes = editableNotes();
+    const int playhead = static_cast<int>(playheadTick);
 
     for (const auto& t : moving->targets)
     {
@@ -1682,11 +1693,17 @@ void PianoRollComponent::drawMoveGhosts(juce::Graphics& g)
             continue;
 
         const auto& track = sequence->getTrack(t.ref.trackIndex);
-        const auto note = noteAt(t.ref);
+        const auto note = notes.find(t.ref).value_or(MidiNote{});
+        const int startTick = t.startTick + moving->deltaTick;
+        // Show the length the drop gives: a held note dropped before the playhead stays held up to the playhead, and
+        // one dropped at the playhead or later ends with its length at the grab.
+        int duration = note.duration;
+        if (notes.isHeld(t.ref))
+            duration = startTick < playhead ? std::max(1, playhead - startTick) : t.duration;
 
-        int x = tickToX(t.startTick + moving->deltaTick);
+        int x = tickToX(startTick);
         int y = noteToY(t.noteNumber + moving->deltaNote);
-        int w = tickToWidth(note.duration);
+        int w = tickToWidth(duration);
 
         if (y + noteHeight < clip.getY() || y > clip.getBottom())
             continue;
@@ -2077,7 +2094,7 @@ void PianoRollComponent::beginMove(const NoteRef& anchor, const juce::MouseEvent
     for (const auto& ref : selectedNotes)
     {
         const auto note = noteAt(ref);
-        moveTargets.push_back({ref, note.startTick, note.noteNumber});
+        moveTargets.push_back({ref, note.startTick, note.noteNumber, note.duration});
     }
 
     const auto anchorNote = noteAt(anchor);

@@ -42,6 +42,15 @@ std::optional<MidiNote> EditableNotes::find(const NoteRef& ref) const
     return std::nullopt;
 }
 
+bool EditableNotes::isHeld(const NoteRef& ref) const
+{
+    if (!ref.isRecorded() || layer == nullptr || ref.trackIndex < 0 || ref.trackIndex >= sequence.getNumTracks())
+        return false;
+    const TrackId track = sequence.getTrack(ref.trackIndex).getId();
+    return std::ranges::any_of(layer->getHeldNotes(), [&ref, track](const HeldTakeNote& held)
+                               { return held.id == ref.noteIndex && held.track == track; });
+}
+
 std::vector<std::pair<NoteRef, MidiNote>> EditableNotes::onTrack(int trackIndex) const
 {
     std::vector<std::pair<NoteRef, MidiNote>> notes;

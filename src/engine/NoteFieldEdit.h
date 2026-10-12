@@ -14,6 +14,9 @@ struct NoteFieldEdit
     std::optional<int> endTick;
     std::optional<int> noteNumber;
     std::optional<int> velocity;
+    // The length a held note ends with when its start moves to the playhead or later; without it, the length it has
+    // reached. A finished note ignores it.
+    std::optional<int> heldLength;
 
     MidiNote appliedTo(MidiNote note) const
     {

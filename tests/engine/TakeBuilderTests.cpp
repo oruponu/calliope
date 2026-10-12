@@ -491,3 +491,20 @@ TEST_CASE("only ending a held note by an edit changes the note revision", "[engi
     builder.editNotes({{1, {.startTick = 960}}}, 960);
     CHECK(builder.getNoteRevision() != before);
 }
+
+TEST_CASE("a held note moved to the playhead or later can end with a given length", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.startTick = 1200, .heldLength = 240}}}, 960);
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 1200, 240}});
+}
+
+TEST_CASE("a held note that stays held ignores the given length", "[engine][take]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 480});
+    builder.editNotes({{1, {.startTick = 240, .heldLength = 120}}}, 960);
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 240, 1}});
+}

@@ -234,6 +234,8 @@ private:
         NoteRef ref;
         int startTick = 0;
         int noteNumber = 0;
+        // At the grab; a held note dropped at the playhead or later ends with this length.
+        int duration = 0;
     };
 
     struct Idle

@@ -31,3 +31,8 @@ TEST_CASE("pitch and velocity edits set those fields", "[engine][note-edit]")
 {
     CHECK(NoteFieldEdit{.noteNumber = 64, .velocity = 30}.appliedTo(note) == MidiNote{64, 30, 100, 480});
 }
+
+TEST_CASE("a held length leaves a finished note's length alone", "[engine][note-edit]")
+{
+    CHECK(NoteFieldEdit{.startTick = 240, .heldLength = 60}.appliedTo(note) == MidiNote{60, 90, 240, 480});
+}
