@@ -88,6 +88,7 @@ target_sources(CalliopeTests PRIVATE
     ui/IndexSelectionTests.cpp
     ui/RangeSelectGestureTests.cpp
     ui/TimelineGeometryTests.cpp
+    undo/RecordTakeActionTests.cpp
     undo/SavePointTrackerTests.cpp
     undo/TrackActionTests.cpp
     undo/UndoHistoryTests.cpp

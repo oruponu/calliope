@@ -62,6 +62,11 @@ void MidiTrack::addEvent(const MidiEvent& event)
     events.push_back(event);
 }
 
+void MidiTrack::insertEvent(int index, const MidiEvent& event)
+{
+    events.insert(events.begin() + index, event);
+}
+
 void MidiTrack::removeEvent(int index)
 {
     events.erase(events.begin() + index);

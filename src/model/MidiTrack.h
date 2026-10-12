@@ -36,6 +36,7 @@ public:
     int getNumNotes() const;
 
     void addEvent(const MidiEvent& event);
+    void insertEvent(int index, const MidiEvent& event);
     void removeEvent(int index);
     const std::vector<MidiEvent>& getEvents() const;
     const MidiEvent& getEvent(int index) const;

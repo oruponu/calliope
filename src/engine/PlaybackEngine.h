@@ -6,6 +6,7 @@
 #include "engine/PlaybackProcessor.h"
 #include "engine/PlaybackSnapshot.h"
 #include "engine/RecordingInbox.h"
+#include "engine/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include <atomic>
 #include <cstdint>
@@ -65,11 +66,16 @@ public:
     // is cleared.
     void setRecordingInbox(RecordingInbox* inbox);
 
+    // Mixed into every snapshot built after this call. Message thread.
+    void setRecordingLayer(const RecordingLayer* layer);
+
     // Called on the message thread.
     std::function<void()> onStopped;
 
 private:
     LoopRange currentLoop() const;
+
+    const RecordingLayer* recordingLayer = nullptr;
 
     std::atomic<RecordingInbox*> recordingInbox{nullptr};
 

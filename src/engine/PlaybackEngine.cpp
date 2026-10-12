@@ -107,11 +107,17 @@ void PlaybackEngine::setSequence(const MidiSequence* seq)
     rebuildSnapshot();
 }
 
+void PlaybackEngine::setRecordingLayer(const RecordingLayer* layer)
+{
+    recordingLayer = layer;
+}
+
 void PlaybackEngine::rebuildSnapshot()
 {
     if (sequence == nullptr)
         return;
-    auto fresh = std::make_shared<const PlaybackSnapshot>(PlaybackSnapshot::build(*sequence));
+    auto fresh = std::make_shared<const PlaybackSnapshot>(
+        PlaybackSnapshot::build(*sequence, recordingLayer != nullptr ? &recordingLayer->getTake() : nullptr));
     currentOwner = fresh;
     snapshot.store(fresh);
 }

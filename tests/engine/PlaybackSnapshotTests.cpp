@@ -155,3 +155,42 @@ TEST_CASE("time signature changes are copied into the snapshot", "[engine][snaps
     const auto snap = PlaybackSnapshot::build(seq);
     CHECK(snap.timeSignatureChanges == timesigtest::timeSigs({{1, 4, 4}, {3, 3, 4}}));
 }
+
+TEST_CASE("recorded notes and events are played on their track", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.setChannel(3);
+    t0.addNote({60, 100, 0, 480});
+    seq.addTrack(t0);
+    const Take take{
+        {seq.getTrack(0).getId(),
+         {{{64, 90, 240, 240}}, {{.type = MidiEvent::Type::ControlChange, .tick = 120, .data1 = 7, .data2 = 90}}}}};
+
+    const auto snap = PlaybackSnapshot::build(seq, &take);
+    REQUIRE(snap.notes.size() == 2);
+    CHECK(snap.notes[1].note.noteNumber == 64);
+    CHECK(snap.notes[1].ctx.channel == 3);
+    REQUIRE(snap.events.size() == 1);
+    CHECK(snap.events[0].ctx.trackId == seq.getTrack(0).getId());
+}
+
+TEST_CASE("recorded notes on a muted track are not played", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.setMuted(true);
+    seq.addTrack(t0);
+    const Take take{{seq.getTrack(0).getId(), {{{64, 90, 240, 240}}, {}}}};
+
+    CHECK(PlaybackSnapshot::build(seq, &take).notes.empty());
+}
+
+TEST_CASE("recorded notes for a track that is gone are not played", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    const Take take{{TrackId{999}, {{{64, 90, 240, 240}}, {}}}};
+
+    CHECK(PlaybackSnapshot::build(seq, &take).notes.empty());
+}

@@ -186,6 +186,18 @@ void MidiSequence::setNote(int trackIndex, int noteIndex, const MidiNote& note)
     notifyNotesChanged(trackIndex);
 }
 
+void MidiSequence::insertEvent(int trackIndex, int eventIndex, const MidiEvent& event)
+{
+    tracks[trackIndex].insertEvent(eventIndex, event);
+    notifyNotesChanged(trackIndex);
+}
+
+void MidiSequence::removeEvent(int trackIndex, int eventIndex)
+{
+    tracks[trackIndex].removeEvent(eventIndex);
+    notifyNotesChanged(trackIndex);
+}
+
 const TimelineMap& MidiSequence::getTimeline() const
 {
     return timeline;

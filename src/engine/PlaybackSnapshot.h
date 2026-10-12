@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/Take.h"
 #include "model/MidiEvent.h"
 #include "model/MidiNote.h"
 #include "model/MidiSequence.h"
@@ -36,7 +37,7 @@ struct PlaybackSnapshot
     int ticksPerQuarterNote = TimelineMap::defaultTicksPerQuarterNote;
 
     double getTempoAt(int tick) const;
-    static PlaybackSnapshot build(const MidiSequence& seq);
+    static PlaybackSnapshot build(const MidiSequence& seq, const Take* take = nullptr);
 };
 
 bool isTrackAudible(const MidiSequence& seq, int trackIndex);

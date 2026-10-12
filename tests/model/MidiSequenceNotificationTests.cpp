@@ -286,3 +286,18 @@ TEST_CASE("replacing contents renumbers route targets and drops unknown ones", "
     CHECK(seq.getTrack(0).getRouteTarget() == std::optional<TrackId>{seq.getTrack(1).getId()});
     CHECK_FALSE(seq.getTrack(1).getRouteTarget().has_value());
 }
+
+TEST_CASE("inserting and removing an event each notify notesChanged for its track", "[model][notification]")
+{
+    RecordingListener listener;
+    MidiSequence seq;
+    seq.addTrack();
+    seq.addTrack();
+    seq.addListener(&listener);
+
+    seq.insertEvent(1, 0, {.type = MidiEvent::Type::ControlChange, .tick = 0, .data1 = 7, .data2 = 100});
+    seq.removeEvent(1, 0);
+
+    CHECK(listener.calls == std::vector<std::string>{"notes 1", "notes 1"});
+    CHECK(seq.getTrack(1).getNumEvents() == 0);
+}

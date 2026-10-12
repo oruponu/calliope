@@ -14,7 +14,7 @@ double PlaybackSnapshot::getTempoAt(int tick) const
     return bpm;
 }
 
-PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq)
+PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq, const Take* take)
 {
     PlaybackSnapshot snap;
     snap.ticksPerQuarterNote = seq.getTimeline().getTicksPerQuarterNote();
@@ -37,6 +37,15 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq)
             snap.notes.push_back({ctx, note});
         for (const auto& event : track.getEvents())
             snap.events.push_back({ctx, event});
+        if (take == nullptr)
+            continue;
+        if (const auto recorded = take->find(track.getId()); recorded != take->end())
+        {
+            for (const auto& note : recorded->second.notes)
+                snap.notes.push_back({ctx, note});
+            for (const auto& event : recorded->second.events)
+                snap.events.push_back({ctx, event});
+        }
     }
 
     std::stable_sort(snap.notes.begin(), snap.notes.end(), [](const ScheduledNote& a, const ScheduledNote& b)
