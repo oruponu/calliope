@@ -12,6 +12,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/RecordingInbox.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/TakeBuilder.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ThruRouter.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ThruTarget.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
@@ -62,6 +63,7 @@ target_sources(CalliopeTests PRIVATE
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp
     engine/RecordingInboxTests.cpp
+    engine/TakeBuilderTests.cpp
     engine/ThruRouterTests.cpp
     engine/ThruTargetTests.cpp
     io/MidiFileLoadTests.cpp

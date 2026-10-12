@@ -43,6 +43,7 @@ target_sources(Calliope PRIVATE
     src/engine/PlaybackSnapshot.cpp
     src/engine/PlaybackSync.cpp
     src/engine/RecordingInbox.cpp
+    src/engine/TakeBuilder.cpp
     src/engine/ThruRouter.cpp
     src/engine/ThruTarget.cpp
     src/io/MidiFileIO.cpp
