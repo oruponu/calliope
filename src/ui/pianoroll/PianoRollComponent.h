@@ -1,6 +1,10 @@
 #pragma once
 
+#include "edit/EditableNotes.h"
+#include "edit/LayeredNoteEdits.h"
+#include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
+#include "engine/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"
 #include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/EditClipboard.h"
@@ -15,6 +19,7 @@
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <map>
 #include <set>
 #include <variant>
 #include <vector>
@@ -31,18 +36,12 @@ public:
         Select
     };
 
-    struct NoteRef
-    {
-        int trackIndex = -1;
-        int noteIndex = -1;
-        bool isValid() const { return trackIndex >= 0 && noteIndex >= 0; }
-        auto operator<=>(const NoteRef&) const = default;
-    };
-
     void setSequence(MidiSequence* seq);
     void setPlayheadTick(double tick);
-    void setRecordingLayer(const RecordingLayer* layer);
+    void setRecordingLayer(const RecordingLayer* layer, RecordingLayerEditor* editor);
     void recordingLayerChanged();
+    // Replaces the selected recorded notes with where the "Record" step added them.
+    void recordedNotesCommitted(const std::map<int, NoteRef>& committed);
     void setEditMode(EditMode mode);
     EditMode getEditMode() const;
     void setLoopRegion(bool enabled, int startTick, int endTick);
@@ -155,15 +154,21 @@ private:
     void drawNotes(juce::Graphics& g);
     void drawRecordingLayer(juce::Graphics& g);
     void drawRecordedNote(juce::Graphics& g, const juce::Rectangle<int>& clip, const MidiNote& note,
-                          juce::Colour trackColour);
+                          juce::Colour trackColour, bool isSelected);
     void drawActiveTrackNote(juce::Graphics& g, const juce::Rectangle<int>& clip, const MidiNote& note,
                              juce::Colour baseColour, bool isSelected, bool isDrum);
-    MidiNote displayedNote(int trackIndex, int noteIndex) const;
+    EditableNotes editableNotes() const;
+    MidiNote noteAt(const NoteRef& ref) const;
+    LayeredNoteEdits noteEdits();
+    MidiNote displayedNote(const NoteRef& ref) const;
+    MidiNote displayedNote(const NoteRef& ref, MidiNote note) const;
     void drawMoveGhosts(juce::Graphics& g);
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
 
     int tickToWidth(int durationTicks) const;
+    // Recorded notes are drawn at least 2 px wide so that a key just pressed is visible and can be grabbed.
+    int recordedNoteWidth(int durationTicks) const;
     int roundTickToGrid(int tick) const;
     int floorTickToGrid(int tick) const;
 
@@ -188,6 +193,7 @@ private:
     DisplayedTimeline displayedTimeline;
     MidiSequence* sequence = nullptr;
     const RecordingLayer* recordingLayer = nullptr;
+    RecordingLayerEditor* recordingEditor = nullptr;
     UndoHistory& undoHistory;
     double playheadTick = 0.0;
     std::set<int> selectedTrackIndices = {0};
@@ -267,6 +273,7 @@ private:
     std::variant<Idle, KeyboardPreviewing, RubberBand, Resizing, Creating, Moving> drag;
     void resetNoteDrag();
     void cancelEditDrag();
+    void pruneRecordedRefs();
     void beginResize(const NoteRef& hit, ResizeEdge edge);
     void beginMove(const NoteRef& anchor, const juce::MouseEvent& e);
     int contentBeats = 0;

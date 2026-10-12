@@ -70,10 +70,7 @@ MainComponent::MainComponent()
     {
         if (updatingFromEventList)
             return;
-        const auto noteRefs =
-            selected | std::views::transform([](const auto& ref) { return std::pair{ref.trackIndex, ref.noteIndex}; }) |
-            std::ranges::to<std::set>();
-        eventList.setSelectedNotes(noteRefs);
+        eventList.setSelectedNotes(selected);
     };
     pianoRoll.onNotePreview = [this](const MidiNote& note)
     {
@@ -301,11 +298,7 @@ MainComponent::MainComponent()
     eventList.onNoteSelectionFromList = [this](const auto& noteRefs)
     {
         updatingFromEventList = true;
-        const auto notes =
-            noteRefs |
-            std::views::transform([](const auto& ref) { return PianoRollComponent::NoteRef{ref.first, ref.second}; }) |
-            std::ranges::to<std::set>();
-        pianoRoll.setSelectedNotes(notes);
+        pianoRoll.setSelectedNotes(noteRefs);
         updatingFromEventList = false;
     };
     addAndMakeVisible(eventList);
@@ -336,8 +329,8 @@ MainComponent::MainComponent()
     };
     transportBar.onRecordToggled = [this] { toggleRecording(); };
     recorder.onRecordingChanged = [this](bool recording) { transportBar.setRecordActive(recording); };
-    pianoRoll.setRecordingLayer(&recorder);
-    controllerLane.setRecordingLayer(&recorder);
+    pianoRoll.setRecordingLayer(&recorder, &recorder);
+    controllerLane.setRecordingLayer(&recorder, &recorder);
     eventList.setRecordingLayer(&recorder);
     recorder.onLayerChanged = [this]
     {
@@ -345,6 +338,7 @@ MainComponent::MainComponent()
         controllerLane.repaint();
         eventList.recordingLayerChanged();
     };
+    recorder.onCommitted = [this](const auto& committed) { pianoRoll.recordedNotesCommitted(committed); };
     transportBar.setMetronomeActive(playbackEngine.isMetronomeEnabled());
     transportBar.onMetronomeToggled = [](bool enabled)
     { getAppProperties().getUserSettings()->setValue("metronomeEnabled", enabled); };
@@ -420,8 +414,8 @@ MainComponent::~MainComponent()
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();
-    pianoRoll.setRecordingLayer(nullptr);
-    controllerLane.setRecordingLayer(nullptr);
+    pianoRoll.setRecordingLayer(nullptr, nullptr);
+    controllerLane.setRecordingLayer(nullptr, nullptr);
     eventList.setRecordingLayer(nullptr);
     playbackEngine.setMetronomeListener(nullptr);
     playbackEngine.removeListener(&pluginHost);

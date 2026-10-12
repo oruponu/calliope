@@ -93,7 +93,7 @@ void EventListComponent::setPlayheadTick(double tick)
     }
 }
 
-void EventListComponent::setSelectedNotes(const std::set<std::pair<int, int>>& selected)
+void EventListComponent::setSelectedNotes(const std::set<NoteRef>& selected)
 {
     updatingFromNoteSelection = true;
     listBox.deselectAllRows();
@@ -102,7 +102,7 @@ void EventListComponent::setSelectedNotes(const std::set<std::pair<int, int>>& s
     for (int i = 0; i < static_cast<int>(items.size()); ++i)
     {
         const auto& item = items[static_cast<size_t>(i)];
-        if (item.kind == EventListItem::Note && selected.contains({item.trackIndex, item.sourceIndex}))
+        if (item.kind == EventListItem::Note && selected.contains(noteRefOf(item)))
         {
             listBox.selectRow(i, true, false);
             if (firstRow < 0)
@@ -241,7 +241,7 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
 
     if (onNoteSelectionFromList)
     {
-        std::set<std::pair<int, int>> noteRefs;
+        std::set<NoteRef> noteRefs;
         auto selectedRows = listBox.getSelectedRows();
         for (int i = 0; i < selectedRows.size(); ++i)
         {
@@ -250,7 +250,7 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
             {
                 const auto& item = items[static_cast<size_t>(row)];
                 if (item.kind == EventListItem::Note)
-                    noteRefs.insert({item.trackIndex, item.sourceIndex});
+                    noteRefs.insert(noteRefOf(item));
             }
         }
         onNoteSelectionFromList(noteRefs);
@@ -298,6 +298,11 @@ EventListItem EventListComponent::eventItem(const MidiEvent& event, int trackInd
     return item;
 }
 
+NoteRef EventListComponent::noteRefOf(const EventListItem& item)
+{
+    return {item.trackIndex, item.sourceIndex, item.isRecording ? NoteLayer::Recording : NoteLayer::Sequence};
+}
+
 void EventListComponent::rebuildList()
 {
     items.clear();
@@ -340,12 +345,29 @@ void EventListComponent::rebuildList()
         {
             const auto& take = recordingLayer->getTake();
             if (const auto recorded = take.find(track.getId()); recorded != take.end())
+            {
                 for (const auto& event : recorded->second.events)
                 {
                     auto item = eventItem(event, trackIdx, -1);
                     item.isRecording = true;
                     items.push_back(item);
                 }
+                const auto& notes = recorded->second.notes;
+                const auto& ids = recorded->second.noteIds;
+                for (size_t i = 0; i < notes.size() && i < ids.size(); ++i)
+                {
+                    EventListItem item;
+                    item.kind = EventListItem::Note;
+                    item.tick = notes[i].startTick;
+                    item.trackIndex = trackIdx;
+                    item.sourceIndex = ids[i];
+                    item.noteNumber = notes[i].noteNumber;
+                    item.duration = notes[i].duration;
+                    item.velocity = notes[i].velocity;
+                    item.isRecording = true;
+                    items.push_back(item);
+                }
+            }
         }
     }
 

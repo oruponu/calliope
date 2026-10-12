@@ -1,5 +1,6 @@
 #pragma once
 
+#include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -21,6 +22,7 @@ struct EventListItem
     Kind kind = Note;
     int tick = 0;
     int trackIndex = 0;
+    // The note or event index on the track, or the recorded note id for a recorded note.
     int sourceIndex = 0;
     int noteNumber = 0;
     int duration = 0;
@@ -40,12 +42,12 @@ public:
     void setSelectedTracks(const std::set<int>& selected);
     void refresh();
     void setPlayheadTick(double tick);
-    void setSelectedNotes(const std::set<std::pair<int, int>>& selected);
+    void setSelectedNotes(const std::set<NoteRef>& selected);
     void setRecordingLayer(const RecordingLayer* layer);
     void recordingLayerChanged();
 
     std::function<void(int tick)> onEventSelected;
-    std::function<void(const std::set<std::pair<int, int>>& noteRefs)> onNoteSelectionFromList;
+    std::function<void(const std::set<NoteRef>& noteRefs)> onNoteSelectionFromList;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -67,6 +69,7 @@ private:
     void rebuildList();
 
     static EventListItem eventItem(const MidiEvent& event, int trackIndex, int sourceIndex);
+    static NoteRef noteRefOf(const EventListItem& item);
     static juce::String formatPosition(const BarBeatTick& bbt);
     static juce::String formatEvent(const EventListItem& item);
     static juce::String formatLength(const EventListItem& item);

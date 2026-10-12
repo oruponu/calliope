@@ -1,6 +1,6 @@
 #include "ui/pianoroll/ControllerLaneComponent.h"
+#include "edit/LayeredNoteEdits.h"
 #include "ui/theme/TrackColours.h"
-#include "undo/NoteActions.h"
 #include <algorithm>
 #include <utility>
 
@@ -119,9 +119,10 @@ void ControllerLaneComponent::setLoopRegion(bool enabled, int startTick, int end
     repaint();
 }
 
-void ControllerLaneComponent::setRecordingLayer(const RecordingLayer* layer)
+void ControllerLaneComponent::setRecordingLayer(const RecordingLayer* layer, RecordingLayerEditor* editor)
 {
     recordingLayer = layer;
+    recordingEditor = editor;
     repaint();
 }
 
@@ -267,28 +268,28 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     if (displayMode != DisplayMode::Velocity)
         return;
 
-    const auto& track = sequence->getTrack(activeTrackIndex);
     int newVelocity = yToValue(e.y);
 
-    int bestIdx = -1;
+    NoteRef best;
     int bestDist = INT_MAX;
-    for (int i = 0; i < track.getNumNotes(); ++i)
+    for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
     {
-        int nx = tickToX(track.getNote(i).startTick);
+        int nx = tickToX(note.startTick);
         if (e.x >= nx && e.x < nx + velocityBarWidth)
         {
             int dist = std::abs(nx - e.x);
-            if (dist < bestDist)
+            // Recorded notes come after the sequence's, so a tie goes to the recorded one, as in the piano roll.
+            if (dist <= bestDist && (dist < bestDist || ref.isRecorded()))
             {
                 bestDist = dist;
-                bestIdx = i;
+                best = ref;
             }
         }
     }
 
-    if (bestIdx >= 0)
+    if (best.isValid())
     {
-        drag = VelocityDragging{activeTrackIndex, e.x, {{bestIdx, newVelocity}}};
+        drag = VelocityDragging{activeTrackIndex, e.x, {{best, newVelocity}}};
         repaint();
     }
 }
@@ -304,19 +305,18 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
     if (displayMode != DisplayMode::Velocity)
         return;
 
-    const auto& track = sequence->getTrack(dragging->trackIndex);
     int newVelocity = yToValue(e.y);
 
     int startX = std::min(dragging->lastDragX, e.x);
     int endX = std::max(dragging->lastDragX, e.x);
 
     bool changed = false;
-    for (int i = 0; i < track.getNumNotes(); ++i)
+    for (const auto& [ref, note] : editableNotes().onTrack(dragging->trackIndex))
     {
-        int nx = tickToX(track.getNote(i).startTick);
+        int nx = tickToX(note.startTick);
         if (nx + velocityBarWidth >= startX && nx <= endX)
         {
-            dragging->preview[i] = newVelocity;
+            dragging->preview[ref] = newVelocity;
             changed = true;
         }
     }
@@ -335,22 +335,12 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
         dragging->trackIndex >= sequence->getNumTracks())
         return;
 
-    const auto& track = sequence->getTrack(dragging->trackIndex);
-    std::vector<VelocityChange> changes;
-    for (const auto& [noteIndex, velocity] : dragging->preview)
-    {
-        if (noteIndex >= track.getNumNotes())
-            continue;
-        const int current = track.getNote(noteIndex).velocity;
-        if (current != velocity)
-            changes.push_back({noteIndex, current, velocity});
-    }
-
-    if (!changes.empty())
-    {
-        undoHistory.beginNewTransaction("Edit Velocity");
-        undoHistory.perform(new VelocityEditAction(sequence, dragging->trackIndex, std::move(changes)));
-    }
+    const auto notes = editableNotes();
+    std::vector<NoteEdit> edits;
+    for (const auto& [ref, velocity] : dragging->preview)
+        if (const auto note = notes.find(ref); note.has_value() && note->velocity != velocity)
+            edits.push_back({ref, {.velocity = velocity}});
+    LayeredNoteEdits(*sequence, undoHistory, recordingEditor).apply(edits, "Edit Velocity");
 }
 
 void ControllerLaneComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
@@ -517,32 +507,36 @@ void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
 
     int bottom = getDrawAreaBottom();
 
+    const auto notes = editableNotes();
     for (int trackIdx : selectedTrackIndices)
     {
         if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
             continue;
 
-        const auto& track = sequence->getTrack(trackIdx);
         auto colour = TrackColours::getColour(trackIdx);
         bool isActive = (trackIdx == activeTrackIndex);
         float alpha = isActive ? 0.85f : 0.3f;
 
-        for (int i = 0; i < track.getNumNotes(); ++i)
+        for (const auto& [ref, note] : notes.onTrack(trackIdx))
         {
-            const auto& note = track.getNote(i);
             int x = tickToX(note.startTick);
 
             if (x + velocityBarWidth < visibleLeft || x > visibleRight)
                 continue;
 
-            int barHeight =
-                static_cast<int>(static_cast<float>(displayedVelocity(trackIdx, i)) / 127.0f * getDrawAreaHeight());
+            int barHeight = static_cast<int>(static_cast<float>(displayedVelocity(ref, note.velocity)) / 127.0f *
+                                             getDrawAreaHeight());
             int barTop = bottom - barHeight;
 
             g.setColour(colour.withAlpha(alpha));
             g.fillRect(x, barTop, velocityBarWidth, barHeight);
 
-            if (isActive)
+            if (ref.isRecorded())
+            {
+                g.setColour(calliope::theme::status::danger.withAlpha(alpha));
+                g.drawRect(x, barTop, velocityBarWidth, barHeight, 1);
+            }
+            else if (isActive)
             {
                 g.setColour(colour.brighter(0.3f).withAlpha(0.6f));
                 g.drawRect(x, barTop, velocityBarWidth, barHeight, 1);
@@ -551,13 +545,17 @@ void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
     }
 }
 
-int ControllerLaneComponent::displayedVelocity(int trackIndex, int noteIndex) const
+EditableNotes ControllerLaneComponent::editableNotes() const
 {
-    if (const auto* dragging = std::get_if<VelocityDragging>(&drag);
-        dragging != nullptr && dragging->trackIndex == trackIndex)
-        if (auto it = dragging->preview.find(noteIndex); it != dragging->preview.end())
+    return {*sequence, recordingLayer, static_cast<int>(playheadTick)};
+}
+
+int ControllerLaneComponent::displayedVelocity(const NoteRef& ref, int velocity) const
+{
+    if (const auto* dragging = std::get_if<VelocityDragging>(&drag))
+        if (const auto it = dragging->preview.find(ref); it != dragging->preview.end())
             return it->second;
-    return sequence->getTrack(trackIndex).getNote(noteIndex).velocity;
+    return velocity;
 }
 
 void ControllerLaneComponent::drawControlChange(juce::Graphics& g)

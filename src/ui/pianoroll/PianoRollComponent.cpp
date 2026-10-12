@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <ranges>
 #include <utility>
 #include <variant>
@@ -154,15 +155,41 @@ void PianoRollComponent::setPlayheadTick(double tick)
     chordStrip.setPlayheadTick(tick);
 }
 
-void PianoRollComponent::setRecordingLayer(const RecordingLayer* layer)
+void PianoRollComponent::setRecordingLayer(const RecordingLayer* layer, RecordingLayerEditor* editor)
 {
     recordingLayer = layer;
+    recordingEditor = editor;
     repaint();
 }
 
 void PianoRollComponent::recordingLayerChanged()
 {
+    pruneRecordedRefs();
     repaint();
+}
+
+void PianoRollComponent::recordedNotesCommitted(const std::map<int, NoteRef>& committed)
+{
+    const auto toSequence = [&committed](const NoteRef& ref)
+    {
+        if (!ref.isRecorded())
+            return ref;
+        const auto it = committed.find(ref.noteIndex);
+        return it == committed.end() ? NoteRef{} : it->second;
+    };
+
+    selectedNote = toSequence(selectedNote);
+    std::set<NoteRef> converted;
+    for (const auto& ref : selectedNotes)
+        if (const auto sequenceRef = toSequence(ref); sequenceRef.isValid())
+            converted.insert(sequenceRef);
+    if (converted == selectedNotes)
+        return;
+
+    selectedNotes = std::move(converted);
+    repaint();
+    if (onNoteSelectionChanged)
+        onNoteSelectionChanged(selectedNotes);
 }
 
 void PianoRollComponent::drawRecordingLayer(juce::Graphics& g)
@@ -171,39 +198,31 @@ void PianoRollComponent::drawRecordingLayer(juce::Graphics& g)
         return;
 
     const auto clip = g.getClipBounds();
-    for (const auto& [trackId, recorded] : recordingLayer->getTake())
+    const auto notes = editableNotes();
+    for (const int trackIdx : selectedTrackIndices)
     {
-        const int trackIdx = sequence->indexOf(trackId);
-        if (!selectedTrackIndices.contains(trackIdx))
+        if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
             continue;
-        for (const auto& note : recorded.notes)
-            drawRecordedNote(g, clip, note, TrackColours::getColour(trackIdx));
-    }
-
-    for (const auto& held : recordingLayer->getHeldNotes())
-    {
-        const int trackIdx = sequence->indexOf(held.track);
-        if (!selectedTrackIndices.contains(trackIdx))
-            continue;
-        const int endTick = std::max(held.startTick + 1, static_cast<int>(playheadTick));
-        drawRecordedNote(g, clip, {held.noteNumber, held.velocity, held.startTick, endTick - held.startTick},
-                         TrackColours::getColour(trackIdx));
+        for (const auto& [ref, note] : notes.onTrack(trackIdx))
+            if (ref.isRecorded())
+                drawRecordedNote(g, clip, displayedNote(ref, note), TrackColours::getColour(trackIdx),
+                                 isNoteSelected(ref));
     }
 }
 
 void PianoRollComponent::drawRecordedNote(juce::Graphics& g, const juce::Rectangle<int>& clip, const MidiNote& note,
-                                          juce::Colour trackColour)
+                                          juce::Colour trackColour, bool isSelected)
 {
     using namespace calliope::theme;
     const int x = tickToX(note.startTick);
     const int y = noteToY(note.noteNumber);
-    const int w = std::max(2, tickToWidth(note.duration));
+    const int w = recordedNoteWidth(note.duration);
     if (y + noteHeight < clip.getY() || y > clip.getBottom() || x + w < clip.getX() || x > clip.getRight())
         return;
 
     const juce::Rectangle<float> rect(static_cast<float>(x), static_cast<float>(y + 1), static_cast<float>(w),
                                       static_cast<float>(noteHeight - 2));
-    g.setColour(trackColour.withAlpha(0.55f));
+    g.setColour((isSelected ? trackColour.brighter(0.4f) : trackColour).withAlpha(0.55f));
     g.fillRoundedRectangle(rect, 2.0f);
     g.setColour(status::danger);
     g.drawRoundedRectangle(rect, 2.0f, 1.5f);
@@ -256,6 +275,8 @@ void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
         clearChordSelection();
     }
     selectedNotes = notes;
+    std::erase_if(selectedNotes,
+                  [this](const NoteRef& ref) { return ref.isRecorded() && ref.trackIndex != activeTrackIndex; });
     selectedNote = {};
     repaint();
 }
@@ -270,73 +291,53 @@ void PianoRollComponent::deleteSelectedNotes()
     if (!sequence || selectedNotes.empty())
         return;
 
-    int survivorOldIndex = -1;
+    NoteRef survivor;
     if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks())
     {
-        auto& track = sequence->getTrack(activeTrackIndex);
-        const int n = track.getNumNotes();
-        if (n > 0)
+        const auto order = editableNotes().inTimeOrder(activeTrackIndex);
+        const int n = static_cast<int>(order.size());
+        int minPos = -1;
+        int maxPos = -1;
+        for (int p = 0; p < n; ++p)
         {
-            auto order = std::views::iota(0, n) | std::ranges::to<std::vector>();
-            std::sort(order.begin(), order.end(),
-                      [&track](int a, int b)
-                      {
-                          const auto& na = track.getNote(a);
-                          const auto& nb = track.getNote(b);
-                          if (na.startTick != nb.startTick)
-                              return na.startTick < nb.startTick;
-                          if (na.noteNumber != nb.noteNumber)
-                              return na.noteNumber < nb.noteNumber;
-                          return a < b;
-                      });
-
-            int minPos = -1;
-            int maxPos = -1;
-            for (int p = 0; p < n; ++p)
+            if (selectedNotes.contains(order[static_cast<size_t>(p)]))
             {
-                if (selectedNotes.contains({activeTrackIndex, order[p]}))
-                {
-                    if (minPos < 0)
-                        minPos = p;
-                    maxPos = p;
-                }
+                if (minPos < 0)
+                    minPos = p;
+                maxPos = p;
             }
-
-            if (maxPos >= 0)
-            {
-                if (maxPos + 1 < n)
-                    survivorOldIndex = order[maxPos + 1];
-                else if (minPos - 1 >= 0)
-                    survivorOldIndex = order[minPos - 1];
-            }
+        }
+        if (maxPos >= 0)
+        {
+            if (maxPos + 1 < n)
+                survivor = order[static_cast<size_t>(maxPos + 1)];
+            else if (minPos - 1 >= 0)
+                survivor = order[static_cast<size_t>(minPos - 1)];
         }
     }
 
-    int deletedBeforeSurvivor = 0;
-    if (survivorOldIndex >= 0)
-    {
-        for (const auto& ref : selectedNotes)
-            if (ref.trackIndex == activeTrackIndex && ref.noteIndex < survivorOldIndex)
-                ++deletedBeforeSurvivor;
-    }
+    // Deleting shifts the indices of the sequence notes after the deleted ones; recorded note ids stay.
+    if (survivor.isValid() && !survivor.isRecorded())
+        survivor.noteIndex -= static_cast<int>(std::ranges::count_if(selectedNotes,
+                                                                     [&survivor](const NoteRef& ref)
+                                                                     {
+                                                                         return !ref.isRecorded() &&
+                                                                                ref.trackIndex == survivor.trackIndex &&
+                                                                                ref.noteIndex < survivor.noteIndex;
+                                                                     }));
 
-    undoHistory.beginNewTransaction("Delete Notes");
-    undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
-
+    const auto deleted = selectedNotes;
     selectedNotes.clear();
-    if (survivorOldIndex >= 0)
+    selectedNote = {};
+    noteEdits().remove(deleted, "Delete Notes");
+
+    if (survivor.isValid())
     {
-        const NoteRef survivor{activeTrackIndex, survivorOldIndex - deletedBeforeSurvivor};
         selectedNotes.insert(survivor);
         selectedNote = survivor;
-
-        const auto& note = sequence->getTrack(survivor.trackIndex).getNote(survivor.noteIndex);
+        const auto note = noteAt(survivor);
         if (onScrollToNote)
             onScrollToNote(note.startTick, note.noteNumber);
-    }
-    else
-    {
-        selectedNote = {};
     }
 
     repaint();
@@ -352,7 +353,7 @@ void PianoRollComponent::copySelectedNotes()
     int minTick = std::numeric_limits<int>::max();
     for (const auto& ref : selectedNotes)
     {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        const auto note = noteAt(ref);
         if (note.startTick < minTick)
             minTick = note.startTick;
     }
@@ -360,7 +361,7 @@ void PianoRollComponent::copySelectedNotes()
     std::vector<MidiNote> notes;
     for (const auto& ref : selectedNotes)
     {
-        MidiNote note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        MidiNote note = noteAt(ref);
         note.startTick -= minTick;
         notes.push_back(note);
     }
@@ -374,10 +375,9 @@ void PianoRollComponent::cutSelectedNotes()
 
     copySelectedNotes();
 
-    undoHistory.beginNewTransaction("Cut Notes");
-    undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
-
+    const auto cut = selectedNotes;
     selectedNotes.clear();
+    noteEdits().remove(cut, "Cut Notes");
     repaint();
     if (onNoteSelectionChanged)
         onNoteSelectionChanged(selectedNotes);
@@ -424,9 +424,8 @@ void PianoRollComponent::selectAllNotes()
     clearKeySignatureSelection();
     clearChordSelection();
     selectedNotes.clear();
-    const auto& track = sequence->getTrack(activeTrackIndex);
-    for (int i = 0; i < track.getNumNotes(); ++i)
-        selectedNotes.insert({activeTrackIndex, i});
+    for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
+        selectedNotes.insert(ref);
 
     repaint();
     if (onNoteSelectionChanged)
@@ -441,22 +440,14 @@ void PianoRollComponent::nudgeSelectedNotesPitch(int deltaNote)
     if (!NoteEdits::canShiftPitch(collectSelectedNotes(), deltaNote))
         return;
 
-    undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
-    std::vector<NoteModification> mods;
+    std::vector<NoteEdit> edits;
     for (const auto& ref : selectedNotes)
-    {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        MidiNote beforeNote = note;
-        MidiNote afterNote = note;
-        afterNote.noteNumber = note.noteNumber + deltaNote;
-        mods.push_back({ref.trackIndex, ref.noteIndex, beforeNote, afterNote});
-    }
-    if (!mods.empty())
-        undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+        edits.push_back({ref, {.noteNumber = noteAt(ref).noteNumber + deltaNote}});
+    noteEdits().apply(edits, selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
 
     NoteRef previewRef =
         (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
-    const auto& previewNoteRef = sequence->getTrack(previewRef.trackIndex).getNote(previewRef.noteIndex);
+    const auto previewNoteRef = noteAt(previewRef);
     startNotePreview(previewNoteRef);
     startTimer(previewHoldMs);
 
@@ -474,22 +465,14 @@ void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
     if (!NoteEdits::canShiftTime(collectSelectedNotes(), deltaTick))
         return;
 
-    undoHistory.beginNewTransaction(selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
-    std::vector<NoteModification> mods;
+    std::vector<NoteEdit> edits;
     for (const auto& ref : selectedNotes)
-    {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
-        MidiNote beforeNote = note;
-        MidiNote afterNote = note;
-        afterNote.startTick = note.startTick + deltaTick;
-        mods.push_back({ref.trackIndex, ref.noteIndex, beforeNote, afterNote});
-    }
-    if (!mods.empty())
-        undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+        edits.push_back({ref, {.startTick = noteAt(ref).startTick + deltaTick}});
+    noteEdits().apply(edits, selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
 
     NoteRef anchorRef =
         (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
-    const auto& anchorNote = sequence->getTrack(anchorRef.trackIndex).getNote(anchorRef.noteIndex);
+    const auto anchorNote = noteAt(anchorRef);
 
     if (onScrollToNote)
         onScrollToNote(anchorNote.startTick, anchorNote.noteNumber);
@@ -542,7 +525,7 @@ bool PianoRollComponent::duplicateSelectedNotesWithPitchOffset(int deltaNote)
         return false;
     selectedNote = *selectedNotes.begin();
 
-    const auto& previewNoteRef = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
+    const auto previewNoteRef = noteAt(selectedNote);
     startNotePreview(previewNoteRef);
     startTimer(previewHoldMs);
 
@@ -561,36 +544,22 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
     if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return;
 
-    auto& track = sequence->getTrack(activeTrackIndex);
-    const int n = track.getNumNotes();
+    const auto order = editableNotes().inTimeOrder(activeTrackIndex);
+    const int n = static_cast<int>(order.size());
     if (n == 0)
         return;
 
-    auto order = std::views::iota(0, n) | std::ranges::to<std::vector>();
-    std::sort(order.begin(), order.end(),
-              [&track](int a, int b)
-              {
-                  const auto& na = track.getNote(a);
-                  const auto& nb = track.getNote(b);
-                  if (na.startTick != nb.startTick)
-                      return na.startTick < nb.startTick;
-                  if (na.noteNumber != nb.noteNumber)
-                      return na.noteNumber < nb.noteNumber;
-                  return a < b;
-              });
-
-    auto posOf = [&order](int noteIndex)
+    auto posOf = [&order](const NoteRef& ref)
     {
-        for (int p = 0; p < static_cast<int>(order.size()); ++p)
-            if (order[p] == noteIndex)
-                return p;
-        return -1;
+        const auto it = std::ranges::find(order, ref);
+        return it == order.end() ? -1 : static_cast<int>(it - order.begin());
     };
 
-    int refIndex = -1;
+    std::optional<int> refPos;
     if (selectedNote.isValid() && selectedNote.trackIndex == activeTrackIndex && selectedNotes.contains(selectedNote))
     {
-        refIndex = selectedNote.noteIndex;
+        if (const int p = posOf(selectedNote); p >= 0)
+            refPos = p;
     }
     else
     {
@@ -598,9 +567,7 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
         int maxPos = -1;
         for (const auto& ref : selectedNotes)
         {
-            if (ref.trackIndex != activeTrackIndex)
-                continue;
-            int p = posOf(ref.noteIndex);
+            const int p = posOf(ref);
             if (p < 0)
                 continue;
             if (minPos < 0 || p < minPos)
@@ -609,13 +576,13 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
                 maxPos = p;
         }
         if (maxPos >= 0)
-            refIndex = order[direction > 0 ? maxPos : minPos];
+            refPos = direction > 0 ? maxPos : minPos;
     }
 
     int targetPos;
-    if (refIndex >= 0)
+    if (refPos)
     {
-        int np = posOf(refIndex) + (direction > 0 ? 1 : -1);
+        const int np = *refPos + (direction > 0 ? 1 : -1);
         if (np < 0 || np >= n)
             return;
         targetPos = np;
@@ -625,7 +592,7 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
         targetPos = direction > 0 ? 0 : n - 1;
     }
 
-    NoteRef target{activeTrackIndex, order[targetPos]};
+    const NoteRef target = order[static_cast<size_t>(targetPos)];
     clearTempoSelection();
     clearTimeSignatureSelection();
     clearKeySignatureSelection();
@@ -634,7 +601,7 @@ void PianoRollComponent::moveSelectionToAdjacentNote(int direction)
     selectedNotes.insert(target);
     selectedNote = target;
 
-    const auto& note = track.getNote(target.noteIndex);
+    const auto note = noteAt(target);
     startNotePreview(note);
     startTimer(previewHoldMs);
 
@@ -721,7 +688,7 @@ bool PianoRollComponent::hasNotesInActiveTrack() const
     if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return false;
 
-    return sequence->getTrack(activeTrackIndex).getNumNotes() > 0;
+    return !editableNotes().onTrack(activeTrackIndex).empty();
 }
 
 void PianoRollComponent::paint(juce::Graphics& g)
@@ -785,7 +752,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         {
             if (!e.mods.isRightButtonDown())
             {
-                auto edge = edgeAt(e.x, sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex));
+                auto edge = edgeAt(e.x, noteAt(hit));
                 if (edge != ResizeEdge::None)
                 {
                     beginResize(hit, edge);
@@ -793,10 +760,9 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                 }
             }
 
-            undoHistory.beginNewTransaction("Delete Note");
-            undoHistory.perform(new NoteDeleteAction(sequence, hit.trackIndex, hit.noteIndex));
             selectedNote = {};
             selectedNotes.clear();
+            noteEdits().remove({hit}, "Delete Note");
             repaint();
             if (onNoteSelectionChanged)
                 onNoteSelectionChanged(selectedNotes);
@@ -830,11 +796,10 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         {
             if (!selectedNotes.empty())
             {
-                undoHistory.beginNewTransaction("Delete Notes");
-                undoHistory.perform(new MultiNoteDeleteAction(sequence, selectedNotes));
-
+                const auto deleted = selectedNotes;
                 selectedNote = {};
                 selectedNotes.clear();
+                noteEdits().remove(deleted, "Delete Notes");
                 repaint();
                 if (onNoteSelectionChanged)
                     onNoteSelectionChanged(selectedNotes);
@@ -846,7 +811,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         {
             if (!e.mods.isShiftDown())
             {
-                auto edge = edgeAt(e.x, sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex));
+                auto edge = edgeAt(e.x, noteAt(hit));
                 if (edge != ResizeEdge::None)
                 {
                     beginResize(hit, edge);
@@ -871,7 +836,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
                 }
                 beginMove(hit, e);
             }
-            const auto& note = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
+            const auto note = noteAt(hit);
             startNotePreview(note);
             repaint();
             if (onNoteSelectionChanged)
@@ -980,7 +945,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     moving->deltaTick = shift.deltaTick;
     moving->deltaNote = shift.deltaNote;
 
-    const auto& anchorNote = sequence->getTrack(selectedNote.trackIndex).getNote(selectedNote.noteIndex);
+    const auto anchorNote = noteAt(selectedNote);
     int previewPitch = anchorNote.noteNumber + moving->deltaNote;
     if (previewPitch != previewNote.noteNumber)
     {
@@ -1013,24 +978,18 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 
     if (const auto* resizing = std::get_if<Resizing>(&state))
     {
-        std::vector<NoteModification> mods;
+        std::vector<NoteEdit> edits;
         for (const auto& t : resizing->targets)
         {
             if (t.previewStartTick == t.startTick && t.previewDuration == t.duration)
                 continue;
-
-            const auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
-            MidiNote afterNote = note;
-            afterNote.startTick = t.previewStartTick;
-            afterNote.duration = t.previewDuration;
-            mods.push_back({t.ref.trackIndex, t.ref.noteIndex, note, afterNote});
+            if (resizing->edge == ResizeEdge::Left)
+                edits.push_back({t.ref, {.startTick = t.previewStartTick, .keepEnd = true}});
+            else
+                edits.push_back({t.ref, {.endTick = t.previewStartTick + t.previewDuration}});
         }
-
-        if (!mods.empty())
-        {
-            undoHistory.beginNewTransaction(mods.size() > 1 ? "Resize Notes" : "Resize Note");
-            undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
-        }
+        if (!edits.empty())
+            noteEdits().apply(edits, edits.size() > 1 ? "Resize Notes" : "Resize Note");
         return;
     }
 
@@ -1055,19 +1014,12 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
     {
         if (moving->deltaTick != 0 || moving->deltaNote != 0)
         {
-            undoHistory.beginNewTransaction(moving->targets.size() > 1 ? "Move Notes" : "Move Note");
-            std::vector<NoteModification> mods;
+            std::vector<NoteEdit> edits;
             for (const auto& t : moving->targets)
-            {
-                const auto& note = sequence->getTrack(t.ref.trackIndex).getNote(t.ref.noteIndex);
-                MidiNote beforeNote{t.noteNumber, note.velocity, t.startTick, note.duration};
-                MidiNote afterNote = beforeNote;
-                afterNote.startTick = t.startTick + moving->deltaTick;
-                afterNote.noteNumber = t.noteNumber + moving->deltaNote;
-                mods.push_back({t.ref.trackIndex, t.ref.noteIndex, beforeNote, afterNote});
-            }
-            if (!mods.empty())
-                undoHistory.perform(new MultiNoteModifyAction(sequence, std::move(mods)));
+                edits.push_back(
+                    {t.ref,
+                     {.startTick = t.startTick + moving->deltaTick, .noteNumber = t.noteNumber + moving->deltaNote}});
+            noteEdits().apply(edits, moving->targets.size() > 1 ? "Move Notes" : "Move Note");
         }
     }
 }
@@ -1084,7 +1036,7 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& e)
 
     if (hit.isValid())
     {
-        auto edge = edgeAt(e.x, sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex));
+        auto edge = edgeAt(e.x, noteAt(hit));
         if (edge != ResizeEdge::None)
             setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);
         else
@@ -1574,7 +1526,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
 
         for (int i = 0; i < track.getNumNotes(); ++i)
         {
-            const auto note = displayedNote(trackIdx, i);
+            const auto note = displayedNote({trackIdx, i});
             auto baseColour = TrackColours::getColour(trackIdx).withAlpha(alpha);
             int x = tickToX(note.startTick);
             int y = noteToY(note.noteNumber);
@@ -1625,7 +1577,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
         const bool isDrum = track.getChannel() == 10;
 
         for (int i = 0; i < track.getNumNotes(); ++i)
-            drawActiveTrackNote(g, clip, displayedNote(activeTrackIndex, i), baseColour,
+            drawActiveTrackNote(g, clip, displayedNote({activeTrackIndex, i}), baseColour,
                                 isNoteSelected({activeTrackIndex, i}), isDrum);
 
         if (const auto* creating = std::get_if<Creating>(&drag);
@@ -1679,13 +1631,31 @@ void PianoRollComponent::drawActiveTrackNote(juce::Graphics& g, const juce::Rect
     }
 }
 
-MidiNote PianoRollComponent::displayedNote(int trackIndex, int noteIndex) const
+EditableNotes PianoRollComponent::editableNotes() const
 {
-    auto note = sequence->getTrack(trackIndex).getNote(noteIndex);
+    return {*sequence, recordingLayer, static_cast<int>(playheadTick)};
+}
+
+MidiNote PianoRollComponent::noteAt(const NoteRef& ref) const
+{
+    return editableNotes().find(ref).value_or(MidiNote{});
+}
+
+LayeredNoteEdits PianoRollComponent::noteEdits()
+{
+    return {*sequence, undoHistory, recordingEditor};
+}
+
+MidiNote PianoRollComponent::displayedNote(const NoteRef& ref) const
+{
+    return displayedNote(ref, noteAt(ref));
+}
+
+MidiNote PianoRollComponent::displayedNote(const NoteRef& ref, MidiNote note) const
+{
     if (const auto* resizing = std::get_if<Resizing>(&drag))
     {
         // beginResize builds the targets from a std::set, so they are sorted by ref.
-        const NoteRef ref{trackIndex, noteIndex};
         auto it = std::ranges::lower_bound(resizing->targets, ref, {}, &ResizeTarget::ref);
         if (it != resizing->targets.end() && it->ref == ref)
         {
@@ -1712,7 +1682,7 @@ void PianoRollComponent::drawMoveGhosts(juce::Graphics& g)
             continue;
 
         const auto& track = sequence->getTrack(t.ref.trackIndex);
-        const auto& note = track.getNote(t.ref.noteIndex);
+        const auto note = noteAt(t.ref);
 
         int x = tickToX(t.startTick + moving->deltaTick);
         int y = noteToY(t.noteNumber + moving->deltaNote);
@@ -1799,6 +1769,11 @@ int PianoRollComponent::tickToWidth(int durationTicks) const
     return geometry.tickToWidth(durationTicks);
 }
 
+int PianoRollComponent::recordedNoteWidth(int durationTicks) const
+{
+    return std::max(2, tickToWidth(durationTicks));
+}
+
 int PianoRollComponent::roundTickToGrid(int tick) const
 {
     return geometry.roundTickToGrid(tick);
@@ -1809,7 +1784,7 @@ int PianoRollComponent::floorTickToGrid(int tick) const
     return geometry.floorTickToGrid(tick);
 }
 
-PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
+NoteRef PianoRollComponent::hitTestNote(int x, int y) const
 {
     if (!sequence)
         return {};
@@ -1817,17 +1792,22 @@ PianoRollComponent::NoteRef PianoRollComponent::hitTestNote(int x, int y) const
     if (activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks() &&
         selectedTrackIndices.contains(activeTrackIndex))
     {
-        const auto& track = sequence->getTrack(activeTrackIndex);
-        for (int i = 0; i < track.getNumNotes(); ++i)
+        // Recorded notes are drawn over the sequence's notes, so they are hit first.
+        NoteRef sequenceHit;
+        for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
         {
-            const auto& note = track.getNote(i);
             int nx = tickToX(note.startTick);
             int ny = noteToY(note.noteNumber);
-            int nw = tickToWidth(note.duration);
-
-            if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
-                return {activeTrackIndex, i};
+            int nw = ref.isRecorded() ? recordedNoteWidth(note.duration) : tickToWidth(note.duration);
+            if (x < nx || x > nx + nw || y < ny || y >= ny + noteHeight)
+                continue;
+            if (ref.isRecorded())
+                return ref;
+            if (!sequenceHit.isValid())
+                sequenceHit = ref;
         }
+        if (sequenceHit.isValid())
+            return sequenceHit;
     }
 
     for (int trackIdx : selectedTrackIndices)
@@ -1948,9 +1928,7 @@ bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const
 
 std::vector<MidiNote> PianoRollComponent::collectSelectedNotes() const
 {
-    return selectedNotes |
-           std::views::transform([this](const NoteRef& ref)
-                                 { return sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex); }) |
+    return selectedNotes | std::views::transform([this](const NoteRef& ref) { return noteAt(ref); }) |
            std::ranges::to<std::vector>();
 }
 
@@ -1998,22 +1976,18 @@ void PianoRollComponent::drawRubberBand(juce::Graphics& g)
     g.drawRect(band->rect, 1);
 }
 
-std::vector<PianoRollComponent::NoteRef> PianoRollComponent::findNotesInRect(const juce::Rectangle<int>& rect) const
+std::vector<NoteRef> PianoRollComponent::findNotesInRect(const juce::Rectangle<int>& rect) const
 {
     std::vector<NoteRef> result;
     if (!sequence || activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return result;
 
-    const auto& track = sequence->getTrack(activeTrackIndex);
-    for (int i = 0; i < track.getNumNotes(); ++i)
+    for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
     {
-        const auto& note = track.getNote(i);
-        int nx = tickToX(note.startTick);
-        int ny = noteToY(note.noteNumber);
-        int nw = tickToWidth(note.duration);
-        juce::Rectangle<int> noteRect(nx, ny, nw, noteHeight);
+        const int width = ref.isRecorded() ? recordedNoteWidth(note.duration) : tickToWidth(note.duration);
+        juce::Rectangle<int> noteRect(tickToX(note.startTick), noteToY(note.noteNumber), width, noteHeight);
         if (rect.intersects(noteRect))
-            result.push_back({activeTrackIndex, i});
+            result.push_back(ref);
     }
     return result;
 }
@@ -2046,6 +2020,30 @@ void PianoRollComponent::cancelEditDrag()
         drag = Idle{};
 }
 
+void PianoRollComponent::pruneRecordedRefs()
+{
+    if (!sequence)
+        return;
+    const auto notes = editableNotes();
+    const auto isGone = [&notes](const NoteRef& ref) { return ref.isRecorded() && !notes.find(ref).has_value(); };
+
+    // A segment that recorded nothing ends without changing the sequence, so nothing else stops a drag of its notes.
+    if (const auto* moving = std::get_if<Moving>(&drag);
+        moving != nullptr && std::ranges::any_of(moving->targets, isGone, &MoveTarget::ref))
+        drag = Idle{};
+    if (const auto* resizing = std::get_if<Resizing>(&drag);
+        resizing != nullptr && std::ranges::any_of(resizing->targets, isGone, &ResizeTarget::ref))
+        drag = Idle{};
+
+    if (isGone(selectedNote))
+        selectedNote = {};
+    if (std::erase_if(selectedNotes, isGone) > 0)
+    {
+        if (onNoteSelectionChanged)
+            onNoteSelectionChanged(selectedNotes);
+    }
+}
+
 void PianoRollComponent::beginResize(const NoteRef& hit, ResizeEdge edge)
 {
     std::set<NoteRef> targets;
@@ -2063,11 +2061,11 @@ void PianoRollComponent::beginResize(const NoteRef& hit, ResizeEdge edge)
     std::vector<ResizeTarget> resizeTargets;
     for (const auto& ref : targets)
     {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        const auto note = noteAt(ref);
         resizeTargets.push_back({ref, note.startTick, note.duration, note.startTick, note.duration});
     }
 
-    const auto& anchor = sequence->getTrack(hit.trackIndex).getNote(hit.noteIndex);
+    const auto anchor = noteAt(hit);
     selectedNote = hit;
     drag = Resizing{std::move(resizeTargets), edge, anchor.startTick, anchor.endTick()};
     repaint();
@@ -2078,11 +2076,11 @@ void PianoRollComponent::beginMove(const NoteRef& anchor, const juce::MouseEvent
     std::vector<MoveTarget> moveTargets;
     for (const auto& ref : selectedNotes)
     {
-        const auto& note = sequence->getTrack(ref.trackIndex).getNote(ref.noteIndex);
+        const auto note = noteAt(ref);
         moveTargets.push_back({ref, note.startTick, note.noteNumber});
     }
 
-    const auto& anchorNote = sequence->getTrack(anchor.trackIndex).getNote(anchor.noteIndex);
+    const auto anchorNote = noteAt(anchor);
     selectedNote = anchor;
     drag = Moving{std::move(moveTargets), anchorNote.startTick, xToTick(e.x), yToNote(e.y)};
 }

@@ -1,6 +1,9 @@
 #pragma once
 
+#include "edit/EditableNotes.h"
+#include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
+#include "engine/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"
 #include "undo/UndoHistory.h"
 #include <functional>
@@ -36,7 +39,7 @@ public:
     void setBeatWidth(int w);
     void setRightPadding(int px);
     void setQuantizeDenominator(int denom);
-    void setRecordingLayer(const RecordingLayer* layer);
+    void setRecordingLayer(const RecordingLayer* layer, RecordingLayerEditor* editor);
     void updateSize();
 
     DisplayMode getDisplayMode() const { return displayMode; }
@@ -66,7 +69,8 @@ private:
     void drawLeftPanel(juce::Graphics& g);
     void drawGrid(juce::Graphics& g);
     void drawVelocity(juce::Graphics& g);
-    int displayedVelocity(int trackIndex, int noteIndex) const;
+    EditableNotes editableNotes() const;
+    int displayedVelocity(const NoteRef& ref, int velocity) const;
     void drawControlChange(juce::Graphics& g);
     void drawPitchBend(juce::Graphics& g);
     void drawProgramChange(juce::Graphics& g);
@@ -101,6 +105,7 @@ private:
 
     int quantizeDenominator = 4;
     const RecordingLayer* recordingLayer = nullptr;
+    RecordingLayerEditor* recordingEditor = nullptr;
 
     UndoHistory& undoHistory;
     struct Idle
@@ -110,7 +115,7 @@ private:
     {
         int trackIndex = -1;
         int lastDragX = -1;
-        std::map<int, int> preview;
+        std::map<NoteRef, int> preview;
     };
     std::variant<Idle, VelocityDragging> drag;
 
