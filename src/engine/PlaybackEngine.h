@@ -1,12 +1,15 @@
 #pragma once
 
 #include "engine/MetronomeListener.h"
+#include "engine/PlaybackClock.h"
 #include "engine/PlaybackListener.h"
 #include "engine/PlaybackProcessor.h"
 #include "engine/PlaybackSnapshot.h"
+#include "engine/RecordingInbox.h"
 #include "model/MidiSequence.h"
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <juce_events/juce_events.h>
 #include <memory>
 #include <vector>
@@ -58,7 +61,18 @@ public:
 
     bool isPaused() const;
 
+    // Read on the timer thread, so replace or clear it only while playback is stopped, and keep it alive until it
+    // is cleared.
+    void setRecordingInbox(RecordingInbox* inbox);
+
+    // Called on the message thread.
+    std::function<void()> onStopped;
+
 private:
+    LoopRange currentLoop() const;
+
+    std::atomic<RecordingInbox*> recordingInbox{nullptr};
+
     void hiResTimerCallback() override;
     void processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink);
 

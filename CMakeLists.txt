@@ -37,10 +37,12 @@ target_sources(Calliope PRIVATE
     src/edit/TempoEdits.cpp
     src/edit/TimeSignatureEdits.cpp
     src/engine/MetronomeClicks.cpp
+    src/engine/PlaybackClock.cpp
     src/engine/PlaybackEngine.cpp
     src/engine/PlaybackProcessor.cpp
     src/engine/PlaybackSnapshot.cpp
     src/engine/PlaybackSync.cpp
+    src/engine/RecordingInbox.cpp
     src/engine/ThruRouter.cpp
     src/engine/ThruTarget.cpp
     src/io/MidiFileIO.cpp

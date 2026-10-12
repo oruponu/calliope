@@ -8,8 +8,10 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/MetronomeClicks.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/PlaybackClock.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/RecordingInbox.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ThruRouter.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ThruTarget.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
@@ -56,8 +58,10 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
     engine/MetronomeClicksTests.cpp
+    engine/PlaybackClockTests.cpp
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp
+    engine/RecordingInboxTests.cpp
     engine/ThruRouterTests.cpp
     engine/ThruTargetTests.cpp
     io/MidiFileLoadTests.cpp

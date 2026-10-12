@@ -1,0 +1,137 @@
+#include "engine/RecordingInbox.h"
+#include "engine/ChannelVoiceMessage.h"
+#include <algorithm>
+#include <utility>
+
+void RecordingInbox::playbackStarted(double timeMs, int tick, double ticksPerMs, LoopRange loop)
+{
+    std::lock_guard lock(mutex);
+    setAnchor(timeMs, tick, ticksPerMs, loop);
+    clock.pass = ++lastAnnouncedPass;
+    clock.passStartTick = tick;
+    clock.passStartedByLoop = false;
+}
+
+void RecordingInbox::clockHalted()
+{
+    std::lock_guard lock(mutex);
+    clock.ticksPerMs = 0.0;
+}
+
+void RecordingInbox::jumped(double timeMs, int fromTick, int toTick, double ticksPerMs, LoopRange loop)
+{
+    std::lock_guard lock(mutex);
+    // A wrap was announced but never taken: close that pass at the loop start, not back at fromTick.
+    const int closeTick = lastAnnouncedPass > clock.pass ? clock.loop.start : fromTick;
+    setAnchor(timeMs, toTick, ticksPerMs, loop);
+    clock.pass = ++lastAnnouncedPass;
+    clock.passStartTick = toTick;
+    clock.passStartedByLoop = false;
+    if (recording)
+        items.push_back(PassBoundary{clock.pass, closeTick});
+}
+
+void RecordingInbox::loopWrapped(double timeMs, double tick, double ticksPerMs, LoopRange loop)
+{
+    std::lock_guard lock(mutex);
+    setAnchor(timeMs, tick, ticksPerMs, loop);
+    const int pass = clock.pass + 1;
+    if (lastAnnouncedPass < pass)
+    {
+        lastAnnouncedPass = pass;
+        if (recording)
+            items.push_back(PassBoundary{pass, loop.end});
+    }
+    clock.pass = pass;
+    clock.passStartTick = loop.start;
+    clock.passStartedByLoop = true;
+}
+
+void RecordingInbox::updateClock(double timeMs, double tick, double ticksPerMs, LoopRange loop)
+{
+    std::lock_guard lock(mutex);
+    setAnchor(timeMs, tick, ticksPerMs, loop);
+}
+
+void RecordingInbox::receive(const juce::String& sourceId, const juce::MidiMessage& message)
+{
+    if (!isChannelVoiceMessage(message))
+        return;
+
+    const double timeMs = message.getTimeStamp() * 1000.0;
+    std::lock_guard lock(mutex);
+    if (!recording || timeMs < segmentStartMs)
+        return;
+
+    const auto position = locate(clock, timeMs);
+    announceWrapTo(position);
+    items.push_back(RecordedInput{sourceId.toStdString(), message, position});
+}
+
+ClockPosition RecordingInbox::beginSegment(double timeMs)
+{
+    std::lock_guard lock(mutex);
+    items.clear();
+    recording = true;
+    segmentStartMs = timeMs;
+    const auto start = locate(clock, timeMs);
+    // The start may already lie past a wrap the timer has not taken. Nothing is held yet, so note the pass without
+    // queuing a boundary; the timer must not announce it again.
+    lastAnnouncedPass = std::max(lastAnnouncedPass, start.pass);
+    return start;
+}
+
+std::vector<InboxItem> RecordingInbox::takeItems()
+{
+    std::lock_guard lock(mutex);
+    return std::exchange(items, {});
+}
+
+RecordingInbox::Drained RecordingInbox::drainAt(double timeMs)
+{
+    std::lock_guard lock(mutex);
+    const auto position = closingPosition(timeMs);
+    return {position, std::exchange(items, {})};
+}
+
+RecordingInbox::Drained RecordingInbox::endSegment(double timeMs)
+{
+    std::lock_guard lock(mutex);
+    const auto position = closingPosition(timeMs);
+    recording = false;
+    Drained end{position, std::exchange(items, {})};
+    for (auto& item : end.items)
+        if (auto* input = std::get_if<RecordedInput>(&item);
+            input != nullptr && input->position.pass == end.position.pass && input->position.tick > end.position.tick)
+            input->position.tick = end.position.tick;
+    return end;
+}
+
+void RecordingInbox::setAnchor(double timeMs, double tick, double ticksPerMs, LoopRange loop)
+{
+    clock.timeMs = timeMs;
+    clock.tick = tick;
+    clock.ticksPerMs = ticksPerMs;
+    clock.loop = loop;
+}
+
+void RecordingInbox::announceWrapTo(const ClockPosition& position)
+{
+    if (position.pass <= lastAnnouncedPass)
+        return;
+    lastAnnouncedPass = position.pass;
+    items.push_back(PassBoundary{position.pass, clock.loop.end});
+}
+
+ClockPosition RecordingInbox::closingPosition(double timeMs)
+{
+    const auto position = locate(clock, timeMs);
+    if (!recording)
+        return position;
+    announceWrapTo(position);
+    // Input already announced a wrap that the clock never reached (playback stopped or paused first). Closing in the
+    // pass before it would stretch the announced pass's notes back across the loop.
+    if (position.pass < lastAnnouncedPass)
+        return {lastAnnouncedPass, clock.loop.start};
+    return position;
+}

@@ -1,4 +1,5 @@
 #include "engine/ThruRouter.h"
+#include "engine/ChannelVoiceMessage.h"
 #include <algorithm>
 #include <array>
 #include <utility>
@@ -10,12 +11,6 @@ constexpr std::array holdPedalControllers{64, 66, 69};
 bool isHoldPedal(int controller)
 {
     return std::ranges::contains(holdPedalControllers, controller);
-}
-
-bool isChannelVoiceMessage(const juce::MidiMessage& message)
-{
-    return message.isNoteOnOrOff() || message.isController() || message.isProgramChange() || message.isPitchWheel() ||
-           message.isChannelPressure() || message.isAftertouch();
 }
 
 juce::MidiMessage stamped(juce::MidiMessage message, double now)

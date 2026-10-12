@@ -27,6 +27,25 @@ public:
 private:
     const std::vector<PlaybackListener*>& listeners;
 };
+
+std::uint64_t packLoop(int startTick, int endTick)
+{
+    return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(startTick)) << 32) |
+           static_cast<std::uint64_t>(static_cast<std::uint32_t>(endTick));
+}
+int loopStartOf(std::uint64_t packed)
+{
+    return static_cast<int>(static_cast<std::uint32_t>(packed >> 32));
+}
+int loopEndOf(std::uint64_t packed)
+{
+    return static_cast<int>(static_cast<std::uint32_t>(packed & 0xffffffffULL));
+}
+
+double ticksPerMsAt(const PlaybackSnapshot& snap, int tick)
+{
+    return snap.getTempoAt(tick) * snap.ticksPerQuarterNote / 60000.0;
+}
 } // namespace
 
 PlaybackEngine::ScopedPause::ScopedPause(PlaybackEngine& engineRef) : engine(engineRef)
@@ -35,8 +54,11 @@ PlaybackEngine::ScopedPause::ScopedPause(PlaybackEngine& engineRef) : engine(eng
         return;
 
     engine.resumeTimerAfterPause = engine.isTimerRunning();
-    if (engine.resumeTimerAfterPause)
-        engine.stopTimer();
+    if (!engine.resumeTimerAfterPause)
+        return;
+    engine.stopTimer();
+    if (auto* inbox = engine.recordingInbox.load())
+        inbox->clockHalted();
 }
 
 PlaybackEngine::ScopedPause::~ScopedPause()
@@ -50,6 +72,12 @@ PlaybackEngine::ScopedPause::~ScopedPause()
     engine.rebuildSnapshot();
     engine.lastSeenSnapshot.reset();
     engine.lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
+    if (auto* inbox = engine.recordingInbox.load())
+    {
+        const double tick = engine.tickPosition.load();
+        inbox->updateClock(engine.lastCallbackTimeMs, tick, ticksPerMsAt(*engine.currentOwner, static_cast<int>(tick)),
+                           engine.currentLoop());
+    }
     engine.startTimer(1);
 }
 
@@ -97,6 +125,11 @@ void PlaybackEngine::play()
     playing = true;
     lastSeenSnapshot.reset();
     lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
+    if (auto* inbox = recordingInbox.load())
+    {
+        const int tick = static_cast<int>(tickPosition.load());
+        inbox->playbackStarted(lastCallbackTimeMs, tick, ticksPerMsAt(*currentOwner, tick), currentLoop());
+    }
     startTimer(1);
 }
 
@@ -107,6 +140,8 @@ void PlaybackEngine::stop()
 
     stopTimer();
     playing = false;
+    if (auto* inbox = recordingInbox.load())
+        inbox->clockHalted();
 
     FanOut sink(listeners);
     processor.sendAllNoteOffs(sink);
@@ -114,6 +149,9 @@ void PlaybackEngine::stop()
     const int seek = pendingSeekTick.exchange(-1);
     if (seek >= 0)
         tickPosition.store((double)seek);
+
+    if (onStopped)
+        onStopped();
 }
 
 bool PlaybackEngine::isPlaying() const
@@ -140,23 +178,6 @@ void PlaybackEngine::setPositionInTicks(int tick)
         pendingSeekTick.store(-1);
     }
 }
-
-namespace
-{
-std::uint64_t packLoop(int startTick, int endTick)
-{
-    return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(startTick)) << 32) |
-           static_cast<std::uint64_t>(static_cast<std::uint32_t>(endTick));
-}
-int loopStartOf(std::uint64_t packed)
-{
-    return static_cast<int>(static_cast<std::uint32_t>(packed >> 32));
-}
-int loopEndOf(std::uint64_t packed)
-{
-    return static_cast<int>(static_cast<std::uint32_t>(packed & 0xffffffffULL));
-}
-} // namespace
 
 void PlaybackEngine::setLoopEnabled(bool enabled)
 {
@@ -212,6 +233,17 @@ bool PlaybackEngine::isPaused() const
     return pauseDepth > 0;
 }
 
+void PlaybackEngine::setRecordingInbox(RecordingInbox* inbox)
+{
+    recordingInbox.store(inbox);
+}
+
+LoopRange PlaybackEngine::currentLoop() const
+{
+    const std::uint64_t packed = loopRange.load();
+    return {loopEnabled.load(), loopStartOf(packed), loopEndOf(packed)};
+}
+
 void PlaybackEngine::hiResTimerCallback()
 {
     if (!playing)
@@ -229,12 +261,18 @@ void PlaybackEngine::hiResTimerCallback()
         lastSeenSnapshot = snap;
     }
 
+    auto* inbox = recordingInbox.load();
+
     int seek = pendingSeekTick.exchange(-1);
     if (seek >= 0)
     {
+        const int fromTick = static_cast<int>(tickPosition.load());
         processor.sendAllNoteOffs(sink);
         tickPosition.store((double)seek);
         processor.resetCursors(*snap, seek);
+        // The seek lands at the previous callback's time; this callback then advances from there.
+        if (inbox != nullptr)
+            inbox->jumped(lastCallbackTimeMs, fromTick, seek, ticksPerMsAt(*snap, seek), currentLoop());
     }
 
     const double now = juce::Time::getMillisecondCounterHiRes();
@@ -242,7 +280,7 @@ void PlaybackEngine::hiResTimerCallback()
     lastCallbackTimeMs = now;
 
     const int previousTick = (int)tickPosition.load();
-    const double ticksPerMs = (snap->getTempoAt(previousTick) * snap->ticksPerQuarterNote) / 60000.0;
+    const double ticksPerMs = ticksPerMsAt(*snap, previousTick);
     const double newPos = tickPosition.load() + elapsedMs * ticksPerMs;
 
     const std::uint64_t lr = loopRange.load();
@@ -263,6 +301,8 @@ void PlaybackEngine::hiResTimerCallback()
         const int headEnd = (int)wrapped;
         if (headEnd > ls)
             processRange(*snap, ls, headEnd, sink);
+        if (inbox != nullptr)
+            inbox->loopWrapped(now, wrapped, ticksPerMsAt(*snap, headEnd), {true, ls, le});
         return;
     }
 
@@ -270,6 +310,8 @@ void PlaybackEngine::hiResTimerCallback()
     const int currentTick = (int)newPos;
     if (currentTick > previousTick)
         processRange(*snap, previousTick, currentTick, sink);
+    if (inbox != nullptr)
+        inbox->updateClock(now, newPos, ticksPerMsAt(*snap, currentTick), currentLoop());
 }
 
 void PlaybackEngine::processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink)
