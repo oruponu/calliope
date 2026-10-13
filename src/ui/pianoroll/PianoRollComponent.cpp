@@ -1,5 +1,7 @@
 #include "ui/pianoroll/PianoRollComponent.h"
+#include "edit/NoteEdit.h"
 #include "edit/NoteEdits.h"
+#include "edit/NoteQuantize.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/NoteActions.h"
 #include <algorithm>
@@ -482,6 +484,24 @@ void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
     if (onScrollToNote)
         onScrollToNote(anchorNote.startTick, anchorNote.noteNumber);
 
+    repaint();
+}
+
+void PianoRollComponent::quantizeSelectedNotes()
+{
+    if (!sequence || selectedNotes.empty())
+        return;
+
+    const auto notes = editableNotes();
+    std::vector<std::pair<NoteRef, MidiNote>> selected;
+    for (const auto& ref : selectedNotes)
+        if (const auto note = notes.find(ref))
+            selected.emplace_back(ref, *note);
+
+    const auto edits = NoteQuantize::startsToGrid(selected, geometry.gridTicks());
+    if (edits.empty())
+        return;
+    noteEdits().apply(edits, edits.size() > 1 ? "Quantize Notes" : "Quantize Note");
     repaint();
 }
 

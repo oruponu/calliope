@@ -1,18 +1,12 @@
 #pragma once
 
+#include "edit/NoteEdit.h"
 #include "edit/NoteRef.h"
-#include "engine/NoteFieldEdit.h"
 #include "engine/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"
 #include "undo/UndoHistory.h"
 #include <set>
 #include <vector>
-
-struct NoteEdit
-{
-    NoteRef ref;
-    NoteFieldEdit fields;
-};
 
 // Applies edits across the sequence and the recording layer. Only the sequence side becomes an undoable step; the
 // recording layer side reaches the history inside the "Record" step at commit.

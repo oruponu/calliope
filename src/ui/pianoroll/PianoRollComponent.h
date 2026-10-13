@@ -89,6 +89,7 @@ public:
                clipboard.hasKeySignatures() || clipboard.hasChords();
     }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
+    void quantizeSelectedNotes();
     bool hasNotesInActiveTrack() const;
 
     void paint(juce::Graphics& g) override;

@@ -618,6 +618,7 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         break;
     case AppCommands::moveNotesUp:
     case AppCommands::moveNotesDown:
+    case AppCommands::quantizeNotes:
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasSelectedNotes());
         break;
     case AppCommands::moveSelectionPrev:
@@ -766,6 +767,10 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::toggleRecord:
         transportBar.toggleRecord();
+        return true;
+    case AppCommands::quantizeNotes:
+        if (focusedPanel == FocusPanel::PianoRoll)
+            pianoRoll.quantizeSelectedNotes();
         return true;
     default:
         return false;

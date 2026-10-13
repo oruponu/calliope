@@ -37,6 +37,7 @@ target_sources(Calliope PRIVATE
     src/edit/KeySignatureEdits.cpp
     src/edit/LayeredNoteEdits.cpp
     src/edit/NoteEdits.cpp
+    src/edit/NoteQuantize.cpp
     src/edit/TempoEdits.cpp
     src/edit/TimeSignatureEdits.cpp
     src/engine/MetronomeClicks.cpp

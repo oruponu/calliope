@@ -1,5 +1,6 @@
 #include "ui/pianoroll/ControllerLaneComponent.h"
 #include "edit/LayeredNoteEdits.h"
+#include "edit/NoteEdit.h"
 #include "ui/theme/TrackColours.h"
 #include <algorithm>
 #include <utility>

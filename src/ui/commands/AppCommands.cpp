@@ -36,7 +36,8 @@ void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
                        zoomReset,
                        toggleLoop,
                        toggleMetronome,
-                       toggleRecord});
+                       toggleRecord,
+                       quantizeNotes});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -179,6 +180,10 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
     case toggleRecord:
         result.setInfo("Record", "", "Transport", 0);
         result.addDefaultKeypress('R', 0);
+        break;
+    case quantizeNotes:
+        result.setInfo("Quantize", "", "Event", 0);
+        result.addDefaultKeypress('Q', 0);
         break;
     default:
         break;

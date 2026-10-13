@@ -7,6 +7,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/LayeredNoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/NoteEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/NoteQuantize.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/MetronomeClicks.cpp
@@ -52,6 +53,7 @@ target_sources(CalliopeTests PRIVATE
     edit/LayeredNoteEditsTests.cpp
     edit/NoteClampShiftTests.cpp
     edit/NoteEndResizeTests.cpp
+    edit/NoteQuantizeTests.cpp
     edit/NoteShiftTests.cpp
     edit/NoteStartResizeTests.cpp
     edit/TempoAddChangeTests.cpp
