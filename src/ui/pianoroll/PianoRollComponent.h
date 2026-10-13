@@ -296,7 +296,7 @@ private:
     void timerCallback() override;
     static constexpr int previewHoldMs = 300;
 
-    int quantizeDenominator = 4;
+    int quantizeDenominator = 16;
 
     bool loopEnabled = false;
     int loopStartTick = 0;

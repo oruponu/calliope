@@ -103,7 +103,7 @@ private:
     int contentBeats = 16;
     int rightPadding = 0;
 
-    int quantizeDenominator = 4;
+    int quantizeDenominator = 16;
     const RecordingLayer* recordingLayer = nullptr;
     RecordingLayerEditor* recordingEditor = nullptr;
 

@@ -373,7 +373,7 @@ MainComponent::MainComponent()
     quantizeComboBox.addItem("1/8", 8);
     quantizeComboBox.addItem("1/16", 16);
     quantizeComboBox.addItem("1/32", 32);
-    quantizeComboBox.setSelectedId(4, juce::dontSendNotification);
+    quantizeComboBox.setSelectedId(16, juce::dontSendNotification);
     quantizeComboBox.onChange = [this]()
     {
         int denom = quantizeComboBox.getSelectedId();

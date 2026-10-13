@@ -61,6 +61,6 @@ public:
 private:
     int ppq = 0;
     int beatWidth = 80;
-    int quantizeDenominator = 4;
+    int quantizeDenominator = 16;
     int startX;
 };
