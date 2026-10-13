@@ -22,7 +22,7 @@ MainMenuModel::MainMenuModel(juce::ApplicationCommandManager& commandManagerRef,
 
 juce::StringArray MainMenuModel::getMenuBarNames()
 {
-    return {"File", "Edit", "View", "Plugins", "Settings"};
+    return {"File", "Edit", "Event", "View", "Plugins", "Settings"};
 }
 
 juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String&)
@@ -53,6 +53,10 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
     }
     else if (menuIndex == 2)
     {
+        menu.addCommandItem(&commandManager, AppCommands::quantizeNotes);
+    }
+    else if (menuIndex == 3)
+    {
         menu.addCommandItem(&commandManager, AppCommands::zoomInHorizontal);
         menu.addCommandItem(&commandManager, AppCommands::zoomOutHorizontal);
         menu.addSeparator();
@@ -61,11 +65,11 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
         menu.addSeparator();
         menu.addCommandItem(&commandManager, AppCommands::zoomReset);
     }
-    else if (menuIndex == 3)
+    else if (menuIndex == 4)
     {
         menu = buildPluginMenu();
     }
-    else if (menuIndex == 4)
+    else if (menuIndex == 5)
     {
         juce::PopupMenu::Item audioSettingsItem;
         audioSettingsItem.itemID = AppCommands::openAudioSettings;
