@@ -115,11 +115,12 @@ private:
                           const std::set<int>& selectionBefore) const;
     static DragState fromEdgeDrag(EdgeDrag edge);
     void switchJointChordEdge(JointDragging& joint, int x, int grabX) const;
-    void dragEdge(EndResizing& resizing, int x);
-    void dragEdge(StartResizing& resizing, int x);
+    void dragEdge(EndResizing& resizing, int x, const juce::ModifierKeys& mods);
+    void dragEdge(StartResizing& resizing, int x, const juce::ModifierKeys& mods);
     void remapSelectionAfterResize(const std::vector<ChordChange>& before, const std::vector<ChordChange>& after,
                                    int draggedIndex, ResizeEdge edge, const std::set<int>& selectionBefore);
-    void selectMovedChords(const Moving& moving, const std::vector<ChordChange>& changes, int cursorTick);
+    void selectMovedChords(const Moving& moving, const std::vector<ChordChange>& changes, int cursorTick,
+                           const juce::ModifierKeys& mods);
     void deleteSelectedChordsImpl(const juce::String& transactionName);
     void openChordEditor(int tick, int endTick, int chordRoot, int chordType, int bassRoot, bool isNew,
                          juce::Rectangle<int> anchorInLocal);

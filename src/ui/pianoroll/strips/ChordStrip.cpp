@@ -312,19 +312,19 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
     if (auto* joint = std::get_if<JointDragging>(&drag))
     {
         switchJointChordEdge(*joint, e.x, e.getMouseDownX());
-        std::visit([this, &e](auto& edge) { dragEdge(edge, e.x); }, joint->edge);
+        std::visit([this, &e](auto& edge) { dragEdge(edge, e.x, e.mods); }, joint->edge);
         return;
     }
 
     if (auto* resizing = std::get_if<EndResizing>(&drag))
     {
-        dragEdge(*resizing, e.x);
+        dragEdge(*resizing, e.x, e.mods);
         return;
     }
 
     if (auto* resizing = std::get_if<StartResizing>(&drag))
     {
-        dragEdge(*resizing, e.x);
+        dragEdge(*resizing, e.x, e.mods);
         return;
     }
 
@@ -334,8 +334,8 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
             return;
 
         moving->preview = ChordTrackEdits::afterMove(moving->before, moving->group, moving->index,
-                                                     geometry.xToTick(e.x) - moving->grabOffset, snapGrid({}));
-        selectMovedChords(*moving, moving->preview, geometry.xToTick(e.x) - moving->grabOffset);
+                                                     geometry.xToTick(e.x) - moving->grabOffset, snapGrid(e.mods));
+        selectMovedChords(*moving, moving->preview, geometry.xToTick(e.x) - moving->grabOffset, e.mods);
         repaint();
         return;
     }
@@ -379,7 +379,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const bool dragged = validIndex && e.mouseWasDraggedSinceMouseDown();
         const auto changes =
             dragged ? ChordTrackEdits::afterResize(resizing->before, resizedIndex,
-                                                   geometry.xToTick(e.x) - resizing->grabOffset, snapGrid({}))
+                                                   geometry.xToTick(e.x) - resizing->grabOffset, snapGrid(e.mods))
                     : resizing->before;
 
         if (validIndex && changes != resizing->before)
@@ -417,7 +417,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const bool dragged = e.mouseWasDraggedSinceMouseDown();
         const auto changes =
             dragged ? ChordTrackEdits::afterStartResize(resizing->before, movedIndex,
-                                                        geometry.xToTick(e.x) - resizing->grabOffset, snapGrid({}))
+                                                        geometry.xToTick(e.x) - resizing->grabOffset, snapGrid(e.mods))
                     : resizing->before;
 
         if (changes != resizing->before)
@@ -452,10 +452,11 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
             return;
         }
 
-        const auto changes = e.mouseWasDraggedSinceMouseDown()
-                                 ? ChordTrackEdits::afterMove(moving->before, moving->group, movedIndex,
-                                                              geometry.xToTick(e.x) - moving->grabOffset, snapGrid({}))
-                                 : moving->before;
+        const auto changes =
+            e.mouseWasDraggedSinceMouseDown()
+                ? ChordTrackEdits::afterMove(moving->before, moving->group, movedIndex,
+                                             geometry.xToTick(e.x) - moving->grabOffset, snapGrid(e.mods))
+                : moving->before;
 
         if (changes != moving->before)
         {
@@ -463,7 +464,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
 
             if (onSelectionTaken)
                 onSelectionTaken();
-            selectMovedChords(*moving, changes, geometry.xToTick(e.x) - moving->grabOffset);
+            selectMovedChords(*moving, changes, geometry.xToTick(e.x) - moving->grabOffset, e.mods);
         }
         else
         {
@@ -712,25 +713,25 @@ void ChordStrip::switchJointChordEdge(JointDragging& joint, int x, int grabX) co
                               grabX, joint.selectionBefore);
 }
 
-void ChordStrip::dragEdge(EndResizing& resizing, int x)
+void ChordStrip::dragEdge(EndResizing& resizing, int x, const juce::ModifierKeys& mods)
 {
     if (resizing.index < 0 || resizing.index >= static_cast<int>(resizing.before.size()))
         return;
 
     resizing.preview = ChordTrackEdits::afterResize(resizing.before, resizing.index,
-                                                    geometry.xToTick(x) - resizing.grabOffset, snapGrid({}));
+                                                    geometry.xToTick(x) - resizing.grabOffset, snapGrid(mods));
     remapSelectionAfterResize(resizing.before, resizing.preview, resizing.index, ResizeEdge::Right,
                               resizing.selectionBefore);
     repaint();
 }
 
-void ChordStrip::dragEdge(StartResizing& resizing, int x)
+void ChordStrip::dragEdge(StartResizing& resizing, int x, const juce::ModifierKeys& mods)
 {
     if (resizing.index < 0 || resizing.index >= static_cast<int>(resizing.before.size()))
         return;
 
     resizing.preview = ChordTrackEdits::afterStartResize(resizing.before, resizing.index,
-                                                         geometry.xToTick(x) - resizing.grabOffset, snapGrid({}));
+                                                         geometry.xToTick(x) - resizing.grabOffset, snapGrid(mods));
     remapSelectionAfterResize(resizing.before, resizing.preview, resizing.index, ResizeEdge::Left,
                               resizing.selectionBefore);
     repaint();
@@ -781,9 +782,10 @@ void ChordStrip::remapSelectionAfterResize(const std::vector<ChordChange>& befor
     }
 }
 
-void ChordStrip::selectMovedChords(const Moving& moving, const std::vector<ChordChange>& changes, int cursorTick)
+void ChordStrip::selectMovedChords(const Moving& moving, const std::vector<ChordChange>& changes, int cursorTick,
+                                   const juce::ModifierKeys& mods)
 {
-    const int landedTick = snapGrid({}).round(std::max(0, cursorTick));
+    const int landedTick = snapGrid(mods).round(std::max(0, cursorTick));
     int delta = landedTick - moving.before[static_cast<size_t>(moving.index)].tick;
     for (int g : moving.group)
     {

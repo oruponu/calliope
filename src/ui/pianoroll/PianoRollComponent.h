@@ -253,6 +253,12 @@ private:
         juce::Point<int> start;
         juce::Rectangle<int> rect;
     };
+    // A Shift-press on a note's edge: a drag resizes, a click toggles the note's selection.
+    struct PendingResize
+    {
+        NoteRef hit;
+        ResizeEdge edge = ResizeEdge::None;
+    };
     struct Resizing
     {
         std::vector<ResizeTarget> targets;
@@ -276,8 +282,9 @@ private:
         int deltaNote = 0;
     };
 
-    std::variant<Idle, KeyboardPreviewing, RubberBand, Resizing, Creating, Moving> drag;
+    std::variant<Idle, KeyboardPreviewing, RubberBand, PendingResize, Resizing, Creating, Moving> drag;
     void resetNoteDrag();
+    void toggleNoteSelection(const NoteRef& ref);
     void cancelEditDrag();
     void pruneRecordedRefs();
     void beginResize(const NoteRef& hit, ResizeEdge edge);

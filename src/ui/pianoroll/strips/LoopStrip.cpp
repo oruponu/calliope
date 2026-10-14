@@ -54,7 +54,7 @@ void LoopStrip::mouseDown(const juce::MouseEvent& e)
     if (e.x < viewLeftX + labelWidth())
         return;
 
-    int tick = snapGrid({}).round(geometry.xToTick(e.x));
+    int tick = snapGrid(e.mods).round(geometry.xToTick(e.x));
     dragStartTick = std::max(0, tick);
     isDragging = true;
 }
@@ -64,7 +64,7 @@ void LoopStrip::mouseDrag(const juce::MouseEvent& e)
     if (!isDragging || sequence == nullptr || !e.mouseWasDraggedSinceMouseDown())
         return;
 
-    int tick = std::max(0, snapGrid({}).round(geometry.xToTick(e.x)));
+    int tick = std::max(0, snapGrid(e.mods).round(geometry.xToTick(e.x)));
     int start = std::min(dragStartTick, tick);
     int end = std::max(dragStartTick, tick);
     if (end > start)

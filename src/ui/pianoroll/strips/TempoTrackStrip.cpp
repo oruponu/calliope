@@ -289,7 +289,7 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
     {
         if (!e.mouseWasDraggedSinceMouseDown())
             return;
-        const TimelineGrid grid = snapGrid({});
+        const TimelineGrid grid = snapGrid(e.mods);
         const int targetTick = std::max(0, grid.round(geometry.xToTick(e.x)));
         const double targetBpm = std::round(tempoYToBpm(e.y));
         dragging->preview = TempoEdits::afterMove(dragging->before, dragging->group, dragging->index, targetTick,

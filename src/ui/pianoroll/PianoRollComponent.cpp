@@ -798,7 +798,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         if (e.mods.isRightButtonDown())
             return;
 
-        int tick = snapGrid({}).floor(xToTick(e.x));
+        int tick = snapGrid(e.mods).floor(xToTick(e.x));
         int noteNum = yToNote(e.y);
         if (noteNum < 0 || noteNum > 127)
             return;
@@ -834,23 +834,22 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
 
         if (hit.isValid())
         {
-            if (!e.mods.isShiftDown())
+            const auto edge = edgeAt(e.x, noteAt(hit));
+            if (edge != ResizeEdge::None && !e.mods.isShiftDown())
             {
-                auto edge = edgeAt(e.x, noteAt(hit));
-                if (edge != ResizeEdge::None)
-                {
-                    beginResize(hit, edge);
-                    return;
-                }
+                beginResize(hit, edge);
+                return;
             }
 
             if (e.mods.isShiftDown())
             {
-                if (selectedNotes.contains(hit))
-                    selectedNotes.erase(hit);
+                if (edge != ResizeEdge::None)
+                    drag = PendingResize{hit, edge};
                 else
-                    selectedNotes.insert(hit);
-                drag = Idle{};
+                {
+                    toggleNoteSelection(hit);
+                    drag = Idle{};
+                }
             }
             else
             {
@@ -907,12 +906,18 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     if (!e.mouseWasDraggedSinceMouseDown())
         return;
 
+    if (const auto* pending = std::get_if<PendingResize>(&drag))
+    {
+        const auto [hit, edge] = *pending;
+        beginResize(hit, edge);
+    }
+
     if (auto* resizing = std::get_if<Resizing>(&drag))
     {
         if (resizing->targets.empty())
             return;
 
-        const TimelineGrid grid = snapGrid({});
+        const TimelineGrid grid = snapGrid(e.mods);
         int minDuration = grid.stepTicks();
         int currentTick = grid.round(xToTick(e.x));
 
@@ -945,7 +950,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
     if (auto* creating = std::get_if<Creating>(&drag))
     {
-        const TimelineGrid grid = snapGrid({});
+        const TimelineGrid grid = snapGrid(e.mods);
         int minDuration = grid.stepTicks();
         int currentTick = grid.round(xToTick(e.x));
         creating->previewDuration =
@@ -962,7 +967,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     int currentNote = yToNote(e.y);
     int rawDeltaTick = currentTick - moving->dragStartTick;
     int deltaNote = currentNote - moving->dragStartNote;
-    int snappedDeltaTick = snapGrid({}).round(moving->anchorStartTick + rawDeltaTick) - moving->anchorStartTick;
+    int snappedDeltaTick = snapGrid(e.mods).round(moving->anchorStartTick + rawDeltaTick) - moving->anchorStartTick;
 
     const auto origins =
         moving->targets |
@@ -999,6 +1004,15 @@ void PianoRollComponent::mouseUp(const juce::MouseEvent&)
             for (const auto& ref : found)
                 selectedNotes.insert(ref);
         }
+        repaint();
+        if (onNoteSelectionChanged)
+            onNoteSelectionChanged(selectedNotes);
+        return;
+    }
+
+    if (const auto* pending = std::get_if<PendingResize>(&state))
+    {
+        toggleNoteSelection(pending->hit);
         repaint();
         if (onNoteSelectionChanged)
             onNoteSelectionChanged(selectedNotes);
@@ -2016,10 +2030,18 @@ void PianoRollComponent::resetNoteDrag()
         drag = Idle{};
 }
 
+void PianoRollComponent::toggleNoteSelection(const NoteRef& ref)
+{
+    if (selectedNotes.contains(ref))
+        selectedNotes.erase(ref);
+    else
+        selectedNotes.insert(ref);
+}
+
 void PianoRollComponent::cancelEditDrag()
 {
-    if (std::holds_alternative<Moving>(drag) || std::holds_alternative<Resizing>(drag) ||
-        std::holds_alternative<Creating>(drag))
+    if (std::holds_alternative<PendingResize>(drag) || std::holds_alternative<Moving>(drag) ||
+        std::holds_alternative<Resizing>(drag) || std::holds_alternative<Creating>(drag))
         drag = Idle{};
 }
 
@@ -2036,6 +2058,8 @@ void PianoRollComponent::pruneRecordedRefs()
         drag = Idle{};
     if (const auto* resizing = std::get_if<Resizing>(&drag);
         resizing != nullptr && std::ranges::any_of(resizing->targets, isGone, &ResizeTarget::ref))
+        drag = Idle{};
+    if (const auto* pending = std::get_if<PendingResize>(&drag); pending != nullptr && isGone(pending->hit))
         drag = Idle{};
 
     if (isGone(selectedNote))
