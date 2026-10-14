@@ -27,6 +27,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/model/SequenceContentsRules.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/TimelineGrid.cpp
     ${PROJECT_SOURCE_DIR}/src/model/TimelineMap.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/KeySignatureName.cpp
@@ -82,10 +83,12 @@ target_sources(CalliopeTests PRIVATE
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
     model/DefaultTimelineTests.cpp
+    model/GridDivisionTests.cpp
     model/MidiSequenceNotificationTests.cpp
     model/RouteTargetTests.cpp
     model/SequenceContentsRulesTests.cpp
     model/TickSecondsTests.cpp
+    model/TimelineGridTests.cpp
     model/TimelineLookupTests.cpp
     model/TrackIdTests.cpp
     notation/ChordSymbolTests.cpp

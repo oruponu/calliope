@@ -1,6 +1,7 @@
 #include "MainComponent.h"
 #include "AppProperties.h"
 #include "audio/MetronomeVolume.h"
+#include "model/GridDivision.h"
 #include "plugin/PluginAssignmentCodec.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
@@ -376,9 +377,9 @@ MainComponent::MainComponent()
     quantizeComboBox.setSelectedId(16, juce::dontSendNotification);
     quantizeComboBox.onChange = [this]()
     {
-        int denom = quantizeComboBox.getSelectedId();
-        pianoRoll.setQuantizeDenominator(denom);
-        controllerLane.setQuantizeDenominator(denom);
+        const GridDivision division{quantizeComboBox.getSelectedId()};
+        pianoRoll.setGridDivision(division);
+        controllerLane.setGridDivision(division);
     };
 
     transportBar.updateDisplay();

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "edit/ChordTrackEdits.h"
+#include "model/TimelineGrid.h"
+#include "model/TimelineMap.h"
 #include "notation/ChordSymbol.h"
 #include "support/ChordStringMaker.h"
 #include <initializer_list>
@@ -10,7 +12,8 @@
 
 namespace chordtest
 {
-constexpr int grid = 240;
+inline const TimelineMap defaultTimeline;
+inline const TimelineGrid grid(defaultTimeline, {8});
 
 inline ChordChange chord(int tick, const std::string& name)
 {

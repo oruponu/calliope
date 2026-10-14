@@ -1,6 +1,7 @@
 #include "ui/pianoroll/ControllerLaneComponent.h"
 #include "edit/LayeredNoteEdits.h"
 #include "edit/NoteEdit.h"
+#include "model/TimelineGrid.h"
 #include "ui/theme/TrackColours.h"
 #include <algorithm>
 #include <utility>
@@ -165,9 +166,9 @@ void ControllerLaneComponent::setRightPadding(int px)
     updateSize();
 }
 
-void ControllerLaneComponent::setQuantizeDenominator(int denom)
+void ControllerLaneComponent::setGridDivision(GridDivision division)
 {
-    quantizeDenominator = denom;
+    gridDivision = division;
     repaint();
 }
 
@@ -470,29 +471,26 @@ void ControllerLaneComponent::drawGrid(juce::Graphics& g)
         }
     }
 
-    int ppq = sequence->getTimeline().getTicksPerQuarterNote();
-    int quantizeGrid = std::min(ppq, ppq * 4 / quantizeDenominator);
-    int startTick = xToTick(std::max(visibleLeft, leftPanelWidth));
-    int firstSub = std::max(0, startTick / quantizeGrid);
-
-    for (int sub = firstSub;; ++sub)
+    const TimelineGrid grid(sequence->getTimeline(), gridDivision);
+    const int firstX = std::max(visibleLeft, leftPanelWidth);
+    for (const auto& line : grid.lines(xToTick(firstX - 1), xToTick(visibleRight + 1)))
     {
-        int tick = sub * quantizeGrid;
-        int x = tickToX(tick);
-        if (x > visibleRight)
-            break;
-        if (x < leftPanelWidth)
+        const int x = tickToX(line.tick);
+        if (x < firstX || x > visibleRight)
             continue;
 
-        auto bbt = sequence->getTimeline().tickToBarBeatTick(tick);
-
-        if (bbt.beat == 1 && bbt.tick == 0)
+        switch (line.kind)
+        {
+        case GridLineKind::Bar:
             g.setColour(border::strong);
-        else if (tick % ppq == 0)
+            break;
+        case GridLineKind::Beat:
             g.setColour(border::soft);
-        else
+            break;
+        case GridLineKind::Sub:
             g.setColour(surface::hover);
-
+            break;
+        }
         g.drawVerticalLine(x, static_cast<float>(getDrawAreaTop()), static_cast<float>(getDrawAreaBottom()));
     }
 }

@@ -2,6 +2,7 @@
 #include "edit/NoteEdit.h"
 #include "edit/NoteEdits.h"
 #include "edit/NoteQuantize.h"
+#include "ui/pianoroll/GridLineColours.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/NoteActions.h"
 #include <algorithm>
@@ -498,7 +499,7 @@ void PianoRollComponent::quantizeSelectedNotes()
         if (const auto note = notes.find(ref))
             selected.emplace_back(ref, *note);
 
-    const auto edits = NoteQuantize::startsToGrid(selected, geometry.gridTicks());
+    const auto edits = NoteQuantize::startsToGrid(selected, timelineGrid());
     if (edits.empty())
         return;
     noteEdits().apply(edits, edits.size() > 1 ? "Quantize Notes" : "Quantize Note");
@@ -802,8 +803,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         if (noteNum < 0 || noteNum > 127)
             return;
 
-        int defaultDuration =
-            sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
+        int defaultDuration = geometry.gridTicks();
         MidiNote newNote{noteNum, 100, tick, defaultDuration};
 
         selectedNote = {};
@@ -908,8 +908,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         if (resizing->targets.empty())
             return;
 
-        int minDuration =
-            sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
+        int minDuration = geometry.gridTicks();
         int currentTick = roundTickToGrid(xToTick(e.x));
 
         if (resizing->edge == ResizeEdge::Right)
@@ -941,8 +940,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
     if (auto* creating = std::get_if<Creating>(&drag))
     {
-        int minDuration =
-            sequence ? sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator : snapTicks;
+        int minDuration = geometry.gridTicks();
         int currentTick = roundTickToGrid(xToTick(e.x));
         creating->previewDuration =
             NoteEdits::afterEndResize(creating->note, currentTick - creating->note.endTick(), minDuration).duration;
@@ -1186,7 +1184,7 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
         {
             if (!selectedNotes.empty() && sequence)
             {
-                const int grid = sequence->getTimeline().getTicksPerQuarterNote() * 4 / quantizeDenominator;
+                const int grid = geometry.gridTicks();
                 nudgeSelectedNotesTime(isRight ? grid : -grid);
             }
             return true;
@@ -1244,10 +1242,9 @@ void PianoRollComponent::setNoteHeight(int h)
         onZoomChanged();
 }
 
-void PianoRollComponent::setQuantizeDenominator(int denom)
+void PianoRollComponent::setGridDivision(GridDivision division)
 {
-    quantizeDenominator = denom;
-    geometry.setQuantizeDenominator(denom);
+    geometry.setGridDivision(division);
     repaintStrips();
     repaint();
 }
@@ -1479,57 +1476,13 @@ void PianoRollComponent::drawGrid(juce::Graphics& g)
         g.drawHorizontalLine(y, static_cast<float>(gridLeft), static_cast<float>(gridRight));
     }
 
-    const auto& timeline = displayedTimeline.get();
-    int ppq = timeline.getTicksPerQuarterNote();
-    int quantizeGrid = ppq * 4 / quantizeDenominator;
-    int totalTicks = xToTick(getWidth());
-    int tick = 0;
-
-    while (tick < totalTicks)
+    for (const auto& line : timelineGrid().lines(xToTick(gridLeft - 1), xToTick(visibleRight + 1)))
     {
-        auto ts = timeline.getTimeSignatureAt(tick);
-        int ticksPerBeat = ppq * 4 / ts.denominator;
-        int beatsInBar = ts.numerator;
-        int barEndTick = tick + beatsInBar * ticksPerBeat;
-
-        if (tickToX(tick) > visibleRight)
-            break;
-
-        if (tickToX(barEndTick) < visibleLeft)
-        {
-            tick = barEndTick;
+        const int x = tickToX(line.tick);
+        if (x < visibleLeft || x > visibleRight)
             continue;
-        }
-
-        int subdivisionsPerBeat = std::max(1, ticksPerBeat / quantizeGrid);
-
-        for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
-        {
-            int beatTick = tick + beat * ticksPerBeat;
-
-            for (int sub = 0; sub < subdivisionsPerBeat; ++sub)
-            {
-                int subTick = beatTick + sub * quantizeGrid;
-                int x = tickToX(subTick);
-                if (x > visibleRight)
-                    break;
-                if (x < visibleLeft)
-                    continue;
-
-                if (sub == 0)
-                {
-                    bool isBar = (beat == 0);
-                    g.setColour(isBar ? border::strong : border::normal);
-                }
-                else
-                {
-                    g.setColour(border::soft);
-                }
-                g.drawVerticalLine(x, static_cast<float>(visibleTop), static_cast<float>(visibleBottom));
-            }
-        }
-
-        tick = barEndTick;
+        g.setColour(gridLineColour(line.kind));
+        g.drawVerticalLine(x, static_cast<float>(visibleTop), static_cast<float>(visibleBottom));
     }
 }
 
@@ -1811,14 +1764,19 @@ int PianoRollComponent::recordedNoteWidth(int durationTicks) const
     return std::max(2, tickToWidth(durationTicks));
 }
 
+TimelineGrid PianoRollComponent::timelineGrid() const
+{
+    return {displayedTimeline.get(), geometry.gridDivision()};
+}
+
 int PianoRollComponent::roundTickToGrid(int tick) const
 {
-    return geometry.roundTickToGrid(tick);
+    return timelineGrid().round(tick);
 }
 
 int PianoRollComponent::floorTickToGrid(int tick) const
 {
-    return geometry.floorTickToGrid(tick);
+    return timelineGrid().floor(tick);
 }
 
 NoteRef PianoRollComponent::hitTestNote(int x, int y) const

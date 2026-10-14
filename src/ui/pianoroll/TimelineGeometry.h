@@ -1,5 +1,7 @@
 #pragma once
 
+#include "model/GridDivision.h"
+
 class TimelineGeometry
 {
 public:
@@ -9,7 +11,8 @@ public:
 
     void setTicksPerQuarterNote(int ppqIn) { ppq = ppqIn; }
     void setBeatWidth(int w) { beatWidth = w; }
-    void setQuantizeDenominator(int d) { quantizeDenominator = d; }
+    void setGridDivision(GridDivision d) { division = d; }
+    GridDivision gridDivision() const { return division; }
 
     int getTicksPerQuarterNote() const { return ppq; }
     int getBeatWidth() const { return beatWidth; }
@@ -43,24 +46,12 @@ public:
     {
         if (ppq == 0)
             return snapTicks;
-        return ppq * 4 / quantizeDenominator;
-    }
-
-    int roundTickToGrid(int tick) const
-    {
-        const int grid = gridTicks();
-        return ((tick + grid / 2) / grid) * grid;
-    }
-
-    int floorTickToGrid(int tick) const
-    {
-        const int grid = gridTicks();
-        return (tick / grid) * grid;
+        return division.stepTicks(ppq);
     }
 
 private:
     int ppq = 0;
     int beatWidth = 80;
-    int quantizeDenominator = 16;
+    GridDivision division;
     int startX;
 };

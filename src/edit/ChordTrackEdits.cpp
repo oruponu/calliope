@@ -107,9 +107,9 @@ std::vector<ChordChange> ChordTrackEdits::afterAdd(const std::vector<ChordChange
 }
 
 std::vector<ChordChange> ChordTrackEdits::afterStartResize(const std::vector<ChordChange>& before, int chordIndex,
-                                                           int targetStartTick, int gridTicks)
+                                                           int targetStartTick, const TimelineGrid& grid)
 {
-    if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()) || gridTicks <= 0)
+    if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()))
         return before;
     if (before[static_cast<size_t>(chordIndex)].isNoChord())
         return before;
@@ -120,20 +120,35 @@ std::vector<ChordChange> ChordTrackEdits::afterStartResize(const std::vector<Cho
     if (target == body.tick)
         return before;
 
-    int newTick = ((target + gridTicks / 2) / gridTicks) * gridTicks;
+    int newTick = grid.round(target);
     if (target > body.tick)
     {
         if (newTick < body.tick)
-            newTick = (body.tick / gridTicks) * gridTicks + gridTicks;
+        {
+            const auto later = grid.next(body.tick);
+            if (!later)
+                return before;
+            newTick = *later;
+        }
         if (bodyIndex + 1 < before.size())
-            newTick = std::min(newTick, ((before[bodyIndex + 1].tick - 1) / gridTicks) * gridTicks);
+        {
+            const auto beforeNext = grid.previous(before[bodyIndex + 1].tick);
+            if (!beforeNext)
+                return before;
+            newTick = std::min(newTick, *beforeNext);
+        }
         if (newTick <= body.tick)
             return before;
     }
     else
     {
         if (newTick > body.tick)
-            newTick = ((body.tick - 1) / gridTicks) * gridTicks;
+        {
+            const auto earlier = grid.previous(body.tick);
+            if (!earlier)
+                return before;
+            newTick = *earlier;
+        }
         if (newTick >= body.tick)
             return before;
     }
@@ -156,18 +171,19 @@ std::vector<ChordChange> ChordTrackEdits::afterStartResize(const std::vector<Cho
 }
 
 std::vector<ChordChange> ChordTrackEdits::afterResize(const std::vector<ChordChange>& before, int chordIndex,
-                                                      int targetEndTick, int gridTicks)
+                                                      int targetEndTick, const TimelineGrid& grid)
 {
-    if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()) || gridTicks <= 0)
+    if (chordIndex < 0 || chordIndex >= static_cast<int>(before.size()))
         return before;
     if (before[static_cast<size_t>(chordIndex)].isNoChord())
         return before;
 
     const size_t bodyIndex = static_cast<size_t>(chordIndex);
     const int chordTick = before[bodyIndex].tick;
-    int end = ((std::max(0, targetEndTick) + gridTicks / 2) / gridTicks) * gridTicks;
-    const int minEnd = (chordTick / gridTicks) * gridTicks + gridTicks;
-    end = std::max(end, minEnd);
+    const auto minEnd = grid.next(chordTick);
+    if (!minEnd)
+        return before;
+    const int end = std::max(grid.round(std::max(0, targetEndTick)), *minEnd);
 
     auto changes = before;
     const size_t nextIndex = bodyIndex + 1;
@@ -218,11 +234,8 @@ std::vector<ChordChange> ChordTrackEdits::afterResize(const std::vector<ChordCha
 
 std::vector<ChordChange> ChordTrackEdits::afterMove(const std::vector<ChordChange>& before,
                                                     const std::vector<int>& movedIndices, int anchorIndex,
-                                                    int targetTick, int gridTicks)
+                                                    int targetTick, const TimelineGrid& grid)
 {
-    if (gridTicks <= 0)
-        return before;
-
     std::vector<int> moving;
     for (int i : movedIndices)
         if (i >= 0 && i < static_cast<int>(before.size()) && !before[static_cast<size_t>(i)].isNoChord())
@@ -233,7 +246,7 @@ std::vector<ChordChange> ChordTrackEdits::afterMove(const std::vector<ChordChang
         return before;
 
     const int anchorTick = before[static_cast<size_t>(anchorIndex)].tick;
-    const int snapped = ((std::max(0, targetTick) + gridTicks / 2) / gridTicks) * gridTicks;
+    const int snapped = grid.round(std::max(0, targetTick));
     const int delta = std::max(snapped - anchorTick, -before[static_cast<size_t>(moving.front())].tick);
     if (delta == 0)
         return before;

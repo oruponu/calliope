@@ -121,7 +121,7 @@ void ChordStrip::pasteChords(int atTick)
     if (!sequence || !clipboard.hasChords())
         return;
 
-    const int anchorTick = geometry.floorTickToGrid(std::max(0, atTick));
+    const int anchorTick = timelineGrid().floor(std::max(0, atTick));
     auto before = sequence->getChordChanges();
     auto after = ChordTrackEdits::afterPaste(before, clipboard.getChords(), anchorTick);
 
@@ -334,7 +334,7 @@ void ChordStrip::mouseDrag(const juce::MouseEvent& e)
             return;
 
         moving->preview = ChordTrackEdits::afterMove(moving->before, moving->group, moving->index,
-                                                     geometry.xToTick(e.x) - moving->grabOffset, geometry.gridTicks());
+                                                     geometry.xToTick(e.x) - moving->grabOffset, timelineGrid());
         selectMovedChords(*moving, moving->preview, geometry.xToTick(e.x) - moving->grabOffset);
         repaint();
         return;
@@ -379,7 +379,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const bool dragged = validIndex && e.mouseWasDraggedSinceMouseDown();
         const auto changes =
             dragged ? ChordTrackEdits::afterResize(resizing->before, resizedIndex,
-                                                   geometry.xToTick(e.x) - resizing->grabOffset, geometry.gridTicks())
+                                                   geometry.xToTick(e.x) - resizing->grabOffset, timelineGrid())
                     : resizing->before;
 
         if (validIndex && changes != resizing->before)
@@ -415,10 +415,10 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         }
 
         const bool dragged = e.mouseWasDraggedSinceMouseDown();
-        const auto changes = dragged ? ChordTrackEdits::afterStartResize(resizing->before, movedIndex,
-                                                                         geometry.xToTick(e.x) - resizing->grabOffset,
-                                                                         geometry.gridTicks())
-                                     : resizing->before;
+        const auto changes =
+            dragged ? ChordTrackEdits::afterStartResize(resizing->before, movedIndex,
+                                                        geometry.xToTick(e.x) - resizing->grabOffset, timelineGrid())
+                    : resizing->before;
 
         if (changes != resizing->before)
             performReplaceList(undoHistory, sequence, "Resize Chord", resizing->before, changes);
@@ -455,7 +455,7 @@ void ChordStrip::mouseUp(const juce::MouseEvent& e)
         const auto changes =
             e.mouseWasDraggedSinceMouseDown()
                 ? ChordTrackEdits::afterMove(moving->before, moving->group, movedIndex,
-                                             geometry.xToTick(e.x) - moving->grabOffset, geometry.gridTicks())
+                                             geometry.xToTick(e.x) - moving->grabOffset, timelineGrid())
                 : moving->before;
 
         if (changes != moving->before)
@@ -719,7 +719,7 @@ void ChordStrip::dragEdge(EndResizing& resizing, int x)
         return;
 
     resizing.preview = ChordTrackEdits::afterResize(resizing.before, resizing.index,
-                                                    geometry.xToTick(x) - resizing.grabOffset, geometry.gridTicks());
+                                                    geometry.xToTick(x) - resizing.grabOffset, timelineGrid());
     remapSelectionAfterResize(resizing.before, resizing.preview, resizing.index, ResizeEdge::Right,
                               resizing.selectionBefore);
     repaint();
@@ -730,8 +730,8 @@ void ChordStrip::dragEdge(StartResizing& resizing, int x)
     if (resizing.index < 0 || resizing.index >= static_cast<int>(resizing.before.size()))
         return;
 
-    resizing.preview = ChordTrackEdits::afterStartResize(
-        resizing.before, resizing.index, geometry.xToTick(x) - resizing.grabOffset, geometry.gridTicks());
+    resizing.preview = ChordTrackEdits::afterStartResize(resizing.before, resizing.index,
+                                                         geometry.xToTick(x) - resizing.grabOffset, timelineGrid());
     remapSelectionAfterResize(resizing.before, resizing.preview, resizing.index, ResizeEdge::Left,
                               resizing.selectionBefore);
     repaint();
@@ -784,7 +784,7 @@ void ChordStrip::remapSelectionAfterResize(const std::vector<ChordChange>& befor
 
 void ChordStrip::selectMovedChords(const Moving& moving, const std::vector<ChordChange>& changes, int cursorTick)
 {
-    const int landedTick = geometry.roundTickToGrid(std::max(0, cursorTick));
+    const int landedTick = timelineGrid().round(std::max(0, cursorTick));
     int delta = landedTick - moving.before[static_cast<size_t>(moving.index)].tick;
     for (int g : moving.group)
     {

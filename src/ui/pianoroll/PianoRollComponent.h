@@ -5,7 +5,9 @@
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
+#include "model/GridDivision.h"
 #include "model/MidiSequence.h"
+#include "model/TimelineGrid.h"
 #include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/TimelineGeometry.h"
@@ -130,8 +132,7 @@ public:
     int getBeatWidth() const { return beatWidth; }
     int getNoteHeight() const { return noteHeight; }
 
-    void setQuantizeDenominator(int denom);
-    int getQuantizeDenominator() const { return quantizeDenominator; }
+    void setGridDivision(GridDivision division);
 
     int tickToX(int tick) const;
     int noteToY(int noteNumber) const;
@@ -170,6 +171,7 @@ private:
     int tickToWidth(int durationTicks) const;
     // Recorded notes are drawn at least 2 px wide so that a key just pressed is visible and can be grabbed.
     int recordedNoteWidth(int durationTicks) const;
+    TimelineGrid timelineGrid() const;
     int roundTickToGrid(int tick) const;
     int floorTickToGrid(int tick) const;
 
@@ -295,8 +297,6 @@ private:
     void stopNotePreview();
     void timerCallback() override;
     static constexpr int previewHoldMs = 300;
-
-    int quantizeDenominator = 16;
 
     bool loopEnabled = false;
     int loopStartTick = 0;

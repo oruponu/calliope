@@ -1,6 +1,6 @@
 #include "ui/pianoroll/strips/TimelineStrip.h"
+#include "ui/pianoroll/GridLineColours.h"
 #include "ui/theme/Theme.h"
-#include <algorithm>
 
 TimelineStrip::TimelineStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef,
                              const juce::String& labelText)
@@ -97,61 +97,16 @@ void TimelineStrip::drawLoopOverlay(juce::Graphics& g, int top, int height, floa
 
 void TimelineStrip::drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top, float bottom)
 {
-    using namespace calliope::theme;
     if (sequence == nullptr)
         return;
 
-    const auto& timeline = displayedTimeline.get();
-    int ppq = timeline.getTicksPerQuarterNote();
-    int quantizeGrid = geometry.gridTicks();
-    int totalTicks = geometry.xToTick(getWidth());
-    int tick = 0;
-
-    while (tick < totalTicks)
+    for (const auto& line : timelineGrid().lines(geometry.xToTick(visibleLeft - 1), geometry.xToTick(visibleRight + 1)))
     {
-        auto ts = timeline.getTimeSignatureAt(tick);
-        int ticksPerBeat = ppq * 4 / ts.denominator;
-        int beatsInBar = ts.numerator;
-        int barEndTick = tick + beatsInBar * ticksPerBeat;
-
-        if (geometry.tickToX(tick) > visibleRight)
-            break;
-
-        if (geometry.tickToX(barEndTick) < visibleLeft)
-        {
-            tick = barEndTick;
+        const int x = geometry.tickToX(line.tick);
+        if (x < visibleLeft || x > visibleRight)
             continue;
-        }
-
-        int subdivisionsPerBeat = std::max(1, ticksPerBeat / quantizeGrid);
-
-        for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
-        {
-            int beatTick = tick + beat * ticksPerBeat;
-
-            for (int sub = 0; sub < subdivisionsPerBeat; ++sub)
-            {
-                int subTick = beatTick + sub * quantizeGrid;
-                int x = geometry.tickToX(subTick);
-                if (x > visibleRight)
-                    break;
-                if (x < visibleLeft)
-                    continue;
-
-                if (sub == 0)
-                {
-                    bool isBar = (beat == 0);
-                    g.setColour(isBar ? border::strong : border::normal);
-                }
-                else
-                {
-                    g.setColour(border::soft);
-                }
-                g.drawVerticalLine(x, top, bottom);
-            }
-        }
-
-        tick = barEndTick;
+        g.setColour(gridLineColour(line.kind));
+        g.drawVerticalLine(x, top, bottom);
     }
 }
 

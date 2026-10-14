@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
+#include "model/TimelineGrid.h"
 #include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/TimelineGeometry.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
@@ -28,6 +29,8 @@ protected:
     void drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top, float bottom);
     void drawRangeBand(juce::Graphics& g, const RangeSelectGesture& gesture, juce::Colour fillColour,
                        juce::Colour borderColour);
+    // Needs a sequence, like displayedTimeline.get().
+    TimelineGrid timelineGrid() const { return {displayedTimeline.get(), geometry.gridDivision()}; }
 
     const TimelineGeometry& geometry;
     const DisplayedTimeline& displayedTimeline;

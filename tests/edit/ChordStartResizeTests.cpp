@@ -89,5 +89,4 @@ TEST_CASE("start resize is a no-op in degenerate cases", "[chord][start-resize]"
     CHECK(startResize(before, -1, 2880) == before);
     CHECK(startResize(before, 4, 2880) == before);
     CHECK(startResize(before, 1, 960) == before);
-    CHECK(ChordTrackEdits::afterStartResize(before, 2, 2880, 0) == before);
 }

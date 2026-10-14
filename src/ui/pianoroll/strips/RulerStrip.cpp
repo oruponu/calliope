@@ -1,4 +1,5 @@
 #include "ui/pianoroll/strips/RulerStrip.h"
+#include "ui/pianoroll/GridLineColours.h"
 #include "ui/theme/Theme.h"
 
 RulerStrip::RulerStrip(const TimelineGeometry& geometryRef, const DisplayedTimeline& displayedTimelineRef)
@@ -23,69 +24,31 @@ void RulerStrip::paint(juce::Graphics& g)
     g.reduceClipRegion(viewLeftX + labelWidth(), 0, getWidth(), getHeight());
 
     const auto& timeline = displayedTimeline.get();
-    int ppq = timeline.getTicksPerQuarterNote();
-    int quantizeGrid = geometry.gridTicks();
-    int totalTicks = geometry.xToTick(getWidth());
-    int tick = 0;
-    int barNumber = 1;
-
-    while (tick < totalTicks)
+    // A bar number starts right of its line, so bar lines just left of the clip still get their numbers drawn.
+    const int labelReach = 30;
+    for (const auto& line :
+         timelineGrid().lines(geometry.xToTick(visibleLeft - labelReach), geometry.xToTick(visibleRight + 1)))
     {
-        auto ts = timeline.getTimeSignatureAt(tick);
-        int ticksPerBeat = ppq * 4 / ts.denominator;
-        int beatsInBar = ts.numerator;
-        int barEndTick = tick + beatsInBar * ticksPerBeat;
+        const int x = geometry.tickToX(line.tick);
+        if (x < visibleLeft - labelReach || x > visibleRight)
+            continue;
 
-        if (geometry.tickToX(tick) > visibleRight)
-            break;
-
-        if (geometry.tickToX(barEndTick) < visibleLeft)
+        g.setColour(gridLineColour(line.kind));
+        if (line.kind == GridLineKind::Sub)
         {
-            tick = barEndTick;
-            barNumber++;
+            const int tickH = getHeight() / 3;
+            g.drawVerticalLine(x, static_cast<float>(getHeight() - tickH), static_cast<float>(getHeight()));
             continue;
         }
 
-        int subdivisionsPerBeat = std::max(1, ticksPerBeat / quantizeGrid);
-
-        for (int beat = 0; beat < beatsInBar && tick + beat * ticksPerBeat <= totalTicks; ++beat)
+        g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
+        if (line.kind == GridLineKind::Bar)
         {
-            int beatTick = tick + beat * ticksPerBeat;
-
-            for (int sub = 0; sub < subdivisionsPerBeat; ++sub)
-            {
-                int subTick = beatTick + sub * quantizeGrid;
-                int x = geometry.tickToX(subTick);
-                if (x > visibleRight)
-                    break;
-                if (x < visibleLeft - 30)
-                    continue;
-
-                if (sub == 0)
-                {
-                    bool isBar = (beat == 0);
-                    g.setColour(isBar ? border::strong : border::normal);
-                    g.drawVerticalLine(x, 0.0f, static_cast<float>(getHeight()));
-
-                    if (isBar)
-                    {
-                        g.setColour(text::t2);
-                        g.setFont(font::sans(font::sizeSM));
-                        g.drawText(juce::String(barNumber), x + 4, 2, 30, getHeight() - 4,
-                                   juce::Justification::centredLeft);
-                    }
-                }
-                else
-                {
-                    g.setColour(border::soft);
-                    int tickH = getHeight() / 3;
-                    g.drawVerticalLine(x, static_cast<float>(getHeight() - tickH), static_cast<float>(getHeight()));
-                }
-            }
+            g.setColour(text::t2);
+            g.setFont(font::sans(font::sizeSM));
+            g.drawText(juce::String(timeline.tickToBarBeatTick(line.tick).bar), x + 4, 2, 30, getHeight() - 4,
+                       juce::Justification::centredLeft);
         }
-
-        tick = barEndTick;
-        barNumber++;
     }
 
     float phX = playheadX();
@@ -113,7 +76,7 @@ void RulerStrip::mouseDown(const juce::MouseEvent& e)
     if (e.x < viewLeftX + labelWidth())
         return;
 
-    int tick = std::max(0, geometry.roundTickToGrid(geometry.xToTick(e.x)));
+    int tick = std::max(0, timelineGrid().round(geometry.xToTick(e.x)));
     if (onSeek)
         onSeek(tick);
     isDragging = true;

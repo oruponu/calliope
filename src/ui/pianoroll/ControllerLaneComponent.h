@@ -4,6 +4,7 @@
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
+#include "model/GridDivision.h"
 #include "model/MidiSequence.h"
 #include "undo/UndoHistory.h"
 #include <functional>
@@ -38,7 +39,7 @@ public:
     void setContentBeats(int beats);
     void setBeatWidth(int w);
     void setRightPadding(int px);
-    void setQuantizeDenominator(int denom);
+    void setGridDivision(GridDivision division);
     void setRecordingLayer(const RecordingLayer* layer, RecordingLayerEditor* editor);
     void updateSize();
 
@@ -103,7 +104,7 @@ private:
     int contentBeats = 16;
     int rightPadding = 0;
 
-    int quantizeDenominator = 16;
+    GridDivision gridDivision;
     const RecordingLayer* recordingLayer = nullptr;
     RecordingLayerEditor* recordingEditor = nullptr;
 

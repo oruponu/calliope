@@ -97,5 +97,4 @@ TEST_CASE("move is a no-op in degenerate cases", "[chord][move]")
     CHECK(moveChords(before, {1}, 0, 3840) == before);
     CHECK(moveChords(before, {2}, 2, 5760) == before);
     CHECK(moveChords(before, {-1, 99}, 1, 3840) == before);
-    CHECK(ChordTrackEdits::afterMove(before, {1}, 1, 3840, 0) == before);
 }
