@@ -52,6 +52,7 @@ target_sources(CalliopeTests PRIVATE
     edit/KeySignatureMoveTests.cpp
     edit/KeySignaturePasteTests.cpp
     edit/LayeredNoteEditsTests.cpp
+    edit/NoteAdjacentLineTests.cpp
     edit/NoteClampShiftTests.cpp
     edit/NoteEndResizeTests.cpp
     edit/NoteQuantizeTests.cpp

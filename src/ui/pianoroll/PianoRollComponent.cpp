@@ -478,14 +478,17 @@ void PianoRollComponent::nudgeSelectedNotesTime(int deltaTick)
         edits.push_back({ref, {.startTick = noteAt(ref).startTick + deltaTick}});
     noteEdits().apply(edits, selectedNotes.size() > 1 ? "Move Notes" : "Move Note");
 
-    NoteRef anchorRef =
-        (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
-    const auto anchorNote = noteAt(anchorRef);
+    const auto anchorNote = noteAt(selectionAnchor());
 
     if (onScrollToNote)
         onScrollToNote(anchorNote.startTick, anchorNote.noteNumber);
 
     repaint();
+}
+
+NoteRef PianoRollComponent::selectionAnchor() const
+{
+    return (selectedNote.isValid() && selectedNotes.contains(selectedNote)) ? selectedNote : *selectedNotes.begin();
 }
 
 void PianoRollComponent::quantizeSelectedNotes()
@@ -1202,8 +1205,9 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key)
         {
             if (!selectedNotes.empty() && sequence)
             {
-                const int grid = geometry.gridTicks();
-                nudgeSelectedNotesTime(isRight ? grid : -grid);
+                const int anchorTick = noteAt(selectionAnchor()).startTick;
+                if (const auto delta = NoteEdits::deltaToAdjacentLine(anchorTick, isRight, timelineGrid()))
+                    nudgeSelectedNotesTime(*delta);
             }
             return true;
         }

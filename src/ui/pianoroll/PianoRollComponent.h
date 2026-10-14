@@ -205,6 +205,8 @@ private:
 
     bool isNoteSelected(const NoteRef& ref) const;
     std::vector<MidiNote> collectSelectedNotes() const;
+    // Needs a non-empty selection.
+    NoteRef selectionAnchor() const;
     void clearNoteSelection();
     void clearTempoSelection();
     void clearTimeSignatureSelection();

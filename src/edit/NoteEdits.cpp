@@ -20,6 +20,14 @@ MidiNote NoteEdits::afterEndResize(const MidiNote& note, int deltaTick, const Ti
     return resized;
 }
 
+std::optional<int> NoteEdits::deltaToAdjacentLine(int tick, bool forward, const TimelineGrid& grid)
+{
+    const auto line = forward ? grid.next(tick) : grid.previous(tick);
+    if (!line)
+        return std::nullopt;
+    return *line - tick;
+}
+
 bool NoteEdits::canShiftTime(const std::vector<MidiNote>& notes, int deltaTick)
 {
     return std::ranges::all_of(notes, [deltaTick](const MidiNote& n) { return n.startTick + deltaTick >= 0; });
