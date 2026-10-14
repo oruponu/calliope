@@ -224,7 +224,7 @@ void PianoRollComponent::drawRecordedNote(juce::Graphics& g, const juce::Rectang
     using namespace calliope::theme;
     const int x = tickToX(note.startTick);
     const int y = noteToY(note.noteNumber);
-    const int w = recordedNoteWidth(note.duration);
+    const int w = noteWidth(note.duration);
     if (y + noteHeight < clip.getY() || y > clip.getBottom() || x + w < clip.getX() || x > clip.getRight())
         return;
 
@@ -1536,7 +1536,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g)
             auto baseColour = TrackColours::getColour(trackIdx).withAlpha(alpha);
             int x = tickToX(note.startTick);
             int y = noteToY(note.noteNumber);
-            int w = tickToWidth(note.duration);
+            int w = noteWidth(note.duration);
 
             if (y + noteHeight < clip.getY() || y > clip.getBottom())
                 continue;
@@ -1601,7 +1601,7 @@ void PianoRollComponent::drawActiveTrackNote(juce::Graphics& g, const juce::Rect
 {
     int x = tickToX(note.startTick);
     int y = noteToY(note.noteNumber);
-    int w = tickToWidth(note.duration);
+    int w = noteWidth(note.duration);
 
     if (y + noteHeight < clip.getY() || y > clip.getBottom())
         return;
@@ -1703,7 +1703,7 @@ void PianoRollComponent::drawMoveGhosts(juce::Graphics& g)
 
         int x = tickToX(startTick);
         int y = noteToY(t.noteNumber + moving->deltaNote);
-        int w = tickToWidth(duration);
+        int w = noteWidth(duration);
 
         if (y + noteHeight < clip.getY() || y > clip.getBottom())
             continue;
@@ -1781,14 +1781,9 @@ void PianoRollComponent::drawLoopRegion(juce::Graphics& g)
     g.drawVerticalLine(static_cast<int>(x2), gridTop, bottom);
 }
 
-int PianoRollComponent::tickToWidth(int durationTicks) const
+int PianoRollComponent::noteWidth(int durationTicks) const
 {
-    return geometry.tickToWidth(durationTicks);
-}
-
-int PianoRollComponent::recordedNoteWidth(int durationTicks) const
-{
-    return std::max(2, tickToWidth(durationTicks));
+    return std::max(2, geometry.tickToWidth(durationTicks));
 }
 
 TimelineGrid PianoRollComponent::timelineGrid() const
@@ -1817,7 +1812,7 @@ NoteRef PianoRollComponent::hitTestNote(int x, int y) const
         {
             int nx = tickToX(note.startTick);
             int ny = noteToY(note.noteNumber);
-            int nw = ref.isRecorded() ? recordedNoteWidth(note.duration) : tickToWidth(note.duration);
+            int nw = noteWidth(note.duration);
             if (x < nx || x > nx + nw || y < ny || y >= ny + noteHeight)
                 continue;
             if (ref.isRecorded())
@@ -1842,7 +1837,7 @@ NoteRef PianoRollComponent::hitTestNote(int x, int y) const
             const auto& note = track.getNote(i);
             int nx = tickToX(note.startTick);
             int ny = noteToY(note.noteNumber);
-            int nw = tickToWidth(note.duration);
+            int nw = noteWidth(note.duration);
 
             if (x >= nx && x <= nx + nw && y >= ny && y < ny + noteHeight)
                 return {trackIdx, i};
@@ -2003,7 +1998,7 @@ std::vector<NoteRef> PianoRollComponent::findNotesInRect(const juce::Rectangle<i
 
     for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
     {
-        const int width = ref.isRecorded() ? recordedNoteWidth(note.duration) : tickToWidth(note.duration);
+        const int width = noteWidth(note.duration);
         juce::Rectangle<int> noteRect(tickToX(note.startTick), noteToY(note.noteNumber), width, noteHeight);
         if (rect.intersects(noteRect))
             result.push_back(ref);

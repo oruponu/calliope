@@ -169,9 +169,9 @@ private:
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
 
-    int tickToWidth(int durationTicks) const;
-    // Recorded notes are drawn at least 2 px wide so that a key just pressed is visible and can be grabbed.
-    int recordedNoteWidth(int durationTicks) const;
+    // Notes are drawn at least 2 px wide so that short notes, zoomed out or just pressed, stay visible and can be
+    // grabbed.
+    int noteWidth(int durationTicks) const;
     TimelineGrid timelineGrid() const;
     // The grid that mouse edits land on: timelineGrid() while snapping, otherwise every tick.
     TimelineGrid snapGrid(const juce::ModifierKeys& mods) const;
