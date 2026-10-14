@@ -177,3 +177,55 @@ TEST_CASE("the step in ticks follows the resolution", "[model][grid]")
     const auto coarse = timelineWith({{0, 4, 4}}, 100);
     CHECK(TimelineGrid(coarse, {32}).stepTicks() == 13);
 }
+
+TEST_CASE("eighth-note triplets fall every 160 ticks in 4/4", "[model][grid]")
+{
+    const TimelineMap timeline;
+    const TimelineGrid grid(timeline, {8, true});
+    CHECK(grid.lines(0, 960) ==
+          Lines{{0, Bar}, {160, Sub}, {320, Sub}, {480, Beat}, {640, Sub}, {800, Sub}, {960, Beat}});
+}
+
+TEST_CASE("quarter-note triplets in 4/4 keep the beat lines but never snap to them", "[model][grid]")
+{
+    const TimelineMap timeline;
+    const TimelineGrid grid(timeline, {4, true});
+    CHECK(grid.lines(0, 1920) == Lines{{0, Bar},
+                                       {320, Sub},
+                                       {480, Beat},
+                                       {640, Sub},
+                                       {960, Beat},
+                                       {1280, Sub},
+                                       {1440, Beat},
+                                       {1600, Sub},
+                                       {1920, Bar}});
+    CHECK(grid.round(480) == 640);
+    CHECK(grid.floor(480) == 320);
+}
+
+TEST_CASE("quarter-note triplets in 3/4 end each bar with a short step", "[model][grid]")
+{
+    const auto timeline = timelineWith({{0, 3, 4}});
+    const TimelineGrid grid(timeline, {4, true});
+    CHECK(grid.lines(0, 1440) ==
+          Lines{{0, Bar}, {320, Sub}, {480, Beat}, {640, Sub}, {960, Beat}, {1280, Sub}, {1440, Bar}});
+    CHECK(grid.lines(1440, 2880) ==
+          Lines{{1440, Bar}, {1760, Sub}, {1920, Beat}, {2080, Sub}, {2400, Beat}, {2720, Sub}, {2880, Bar}});
+    CHECK(grid.round(1359) == 1280);
+    CHECK(grid.round(1360) == 1440);
+    CHECK(grid.next(1280) == 1440);
+    CHECK(grid.previous(1440) == 1280);
+}
+
+TEST_CASE("triplet lines with a fractional step stay aligned in later bars", "[model][grid]")
+{
+    const auto timeline = timelineWith({{0, 3, 4}}, 100);
+    const TimelineGrid grid(timeline, {2, true});
+    CHECK(grid.floor(299) == 266);
+    CHECK(grid.next(266) == 300);
+    CHECK(grid.round(282) == 266);
+    CHECK(grid.round(283) == 300);
+    CHECK(grid.lines(300, 600) == Lines{{300, Bar}, {400, Beat}, {433, Sub}, {500, Beat}, {566, Sub}, {600, Bar}});
+    CHECK(grid.floor(30132) == 30000);
+    CHECK(grid.floor(30133) == 30133);
+}

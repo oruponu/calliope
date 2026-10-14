@@ -46,6 +46,9 @@ TEST_CASE("the grid follows the resolution and the grid division", "[ui][geometr
     auto fine = makeGeometry({8});
     fine.setTicksPerQuarterNote(960);
     CHECK(fine.gridTicks() == 480);
+
+    CHECK(makeGeometry({8, true}).gridTicks() == 160);
+    CHECK(makeGeometry({4, true}).gridTicks() == 320);
 }
 
 TEST_CASE("without a resolution positions stay at the timeline start and the grid is 480 ticks", "[ui][geometry]")

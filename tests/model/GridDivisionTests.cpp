@@ -14,3 +14,12 @@ TEST_CASE("the step rounds to the nearest tick and stays at least one tick", "[m
     CHECK(GridDivision{32}.stepTicks(100) == 13);
     CHECK(GridDivision{32}.stepTicks(1) == 1);
 }
+
+TEST_CASE("a triplet step is two thirds of the straight step", "[model][grid]")
+{
+    CHECK(GridDivision{2, true}.stepTicks(480) == 640);
+    CHECK(GridDivision{4, true}.stepTicks(480) == 320);
+    CHECK(GridDivision{8, true}.stepTicks(480) == 160);
+    CHECK(GridDivision{32, true}.stepTicks(480) == 40);
+    CHECK(GridDivision{32, true}.stepTicks(100) == 8);
+}

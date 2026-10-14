@@ -19,6 +19,16 @@ bool isMidiFile(const juce::File& file)
 {
     return file.hasFileExtension(".mid;.midi");
 }
+
+// A straight grid item's id is its denominator, and a triplet's is this offset plus its denominator.
+constexpr int tripletGridItemIdOffset = 100;
+
+GridDivision gridDivisionForItemId(int id)
+{
+    if (id > tripletGridItemIdOffset)
+        return {id - tripletGridItemIdOffset, true};
+    return {id};
+}
 } // namespace
 
 MainComponent::MainComponent()
@@ -374,10 +384,13 @@ MainComponent::MainComponent()
     quantizeComboBox.addItem("1/8", 8);
     quantizeComboBox.addItem("1/16", 16);
     quantizeComboBox.addItem("1/32", 32);
+    quantizeComboBox.addSeparator();
+    for (int denominator : {2, 4, 8, 16, 32})
+        quantizeComboBox.addItem("1/" + juce::String(denominator) + "T", tripletGridItemIdOffset + denominator);
     quantizeComboBox.setSelectedId(16, juce::dontSendNotification);
     quantizeComboBox.onChange = [this]()
     {
-        const GridDivision division{quantizeComboBox.getSelectedId()};
+        const GridDivision division = gridDivisionForItemId(quantizeComboBox.getSelectedId());
         pianoRoll.setGridDivision(division);
         controllerLane.setGridDivision(division);
     };

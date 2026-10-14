@@ -92,6 +92,17 @@ TEST_CASE("starts round to lines counted from the bar after a time signature cha
           std::vector<NoteEdit>{{{0, 0}, {.startTick = 1200, .heldLength = 100}}});
 }
 
+TEST_CASE("starts in 3/4 round to quarter-note triplet lines counted from each bar", "[note][quantize]")
+{
+    TimelineMap timeline;
+    timeline.setTimeSignatureChanges({{0, 3, 4}});
+    const std::vector<std::pair<NoteRef, MidiNote>> notes{{{0, 0}, {60, 100, 1360, 100}},
+                                                          {{0, 1}, {64, 100, 1700, 100}}};
+    CHECK(NoteQuantize::startsToGrid(notes, TimelineGrid(timeline, {4, true})) ==
+          std::vector<NoteEdit>{{{0, 0}, {.startTick = 1440, .heldLength = 100}},
+                                {{0, 1}, {.startTick = 1760, .heldLength = 100}}});
+}
+
 TEST_CASE("a grid finer than one tick gives no edits", "[note][quantize]")
 {
     TimelineMap coarse;
