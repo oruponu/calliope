@@ -377,6 +377,12 @@ MainComponent::MainComponent()
     selectToolButton.setActive(true);
     selectToolButton.onClick = [this]() { setActiveTool(PianoRollComponent::EditMode::Select); };
 
+    addAndMakeVisible(snapButton);
+    const bool snapEnabled = getAppProperties().getUserSettings()->getBoolValue("snapEnabled", true);
+    snapButton.setActive(snapEnabled);
+    pianoRoll.setSnapEnabled(snapEnabled);
+    snapButton.onClick = [this]() { toggleSnap(); };
+
     addAndMakeVisible(quantizeComboBox);
     quantizeComboBox.addItem("1/1", 1);
     quantizeComboBox.addItem("1/2", 2);
@@ -403,6 +409,7 @@ MainComponent::MainComponent()
     controllerLane.setWantsKeyboardFocus(true);
     selectToolButton.setWantsKeyboardFocus(true);
     editToolButton.setWantsKeyboardFocus(true);
+    snapButton.setWantsKeyboardFocus(true);
     addAndMakeVisible(trackListFrame);
     addAndMakeVisible(pianoRollFrame);
     addAndMakeVisible(eventListFrame);
@@ -524,6 +531,8 @@ void MainComponent::resized()
         toolBtnArea.removeFromLeft(pad * 2);
         toolBarSeparatorX = toolBtnArea.getX();
         toolBtnArea.removeFromLeft(pad * 2);
+        snapButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
+        toolBtnArea.removeFromLeft(pad);
         quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70).withSizeKeepingCentre(70, 26));
     }
 
@@ -584,7 +593,7 @@ void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
     if (belongsTo(trackList))
         detected = FocusPanel::TrackList;
     else if (belongsTo(pianoRoll) || belongsTo(controllerLane) || belongsTo(quantizeComboBox) ||
-             belongsTo(selectToolButton) || belongsTo(editToolButton))
+             belongsTo(selectToolButton) || belongsTo(editToolButton) || belongsTo(snapButton))
         detected = FocusPanel::PianoRoll;
     else if (belongsTo(eventList))
         detected = FocusPanel::EventList;
@@ -701,6 +710,9 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::switchToSelectTool:
         setActiveTool(PianoRollComponent::EditMode::Select);
+        return true;
+    case AppCommands::toggleSnap:
+        toggleSnap();
         return true;
     case AppCommands::undo:
         document.getHistory().undo();
@@ -872,6 +884,14 @@ void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
     editToolButton.setActive(mode == PianoRollComponent::EditMode::Edit);
     selectToolButton.setActive(mode == PianoRollComponent::EditMode::Select);
     pianoRoll.setEditMode(mode);
+}
+
+void MainComponent::toggleSnap()
+{
+    const bool enabled = !snapButton.isActive();
+    snapButton.setActive(enabled);
+    pianoRoll.setSnapEnabled(enabled);
+    getAppProperties().getUserSettings()->setValue("snapEnabled", enabled);
 }
 
 void MainComponent::updateFocusBorder()

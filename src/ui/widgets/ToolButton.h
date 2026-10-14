@@ -10,7 +10,8 @@ public:
     enum Type
     {
         EditTool,
-        SelectTool
+        SelectTool,
+        Snap
     };
     ToolButton(Type t) : type(t) { setRepaintsOnMouseActivity(true); }
     Type getType() const { return type; }
@@ -81,11 +82,28 @@ inline void ToolButton::paint(juce::Graphics& g)
         arrow.closeSubPath();
         g.fillPath(arrow);
     }
+    else if (type == Snap)
+    {
+        // A horseshoe magnet opening upwards, with its pole tips set apart from the body.
+        float size = bounds.getHeight() * 0.36f;
+        float r = size * 0.6f;
+        float thickness = size * 0.45f;
+        juce::Path body;
+        body.startNewSubPath(cx - r, cy - size * 0.3f);
+        body.lineTo(cx - r, cy + size * 0.1f);
+        body.addCentredArc(cx, cy + size * 0.1f, r, r, 0.0f, juce::MathConstants<float>::pi * 1.5f,
+                           juce::MathConstants<float>::halfPi);
+        body.lineTo(cx + r, cy - size * 0.3f);
+        g.strokePath(body, juce::PathStrokeType(thickness));
+        for (float x : {cx - r, cx + r})
+            g.fillRect(juce::Rectangle<float>(thickness, size * 0.35f).withCentre({x, cy - size * 0.72f}));
+    }
 }
 
 inline void ToolButton::mouseUp(const juce::MouseEvent& e)
 {
-    if (active)
+    // The tool buttons act as a radio group; only the snap button turns off when clicked again.
+    if (active && type != Snap)
         return;
     if (getLocalBounds().contains(e.getPosition()) && onClick)
         onClick();

@@ -13,6 +13,10 @@ public:
     void setBeatWidth(int w) { beatWidth = w; }
     void setGridDivision(GridDivision d) { division = d; }
     GridDivision gridDivision() const { return division; }
+    void setSnapEnabled(bool enabled) { snapping = enabled; }
+    bool snapEnabled() const { return snapping; }
+    // Whether mouse edits land on grid lines; inverted flips the setting, as holding Shift does.
+    bool snaps(bool inverted) const { return snapping != inverted; }
 
     int getTicksPerQuarterNote() const { return ppq; }
     int getBeatWidth() const { return beatWidth; }
@@ -53,5 +57,6 @@ private:
     int ppq = 0;
     int beatWidth = 80;
     GridDivision division;
+    bool snapping = true;
     int startX;
 };

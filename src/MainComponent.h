@@ -73,6 +73,7 @@ private:
     void tracksChanged() override;
 
     void setActiveTool(PianoRollComponent::EditMode mode);
+    void toggleSnap();
     void updateFocusBorder();
     void onVBlank();
     void scrollToPlayhead(int tick);
@@ -179,6 +180,7 @@ private:
 
     ToolButton editToolButton{ToolButton::EditTool};
     ToolButton selectToolButton{ToolButton::SelectTool};
+    ToolButton snapButton{ToolButton::Snap};
 
     juce::ComboBox quantizeComboBox;
 

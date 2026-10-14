@@ -76,7 +76,7 @@ void RulerStrip::mouseDown(const juce::MouseEvent& e)
     if (e.x < viewLeftX + labelWidth())
         return;
 
-    int tick = std::max(0, timelineGrid().round(geometry.xToTick(e.x)));
+    int tick = std::max(0, snapGrid({}).round(geometry.xToTick(e.x)));
     if (onSeek)
         onSeek(tick);
     isDragging = true;

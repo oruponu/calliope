@@ -798,7 +798,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         if (e.mods.isRightButtonDown())
             return;
 
-        int tick = floorTickToGrid(xToTick(e.x));
+        int tick = snapGrid({}).floor(xToTick(e.x));
         int noteNum = yToNote(e.y);
         if (noteNum < 0 || noteNum > 127)
             return;
@@ -903,13 +903,18 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
+    // Without a snap to absorb it, a click's jitter would otherwise move or resize notes.
+    if (!e.mouseWasDraggedSinceMouseDown())
+        return;
+
     if (auto* resizing = std::get_if<Resizing>(&drag))
     {
         if (resizing->targets.empty())
             return;
 
-        int minDuration = geometry.gridTicks();
-        int currentTick = roundTickToGrid(xToTick(e.x));
+        const TimelineGrid grid = snapGrid({});
+        int minDuration = grid.stepTicks();
+        int currentTick = grid.round(xToTick(e.x));
 
         if (resizing->edge == ResizeEdge::Right)
         {
@@ -940,8 +945,9 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
     if (auto* creating = std::get_if<Creating>(&drag))
     {
-        int minDuration = geometry.gridTicks();
-        int currentTick = roundTickToGrid(xToTick(e.x));
+        const TimelineGrid grid = snapGrid({});
+        int minDuration = grid.stepTicks();
+        int currentTick = grid.round(xToTick(e.x));
         creating->previewDuration =
             NoteEdits::afterEndResize(creating->note, currentTick - creating->note.endTick(), minDuration).duration;
         repaint();
@@ -956,7 +962,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     int currentNote = yToNote(e.y);
     int rawDeltaTick = currentTick - moving->dragStartTick;
     int deltaNote = currentNote - moving->dragStartNote;
-    int snappedDeltaTick = roundTickToGrid(moving->anchorStartTick + rawDeltaTick) - moving->anchorStartTick;
+    int snappedDeltaTick = snapGrid({}).round(moving->anchorStartTick + rawDeltaTick) - moving->anchorStartTick;
 
     const auto origins =
         moving->targets |
@@ -1247,6 +1253,11 @@ void PianoRollComponent::setGridDivision(GridDivision division)
     geometry.setGridDivision(division);
     repaintStrips();
     repaint();
+}
+
+void PianoRollComponent::setSnapEnabled(bool enabled)
+{
+    geometry.setSnapEnabled(enabled);
 }
 
 int PianoRollComponent::tickToX(int tick) const
@@ -1769,14 +1780,11 @@ TimelineGrid PianoRollComponent::timelineGrid() const
     return {displayedTimeline.get(), geometry.gridDivision()};
 }
 
-int PianoRollComponent::roundTickToGrid(int tick) const
+TimelineGrid PianoRollComponent::snapGrid(const juce::ModifierKeys& mods) const
 {
-    return timelineGrid().round(tick);
-}
-
-int PianoRollComponent::floorTickToGrid(int tick) const
-{
-    return timelineGrid().floor(tick);
+    if (geometry.snaps(mods.isShiftDown()))
+        return timelineGrid();
+    return TimelineGrid::everyTick(displayedTimeline.get());
 }
 
 NoteRef PianoRollComponent::hitTestNote(int x, int y) const

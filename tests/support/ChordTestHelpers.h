@@ -14,6 +14,7 @@ namespace chordtest
 {
 inline const TimelineMap defaultTimeline;
 inline const TimelineGrid grid(defaultTimeline, {8});
+inline const TimelineGrid everyTickGrid = TimelineGrid::everyTick(defaultTimeline);
 
 inline ChordChange chord(int tick, const std::string& name)
 {

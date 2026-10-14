@@ -40,9 +40,13 @@ BarSpan barAt(const TimelineMap& timeline, long long tick)
 }
 } // namespace
 
-TimelineGrid::TimelineGrid(const TimelineMap& timelineIn, GridDivision divisionIn)
-    : timeline(timelineIn), division(divisionIn), stepNum(division.stepNumerator(timeline.getTicksPerQuarterNote())),
-      stepDen(division.stepDenominator())
+TimelineGrid::TimelineGrid(const TimelineMap& timelineIn, GridDivision division)
+    : TimelineGrid(timelineIn, division.stepNumerator(timelineIn.getTicksPerQuarterNote()), division.stepDenominator())
+{
+}
+
+TimelineGrid::TimelineGrid(const TimelineMap& timelineIn, long long stepNumIn, long long stepDenIn)
+    : timeline(timelineIn), stepNum(stepNumIn), stepDen(stepDenIn)
 {
     // A step below one tick would put several lines on a tick; a one-tick step already makes every tick a line.
     if (stepDen < 1 || stepNum < stepDen)
@@ -50,6 +54,11 @@ TimelineGrid::TimelineGrid(const TimelineMap& timelineIn, GridDivision divisionI
         stepNum = 1;
         stepDen = 1;
     }
+}
+
+TimelineGrid TimelineGrid::everyTick(const TimelineMap& timeline)
+{
+    return {timeline, 1, 1};
 }
 
 int TimelineGrid::round(int tick) const
@@ -87,7 +96,7 @@ std::optional<int> TimelineGrid::previous(int tick) const
 
 int TimelineGrid::stepTicks() const
 {
-    return division.stepTicks(timeline.getTicksPerQuarterNote());
+    return static_cast<int>((stepNum + stepDen / 2) / stepDen);
 }
 
 std::vector<GridLine> TimelineGrid::lines(int fromTick, int toTick) const

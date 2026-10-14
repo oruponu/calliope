@@ -16,6 +16,7 @@ struct AppCommands
         nextBar,
         switchToEditTool,
         switchToSelectTool,
+        toggleSnap,
         undo,
         redo,
         cut,

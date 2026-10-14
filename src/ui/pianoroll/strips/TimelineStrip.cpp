@@ -52,6 +52,13 @@ void TimelineStrip::setViewLeftX(int x)
     repaint(viewLeftX, 0, labelWidth(), getHeight());
 }
 
+TimelineGrid TimelineStrip::snapGrid(const juce::ModifierKeys& mods) const
+{
+    if (geometry.snaps(mods.isShiftDown()))
+        return timelineGrid();
+    return TimelineGrid::everyTick(displayedTimeline.get());
+}
+
 float TimelineStrip::playheadX() const
 {
     if (sequence == nullptr)

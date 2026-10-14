@@ -133,6 +133,7 @@ public:
     int getNoteHeight() const { return noteHeight; }
 
     void setGridDivision(GridDivision division);
+    void setSnapEnabled(bool enabled);
 
     int tickToX(int tick) const;
     int noteToY(int noteNumber) const;
@@ -172,8 +173,8 @@ private:
     // Recorded notes are drawn at least 2 px wide so that a key just pressed is visible and can be grabbed.
     int recordedNoteWidth(int durationTicks) const;
     TimelineGrid timelineGrid() const;
-    int roundTickToGrid(int tick) const;
-    int floorTickToGrid(int tick) const;
+    // The grid that mouse edits land on: timelineGrid() while snapping, otherwise every tick.
+    TimelineGrid snapGrid(const juce::ModifierKeys& mods) const;
 
     enum class ResizeEdge
     {

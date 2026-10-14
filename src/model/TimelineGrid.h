@@ -14,6 +14,8 @@ class TimelineGrid
 {
 public:
     TimelineGrid(const TimelineMap& timeline, GridDivision division);
+    // For edits that do not snap.
+    static TimelineGrid everyTick(const TimelineMap& timeline);
 
     // The nearest line, the later one on a tie. When only one of the two lines fits in int, that one.
     int round(int tick) const;
@@ -28,11 +30,13 @@ public:
     std::vector<GridLine> lines(int fromTick, int toTick) const;
 
 private:
+    // The step is stepNum / stepDen ticks.
+    TimelineGrid(const TimelineMap& timeline, long long stepNum, long long stepDen);
+
     long long floorLine(long long tick) const;
     long long nextLine(long long tick) const;
 
     const TimelineMap& timeline;
-    GridDivision division;
     long long stepNum;
     long long stepDen;
 };

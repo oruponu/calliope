@@ -98,3 +98,9 @@ TEST_CASE("move is a no-op in degenerate cases", "[chord][move]")
     CHECK(moveChords(before, {2}, 2, 5760) == before);
     CHECK(moveChords(before, {-1, 99}, 1, 3840) == before);
 }
+
+TEST_CASE("with the every-tick grid a chord moves to the exact tick", "[chord][move]")
+{
+    CHECK(ChordTrackEdits::afterMove(single(), {1}, 1, 2881, everyTickGrid) ==
+          chords({{0, "C"}, {1920, "N.C."}, {2881, "F"}, {4801, "G"}}));
+}

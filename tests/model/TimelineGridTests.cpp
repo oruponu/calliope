@@ -229,3 +229,28 @@ TEST_CASE("triplet lines with a fractional step stay aligned in later bars", "[m
     CHECK(grid.floor(30132) == 30000);
     CHECK(grid.floor(30133) == 30133);
 }
+
+TEST_CASE("the every-tick grid keeps every tick where it is", "[model][grid]")
+{
+    const auto timeline = timelineWith({{0, 3, 4}});
+    const auto grid = TimelineGrid::everyTick(timeline);
+    CHECK(grid.round(0) == 0);
+    CHECK(grid.round(7) == 7);
+    CHECK(grid.round(1439) == 1439);
+    CHECK(grid.round(-5) == -5);
+    CHECK(grid.floor(7) == 7);
+    CHECK(grid.floor(-5) == -5);
+    CHECK(grid.stepTicks() == 1);
+}
+
+TEST_CASE("the every-tick grid steps one tick and has no line outside int", "[model][grid]")
+{
+    const TimelineMap timeline;
+    const auto grid = TimelineGrid::everyTick(timeline);
+    CHECK(grid.next(7) == 8);
+    CHECK(grid.previous(7) == 6);
+    CHECK(grid.next(1919) == 1920);
+    CHECK(grid.previous(1920) == 1919);
+    CHECK(grid.next(lastTick) == std::nullopt);
+    CHECK(grid.previous(firstTick) == std::nullopt);
+}

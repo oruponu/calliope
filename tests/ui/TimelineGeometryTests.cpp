@@ -59,3 +59,20 @@ TEST_CASE("without a resolution positions stay at the timeline start and the gri
     CHECK(geometry.xToTick(500) == 0);
     CHECK(geometry.gridTicks() == 480);
 }
+
+TEST_CASE("snapping is on by default and inverting turns it off", "[ui][geometry]")
+{
+    const TimelineGeometry geometry(100);
+    CHECK(geometry.snapEnabled());
+    CHECK(geometry.snaps(false));
+    CHECK_FALSE(geometry.snaps(true));
+}
+
+TEST_CASE("with snapping off inverting turns it on", "[ui][geometry]")
+{
+    TimelineGeometry geometry(100);
+    geometry.setSnapEnabled(false);
+    CHECK_FALSE(geometry.snapEnabled());
+    CHECK_FALSE(geometry.snaps(false));
+    CHECK(geometry.snaps(true));
+}

@@ -31,6 +31,8 @@ protected:
                        juce::Colour borderColour);
     // Needs a sequence, like displayedTimeline.get().
     TimelineGrid timelineGrid() const { return {displayedTimeline.get(), geometry.gridDivision()}; }
+    // The grid that mouse edits land on: timelineGrid() while snapping, otherwise every tick. Needs a sequence too.
+    TimelineGrid snapGrid(const juce::ModifierKeys& mods) const;
 
     const TimelineGeometry& geometry;
     const DisplayedTimeline& displayedTimeline;

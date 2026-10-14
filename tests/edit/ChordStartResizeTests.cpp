@@ -90,3 +90,9 @@ TEST_CASE("start resize is a no-op in degenerate cases", "[chord][start-resize]"
     CHECK(startResize(before, 4, 2880) == before);
     CHECK(startResize(before, 1, 960) == before);
 }
+
+TEST_CASE("with the every-tick grid the left edge keeps at least one tick", "[chord][start-resize]")
+{
+    CHECK(ChordTrackEdits::afterStartResize(gapped(), 2, 6000, everyTickGrid) ==
+          chords({{0, "A"}, {1920, "N.C."}, {5759, "C"}, {5760, "N.C."}}));
+}

@@ -113,3 +113,15 @@ TEST_CASE("resize is a no-op in degenerate cases", "[chord][resize]")
     CHECK(resize(before, 4, 2880) == before);
     CHECK(resize(before, 1, 2880) == before);
 }
+
+TEST_CASE("with the every-tick grid the right edge lands on the exact tick", "[chord][resize]")
+{
+    CHECK(ChordTrackEdits::afterResize(gapped(), 0, 2881, everyTickGrid) ==
+          chords({{0, "A"}, {2881, "N.C."}, {3840, "C"}, {5760, "N.C."}}));
+}
+
+TEST_CASE("with the every-tick grid the right edge keeps at least one tick", "[chord][resize]")
+{
+    const auto before = chords({{960, "A"}, {2880, "N.C."}});
+    CHECK(ChordTrackEdits::afterResize(before, 0, 0, everyTickGrid) == chords({{960, "A"}, {961, "N.C."}}));
+}

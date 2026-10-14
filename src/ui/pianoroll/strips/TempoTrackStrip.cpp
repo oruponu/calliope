@@ -287,10 +287,13 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
 
     if (auto* dragging = std::get_if<PointDragging>(&drag))
     {
-        const int targetTick = std::max(0, timelineGrid().round(geometry.xToTick(e.x)));
+        if (!e.mouseWasDraggedSinceMouseDown())
+            return;
+        const TimelineGrid grid = snapGrid({});
+        const int targetTick = std::max(0, grid.round(geometry.xToTick(e.x)));
         const double targetBpm = std::round(tempoYToBpm(e.y));
         dragging->preview = TempoEdits::afterMove(dragging->before, dragging->group, dragging->index, targetTick,
-                                                  targetBpm, geometry.gridTicks());
+                                                  targetBpm, grid.stepTicks());
         dragging->moved = dragging->preview != dragging->before;
         repaint();
         return;
@@ -422,7 +425,7 @@ bool TempoTrackStrip::hitTestTempoLine(int x, int y, int& outTick, double& outBp
     if (std::abs(static_cast<float>(y) - lineY) > tolerance)
         return false;
 
-    int tick = std::max(0, timelineGrid().round(geometry.xToTick(x)));
+    int tick = std::max(0, snapGrid({}).round(geometry.xToTick(x)));
     outTick = tick;
     outBpm = sequence->getTimeline().getTempoAt(tick);
     return true;

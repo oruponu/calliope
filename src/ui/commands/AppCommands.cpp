@@ -15,6 +15,7 @@ void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
                        nextBar,
                        switchToEditTool,
                        switchToSelectTool,
+                       toggleSnap,
                        undo,
                        redo,
                        cut,
@@ -92,6 +93,10 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
     case switchToEditTool:
         result.setInfo("Edit Tool", "", "Tools", 0);
         result.addDefaultKeypress('2', 0);
+        break;
+    case toggleSnap:
+        result.setInfo("Snap to Grid", "", "Edit", 0);
+        result.addDefaultKeypress('N', 0);
         break;
     case undo:
         result.setInfo("Undo", "", "Edit", 0);
