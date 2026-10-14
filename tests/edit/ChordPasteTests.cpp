@@ -1,7 +1,7 @@
 #include "support/ChordTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace chordtest;
+using namespace ChordTest;
 
 TEST_CASE("pasting preserves lengths and gaps", "[chord][paste]")
 {

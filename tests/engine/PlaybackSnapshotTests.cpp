@@ -150,10 +150,10 @@ TEST_CASE("getTempoAt defaults to 120 when there are no tempo changes", "[engine
 TEST_CASE("time signature changes are copied into the snapshot", "[engine][snapshot]")
 {
     MidiSequence seq;
-    timesigtest::setTimeSignatures(seq, {{1, 4, 4}, {3, 3, 4}});
+    TimeSignatureTest::setTimeSignatures(seq, {{1, 4, 4}, {3, 3, 4}});
 
     const auto snap = PlaybackSnapshot::build(seq);
-    CHECK(snap.timeSignatureChanges == timesigtest::timeSigs({{1, 4, 4}, {3, 3, 4}}));
+    CHECK(snap.timeSignatureChanges == TimeSignatureTest::timeSigs({{1, 4, 4}, {3, 3, 4}}));
 }
 
 TEST_CASE("recorded notes and events are played on their track", "[engine][snapshot]")

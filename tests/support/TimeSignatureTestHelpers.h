@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace timesigtest
+namespace TimeSignatureTest
 {
 constexpr int ppq = 480;
 
@@ -53,4 +53,4 @@ inline void setTimeSignatures(TimelineMap& timeline, std::initializer_list<BarSi
 {
     timeline.setTimeSignatureChanges(timeSigs(entries));
 }
-} // namespace timesigtest
+} // namespace TimeSignatureTest

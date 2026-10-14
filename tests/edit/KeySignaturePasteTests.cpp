@@ -38,7 +38,7 @@ TEST_CASE("pasting between key signatures keeps them in tick order", "[keysig][p
 TEST_CASE("pasted key signatures follow the time signature map", "[keysig][paste]")
 {
     TimelineMap threeFour;
-    timesigtest::setTimeSignatures(threeFour, {{1, 3, 4}});
+    TimeSignatureTest::setTimeSignatures(threeFour, {{1, 3, 4}});
     CHECK(KeySignatureEdits::afterPaste({{0, 0, false}}, {{0, 2, false}}, 3, threeFour) ==
           Keys{{0, 0, false}, {2880, 2, false}});
 }

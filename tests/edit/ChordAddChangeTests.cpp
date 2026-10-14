@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 
-using namespace chordtest;
+using namespace ChordTest;
 
 TEST_CASE("adding a chord at an existing tick overwrites all of its fields", "[chord][add-change]")
 {

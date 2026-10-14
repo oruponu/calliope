@@ -35,7 +35,7 @@ TEST_CASE("before the first tempo change the default tempo applies", "[timeline]
 TEST_CASE("the time signature at a tick is the last change at or before it", "[timeline][lookup]")
 {
     MidiSequence seq;
-    timesigtest::setTimeSignatures(seq, {{1, 4, 4}, {5, 3, 4}});
+    TimeSignatureTest::setTimeSignatures(seq, {{1, 4, 4}, {5, 3, 4}});
     CHECK(seq.getTimeline().getTimeSignatureAt(7679) == TimeSignatureChange{0, 4, 4});
     CHECK(seq.getTimeline().getTimeSignatureAt(7680) == TimeSignatureChange{7680, 3, 4});
     CHECK(seq.getTimeline().getTimeSignatureAt(100000) == TimeSignatureChange{7680, 3, 4});

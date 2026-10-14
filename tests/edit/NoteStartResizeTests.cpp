@@ -3,7 +3,7 @@
 #include "support/MidiNoteTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 
-using namespace gridtest;
+using namespace GridTest;
 
 TEST_CASE("dragging the start left lengthens the note and keeps its end", "[note][start-resize]")
 {

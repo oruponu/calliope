@@ -20,7 +20,7 @@ TEST_CASE("notes keep their pitch, velocity, position and length", "[io][midifil
     track.addNote({127, 127, 1920, 3840});
     seq.addTrack(track);
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -36,7 +36,7 @@ TEST_CASE("notes are loaded in time order", "[io][midifile]")
     track.addNote({60, 100, 0, 480});
     seq.addTrack(track);
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -51,7 +51,7 @@ TEST_CASE("back-to-back notes of the same pitch keep their lengths", "[io][midif
     track.addNote({60, 90, 480, 240});
     seq.addTrack(track);
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -69,7 +69,7 @@ TEST_CASE("channel events keep their type, position and values", "[io][midifile]
     track.addEvent({MidiEvent::Type::KeyPressure, 480, 60, 33});
     seq.addTrack(track);
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -94,7 +94,7 @@ TEST_CASE("tracks keep their order, names and channels", "[io][midifile]")
     drums.addNote({36, 100, 0, 120});
     seq.addTrack(drums);
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 2);
@@ -122,7 +122,7 @@ TEST_CASE("tracks without notes or events keep their order, names and channels",
     unnamed.setChannel(16);
     seq.addTrack(unnamed);
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 3);
@@ -147,7 +147,7 @@ TEST_CASE("the resolution is kept", "[io][midifile]")
     contents.tracks.push_back(track);
     seq.replaceContents(std::move(contents));
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTicksPerQuarterNote() == 960);
@@ -161,7 +161,7 @@ TEST_CASE("tempo changes keep their positions and tempos", "[io][midifile]")
     seq.addTrack();
     seq.setTempoChanges({{0, 120.0}, {1920, 140.0}, {3840, 72.5}});
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     const auto& tempos = loaded->timeline.getTempoChanges();
@@ -180,7 +180,7 @@ TEST_CASE("time signature changes are kept", "[io][midifile]")
     seq.addTrack();
     seq.setTimeSignatureChanges({{0, 3, 4}, {1440, 6, 8}, {2880, 4, 4}});
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTimeSignatureChanges() ==
@@ -193,7 +193,7 @@ TEST_CASE("key signature changes are kept", "[io][midifile]")
     seq.addTrack();
     seq.setKeySignatureChanges({{0, -3, true}, {1920, 2, false}, {3840, 0, false}});
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     CHECK(loaded->keySignatureChanges ==
@@ -202,7 +202,7 @@ TEST_CASE("key signature changes are kept", "[io][midifile]")
 
 TEST_CASE("chord changes keep their root, type and bass", "[io][midifile]")
 {
-    using namespace chordtest;
+    using namespace ChordTest;
     auto slash = chord(1920, "G");
     slash.bassRoot = chord(0, "B").chordRoot;
     slash.bassType = 0;
@@ -212,7 +212,7 @@ TEST_CASE("chord changes keep their root, type and bass", "[io][midifile]")
     seq.addTrack();
     seq.setChordChanges(chordChanges);
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     CHECK(loaded->chordChanges == chordChanges);
@@ -222,7 +222,7 @@ TEST_CASE("a sequence without tracks loads as one empty track", "[io][midifile]"
 {
     MidiSequence seq;
 
-    const auto loaded = midifiletest::saveAndLoad(seq);
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);

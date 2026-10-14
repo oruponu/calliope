@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace chordtest
+namespace ChordTest
 {
 inline const TimelineMap defaultTimeline;
 inline const TimelineGrid grid(defaultTimeline, {8});
@@ -58,4 +58,4 @@ inline RelativeChord relative(int tickOffset, int length, const std::string& nam
     const auto c = chord(0, name);
     return {tickOffset, length, c.chordRoot, c.chordType, c.bassRoot, c.bassType};
 }
-} // namespace chordtest
+} // namespace ChordTest

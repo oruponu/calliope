@@ -6,8 +6,8 @@
 #include <utility>
 #include <vector>
 
-using timesigtest::ppq;
-using timesigtest::timeSigs;
+using TimeSignatureTest::ppq;
+using TimeSignatureTest::timeSigs;
 
 TEST_CASE("4/4 bar yields one accented click and three plain clicks", "[engine][metronome]")
 {
@@ -90,7 +90,7 @@ TEST_CASE("contiguous ranges neither drop nor duplicate clicks", "[engine][metro
 TEST_CASE("every click lands on a beat head counted by TimelineMap", "[engine][metronome]")
 {
     TimelineMap timeline;
-    timesigtest::setTimeSignatures(timeline, {{1, 4, 4}, {3, 6, 8}, {5, 5, 4}});
+    TimeSignatureTest::setTimeSignatures(timeline, {{1, 4, 4}, {3, 6, 8}, {5, 5, 4}});
 
     const auto clicks =
         metronomeClicksInRange(timeline.getTimeSignatureChanges(), timeline.getTicksPerQuarterNote(), 0, 20000);

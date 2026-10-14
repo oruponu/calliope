@@ -3,7 +3,7 @@
 #include "model/TimelineGrid.h"
 #include "model/TimelineMap.h"
 
-namespace gridtest
+namespace GridTest
 {
 inline TimelineMap threeFourTimeline()
 {
@@ -17,4 +17,4 @@ inline const TimelineMap threeFour = threeFourTimeline();
 inline const TimelineGrid fourFourSixteenths(fourFour, {16});
 inline const TimelineGrid fourFourQuarters(fourFour, {4});
 inline const TimelineGrid threeFourQuarterTriplets(threeFour, {4, true});
-} // namespace gridtest
+} // namespace GridTest

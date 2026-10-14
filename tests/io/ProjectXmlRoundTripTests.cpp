@@ -61,7 +61,7 @@ TEST_CASE("the timeline, key signatures and chords come back unchanged", "[io][p
     contents.timeline.setTempoChanges({{0, 120.0}, {1920, 87.5}, {3840, 1.0 / 3.0}});
     contents.timeline.setTimeSignatureChanges({{0, 4, 4}, {3840, 7, 8}});
     contents.keySignatureChanges = {{0, -3, false}, {1920, 4, true}};
-    contents.chordChanges = {chordtest::chord(0, "C"), chordtest::chord(960, "N.C."), {1920, 0x23, 5, 0x15, 200}};
+    contents.chordChanges = {ChordTest::chord(0, "C"), ChordTest::chord(960, "N.C."), {1920, 0x23, 5, 0x15, 200}};
     MidiSequence seq;
     seq.replaceContents(std::move(contents));
 
@@ -269,12 +269,12 @@ TEST_CASE("an empty song comes back with no tracks", "[io][projectxml]")
 TEST_CASE("a MIDI import with a mid-bar time signature saves and reopens", "[io][projectxml]")
 {
     juce::MidiMessageSequence conductor;
-    conductor.addEvent(midifiletest::at(juce::MidiMessage::timeSignatureMetaEvent(4, 4), 0));
-    conductor.addEvent(midifiletest::at(juce::MidiMessage::timeSignatureMetaEvent(3, 4), 480));
+    conductor.addEvent(MidiFileTest::at(juce::MidiMessage::timeSignatureMetaEvent(4, 4), 0));
+    conductor.addEvent(MidiFileTest::at(juce::MidiMessage::timeSignatureMetaEvent(3, 4), 480));
     juce::MidiFile midiFile;
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
-    auto imported = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    auto imported = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
     REQUIRE(imported);
     MidiSequence seq;
     seq.replaceContents(std::move(*imported));

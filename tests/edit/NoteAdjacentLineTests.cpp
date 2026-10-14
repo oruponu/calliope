@@ -3,7 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
 
-using namespace gridtest;
+using namespace GridTest;
 
 TEST_CASE("moving forward from the last line of a bar stops at the bar line", "[note][adjacent-line]")
 {

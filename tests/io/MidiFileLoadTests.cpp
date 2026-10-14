@@ -14,7 +14,7 @@
 #include <windows.h> // IWYU pragma: keep
 #endif
 
-using midifiletest::at;
+using MidiFileTest::at;
 
 TEST_CASE("a format 0 file is split into one track per channel", "[io][midifile]")
 {
@@ -30,7 +30,7 @@ TEST_CASE("a format 0 file is split into one track per channel", "[io][midifile]
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(events);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 0));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 0));
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 2);
@@ -57,7 +57,7 @@ TEST_CASE("a format 1 track takes its channel from its first channel event", "[i
     midiFile.addTrack(conductor);
     midiFile.addTrack(events);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -83,7 +83,7 @@ TEST_CASE("format 1 tracks after the first are loaded even when empty", "[io][mi
     midiFile.addTrack(events);
     midiFile.addTrack(blank);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 3);
@@ -105,7 +105,7 @@ TEST_CASE("a channel prefix sets the channel of a track without channel events",
     midiFile.addTrack(conductor);
     midiFile.addTrack(empty);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -124,7 +124,7 @@ TEST_CASE("a track's first channel event takes precedence over its channel prefi
     midiFile.addTrack(conductor);
     midiFile.addTrack(events);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -144,7 +144,7 @@ TEST_CASE("a first format 1 track without channel events is not loaded as a trac
     midiFile.addTrack(conductor);
     midiFile.addTrack(events);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -160,7 +160,7 @@ TEST_CASE("a note without a note-off lasts one quarter note", "[io][midifile]")
     midiFile.setTicksPerQuarterNote(96);
     midiFile.addTrack(events);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -175,7 +175,7 @@ TEST_CASE("a file without a tempo at tick 0 starts at 120 bpm", "[io][midifile]"
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTempoChanges() == std::vector<TempoChange>{{0, 120.0}, {960, 60.0}});
@@ -190,7 +190,7 @@ TEST_CASE("a tempo of zero microseconds per quarter note is ignored", "[io][midi
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTempoChanges() == std::vector<TempoChange>{{0, 120.0}, {960, 120.0}});
@@ -205,7 +205,7 @@ TEST_CASE("a mid-bar time signature replaces the one at its bar start", "[io][mi
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 6, 8}});
@@ -220,7 +220,7 @@ TEST_CASE("a time signature with a zero numerator is ignored", "[io][midifile]")
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 3, 4}});
@@ -235,7 +235,7 @@ TEST_CASE("a time signature whose beat is shorter than a tick is ignored", "[io]
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 3, 4}});
@@ -251,7 +251,7 @@ TEST_CASE("a time signature whose denominator does not fit in an int is ignored"
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 3, 4}});
@@ -267,7 +267,7 @@ TEST_CASE("a time signature with fewer than two data bytes is ignored", "[io][mi
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTimeSignatureChanges() == std::vector<TimeSignatureChange>{{0, 3, 4}});
@@ -283,7 +283,7 @@ TEST_CASE("a key signature beyond seven sharps or flats is ignored", "[io][midif
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->keySignatureChanges == std::vector<KeySignatureChange>{{0, 2, false}});
@@ -299,7 +299,7 @@ TEST_CASE("a key signature with fewer than two data bytes is ignored", "[io][mid
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->keySignatureChanges == std::vector<KeySignatureChange>{{0, 2, false}});
@@ -314,7 +314,7 @@ TEST_CASE("sequencer-specific meta events that are not XF chords are ignored", "
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(conductor);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->chordChanges.empty());
@@ -328,7 +328,7 @@ TEST_CASE("non-standard chunks are skipped", "[io][midifile]")
     juce::MidiFile midiFile;
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(events);
-    const auto standard = midifiletest::toBytes(midiFile, 0);
+    const auto standard = MidiFileTest::toBytes(midiFile, 0);
 
     const std::uint8_t xfih[] = {'X', 'F', 'I', 'H', 0, 0, 0, 4, 1, 2, 3, 4};
     const std::uint8_t xfkm[] = {'X', 'F', 'K', 'M', 0, 0, 0, 2, 5, 6};
@@ -339,7 +339,7 @@ TEST_CASE("non-standard chunks are skipped", "[io][midifile]")
     bytes.append(static_cast<const char*>(standard.getData()) + headerSize, standard.getSize() - headerSize);
     bytes.append(xfkm, sizeof(xfkm));
 
-    const auto loaded = midifiletest::loadBytes(bytes);
+    const auto loaded = MidiFileTest::loadBytes(bytes);
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -355,7 +355,7 @@ TEST_CASE("a file with SMPTE timing falls back to 480 ticks per quarter note", "
     midiFile.setSmpteTimeFormat(25, 40);
     midiFile.addTrack(events);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     CHECK(loaded->timeline.getTicksPerQuarterNote() == 480);
@@ -379,7 +379,7 @@ TEST_CASE("a track name in the system code page is decoded", "[io][midifile]")
     midiFile.setTicksPerQuarterNote(480);
     midiFile.addTrack(events);
 
-    const auto loaded = midifiletest::loadBytes(midifiletest::toBytes(midiFile, 1));
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
 
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
@@ -391,7 +391,7 @@ TEST_CASE("data that is not a MIDI file fails to load", "[io][midifile]")
     const char text[] = "this is not a MIDI file";
     juce::MemoryBlock bytes(text, sizeof(text));
 
-    CHECK_FALSE(midifiletest::loadBytes(bytes));
+    CHECK_FALSE(MidiFileTest::loadBytes(bytes));
 }
 
 TEST_CASE("a missing file fails to load", "[io][midifile]")

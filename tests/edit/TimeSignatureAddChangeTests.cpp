@@ -3,7 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 
-using namespace timesigtest;
+using namespace TimeSignatureTest;
 
 TEST_CASE("changing the first time signature shifts the later ones by bars", "[timesig][add-change]")
 {

@@ -3,7 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <utility>
 
-using namespace chordtest;
+using namespace ChordTest;
 
 namespace
 {
@@ -59,7 +59,7 @@ TEST_CASE("a no-chord in the middle of a bar is a boundary", "[chord][add-span]"
 TEST_CASE("the span follows a 3/4 bar", "[chord][add-span]")
 {
     TimelineMap timeline;
-    timesigtest::setTimeSignatures(timeline, {{1, 4, 4}, {2, 3, 4}});
+    TimeSignatureTest::setTimeSignatures(timeline, {{1, 4, 4}, {2, 3, 4}});
     CHECK(ChordTrackEdits::addSpanAt({}, 2000, timeline) == Span{1920, 3360});
 }
 

@@ -4,7 +4,7 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <optional>
 
-namespace midifiletest
+namespace MidiFileTest
 {
 inline std::optional<SequenceContents> loadBytes(const juce::MemoryBlock& bytes)
 {
@@ -34,4 +34,4 @@ inline juce::MidiMessage at(juce::MidiMessage message, double tick)
     message.setTimeStamp(tick);
     return message;
 }
-} // namespace midifiletest
+} // namespace MidiFileTest
