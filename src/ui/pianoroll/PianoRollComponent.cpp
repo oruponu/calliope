@@ -918,7 +918,6 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
             return;
 
         const TimelineGrid grid = snapGrid(e.mods);
-        int minDuration = grid.stepTicks();
         int currentTick = grid.round(xToTick(e.x));
 
         if (resizing->edge == ResizeEdge::Right)
@@ -927,7 +926,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
             for (auto& t : resizing->targets)
             {
                 const auto resized =
-                    NoteEdits::afterEndResize({.startTick = t.startTick, .duration = t.duration}, delta, minDuration);
+                    NoteEdits::afterEndResize({.startTick = t.startTick, .duration = t.duration}, delta, grid);
                 t.previewStartTick = resized.startTick;
                 t.previewDuration = resized.duration;
             }
@@ -938,7 +937,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
             for (auto& t : resizing->targets)
             {
                 const auto resized =
-                    NoteEdits::afterStartResize({.startTick = t.startTick, .duration = t.duration}, delta, minDuration);
+                    NoteEdits::afterStartResize({.startTick = t.startTick, .duration = t.duration}, delta, grid);
                 t.previewStartTick = resized.startTick;
                 t.previewDuration = resized.duration;
             }
@@ -951,10 +950,9 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
     if (auto* creating = std::get_if<Creating>(&drag))
     {
         const TimelineGrid grid = snapGrid(e.mods);
-        int minDuration = grid.stepTicks();
         int currentTick = grid.round(xToTick(e.x));
         creating->previewDuration =
-            NoteEdits::afterEndResize(creating->note, currentTick - creating->note.endTick(), minDuration).duration;
+            NoteEdits::afterEndResize(creating->note, currentTick - creating->note.endTick(), grid).duration;
         repaint();
         return;
     }

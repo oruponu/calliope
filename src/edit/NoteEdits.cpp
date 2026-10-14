@@ -2,19 +2,21 @@
 #include <algorithm>
 #include <limits>
 
-MidiNote NoteEdits::afterStartResize(const MidiNote& note, int deltaTick, int minDuration)
+MidiNote NoteEdits::afterStartResize(const MidiNote& note, int deltaTick, const TimelineGrid& grid)
 {
     const int endTick = note.endTick();
+    const int latestStart = grid.previous(endTick).value_or(std::numeric_limits<int>::min());
     MidiNote resized = note;
-    resized.startTick = std::clamp(note.startTick + deltaTick, 0, std::max(0, endTick - minDuration));
+    resized.startTick = std::clamp(note.startTick + deltaTick, 0, std::max(0, latestStart));
     resized.duration = endTick - resized.startTick;
     return resized;
 }
 
-MidiNote NoteEdits::afterEndResize(const MidiNote& note, int deltaTick, int minDuration)
+MidiNote NoteEdits::afterEndResize(const MidiNote& note, int deltaTick, const TimelineGrid& grid)
 {
+    const int earliestEnd = grid.next(note.startTick).value_or(std::numeric_limits<int>::max());
     MidiNote resized = note;
-    resized.duration = std::max(minDuration, note.duration + deltaTick);
+    resized.duration = std::max(earliestEnd, note.endTick() + deltaTick) - note.startTick;
     return resized;
 }
 
