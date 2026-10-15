@@ -1,6 +1,7 @@
 #include "ui/EventListComponent.h"
+#include "ui/RowSelection.h"
 #include "ui/theme/TrackColours.h"
-#include <algorithm>
+#include <utility>
 
 namespace
 {
@@ -35,12 +36,15 @@ void EventListComponent::setSequence(MidiSequence* seq)
     sequence = seq;
     if (sequence != nullptr)
         sequence->addListener(this);
+    clearSelection();
     rebuildList();
 }
 
 void EventListComponent::setSelectedTracks(const std::set<int>& selected)
 {
     selectedTracks = selected;
+    // The piano roll drops its note selection on a track change, so keeping it here would disagree.
+    clearSelection();
     rebuildList();
 }
 
@@ -51,31 +55,10 @@ void EventListComponent::refresh()
 
 void EventListComponent::setPlayheadTick(double tick)
 {
-    if (items.empty())
+    playheadTick = tick;
+    const int row = EventListItems::playheadRow(items, tick);
+    if (row < 0)
         return;
-
-    auto it = std::upper_bound(items.begin(), items.end(), static_cast<int>(tick),
-                               [](int t, const EventListItem& item) { return t < item.tick; });
-
-    int row;
-    if (it == items.begin())
-    {
-        row = 0;
-    }
-    else
-    {
-        --it;
-        if (tick == static_cast<double>(it->tick))
-        {
-            auto first = std::lower_bound(items.begin(), it, it->tick,
-                                          [](const EventListItem& item, int t) { return item.tick < t; });
-            row = static_cast<int>(std::distance(items.begin(), first));
-        }
-        else
-        {
-            row = static_cast<int>(std::distance(items.begin(), it));
-        }
-    }
 
     if (row != lastPlayheadRow)
     {
@@ -102,7 +85,7 @@ void EventListComponent::setSelectedNotes(const std::set<NoteRef>& selected)
     for (int i = 0; i < static_cast<int>(items.size()); ++i)
     {
         const auto& item = items[static_cast<size_t>(i)];
-        if (item.kind == EventListItem::Note && selected.contains(noteRefOf(item)))
+        if (item.kind == EventListItem::Note && selected.contains(EventListItems::noteRefOf(item)))
         {
             listBox.selectRow(i, true, false);
             if (firstRow < 0)
@@ -250,7 +233,7 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
             {
                 const auto& item = items[static_cast<size_t>(row)];
                 if (item.kind == EventListItem::Note)
-                    noteRefs.insert(noteRefOf(item));
+                    noteRefs.insert(EventListItems::noteRefOf(item));
             }
         }
         onNoteSelectionFromList(noteRefs);
@@ -268,120 +251,34 @@ void EventListComponent::recordingLayerChanged()
     rebuildList();
 }
 
-EventListItem EventListComponent::eventItem(const MidiEvent& event, int trackIndex, int sourceIndex)
+void EventListComponent::clearSelection()
 {
-    EventListItem item;
-    item.tick = event.tick;
-    item.trackIndex = trackIndex;
-    item.sourceIndex = sourceIndex;
-    item.data1 = event.data1;
-    item.data2 = event.data2;
-
-    switch (event.type)
-    {
-    case MidiEvent::Type::ControlChange:
-        item.kind = EventListItem::ControlChange;
-        break;
-    case MidiEvent::Type::ProgramChange:
-        item.kind = EventListItem::ProgramChange;
-        break;
-    case MidiEvent::Type::PitchBend:
-        item.kind = EventListItem::PitchBend;
-        break;
-    case MidiEvent::Type::ChannelPressure:
-        item.kind = EventListItem::ChannelPressure;
-        break;
-    case MidiEvent::Type::KeyPressure:
-        item.kind = EventListItem::KeyPressure;
-        break;
-    }
-    return item;
-}
-
-NoteRef EventListComponent::noteRefOf(const EventListItem& item)
-{
-    return {item.trackIndex, item.sourceIndex, item.isRecording ? NoteLayer::Recording : NoteLayer::Sequence};
+    listBox.setSelectedRows({}, juce::dontSendNotification);
+    lastPlayheadRow = -1;
 }
 
 void EventListComponent::rebuildList()
 {
-    items.clear();
+    const auto selection = listBox.getSelectedRows();
+    std::vector<int> selectedRows;
+    for (const auto& range : selection.getRanges())
+        for (int row = range.getStart(); row < range.getEnd(); ++row)
+            selectedRows.push_back(row);
 
-    if (!sequence)
-    {
-        listBox.updateContent();
-        listBox.repaint();
-        repaint();
-        return;
-    }
+    auto rebuilt = sequence != nullptr ? EventListItems::build(*sequence, selectedTracks, recordingLayer)
+                                       : std::vector<EventListItem>{};
+    // Rows reorder when notes move, so the selection follows the notes and events rather than the row numbers.
+    const auto reselected = RowSelection::fromRows(EventListItems::reselectedRows(items, selectedRows, rebuilt));
+    items = std::move(rebuilt);
 
-    for (int trackIdx : selectedTracks)
-    {
-        if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
-            continue;
-
-        const auto& track = sequence->getTrack(trackIdx);
-
-        for (int i = 0; i < track.getNumNotes(); ++i)
-        {
-            const auto& note = track.getNote(i);
-            EventListItem item;
-            item.kind = EventListItem::Note;
-            item.tick = note.startTick;
-            item.trackIndex = trackIdx;
-            item.sourceIndex = i;
-            item.noteNumber = note.noteNumber;
-            item.duration = note.duration;
-            item.velocity = note.velocity;
-            items.push_back(item);
-        }
-
-        for (int i = 0; i < track.getNumEvents(); ++i)
-        {
-            items.push_back(eventItem(track.getEvent(i), trackIdx, i));
-        }
-
-        if (recordingLayer != nullptr)
-        {
-            const auto& take = recordingLayer->getTake();
-            if (const auto recorded = take.find(track.getId()); recorded != take.end())
-            {
-                for (const auto& event : recorded->second.events)
-                {
-                    auto item = eventItem(event, trackIdx, -1);
-                    item.isRecording = true;
-                    items.push_back(item);
-                }
-                const auto& notes = recorded->second.notes;
-                const auto& ids = recorded->second.noteIds;
-                for (size_t i = 0; i < notes.size() && i < ids.size(); ++i)
-                {
-                    EventListItem item;
-                    item.kind = EventListItem::Note;
-                    item.tick = notes[i].startTick;
-                    item.trackIndex = trackIdx;
-                    item.sourceIndex = ids[i];
-                    item.noteNumber = notes[i].noteNumber;
-                    item.duration = notes[i].duration;
-                    item.velocity = notes[i].velocity;
-                    item.isRecording = true;
-                    items.push_back(item);
-                }
-            }
-        }
-    }
-
-    std::stable_sort(items.begin(), items.end(),
-                     [](const EventListItem& a, const EventListItem& b)
-                     {
-                         if (a.tick != b.tick)
-                             return a.tick < b.tick;
-                         if (a.trackIndex != b.trackIndex)
-                             return a.trackIndex < b.trackIndex;
-                         return a.kind < b.kind;
-                     });
-
+    // updateContent tells the model when it drops selected rows past the end, and the model would read those stale
+    // row numbers against the new rows.
+    listBox.setSelectedRows({}, juce::dontSendNotification);
     listBox.updateContent();
+    listBox.setSelectedRows(reselected, juce::dontSendNotification);
+    // A stale row number would make the next playhead update misjudge whether the playhead changed rows.
+    if (lastPlayheadRow >= 0)
+        lastPlayheadRow = EventListItems::playheadRow(items, playheadTick);
     listBox.repaint();
     repaint();
 }

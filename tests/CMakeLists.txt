@@ -32,6 +32,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/KeySignatureName.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
+    ${PROJECT_SOURCE_DIR}/src/ui/EventListItems.cpp
     ${PROJECT_SOURCE_DIR}/src/undo/UndoHistory.cpp
 )
 
@@ -96,8 +97,10 @@ target_sources(CalliopeTests PRIVATE
     notation/KeySignatureNameTests.cpp
     plugin/PluginSyncPlanTests.cpp
     plugin/RetiredStateStoreTests.cpp
+    ui/EventListItemsTests.cpp
     ui/IndexSelectionTests.cpp
     ui/RangeSelectGestureTests.cpp
+    ui/RowSelectionTests.cpp
     ui/TimelineGeometryTests.cpp
     undo/RecordTakeActionTests.cpp
     undo/SavePointTrackerTests.cpp

@@ -3,34 +3,10 @@
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "model/MidiSequence.h"
+#include "ui/EventListItems.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <set>
 #include <vector>
-
-struct EventListItem
-{
-    enum Kind
-    {
-        Note,
-        ControlChange,
-        ProgramChange,
-        PitchBend,
-        ChannelPressure,
-        KeyPressure
-    };
-
-    Kind kind = Note;
-    int tick = 0;
-    int trackIndex = 0;
-    // The note or event index on the track, or the recorded note id for a recorded note.
-    int sourceIndex = 0;
-    int noteNumber = 0;
-    int duration = 0;
-    int velocity = 0;
-    int data1 = 0;
-    int data2 = 0;
-    bool isRecording = false;
-};
 
 class EventListComponent : public juce::Component, public MidiSequence::Listener, private juce::ListBoxModel
 {
@@ -67,9 +43,8 @@ private:
     void selectedRowsChanged(int lastRowSelected) override;
 
     void rebuildList();
+    void clearSelection();
 
-    static EventListItem eventItem(const MidiEvent& event, int trackIndex, int sourceIndex);
-    static NoteRef noteRefOf(const EventListItem& item);
     static juce::String formatPosition(const BarBeatTick& bbt);
     static juce::String formatEvent(const EventListItem& item);
     static juce::String formatLength(const EventListItem& item);
@@ -82,6 +57,7 @@ private:
     std::vector<EventListItem> items;
 
     juce::ListBox listBox;
+    double playheadTick = 0.0;
     int lastPlayheadRow = -1;
     bool updatingFromPlayhead = false;
     bool updatingFromNoteSelection = false;

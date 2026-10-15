@@ -68,6 +68,7 @@ target_sources(Calliope PRIVATE
     src/plugin/PluginSyncPlan.cpp
     src/plugin/VstPluginHost.cpp
     src/ui/EventListComponent.cpp
+    src/ui/EventListItems.cpp
     src/ui/TrackListComponent.cpp
     src/ui/commands/AppCommands.cpp
     src/ui/menu/MainMenuModel.cpp
