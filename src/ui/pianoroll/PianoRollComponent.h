@@ -8,6 +8,7 @@
 #include "model/GridDivision.h"
 #include "model/MidiSequence.h"
 #include "model/TimelineGrid.h"
+#include "ui/NoteDragPreview.h"
 #include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/TimelineGeometry.h"
@@ -53,6 +54,7 @@ public:
     std::function<void(const std::set<NoteRef>& selected)> onNoteSelectionChanged;
     std::function<void(const MidiNote&)> onNotePreview;
     std::function<void(const MidiNote&)> onNotePreviewEnd;
+    std::function<void(const NoteDragPreview&)> onNoteDragPreviewChanged;
     std::function<void(int startTick, int noteNumber)> onScrollToNote;
     std::function<void(int deltaY)> onScrollVertical;
     std::function<void(int deltaX)> onScrollHorizontal;
@@ -291,6 +293,10 @@ private:
     void pruneRecordedRefs();
     void beginResize(const NoteRef& hit, ResizeEdge edge);
     void beginMove(const NoteRef& anchor, const juce::MouseEvent& e);
+    NoteDragPreview dragPreview() const;
+    // Only a changed preview is sent, so an idle piano roll never clears the controller lane's.
+    void publishDragPreview();
+    NoteDragPreview publishedPreview;
     int contentBeats = 0;
 
     EditClipboard clipboard;

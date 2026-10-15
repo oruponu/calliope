@@ -6,6 +6,7 @@
 #include "engine/RecordingLayerEditor.h"
 #include "model/GridDivision.h"
 #include "model/MidiSequence.h"
+#include "ui/NoteDragPreview.h"
 #include "undo/UndoHistory.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
@@ -41,12 +42,14 @@ public:
     void setRightPadding(int px);
     void setGridDivision(GridDivision division);
     void setRecordingLayer(const RecordingLayer* layer, RecordingLayerEditor* editor);
+    void recordingLayerChanged();
     void updateSize();
 
     DisplayMode getDisplayMode() const { return displayMode; }
     int getCCNumber() const { return ccNumber; }
 
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onMouseWheel;
+    std::function<void(const NoteDragPreview&)> onNoteDragPreviewChanged;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
@@ -72,6 +75,9 @@ private:
     void drawVelocity(juce::Graphics& g);
     EditableNotes editableNotes() const;
     int displayedVelocity(const NoteRef& ref, int velocity) const;
+    NoteDragPreview dragPreview() const;
+    // Only a changed preview is sent, so an idle lane never clears the piano roll's.
+    void publishDragPreview();
     void drawControlChange(juce::Graphics& g);
     void drawPitchBend(juce::Graphics& g);
     void drawProgramChange(juce::Graphics& g);
@@ -119,6 +125,7 @@ private:
         std::map<NoteRef, int> preview;
     };
     std::variant<Idle, VelocityDragging> drag;
+    NoteDragPreview publishedPreview;
 
     static constexpr int topPadding = 6;
     static constexpr int bottomPadding = 6;

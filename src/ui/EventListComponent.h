@@ -4,6 +4,7 @@
 #include "engine/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include "ui/EventListItems.h"
+#include "ui/NoteDragPreview.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <set>
 #include <vector>
@@ -21,6 +22,7 @@ public:
     void setSelectedNotes(const std::set<NoteRef>& selected);
     void setRecordingLayer(const RecordingLayer* layer);
     void recordingLayerChanged();
+    void setNoteDragPreview(const NoteDragPreview& preview);
 
     std::function<void(int tick)> onEventSelected;
     std::function<void(const std::set<NoteRef>& noteRefs)> onNoteSelectionFromList;
@@ -55,6 +57,7 @@ private:
     const RecordingLayer* recordingLayer = nullptr;
     std::set<int> selectedTracks;
     std::vector<EventListItem> items;
+    NoteDragPreview dragPreview;
 
     juce::ListBox listBox;
     double playheadTick = 0.0;

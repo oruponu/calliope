@@ -173,6 +173,7 @@ void PianoRollComponent::setRecordingLayer(const RecordingLayer* layer, Recordin
 void PianoRollComponent::recordingLayerChanged()
 {
     pruneRecordedRefs();
+    publishDragPreview();
     repaint();
 }
 
@@ -816,6 +817,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
         startNotePreview(newNote);
 
         drag = Creating{activeTrackIndex, newNote, newNote.duration};
+        publishDragPreview();
         repaint();
     }
     else // Select mode
@@ -946,6 +948,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
             }
         }
 
+        publishDragPreview();
         repaint();
         return;
     }
@@ -956,6 +959,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
         int currentTick = grid.round(xToTick(e.x));
         creating->previewDuration =
             NoteEdits::afterEndResize(creating->note, currentTick - creating->note.endTick(), grid).duration;
+        publishDragPreview();
         repaint();
         return;
     }
@@ -979,6 +983,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
     moving->deltaTick = shift.deltaTick;
     moving->deltaNote = shift.deltaNote;
+    publishDragPreview();
 
     const auto anchorNote = noteAt(selectedNote);
     int previewPitch = anchorNote.noteNumber + moving->deltaNote;
@@ -994,6 +999,9 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& e)
 
 void PianoRollComponent::mouseUp(const juce::MouseEvent&)
 {
+    // After the commit: clearing first would rebuild against the old sequence without the draft row, and at the
+    // list's end the viewport would scroll back a row and leave the new note's row off screen.
+    const juce::ScopeGuard publishAtEnd{[this] { publishDragPreview(); }};
     stopNotePreview();
     auto state = std::exchange(drag, Idle{});
 
@@ -2025,6 +2033,7 @@ void PianoRollComponent::resetNoteDrag()
 {
     if (!std::holds_alternative<KeyboardPreviewing>(drag))
         drag = Idle{};
+    publishDragPreview();
 }
 
 void PianoRollComponent::toggleNoteSelection(const NoteRef& ref)
@@ -2040,6 +2049,7 @@ void PianoRollComponent::cancelEditDrag()
     if (std::holds_alternative<PendingResize>(drag) || std::holds_alternative<Moving>(drag) ||
         std::holds_alternative<Resizing>(drag) || std::holds_alternative<Creating>(drag))
         drag = Idle{};
+    publishDragPreview();
 }
 
 void PianoRollComponent::pruneRecordedRefs()
@@ -2092,6 +2102,7 @@ void PianoRollComponent::beginResize(const NoteRef& hit, ResizeEdge edge)
     const auto anchor = noteAt(hit);
     selectedNote = hit;
     drag = Resizing{std::move(resizeTargets), edge, anchor.startTick, anchor.endTick()};
+    publishDragPreview();
     repaint();
 }
 
@@ -2107,6 +2118,59 @@ void PianoRollComponent::beginMove(const NoteRef& anchor, const juce::MouseEvent
     const auto anchorNote = noteAt(anchor);
     selectedNote = anchor;
     drag = Moving{std::move(moveTargets), anchorNote.startTick, xToTick(e.x), yToNote(e.y)};
+    publishDragPreview();
+}
+
+NoteDragPreview PianoRollComponent::dragPreview() const
+{
+    NoteDragPreview preview;
+    if (!sequence)
+        return preview;
+
+    if (const auto* moving = std::get_if<Moving>(&drag))
+    {
+        preview.dragging = true;
+        preview.focus = selectedNote;
+        if (moving->deltaTick == 0 && moving->deltaNote == 0)
+            return preview;
+        const auto notes = editableNotes();
+        for (const auto& t : moving->targets)
+        {
+            auto note = notes.find(t.ref);
+            if (!note.has_value())
+                continue;
+            note->startTick = t.startTick + moving->deltaTick;
+            note->noteNumber = t.noteNumber + moving->deltaNote;
+            preview.changedNotes[t.ref] = *note;
+        }
+    }
+    else if (const auto* resizing = std::get_if<Resizing>(&drag))
+    {
+        preview.dragging = true;
+        preview.focus = selectedNote;
+        const auto notes = editableNotes();
+        for (const auto& t : resizing->targets)
+            if ((t.previewStartTick != t.startTick || t.previewDuration != t.duration) && notes.find(t.ref).has_value())
+                preview.changedNotes[t.ref] = displayedNote(t.ref);
+    }
+    else if (const auto* creating = std::get_if<Creating>(&drag))
+    {
+        preview.dragging = true;
+        MidiNote note = creating->note;
+        note.duration = creating->previewDuration;
+        preview.draftNote = DraftNote{creating->trackIndex, note};
+    }
+    return preview;
+}
+
+void PianoRollComponent::publishDragPreview()
+{
+    auto preview = dragPreview();
+    if (preview == publishedPreview)
+        return;
+    publishedPreview = std::move(preview);
+    if (onNoteDragPreviewChanged)
+        onNoteDragPreviewChanged(publishedPreview);
 }
 
 void PianoRollComponent::startNotePreview(const MidiNote& note)

@@ -230,3 +230,121 @@ TEST_CASE("selected rows past the old rows are ignored", "[ui][event-list]")
     const std::vector before{noteRow(0, 0)};
     CHECK(EventListItems::reselectedRows(before, {5}, before).empty());
 }
+
+TEST_CASE("a moved note is listed where the drag shows it", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 0, 480}, {62, 100, 480, 480}, {64, 100, 960, 480}}));
+    NoteDragPreview preview{.dragging = true};
+    preview.changedNotes[{0, 0}] = {67, 100, 1200, 480};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    CHECK(ticksOf(items) == std::vector{480, 960, 1200});
+    CHECK(sourcesOf(items) == std::vector{1, 2, 0});
+    CHECK(items[2].noteNumber == 67);
+}
+
+TEST_CASE("a resized note shows the drag's start and length", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 0, 480}}));
+    NoteDragPreview preview{.dragging = true};
+    preview.changedNotes[{0, 0}] = {60, 100, 240, 240};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    REQUIRE(items.size() == 1);
+    CHECK(items[0].tick == 240);
+    CHECK(items[0].duration == 240);
+}
+
+TEST_CASE("a velocity drag changes only the value", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 0, 480}}));
+    NoteDragPreview preview{.dragging = true};
+    preview.changedNotes[{0, 0}] = {60, 30, 0, 480};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    REQUIRE(items.size() == 1);
+    CHECK(items[0].velocity == 30);
+    CHECK(items[0].tick == 0);
+    CHECK(items[0].duration == 480);
+}
+
+TEST_CASE("a recorded note takes the drag's values", "[ui][event-list]")
+{
+    MidiSequence seq;
+    const TrackId id = seq.addTrack(trackWith({{60, 100, 480, 480}})).getId();
+    FakeLayer layer;
+    layer.take[id] = {{{62, 80, 240, 120}}, {}, {7}};
+    NoteDragPreview preview{.dragging = true};
+    preview.changedNotes[{0, 7, NoteLayer::Recording}] = {62, 80, 720, 120};
+    const auto items = EventListItems::build(seq, {0}, &layer, preview);
+    CHECK(ticksOf(items) == std::vector{480, 720});
+    CHECK(items[1].isRecording);
+}
+
+TEST_CASE("a drawn note is added as a draft row in tick order", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 0, 480}, {62, 100, 960, 480}}));
+    NoteDragPreview preview{.dragging = true};
+    preview.draftNote = DraftNote{0, {64, 100, 480, 240}};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    CHECK(ticksOf(items) == std::vector{0, 480, 960});
+    CHECK(items[1].isDraft);
+    CHECK(items[1].duration == 240);
+    CHECK_FALSE(items[0].isDraft);
+    CHECK_FALSE(items[2].isDraft);
+}
+
+TEST_CASE("a drawn note on a hidden track is not listed", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 0, 480}}));
+    seq.addTrack();
+    NoteDragPreview preview{.dragging = true};
+    preview.draftNote = DraftNote{1, {64, 100, 480, 240}};
+    CHECK(EventListItems::build(seq, {0}, nullptr, preview).size() == 1);
+}
+
+TEST_CASE("an empty preview lists the sequence as it is", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 960, 480}, {62, 100, 0, 480}}, {cc(480, 7, 100)}));
+    const auto items = EventListItems::build(seq, {0}, nullptr, NoteDragPreview{});
+    CHECK(ticksOf(items) == std::vector{0, 480, 960});
+    CHECK(sourcesOf(items) == std::vector{1, 0, 0});
+}
+
+TEST_CASE("a draft row is never reselected", "[ui][event-list]")
+{
+    const std::vector rows{EventListItem{.kind = EventListItem::Note, .tick = 480, .sourceIndex = -1, .isDraft = true}};
+    CHECK(EventListItems::reselectedRows(rows, {0}, rows).empty());
+}
+
+TEST_CASE("the focus row is the grabbed note's row after the move", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 0, 480}, {62, 100, 480, 480}}));
+    NoteDragPreview preview{.dragging = true, .focus = {0, 0}};
+    preview.changedNotes[{0, 0}] = {60, 100, 960, 480};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    CHECK(EventListItems::focusRow(items, preview) == 1);
+}
+
+TEST_CASE("the focus row is the draft row while drawing", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 0, 480}, {62, 100, 960, 480}}));
+    NoteDragPreview preview{.dragging = true};
+    preview.draftNote = DraftNote{0, {64, 100, 480, 240}};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    CHECK(EventListItems::focusRow(items, preview) == 1);
+}
+
+TEST_CASE("there is no focus row without a focus note or one that is listed", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 0, 480}}));
+    const auto items = EventListItems::build(seq, {0}, nullptr);
+    CHECK_FALSE(EventListItems::focusRow(items, NoteDragPreview{.dragging = true}).has_value());
+    CHECK_FALSE(EventListItems::focusRow(items, NoteDragPreview{.dragging = true, .focus = {0, 5}}).has_value());
+}

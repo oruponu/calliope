@@ -3,6 +3,8 @@
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "model/MidiSequence.h"
+#include "ui/NoteDragPreview.h"
+#include <optional>
 #include <set>
 #include <vector>
 
@@ -29,14 +31,19 @@ struct EventListItem
     int data1 = 0;
     int data2 = 0;
     bool isRecording = false;
+    // The note being drawn, not yet in the sequence; it has no note ref.
+    bool isDraft = false;
 };
 
 namespace EventListItems
 {
 // The shown tracks' notes and events, then the recording layer's, by tick, then track, then kind. Held notes are
-// left out.
-std::vector<EventListItem> build(const MidiSequence& sequence, const std::set<int>& tracks,
-                                 const RecordingLayer* layer);
+// left out. A note the preview changes is listed as the preview shows it, and the preview's draft note is added when
+// its track is shown.
+std::vector<EventListItem> build(const MidiSequence& sequence, const std::set<int>& tracks, const RecordingLayer* layer,
+                                 const NoteDragPreview& preview = {});
+// The draft row while drawing, otherwise the focus note's row.
+std::optional<int> focusRow(const std::vector<EventListItem>& items, const NoteDragPreview& preview);
 NoteRef noteRefOf(const EventListItem& item);
 // The first row at the tick when one is there, otherwise the last row before it, or the first row; -1 for no rows.
 int playheadRow(const std::vector<EventListItem>& items, double tick);

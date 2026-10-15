@@ -51,8 +51,14 @@ EventListItem eventItem(const MidiEvent& event, int trackIndex, int sourceIndex)
 } // namespace
 
 std::vector<EventListItem> EventListItems::build(const MidiSequence& sequence, const std::set<int>& tracks,
-                                                 const RecordingLayer* layer)
+                                                 const RecordingLayer* layer, const NoteDragPreview& preview)
 {
+    const auto shown = [&preview](const NoteRef& ref, const MidiNote& note) -> const MidiNote&
+    {
+        const auto it = preview.changedNotes.find(ref);
+        return it == preview.changedNotes.end() ? note : it->second;
+    };
+
     std::vector<EventListItem> items;
 
     for (const int trackIdx : tracks)
@@ -62,7 +68,7 @@ std::vector<EventListItem> EventListItems::build(const MidiSequence& sequence, c
 
         const auto& track = sequence.getTrack(trackIdx);
         for (int i = 0; i < track.getNumNotes(); ++i)
-            items.push_back(noteItem(track.getNote(i), trackIdx, i));
+            items.push_back(noteItem(shown({trackIdx, i}, track.getNote(i)), trackIdx, i));
         for (int i = 0; i < track.getNumEvents(); ++i)
             items.push_back(eventItem(track.getEvent(i), trackIdx, i));
 
@@ -82,10 +88,18 @@ std::vector<EventListItem> EventListItems::build(const MidiSequence& sequence, c
         const auto& ids = recorded->second.noteIds;
         for (size_t i = 0; i < notes.size() && i < ids.size(); ++i)
         {
-            auto item = noteItem(notes[i], trackIdx, ids[i]);
+            auto item = noteItem(shown({trackIdx, ids[i], NoteLayer::Recording}, notes[i]), trackIdx, ids[i]);
             item.isRecording = true;
             items.push_back(item);
         }
+    }
+
+    if (const auto& draft = preview.draftNote;
+        draft.has_value() && tracks.contains(draft->trackIndex) && draft->trackIndex < sequence.getNumTracks())
+    {
+        auto item = noteItem(draft->note, draft->trackIndex, -1);
+        item.isDraft = true;
+        items.push_back(item);
     }
 
     std::stable_sort(items.begin(), items.end(),
@@ -143,6 +157,8 @@ std::vector<int> EventListItems::reselectedRows(const std::vector<EventListItem>
         if (row < 0 || row >= static_cast<int>(before.size()))
             continue;
         const auto& item = before[static_cast<size_t>(row)];
+        if (item.isDraft)
+            continue;
         if (item.kind == EventListItem::Note)
         {
             notes.insert(noteRefOf(item));
@@ -177,4 +193,21 @@ std::vector<int> EventListItems::reselectedRows(const std::vector<EventListItem>
     }
     std::ranges::sort(rows);
     return rows;
+}
+
+std::optional<int> EventListItems::focusRow(const std::vector<EventListItem>& items, const NoteDragPreview& preview)
+{
+    const auto it =
+        std::ranges::find_if(items,
+                             [&preview](const EventListItem& item)
+                             {
+                                 if (item.kind != EventListItem::Note)
+                                     return false;
+                                 if (preview.draftNote.has_value())
+                                     return item.isDraft;
+                                 return preview.focus.isValid() && !item.isDraft && noteRefOf(item) == preview.focus;
+                             });
+    if (it == items.end())
+        return std::nullopt;
+    return static_cast<int>(it - items.begin());
 }

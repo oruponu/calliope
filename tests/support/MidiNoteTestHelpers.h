@@ -6,12 +6,6 @@
 #include <format>
 #include <string>
 
-inline bool operator==(const MidiNote& a, const MidiNote& b)
-{
-    return a.noteNumber == b.noteNumber && a.velocity == b.velocity && a.startTick == b.startTick &&
-           a.duration == b.duration;
-}
-
 namespace Catch
 {
 template <> struct StringMaker<MidiNote>

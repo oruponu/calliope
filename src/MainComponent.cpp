@@ -95,6 +95,7 @@ MainComponent::MainComponent()
         midiOutput.onNoteOff(ctx, note);
         pluginHost.onNoteOff(ctx, note);
     };
+    pianoRoll.onNoteDragPreviewChanged = [this](const auto& preview) { eventList.setNoteDragPreview(preview); };
     pianoRoll.onScrollToNote = [this](int startTick, int noteNumber) { scrollNoteIntoView(startTick, noteNumber); };
     pianoRoll.onScrollVertical = [this](int deltaY) { scrollViewVertically(deltaY); };
     pianoRoll.onScrollHorizontal = [this](int deltaX) { scrollViewHorizontally(deltaX); };
@@ -226,6 +227,7 @@ MainComponent::MainComponent()
         newY = juce::jlimit(0, juce::jmax(0, pianoRoll.getHeight() - viewport.getViewHeight()), newY);
         viewport.setViewPosition(newX, newY);
     };
+    controllerLane.onNoteDragPreviewChanged = [this](const auto& preview) { eventList.setNoteDragPreview(preview); };
     controllerLaneViewport.setViewedComponent(&controllerLane, false);
     controllerLaneViewport.setScrollBarsShown(false, true);
     controllerLaneViewport.setHorizontalScrollBarRightInset(zoomStripLength);
@@ -346,7 +348,7 @@ MainComponent::MainComponent()
     recorder.onLayerChanged = [this]
     {
         pianoRoll.recordingLayerChanged();
-        controllerLane.repaint();
+        controllerLane.recordingLayerChanged();
         eventList.recordingLayerChanged();
     };
     recorder.onCommitted = [this](const auto& committed) { pianoRoll.recordedNotesCommitted(committed); };

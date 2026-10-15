@@ -87,6 +87,7 @@ void ControllerLaneComponent::setSelectedTracks(int activeIndex, const std::set<
         drag = Idle{};
     activeTrackIndex = activeIndex;
     selectedTrackIndices = selectedIndices;
+    publishDragPreview();
     repaint();
 }
 
@@ -125,6 +126,12 @@ void ControllerLaneComponent::setRecordingLayer(const RecordingLayer* layer, Rec
 {
     recordingLayer = layer;
     recordingEditor = editor;
+    repaint();
+}
+
+void ControllerLaneComponent::recordingLayerChanged()
+{
+    publishDragPreview();
     repaint();
 }
 
@@ -292,6 +299,7 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     if (best.isValid())
     {
         drag = VelocityDragging{activeTrackIndex, e.x, {{best, newVelocity}}};
+        publishDragPreview();
         repaint();
     }
 }
@@ -326,11 +334,15 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
     dragging->lastDragX = e.x;
 
     if (changed)
+    {
+        publishDragPreview();
         repaint();
+    }
 }
 
 void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
 {
+    const juce::ScopeGuard publishAtEnd{[this] { publishDragPreview(); }};
     auto state = std::exchange(drag, Idle{});
     const auto* dragging = std::get_if<VelocityDragging>(&state);
     if (dragging == nullptr || !sequence || dragging->trackIndex < 0 ||
@@ -365,27 +377,32 @@ int ControllerLaneComponent::tickToX(int tick) const
 void ControllerLaneComponent::notesChanged(int)
 {
     drag = Idle{};
+    publishDragPreview();
     repaint();
 }
 void ControllerLaneComponent::tracksChanged()
 {
     drag = Idle{};
+    publishDragPreview();
     repaint();
 }
 void ControllerLaneComponent::tempoChanged()
 {
     drag = Idle{};
+    publishDragPreview();
     repaint();
 }
 void ControllerLaneComponent::timelineMetadataChanged()
 {
     drag = Idle{};
+    publishDragPreview();
     repaint();
 }
 
 void ControllerLaneComponent::sequenceReset()
 {
     drag = Idle{};
+    publishDragPreview();
     repaint();
 }
 
@@ -555,6 +572,36 @@ int ControllerLaneComponent::displayedVelocity(const NoteRef& ref, int velocity)
         if (const auto it = dragging->preview.find(ref); it != dragging->preview.end())
             return it->second;
     return velocity;
+}
+
+NoteDragPreview ControllerLaneComponent::dragPreview() const
+{
+    NoteDragPreview preview;
+    const auto* dragging = std::get_if<VelocityDragging>(&drag);
+    if (dragging == nullptr || !sequence)
+        return preview;
+
+    preview.dragging = true;
+    const auto notes = editableNotes();
+    for (const auto& [ref, velocity] : dragging->preview)
+    {
+        auto note = notes.find(ref);
+        if (!note.has_value() || note->velocity == velocity)
+            continue;
+        note->velocity = velocity;
+        preview.changedNotes[ref] = *note;
+    }
+    return preview;
+}
+
+void ControllerLaneComponent::publishDragPreview()
+{
+    auto preview = dragPreview();
+    if (preview == publishedPreview)
+        return;
+    publishedPreview = std::move(preview);
+    if (onNoteDragPreviewChanged)
+        onNoteDragPreviewChanged(publishedPreview);
 }
 
 void ControllerLaneComponent::drawControlChange(juce::Graphics& g)

@@ -56,6 +56,10 @@ void EventListComponent::refresh()
 void EventListComponent::setPlayheadTick(double tick)
 {
     playheadTick = tick;
+    // The drag's highlight and scrolling win until the drag ends; following resumes when the playhead changes rows.
+    if (dragPreview.dragging)
+        return;
+
     const int row = EventListItems::playheadRow(items, tick);
     if (row < 0)
         return;
@@ -251,6 +255,12 @@ void EventListComponent::recordingLayerChanged()
     rebuildList();
 }
 
+void EventListComponent::setNoteDragPreview(const NoteDragPreview& preview)
+{
+    dragPreview = preview;
+    rebuildList();
+}
+
 void EventListComponent::clearSelection()
 {
     listBox.setSelectedRows({}, juce::dontSendNotification);
@@ -265,7 +275,7 @@ void EventListComponent::rebuildList()
         for (int row = range.getStart(); row < range.getEnd(); ++row)
             selectedRows.push_back(row);
 
-    auto rebuilt = sequence != nullptr ? EventListItems::build(*sequence, selectedTracks, recordingLayer)
+    auto rebuilt = sequence != nullptr ? EventListItems::build(*sequence, selectedTracks, recordingLayer, dragPreview)
                                        : std::vector<EventListItem>{};
     // Rows reorder when notes move, so the selection follows the notes and events rather than the row numbers.
     const auto reselected = RowSelection::fromRows(EventListItems::reselectedRows(items, selectedRows, rebuilt));
@@ -276,6 +286,8 @@ void EventListComponent::rebuildList()
     listBox.setSelectedRows({}, juce::dontSendNotification);
     listBox.updateContent();
     listBox.setSelectedRows(reselected, juce::dontSendNotification);
+    if (const auto row = EventListItems::focusRow(items, dragPreview))
+        listBox.scrollToEnsureRowIsOnscreen(*row);
     // A stale row number would make the next playhead update misjudge whether the playhead changed rows.
     if (lastPlayheadRow >= 0)
         lastPlayheadRow = EventListItems::playheadRow(items, playheadTick);

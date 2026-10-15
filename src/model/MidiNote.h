@@ -8,4 +8,5 @@ struct MidiNote
     int duration = 480;
 
     int endTick() const { return startTick + duration; }
+    bool operator==(const MidiNote&) const = default;
 };
