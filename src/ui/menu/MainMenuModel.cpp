@@ -54,6 +54,8 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
     else if (menuIndex == 2)
     {
         menu.addCommandItem(&commandManager, AppCommands::quantizeNotes);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager, AppCommands::toggleInputQuantize);
     }
     else if (menuIndex == 3)
     {
