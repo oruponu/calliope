@@ -1,8 +1,11 @@
 #pragma once
 
+#include "engine/PassBoundary.h"
 #include "engine/PlaybackClock.h"
+#include "engine/PlaybackProgress.h"
 #include "engine/RecordedNoteEdit.h"
 #include "engine/Take.h"
+#include "model/MidiNote.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <map>
 #include <optional>
@@ -12,18 +15,34 @@
 #include <utility>
 #include <vector>
 
+class TimelineGrid;
+
 // Turns one recording segment's input into notes and events. Message thread only.
 class TakeBuilder
 {
 public:
     void begin(std::optional<TrackId> target, ClockPosition start);
-    void handle(const std::string& sourceId, const juce::MidiMessage& message, ClockPosition at);
+    // With a grid, a note starts where quantizeInputStart puts it and keeps the length it is played with. It stays
+    // pending, neither shown, edited nor recorded, until reach() learns that playback has sent its start.
+    void handle(const std::string& sourceId, const juce::MidiMessage& message, ClockPosition at,
+                const TimelineGrid* grid = nullptr, LoopRange loop = {});
+    // Playback has sent every event before `sent` (PlaybackProgress::sent). Pending notes that start before it stop
+    // pending; a released one joins the take, to sound from the next loop pass. Returns whether any note did.
+    bool reach(ClockPosition sent);
+    // Playback ended these passes at these ticks (PlaybackProgress::passEnds). Pending notes left from a wrap announced
+    // before playback took it join the take if they start before the end of their pass, and are dropped otherwise.
+    // Returns whether any note joined.
+    bool reachPassEnds(const std::vector<ClockPosition>& passEnds);
     void setTarget(std::optional<TrackId> newTarget, int tick);
-    void closeHeld(int pass, int closeTick);
+    // `progress` is the one handed over with the boundary. Pending notes playback has not sent are dropped, except a
+    // note carried over the loop end when this is a loop wrap: it starts at the boundary's startTick. A wrap that input
+    // announced before playback took it keeps this pass's pending notes, held ones ended at closeTick, until
+    // reachPassEnds learns how far playback sent the pass.
+    void closeHeld(const PassBoundary& boundary, const PlaybackProgress& progress);
     void releaseSource(const std::string& sourceId, int tick);
     Take end(int tick);
-    // Edits recorded notes by id and ignores ids no longer recorded. A held note stays held unless the edit sets its
-    // end or moves its start to playheadTick or later; it then ends, and releasing its key does nothing.
+    // Edits recorded notes by id and ignores ids no longer recorded or still pending. A held note stays held unless the
+    // edit sets its end or moves its start to playheadTick or later; it then ends, and releasing its key does nothing.
     void editNotes(const std::vector<RecordedNoteEdit>& edits, int playheadTick);
     void removeNotes(const std::vector<int>& ids);
 
@@ -46,10 +65,29 @@ private:
         // Follows pitch edits; the NoteKey keeps the key that was pressed.
         int noteNumber = 0;
         int velocity = 0;
+        // Meaningless for a note carried over the loop end until the loop wraps.
         int startTick = 0;
         int id = 0;
+        // One past the builder's pass for a note carried over the loop end.
+        int pass = 0;
+        int playedTick = 0;
+        // Added to the release tick to keep the length the key was held. An edit of the start drops it.
+        int endOffset = 0;
+        bool pending = false;
     };
     using HeldNotes = std::map<NoteKey, HeldNote>;
+
+    // A released note still pending.
+    struct PendingNote
+    {
+        std::string sourceId;
+        TrackId track{};
+        // Its start is meaningless for a note carried over the loop end until the loop wraps.
+        MidiNote note;
+        int id = 0;
+        // Behind the builder's pass while waiting for reachPassEnds.
+        int pass = 0;
+    };
 
     struct RecordedPedal
     {
@@ -58,8 +96,12 @@ private:
     };
 
     void finishNote(const NoteKey& key, int tick);
-    void finishAllNotes(int tick);
+    // Ends a note for a reason other than its key: at `tick`, without keeping the played length. Drops a pending note.
+    void closeNote(HeldNotes::iterator it, int tick);
+    void closeAllNotes(int tick);
     void endHeldNote(HeldNotes::iterator it, int startTick, int duration);
+    void addNote(TrackId track, const MidiNote& note, int id);
+    bool hasReached(int notePass, int startTick, ClockPosition sent) const;
     void editHeldNote(HeldNotes::iterator it, const NoteFieldEdit& edit, int playheadTick);
     HeldNotes::iterator findHeld(int id);
     MidiNote* findFinished(int id);
@@ -70,6 +112,7 @@ private:
     std::optional<TrackId> target;
     int pass = 0;
     HeldNotes heldNotes;
+    std::vector<PendingNote> releasedPending;
     // Tracked with or without a target, since the pedal is physically down either way.
     std::set<PedalKey> pedalsDown;
     // The last hold pedal value, and its tick, recorded on each (track, controller) in this segment.

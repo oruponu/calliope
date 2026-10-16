@@ -74,6 +74,8 @@ private:
 
     void setActiveTool(PianoRollComponent::EditMode mode);
     void toggleSnap();
+    void toggleInputQuantize();
+    void updateInputQuantize();
     void updateFocusBorder();
     void onVBlank();
     void scrollToPlayhead(int tick);
@@ -183,6 +185,7 @@ private:
     ToolButton snapButton{ToolButton::Snap};
 
     juce::ComboBox quantizeComboBox;
+    bool inputQuantizeEnabled = false;
 
     juce::Rectangle<int> toolBarBounds;
     int toolBarSeparatorX = 0;

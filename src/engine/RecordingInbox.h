@@ -1,6 +1,8 @@
 #pragma once
 
+#include "engine/PassBoundary.h"
 #include "engine/PlaybackClock.h"
+#include "engine/PlaybackProgress.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <mutex>
 #include <string>
@@ -12,14 +14,8 @@ struct RecordedInput
     std::string sourceId;
     juce::MidiMessage message;
     ClockPosition position;
-};
-
-// Starts `pass`. Notes still held from earlier passes end at closeTick; TakeBuilder releases hold pedals just before
-// it.
-struct PassBoundary
-{
-    int pass = 0;
-    int closeTick = 0;
+    // The clock's loop when the input was placed.
+    LoopRange loop;
 };
 
 using InboxItem = std::variant<RecordedInput, PassBoundary>;
@@ -30,10 +26,17 @@ using InboxItem = std::variant<RecordedInput, PassBoundary>;
 class RecordingInbox
 {
 public:
+    struct Taken
+    {
+        std::vector<InboxItem> items;
+        PlaybackProgress progress;
+    };
+
     struct Drained
     {
         ClockPosition position;
         std::vector<InboxItem> items;
+        PlaybackProgress progress;
     };
 
     void playbackStarted(double timeMs, int tick, double ticksPerMs, LoopRange loop);
@@ -48,7 +51,7 @@ public:
     // Message thread. drainAt and endSegment hand over the queue together with the position at timeMs, so the caller
     // can close held notes there after processing everything queued before it.
     ClockPosition beginSegment(double timeMs);
-    std::vector<InboxItem> takeItems();
+    Taken takeItems();
     Drained drainAt(double timeMs);
     Drained endSegment(double timeMs);
 
@@ -56,6 +59,7 @@ private:
     void setAnchor(double timeMs, double tick, double ticksPerMs, LoopRange loop);
     void announceWrapTo(const ClockPosition& position);
     ClockPosition closingPosition(double timeMs);
+    PlaybackProgress handOverProgress();
 
     mutable std::mutex mutex;
     PlaybackClock clock;
@@ -65,4 +69,6 @@ private:
     bool recording = false;
     double segmentStartMs = 0.0;
     std::vector<InboxItem> items;
+    // Passes the clock left while recording, since the previous hand-over.
+    std::vector<ClockPosition> passEnds;
 };

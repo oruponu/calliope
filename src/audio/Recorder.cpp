@@ -1,7 +1,9 @@
 #include "audio/Recorder.h"
 #include "engine/PlaybackEngine.h"
+#include "model/TimelineGrid.h"
 #include "undo/RecordTakeAction.h"
 #include "undo/UndoHistory.h"
+#include <optional>
 #include <utility>
 #include <variant>
 
@@ -59,7 +61,7 @@ void Recorder::finish()
     stopTimer();
 
     auto end = inbox.endSegment(now());
-    process(end.items);
+    process(end.items, end.progress);
     commit(builder.end(end.position.tick));
 
     rebuildPlayback();
@@ -84,11 +86,24 @@ void Recorder::releaseSource(const juce::String& deviceIdentifier)
     if (!recording)
         return;
     const auto drained = inbox.drainAt(now());
-    process(drained.items);
+    process(drained.items, drained.progress);
     const int contentBefore = builder.getContentRevision();
     const int notesBefore = builder.getNoteRevision();
     builder.releaseSource(deviceIdentifier.toStdString(), drained.position.tick);
     layerChanged(contentBefore, notesBefore);
+}
+
+void Recorder::setInputQuantize(std::optional<GridDivision> division)
+{
+    if (division == inputQuantize)
+        return;
+    // Input already queued was played before the change and keeps the old setting.
+    if (recording)
+    {
+        const auto drained = inbox.drainAt(now());
+        process(drained.items, drained.progress);
+    }
+    inputQuantize = division;
 }
 
 const Take& Recorder::getTake() const
@@ -107,7 +122,7 @@ void Recorder::editRecordedNotes(const std::vector<RecordedNoteEdit>& edits)
         return;
     // A key released just before the edit is still queued; process it first so the note keeps its released length.
     const auto drained = inbox.drainAt(now());
-    process(drained.items);
+    process(drained.items, drained.progress);
     const int contentBefore = builder.getContentRevision();
     const int notesBefore = builder.getNoteRevision();
     builder.editNotes(edits, drained.position.tick);
@@ -144,7 +159,7 @@ void Recorder::handleAsyncUpdate()
         return;
 
     const auto drained = inbox.drainAt(now());
-    process(drained.items);
+    process(drained.items, drained.progress);
     const int contentBefore = builder.getContentRevision();
     const int notesBefore = builder.getNoteRevision();
     builder.setTarget(target, drained.position.tick);
@@ -153,28 +168,32 @@ void Recorder::handleAsyncUpdate()
 
 void Recorder::timerCallback()
 {
-    process(inbox.takeItems());
+    const auto taken = inbox.takeItems();
+    process(taken.items, taken.progress);
     if (playbackStale && now() - lastRebuildMs >= minEventRebuildIntervalMs)
         rebuildPlayback();
 }
 
-void Recorder::process(const std::vector<InboxItem>& items)
+void Recorder::process(const std::vector<InboxItem>& items, const PlaybackProgress& progress)
 {
-    if (items.empty())
-        return;
     const int contentBefore = builder.getContentRevision();
     const int notesBefore = builder.getNoteRevision();
+    // Cheap to build since it holds the timeline by reference; built per call so its step follows the current ticks per
+    // quarter note.
+    std::optional<TimelineGrid> grid;
+    if (inputQuantize)
+        grid.emplace(sequence.getTimeline(), *inputQuantize);
     for (const auto& item : items)
     {
         if (const auto* input = std::get_if<RecordedInput>(&item))
-            builder.handle(input->sourceId, input->message, input->position);
+            builder.handle(input->sourceId, input->message, input->position, grid ? &*grid : nullptr, input->loop);
         else
-        {
-            const auto& boundary = std::get<PassBoundary>(item);
-            builder.closeHeld(boundary.pass, boundary.closeTick);
-        }
+            builder.closeHeld(std::get<PassBoundary>(item), progress);
     }
-    layerChanged(contentBefore, notesBefore);
+    const bool reachedPassEnds = builder.reachPassEnds(progress.passEnds);
+    const bool reached = builder.reach(progress.sent);
+    if (!items.empty() || reachedPassEnds || reached)
+        layerChanged(contentBefore, notesBefore);
 }
 
 void Recorder::layerChanged(int contentRevisionBefore, int noteRevisionBefore)

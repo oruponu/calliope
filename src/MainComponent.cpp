@@ -401,7 +401,10 @@ MainComponent::MainComponent()
         const GridDivision division = gridDivisionForItemId(quantizeComboBox.getSelectedId());
         pianoRoll.setGridDivision(division);
         controllerLane.setGridDivision(division);
+        updateInputQuantize();
     };
+    inputQuantizeEnabled = getAppProperties().getUserSettings()->getBoolValue("inputQuantizeEnabled", false);
+    updateInputQuantize();
 
     transportBar.updateDisplay();
 
@@ -656,6 +659,9 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case AppCommands::scrollViewRight:
         result.setActive(focusedPanel == FocusPanel::PianoRoll);
         break;
+    case AppCommands::toggleInputQuantize:
+        result.setTicked(inputQuantizeEnabled);
+        break;
     default:
         break;
     }
@@ -800,6 +806,9 @@ bool MainComponent::perform(const InvocationInfo& info)
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.quantizeSelectedNotes();
         return true;
+    case AppCommands::toggleInputQuantize:
+        toggleInputQuantize();
+        return true;
     default:
         return false;
     }
@@ -894,6 +903,19 @@ void MainComponent::toggleSnap()
     snapButton.setActive(enabled);
     pianoRoll.setSnapEnabled(enabled);
     getAppProperties().getUserSettings()->setValue("snapEnabled", enabled);
+}
+
+void MainComponent::toggleInputQuantize()
+{
+    inputQuantizeEnabled = !inputQuantizeEnabled;
+    getAppProperties().getUserSettings()->setValue("inputQuantizeEnabled", inputQuantizeEnabled);
+    updateInputQuantize();
+}
+
+void MainComponent::updateInputQuantize()
+{
+    recorder.setInputQuantize(
+        inputQuantizeEnabled ? std::optional(gridDivisionForItemId(quantizeComboBox.getSelectedId())) : std::nullopt);
 }
 
 void MainComponent::updateFocusBorder()

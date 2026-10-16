@@ -10,6 +10,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/NoteQuantize.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/InputQuantize.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/MetronomeClicks.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackClock.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
@@ -67,6 +68,7 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignatureDeleteTests.cpp
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
+    engine/InputQuantizeTests.cpp
     engine/MetronomeClicksTests.cpp
     engine/NoteFieldEditTests.cpp
     engine/PlaybackClockTests.cpp

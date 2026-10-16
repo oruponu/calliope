@@ -5,6 +5,7 @@
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
 #include "engine/TakeBuilder.h"
+#include "model/GridDivision.h"
 #include "model/MidiSequence.h"
 #include <functional>
 #include <juce_events/juce_events.h>
@@ -39,6 +40,8 @@ public:
 
     void activeTrackChanged();
     void releaseSource(const juce::String& deviceIdentifier);
+    // The grid that notes played from now on start on, or nullopt to record them where they are played.
+    void setInputQuantize(std::optional<GridDivision> division);
 
     const Take& getTake() const override;
     std::vector<HeldTakeNote> getHeldNotes() const override;
@@ -60,7 +63,7 @@ private:
     void handleAsyncUpdate() override;
     void timerCallback() override;
 
-    void process(const std::vector<InboxItem>& items);
+    void process(const std::vector<InboxItem>& items, const PlaybackProgress& progress);
     void layerChanged(int contentRevisionBefore, int noteRevisionBefore);
     void rebuildPlayback();
     void commit(Take take);
@@ -72,6 +75,7 @@ private:
     RecordingInbox& inbox;
     std::function<int()> activeTrackIndex;
     std::optional<TrackId> target;
+    std::optional<GridDivision> inputQuantize;
     TakeBuilder builder;
     bool recording = false;
     bool playbackStale = false;

@@ -1,4 +1,5 @@
 #include "engine/TakeBuilder.h"
+#include "support/GridTestHelpers.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
@@ -67,6 +68,24 @@ TakeBuilder startedOn(std::optional<TrackId> target)
     TakeBuilder builder;
     builder.begin(target, {1, 0});
     return builder;
+}
+
+constexpr LoopRange oneBarLoop{true, 0, 1920};
+const TimelineGrid* const sixteenths = &GridTest::fourFourSixteenths;
+
+PassBoundary wrapTo(int pass, int startTick)
+{
+    return {.pass = pass, .closeTick = 1920, .loopWrap = true, .startTick = startTick};
+}
+
+PassBoundary jumpTo(int pass, int closeTick)
+{
+    return {.pass = pass, .closeTick = closeTick, .loopWrap = false, .startTick = 0};
+}
+
+PlaybackProgress wrappedInto(int pass, int sentTick)
+{
+    return {.sent = {pass, sentTick}, .passEnds = {{pass - 1, 1920}}};
 }
 } // namespace
 
@@ -167,7 +186,7 @@ TEST_CASE("system messages are not recorded", "[engine][take]")
 TEST_CASE("input from an earlier pass is dropped", "[engine][take]")
 {
     auto builder = startedOn(piano);
-    builder.closeHeld(2, 1920);
+    builder.closeHeld({.pass = 2, .closeTick = 1920}, {});
     builder.handle("a", noteOn(60), {1, 1919});
     builder.handle("a", cc(7, 100), {1, 1919});
     CHECK(builder.getHeldNotes().empty());
@@ -178,7 +197,7 @@ TEST_CASE("a pass boundary closes held notes at the boundary tick", "[engine][ta
 {
     auto builder = startedOn(piano);
     builder.handle("a", noteOn(60), {1, 1800});
-    builder.closeHeld(2, 1920);
+    builder.closeHeld({.pass = 2, .closeTick = 1920}, {});
     builder.handle("a", noteOff(60), {2, 10});
     CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 1800, 120}});
 }
@@ -244,7 +263,7 @@ TEST_CASE("a pass boundary releases a held pedal one tick before the boundary", 
 {
     auto builder = startedOn(piano);
     builder.handle("a", cc(64, 127), {1, 100});
-    builder.closeHeld(2, 1920);
+    builder.closeHeld({.pass = 2, .closeTick = 1920}, {});
     CHECK(eventsOn(builder, piano) == std::vector<MidiEvent>{ccEvent(100, 64, 127), ccEvent(1919, 64, 0)});
 }
 
@@ -252,7 +271,7 @@ TEST_CASE("a pedal pressed on the boundary tick is released after its press", "[
 {
     auto builder = startedOn(piano);
     builder.handle("a", cc(64, 127), {1, 1920});
-    builder.closeHeld(2, 1920);
+    builder.closeHeld({.pass = 2, .closeTick = 1920}, {});
     CHECK(eventsOn(builder, piano) == std::vector<MidiEvent>{ccEvent(1920, 64, 127), ccEvent(1920, 64, 0)});
 }
 
@@ -466,7 +485,7 @@ TEST_CASE("a pass boundary closes a moved held note from its new start", "[engin
     auto builder = startedOn(piano);
     builder.handle("a", noteOn(60), {1, 480});
     builder.editNotes({{1, {.startTick = 240}}}, 960);
-    builder.closeHeld(2, 1920);
+    builder.closeHeld({.pass = 2, .closeTick = 1920}, {});
     CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 240, 1680}});
     CHECK(idsOn(builder, piano) == std::vector<int>{1});
 }
@@ -507,4 +526,318 @@ TEST_CASE("a held note that stays held ignores the given length", "[engine][take
     builder.handle("a", noteOn(60), {1, 480});
     builder.editNotes({{1, {.startTick = 240, .heldLength = 120}}}, 960);
     CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 240, 1}});
+}
+
+TEST_CASE("without a grid a note is shown from where it is played", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 130});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 130, 1}});
+}
+
+TEST_CASE("a quantized note starts on the nearest line and keeps its played length", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 130}, sixteenths);
+    builder.reach({1, 500});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 120, 1}});
+    builder.handle("a", noteOff(60), {1, 400}, sixteenths);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 120, 270}});
+}
+
+TEST_CASE("a note released before playback reaches it joins the take once it does", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.handle("a", noteOff(60), {1, 300}, sixteenths);
+    CHECK(builder.getTake().empty());
+    builder.reach({1, 241});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 240, 70}});
+}
+
+TEST_CASE("a controller is recorded where it is played even with a grid", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", cc(1, 64), {1, 130}, sixteenths);
+    CHECK(eventsOn(builder, piano) == std::vector<MidiEvent>{ccEvent(130, 1, 64)});
+}
+
+TEST_CASE("a pending note is not shown until playback sends its start", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    CHECK_FALSE(builder.reach({1, 235}));
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(builder.reach({1, 241}));
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 240, 1}});
+}
+
+TEST_CASE("a pending note is reached only once playback has sent past its start tick", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.reach({1, 240});
+    CHECK(builder.getHeldNotes().empty());
+    builder.reach({1, 241});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 240, 1}});
+}
+
+TEST_CASE("a pending note is reached by a later pass of the clock but not by an earlier one",
+          "[engine][take][input-quantize]")
+{
+    TakeBuilder builder;
+    builder.begin(piano, {2, 0});
+    builder.handle("a", noteOn(60), {2, 130}, sixteenths);
+    builder.reach({1, 1900});
+    CHECK(builder.getHeldNotes().empty());
+    builder.reach({3, 0});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 120, 1}});
+}
+
+TEST_CASE("a quantized note ends no later than the largest tick", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 2147483630}, sixteenths);
+    builder.handle("a", noteOff(60), {1, 2147483645}, sixteenths);
+    builder.reach({1, 2147483647});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 2147483640, 7}});
+}
+
+TEST_CASE("moving a quantized held note drops its played length", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 130}, sixteenths);
+    builder.reach({1, 500});
+    builder.editNotes({{1, {.startTick = 480}}}, 500);
+    builder.handle("a", noteOff(60), {1, 900}, sixteenths);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 480, 420}});
+}
+
+TEST_CASE("a new pitch keeps the played length of a quantized held note", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 130}, sixteenths);
+    builder.reach({1, 500});
+    builder.editNotes({{1, {.noteNumber = 67}}}, 500);
+    builder.handle("a", noteOff(60), {1, 900}, sixteenths);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{67, 90, 120, 770}});
+}
+
+TEST_CASE("a pending note is neither edited nor removed", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.editNotes({{1, {.startTick = 0}}}, 235);
+    builder.removeNotes({1});
+    builder.reach({1, 241});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 240, 1}});
+}
+
+TEST_CASE("pressing a pending key again ends the pending note with its played length", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.handle("a", noteOn(60, 70), {1, 235}, sixteenths);
+    builder.reach({1, 241});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 240, 5}});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 70, 240, 2}});
+}
+
+TEST_CASE("ending the segment drops pending notes, held or released", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.handle("a", noteOn(62), {1, 350}, sixteenths);
+    builder.handle("a", noteOff(62), {1, 355}, sixteenths);
+    CHECK(builder.end(236).empty());
+}
+
+TEST_CASE("a reached quantized note closed by the end ends at the end tick", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 130}, sixteenths);
+    builder.reach({1, 200});
+    const auto take = builder.end(600);
+    REQUIRE(take.contains(piano));
+    CHECK(take.at(piano).notes == std::vector<MidiNote>{{60, 90, 120, 480}});
+}
+
+TEST_CASE("a jump drops pending notes, held or released", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.handle("a", noteOn(62), {1, 350}, sixteenths);
+    builder.handle("a", noteOff(62), {1, 355}, sixteenths);
+    builder.closeHeld(jumpTo(2, 236), {.sent = {1, 236}});
+    builder.reach({2, 1000});
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(builder.getTake().empty());
+}
+
+TEST_CASE("a boundary playback has passed keeps the pending notes it sent", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.handle("a", noteOff(60), {1, 300}, sixteenths);
+    builder.handle("a", noteOn(62), {1, 350}, sixteenths);
+    builder.closeHeld(jumpTo(2, 500), {.sent = {2, 10}, .passEnds = {{1, 500}}});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 240, 70}, {62, 90, 360, 140}});
+}
+
+TEST_CASE("a wrap playback has not taken yet keeps the pending notes it has not sent until it ends the pass",
+          "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(62), {1, 1700}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(62), {1, 1710}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOn(60), {1, 1790}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(60), {1, 1795}, sixteenths, oneBarLoop);
+    builder.closeHeld(wrapTo(2, 0), {.sent = {1, 1780}});
+    builder.reach({2, 100});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{62, 90, 1680, 10}});
+    CHECK(builder.reachPassEnds({{1, 1920}}));
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{62, 90, 1680, 10}, {60, 90, 1800, 5}});
+}
+
+TEST_CASE("a key held across a wrap playback has not taken yet ends at the loop end once playback gets there",
+          "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1790}, sixteenths, oneBarLoop);
+    builder.closeHeld(wrapTo(2, 0), {.sent = {1, 1780}});
+    CHECK(builder.getHeldNotes().empty());
+    builder.reachPassEnds({{1, 1920}});
+    builder.handle("a", noteOff(60), {2, 100}, sixteenths, oneBarLoop);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 1800, 120}});
+}
+
+TEST_CASE("a jump that later cancels an announced wrap keeps only the pending notes playback sent",
+          "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1690}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(60), {1, 1695}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOn(64), {1, 1790}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(64), {1, 1795}, sixteenths, oneBarLoop);
+    builder.closeHeld(wrapTo(2, 0), {.sent = {1, 1670}});
+    const PlaybackProgress progress{.sent = {3, 10}, .passEnds = {{1, 1750}}};
+    builder.closeHeld(jumpTo(3, 0), progress);
+    builder.reach(progress.sent);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 1680, 5}});
+}
+
+TEST_CASE("pending notes waiting for the end of a pass are dropped when recording ends first",
+          "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1790}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(60), {1, 1795}, sixteenths, oneBarLoop);
+    builder.closeHeld(wrapTo(2, 0), {.sent = {1, 1780}});
+    builder.reach({2, 0});
+    CHECK(builder.end(0).empty());
+}
+
+TEST_CASE("a jump that cancels an announced wrap keeps only the pending notes playback sent",
+          "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(62), {1, 1700}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(62), {1, 1710}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOn(60), {1, 1790}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(60), {1, 1795}, sixteenths, oneBarLoop);
+    const PlaybackProgress progress{.sent = {3, 10}, .passEnds = {{1, 1780}}};
+    builder.closeHeld(wrapTo(2, 0), progress);
+    builder.closeHeld(jumpTo(3, 0), progress);
+    builder.reach(progress.sent);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{62, 90, 1680, 10}});
+}
+
+TEST_CASE("switching the target drops pending notes, held or released", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.handle("a", noteOn(62), {1, 350}, sixteenths);
+    builder.handle("a", noteOff(62), {1, 355}, sixteenths);
+    builder.setTarget(bass, 236);
+    builder.reach({1, 1000});
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(builder.getTake().empty());
+}
+
+TEST_CASE("releasing a source drops only its pending notes", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 230}, sixteenths);
+    builder.handle("a", noteOn(62), {1, 350}, sixteenths);
+    builder.handle("a", noteOff(62), {1, 355}, sixteenths);
+    builder.handle("b", noteOn(64), {1, 230}, sixteenths);
+    builder.releaseSource("a", 236);
+    builder.reach({1, 1000});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 64, 90, 240, 3}});
+    CHECK(builder.getTake().empty());
+}
+
+TEST_CASE("a note quantized to the loop end starts the next pass at the loop start", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1900}, sixteenths, oneBarLoop);
+    builder.reach({1, 1919});
+    CHECK(builder.getHeldNotes().empty());
+    builder.closeHeld(wrapTo(2, 0), wrappedInto(2, 5));
+    builder.reach({2, 5});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 0, 1}});
+    builder.handle("a", noteOff(60), {2, 100}, sixteenths, oneBarLoop);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 0, 120}});
+}
+
+TEST_CASE("a note carried to the next pass and released before the wrap keeps its played length",
+          "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1900}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(60), {1, 1915}, sixteenths, oneBarLoop);
+    builder.reach({1, 1919});
+    CHECK(builder.getTake().empty());
+    builder.closeHeld(wrapTo(2, 0), wrappedInto(2, 5));
+    builder.reach({2, 5});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 0, 15}});
+}
+
+TEST_CASE("a carried note held through the next wrap closes there", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1900}, sixteenths, oneBarLoop);
+    builder.closeHeld(wrapTo(2, 0), wrappedInto(2, 5));
+    builder.reach({2, 5});
+    builder.closeHeld(wrapTo(3, 0), wrappedInto(3, 5));
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 0, 1920}});
+}
+
+TEST_CASE("a carried note starts where the loop actually wraps to", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1900}, sixteenths, oneBarLoop);
+    builder.closeHeld(wrapTo(2, 480), wrappedInto(2, 485));
+    builder.reach({2, 485});
+    builder.handle("a", noteOff(60), {2, 600}, sixteenths, oneBarLoop);
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 480, 140}});
+}
+
+TEST_CASE("a carried note is dropped when playback jumps instead of wrapping", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1900}, sixteenths, oneBarLoop);
+    builder.closeHeld(jumpTo(2, 1910), {.sent = {2, 5}, .passEnds = {{1, 1910}}});
+    builder.reach({2, 100});
+    builder.handle("a", noteOff(60), {2, 200}, sixteenths, oneBarLoop);
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(builder.getTake().empty());
+}
+
+TEST_CASE("a carried note is dropped when recording ends before the wrap", "[engine][take][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.handle("a", noteOn(60), {1, 1900}, sixteenths, oneBarLoop);
+    builder.handle("a", noteOff(60), {1, 1915}, sixteenths, oneBarLoop);
+    CHECK(builder.end(1918).empty());
 }

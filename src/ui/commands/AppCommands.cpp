@@ -38,7 +38,8 @@ void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
                        toggleLoop,
                        toggleMetronome,
                        toggleRecord,
-                       quantizeNotes});
+                       quantizeNotes,
+                       toggleInputQuantize});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -189,6 +190,9 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
     case quantizeNotes:
         result.setInfo("Quantize", "", "Event", 0);
         result.addDefaultKeypress('Q', 0);
+        break;
+    case toggleInputQuantize:
+        result.setInfo("Input Quantize", "", "Event", 0);
         break;
     default:
         break;

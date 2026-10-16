@@ -1,7 +1,10 @@
 #include "engine/TakeBuilder.h"
 #include "engine/ChannelVoiceMessage.h"
+#include "engine/InputQuantize.h"
+#include "model/TimelineGrid.h"
 #include <algorithm>
 #include <array>
+#include <limits>
 
 namespace
 {
@@ -37,6 +40,7 @@ void TakeBuilder::begin(std::optional<TrackId> newTarget, ClockPosition start)
     target = newTarget;
     pass = start.pass;
     heldNotes.clear();
+    releasedPending.clear();
     pedalsDown.clear();
     recordedPedals.clear();
     take.clear();
@@ -44,7 +48,8 @@ void TakeBuilder::begin(std::optional<TrackId> newTarget, ClockPosition start)
     ++noteRevision;
 }
 
-void TakeBuilder::handle(const std::string& sourceId, const juce::MidiMessage& message, ClockPosition at)
+void TakeBuilder::handle(const std::string& sourceId, const juce::MidiMessage& message, ClockPosition at,
+                         const TimelineGrid* grid, LoopRange loop)
 {
     if (at.pass < pass || !isChannelVoiceMessage(message))
         return;
@@ -67,7 +72,25 @@ void TakeBuilder::handle(const std::string& sourceId, const juce::MidiMessage& m
     {
         const NoteKey key{sourceId, channel, message.getNoteNumber()};
         finishNote(key, at.tick);
-        heldNotes[key] = {*target, message.getNoteNumber(), message.getVelocity(), at.tick, nextNoteId++};
+        HeldNote held{.track = *target,
+                      .noteNumber = message.getNoteNumber(),
+                      .velocity = message.getVelocity(),
+                      .startTick = at.tick,
+                      .id = nextNoteId++,
+                      .pass = pass,
+                      .playedTick = at.tick};
+        if (grid != nullptr)
+        {
+            held.pending = true;
+            if (const auto start = quantizeInputStart(at.tick, *grid, loop))
+            {
+                held.startTick = *start;
+                held.endOffset = *start - at.tick;
+            }
+            else
+                held.pass = pass + 1;
+        }
+        heldNotes[key] = held;
         return;
     }
     if (message.isNoteOff())
@@ -81,22 +104,114 @@ void TakeBuilder::handle(const std::string& sourceId, const juce::MidiMessage& m
     addEvent(*target, toEvent(message, at.tick));
 }
 
+bool TakeBuilder::reach(ClockPosition sent)
+{
+    bool changed = false;
+    for (auto& [key, held] : heldNotes)
+        if (held.pending && hasReached(held.pass, held.startTick, sent))
+        {
+            held.pending = false;
+            changed = true;
+        }
+
+    std::vector<PendingNote> stillPending;
+    for (auto& released : releasedPending)
+    {
+        if (hasReached(released.pass, released.note.startTick, sent))
+        {
+            addNote(released.track, released.note, released.id);
+            changed = true;
+        }
+        else
+            stillPending.push_back(std::move(released));
+    }
+    releasedPending = std::move(stillPending);
+    return changed;
+}
+
+bool TakeBuilder::reachPassEnds(const std::vector<ClockPosition>& passEnds)
+{
+    bool changed = false;
+    std::vector<PendingNote> stillPending;
+    for (auto& released : releasedPending)
+    {
+        const auto end = std::ranges::find(passEnds, released.pass, &ClockPosition::pass);
+        if (released.pass >= pass || end == passEnds.end())
+            stillPending.push_back(std::move(released));
+        else if (released.note.startTick < end->tick)
+        {
+            addNote(released.track, released.note, released.id);
+            changed = true;
+        }
+    }
+    releasedPending = std::move(stillPending);
+    return changed;
+}
+
 void TakeBuilder::setTarget(std::optional<TrackId> newTarget, int tick)
 {
     if (newTarget == target)
         return;
-    finishAllNotes(tick);
+    closeAllNotes(tick);
+    releasedPending.clear();
     releaseAllPedals(tick);
     target = newTarget;
 }
 
-void TakeBuilder::closeHeld(int newPass, int closeTick)
+void TakeBuilder::closeHeld(const PassBoundary& boundary, const PlaybackProgress& progress)
 {
-    finishAllNotes(closeTick);
+    reachPassEnds(progress.passEnds);
+    // Only what playback actually sent of this pass: a wrap announced by input may never be taken.
+    if (const auto sentTick = progress.sentTickIn(pass))
+        reach({pass, *sentTick});
+    // Playback has not taken the wrap yet and still sends the rest of this pass, unless a jump cancels the wrap.
+    const bool passStillPlaying =
+        boundary.loopWrap && !std::ranges::contains(progress.passEnds, pass, &ClockPosition::pass);
+
+    std::vector<PendingNote> kept;
+    for (auto& released : releasedPending)
+    {
+        if (released.pass > pass && boundary.loopWrap)
+        {
+            released.note.startTick = boundary.startTick;
+            kept.push_back(std::move(released));
+        }
+        else if (released.pass == pass && passStillPlaying)
+            kept.push_back(std::move(released));
+    }
+    releasedPending = std::move(kept);
+
+    std::vector<NoteKey> waiting;
+    std::vector<NoteKey> closing;
+    for (auto& [key, held] : heldNotes)
+    {
+        if (held.pass > pass && boundary.loopWrap)
+        {
+            held.startTick = boundary.startTick;
+            held.endOffset = boundary.closeTick - held.playedTick;
+        }
+        else if (held.pending && passStillPlaying)
+        {
+            releasedPending.push_back(
+                {std::get<0>(key),
+                 held.track,
+                 {held.noteNumber, held.velocity, held.startTick, std::max(1, boundary.closeTick - held.startTick)},
+                 held.id,
+                 held.pass});
+            waiting.push_back(key);
+        }
+        else
+            closing.push_back(key);
+    }
+    for (const auto& key : waiting)
+        heldNotes.erase(key);
+    for (const auto& key : closing)
+        closeNote(heldNotes.find(key), boundary.closeTick);
+
     // Loop playback sends events before the loop end only and resets no controllers on the wrap, so a release on
     // the loop end itself would never be heard and the pedal would stay down in every later pass.
-    releaseAllPedals(closeTick - 1);
-    pass = newPass;
+    releaseAllPedals(boundary.closeTick - 1);
+    pass = boundary.pass;
 }
 
 void TakeBuilder::releaseSource(const std::string& sourceId, int tick)
@@ -106,7 +221,8 @@ void TakeBuilder::releaseSource(const std::string& sourceId, int tick)
         if (std::get<0>(key) == sourceId)
             notes.push_back(key);
     for (const auto& key : notes)
-        finishNote(key, tick);
+        closeNote(heldNotes.find(key), tick);
+    std::erase_if(releasedPending, [&](const PendingNote& released) { return released.sourceId == sourceId; });
 
     std::set<int> controllers;
     for (auto it = pedalsDown.begin(); it != pedalsDown.end();)
@@ -126,7 +242,8 @@ void TakeBuilder::releaseSource(const std::string& sourceId, int tick)
 
 Take TakeBuilder::end(int tick)
 {
-    finishAllNotes(tick);
+    closeAllNotes(tick);
+    releasedPending.clear();
     releaseAllPedals(tick);
     target.reset();
     pedalsDown.clear();
@@ -178,7 +295,8 @@ std::vector<HeldTakeNote> TakeBuilder::getHeldNotes() const
 {
     std::vector<HeldTakeNote> held;
     for (const auto& [key, note] : heldNotes)
-        held.push_back({note.track, note.noteNumber, note.velocity, note.startTick, note.id});
+        if (!note.pending)
+            held.push_back({note.track, note.noteNumber, note.velocity, note.startTick, note.id});
     return held;
 }
 
@@ -187,27 +305,74 @@ void TakeBuilder::finishNote(const NoteKey& key, int tick)
     const auto it = heldNotes.find(key);
     if (it == heldNotes.end())
         return;
+    const HeldNote held = it->second;
+    if (held.pass > pass)
+    {
+        heldNotes.erase(it);
+        releasedPending.push_back({std::get<0>(key),
+                                   held.track,
+                                   {held.noteNumber, held.velocity, 0, std::max(1, tick - held.playedTick)},
+                                   held.id,
+                                   held.pass});
+        return;
+    }
+
+    // SequenceContentsRules keeps every note end inside int.
+    const long long end =
+        std::min<long long>(static_cast<long long>(tick) + held.endOffset, std::numeric_limits<int>::max());
+    const int duration = std::max(1, static_cast<int>(end - held.startTick));
+    if (!held.pending)
+    {
+        endHeldNote(it, held.startTick, duration);
+        return;
+    }
+    heldNotes.erase(it);
+    releasedPending.push_back(
+        {std::get<0>(key), held.track, {held.noteNumber, held.velocity, held.startTick, duration}, held.id, held.pass});
+}
+
+void TakeBuilder::closeNote(HeldNotes::iterator it, int tick)
+{
+    if (it->second.pending)
+    {
+        heldNotes.erase(it);
+        return;
+    }
     endHeldNote(it, it->second.startTick, std::max(1, tick - it->second.startTick));
+}
+
+void TakeBuilder::closeAllNotes(int tick)
+{
+    std::vector<NoteKey> keys;
+    for (const auto& [key, held] : heldNotes)
+        keys.push_back(key);
+    for (const auto& key : keys)
+        closeNote(heldNotes.find(key), tick);
 }
 
 void TakeBuilder::endHeldNote(HeldNotes::iterator it, int startTick, int duration)
 {
     const HeldNote held = it->second;
     heldNotes.erase(it);
-    auto& track = take[held.track];
-    track.notes.push_back({held.noteNumber, held.velocity, startTick, duration});
-    track.noteIds.push_back(held.id);
+    addNote(held.track, {held.noteNumber, held.velocity, startTick, duration}, held.id);
+}
+
+void TakeBuilder::addNote(TrackId track, const MidiNote& note, int id)
+{
+    auto& recorded = take[track];
+    recorded.notes.push_back(note);
+    recorded.noteIds.push_back(id);
     ++contentRevision;
     ++noteRevision;
 }
 
-void TakeBuilder::finishAllNotes(int tick)
+bool TakeBuilder::hasReached(int notePass, int startTick, ClockPosition sent) const
 {
-    std::vector<NoteKey> keys;
-    for (const auto& [key, held] : heldNotes)
-        keys.push_back(key);
-    for (const auto& key : keys)
-        finishNote(key, tick);
+    // A note carried over the loop end has no start until the loop wraps, and a note left behind by an announced wrap
+    // waits for reachPassEnds.
+    if (notePass != pass)
+        return false;
+    return sent.pass > notePass || (sent.pass == notePass && startTick < sent.tick);
 }
 
 void TakeBuilder::editHeldNote(HeldNotes::iterator it, const NoteFieldEdit& edit, int playheadTick)
@@ -225,12 +390,16 @@ void TakeBuilder::editHeldNote(HeldNotes::iterator it, const NoteFieldEdit& edit
     else if (edit.startTick && *edit.startTick >= playheadTick)
         endHeldNote(it, *edit.startTick, std::max(1, edit.heldLength.value_or(playheadTick - held.startTick)));
     else if (edit.startTick)
+    {
         held.startTick = *edit.startTick;
+        held.endOffset = 0;
+    }
 }
 
 TakeBuilder::HeldNotes::iterator TakeBuilder::findHeld(int id)
 {
-    return std::ranges::find(heldNotes, id, [](const auto& entry) { return entry.second.id; });
+    return std::ranges::find_if(heldNotes,
+                                [id](const auto& entry) { return entry.second.id == id && !entry.second.pending; });
 }
 
 MidiNote* TakeBuilder::findFinished(int id)

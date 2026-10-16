@@ -1,6 +1,7 @@
 #include "engine/RecordingInbox.h"
 #include "engine/ChannelVoiceMessage.h"
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 void RecordingInbox::playbackStarted(double timeMs, int tick, double ticksPerMs, LoopRange loop)
@@ -23,24 +24,29 @@ void RecordingInbox::jumped(double timeMs, int fromTick, int toTick, double tick
     std::lock_guard lock(mutex);
     // A wrap was announced but never taken: close that pass at the loop start, not back at fromTick.
     const int closeTick = lastAnnouncedPass > clock.pass ? clock.loop.start : fromTick;
+    if (recording)
+        passEnds.push_back({clock.pass, fromTick});
     setAnchor(timeMs, toTick, ticksPerMs, loop);
     clock.pass = ++lastAnnouncedPass;
     clock.passStartTick = toTick;
     clock.passStartedByLoop = false;
     if (recording)
-        items.push_back(PassBoundary{clock.pass, closeTick});
+        items.push_back(PassBoundary{.pass = clock.pass, .closeTick = closeTick, .startTick = toTick});
 }
 
 void RecordingInbox::loopWrapped(double timeMs, double tick, double ticksPerMs, LoopRange loop)
 {
     std::lock_guard lock(mutex);
+    if (recording)
+        passEnds.push_back({clock.pass, loop.end});
     setAnchor(timeMs, tick, ticksPerMs, loop);
     const int pass = clock.pass + 1;
     if (lastAnnouncedPass < pass)
     {
         lastAnnouncedPass = pass;
         if (recording)
-            items.push_back(PassBoundary{pass, loop.end});
+            items.push_back(
+                PassBoundary{.pass = pass, .closeTick = loop.end, .loopWrap = true, .startTick = loop.start});
     }
     clock.pass = pass;
     clock.passStartTick = loop.start;
@@ -65,13 +71,14 @@ void RecordingInbox::receive(const juce::String& sourceId, const juce::MidiMessa
 
     const auto position = locate(clock, timeMs);
     announceWrapTo(position);
-    items.push_back(RecordedInput{sourceId.toStdString(), message, position});
+    items.push_back(RecordedInput{sourceId.toStdString(), message, position, clock.loop});
 }
 
 ClockPosition RecordingInbox::beginSegment(double timeMs)
 {
     std::lock_guard lock(mutex);
     items.clear();
+    passEnds.clear();
     recording = true;
     segmentStartMs = timeMs;
     const auto start = locate(clock, timeMs);
@@ -81,17 +88,17 @@ ClockPosition RecordingInbox::beginSegment(double timeMs)
     return start;
 }
 
-std::vector<InboxItem> RecordingInbox::takeItems()
+RecordingInbox::Taken RecordingInbox::takeItems()
 {
     std::lock_guard lock(mutex);
-    return std::exchange(items, {});
+    return {std::exchange(items, {}), handOverProgress()};
 }
 
 RecordingInbox::Drained RecordingInbox::drainAt(double timeMs)
 {
     std::lock_guard lock(mutex);
     const auto position = closingPosition(timeMs);
-    return {position, std::exchange(items, {})};
+    return {position, std::exchange(items, {}), handOverProgress()};
 }
 
 RecordingInbox::Drained RecordingInbox::endSegment(double timeMs)
@@ -99,7 +106,7 @@ RecordingInbox::Drained RecordingInbox::endSegment(double timeMs)
     std::lock_guard lock(mutex);
     const auto position = closingPosition(timeMs);
     recording = false;
-    Drained end{position, std::exchange(items, {})};
+    Drained end{position, std::exchange(items, {}), handOverProgress()};
     for (auto& item : end.items)
         if (auto* input = std::get_if<RecordedInput>(&item);
             input != nullptr && input->position.pass == end.position.pass && input->position.tick > end.position.tick)
@@ -120,7 +127,8 @@ void RecordingInbox::announceWrapTo(const ClockPosition& position)
     if (position.pass <= lastAnnouncedPass)
         return;
     lastAnnouncedPass = position.pass;
-    items.push_back(PassBoundary{position.pass, clock.loop.end});
+    items.push_back(PassBoundary{
+        .pass = position.pass, .closeTick = clock.loop.end, .loopWrap = true, .startTick = clock.loop.start});
 }
 
 ClockPosition RecordingInbox::closingPosition(double timeMs)
@@ -134,4 +142,9 @@ ClockPosition RecordingInbox::closingPosition(double timeMs)
     if (position.pass < lastAnnouncedPass)
         return {lastAnnouncedPass, clock.loop.start};
     return position;
+}
+
+PlaybackProgress RecordingInbox::handOverProgress()
+{
+    return {{clock.pass, std::max(0, static_cast<int>(std::floor(clock.tick)))}, std::exchange(passEnds, {})};
 }
