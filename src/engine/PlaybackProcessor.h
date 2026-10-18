@@ -15,7 +15,8 @@ public:
     void releaseActiveNotesForTrack(TrackId trackId, PlaybackListener& sink);
 
 private:
-    void offExpired(int toTick, PlaybackListener& sink);
+    // The caller holds activeNotesMutex.
+    void offEndingAt(int tick, PlaybackListener& sink);
 
     std::size_t noteCursor = 0;
     std::size_t eventCursor = 0;

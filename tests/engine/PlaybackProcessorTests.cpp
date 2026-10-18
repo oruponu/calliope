@@ -184,7 +184,7 @@ TEST_CASE("expired note-off precedes a midi event in the same range", "[engine][
     CHECK(sink.log[1].event.tick == 150);
 }
 
-TEST_CASE("expired note-off is sent before an earlier-ticked midi event", "[engine][processor]")
+TEST_CASE("midi event is sent before a later note-off in the same range", "[engine][processor]")
 {
     MidiSequence seq;
     MidiTrack t;
@@ -201,12 +201,12 @@ TEST_CASE("expired note-off is sent before an earlier-ticked midi event", "[engi
     proc.process(snap, 50, 200, sink);
 
     REQUIRE(sink.log.size() == 2);
-    CHECK(sink.log[0].kind == LoggedCall::NoteOff);
-    CHECK(sink.log[1].kind == LoggedCall::Mid);
-    CHECK(sink.log[1].event.tick == 80);
+    CHECK(sink.log[0].kind == LoggedCall::Mid);
+    CHECK(sink.log[0].event.tick == 80);
+    CHECK(sink.log[1].kind == LoggedCall::NoteOff);
 }
 
-TEST_CASE("midi event is sent before a note-on even when it is later in the range", "[engine][processor]")
+TEST_CASE("note-on is sent before a later midi event in the same range", "[engine][processor]")
 {
     MidiSequence seq;
     MidiTrack t;
@@ -221,9 +221,98 @@ TEST_CASE("midi event is sent before a note-on even when it is later in the rang
     proc.process(snap, 0, 100, sink);
 
     REQUIRE(sink.log.size() == 2);
-    CHECK(sink.log[0].kind == LoggedCall::Mid);
-    CHECK(sink.log[0].event.tick == 80);
+    CHECK(sink.log[0].kind == LoggedCall::NoteOn);
+    CHECK(sink.log[1].kind == LoggedCall::Mid);
+    CHECK(sink.log[1].event.tick == 80);
+}
+
+TEST_CASE("midi event between a short note's on and off is sent between them", "[engine][processor]")
+{
+    MidiSequence seq;
+    MidiTrack t;
+    t.addNote({60, 100, 10, 20});
+    t.addEvent(controlChange(20));
+    seq.addTrack(t);
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    PlaybackProcessor proc;
+    MockListener sink;
+    proc.resetCursors(snap, 0);
+    proc.process(snap, 0, 100, sink);
+
+    REQUIRE(sink.log.size() == 3);
+    CHECK(sink.log[0].kind == LoggedCall::NoteOn);
+    CHECK(sink.log[1].kind == LoggedCall::Mid);
+    CHECK(sink.log[2].kind == LoggedCall::NoteOff);
+}
+
+TEST_CASE("note-off is sent before a note-on that starts earlier in a later range", "[engine][processor]")
+{
+    MidiSequence seq;
+    MidiTrack t;
+    t.addNote({60, 100, 0, 30});
+    t.addNote({62, 100, 40, 100});
+    seq.addTrack(t);
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    PlaybackProcessor proc;
+    MockListener sink;
+    proc.resetCursors(snap, 0);
+    proc.process(snap, 0, 10, sink);
+    sink.log.clear();
+    proc.process(snap, 10, 100, sink);
+
+    REQUIRE(sink.log.size() == 2);
+    CHECK(sink.log[0].kind == LoggedCall::NoteOff);
+    CHECK(sink.log[0].note.noteNumber == 60);
     CHECK(sink.log[1].kind == LoggedCall::NoteOn);
+    CHECK(sink.log[1].note.noteNumber == 62);
+}
+
+TEST_CASE("note-on is sent before a later note-off of an already sounding note", "[engine][processor]")
+{
+    MidiSequence seq;
+    MidiTrack t;
+    t.addNote({60, 100, 0, 80});
+    t.addNote({62, 100, 40, 100});
+    seq.addTrack(t);
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    PlaybackProcessor proc;
+    MockListener sink;
+    proc.resetCursors(snap, 0);
+    proc.process(snap, 0, 10, sink);
+    sink.log.clear();
+    proc.process(snap, 10, 100, sink);
+
+    REQUIRE(sink.log.size() == 2);
+    CHECK(sink.log[0].kind == LoggedCall::NoteOn);
+    CHECK(sink.log[0].note.noteNumber == 62);
+    CHECK(sink.log[1].kind == LoggedCall::NoteOff);
+    CHECK(sink.log[1].note.noteNumber == 60);
+}
+
+TEST_CASE("at the same tick, note-off precedes midi event which precedes note-on", "[engine][processor]")
+{
+    MidiSequence seq;
+    MidiTrack t;
+    t.addNote({60, 100, 0, 50});
+    t.addNote({62, 100, 50, 100});
+    t.addEvent(controlChange(50));
+    seq.addTrack(t);
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    PlaybackProcessor proc;
+    MockListener sink;
+    proc.resetCursors(snap, 0);
+    proc.process(snap, 0, 10, sink);
+    sink.log.clear();
+    proc.process(snap, 10, 100, sink);
+
+    REQUIRE(sink.log.size() == 3);
+    CHECK(sink.log[0].kind == LoggedCall::NoteOff);
+    CHECK(sink.log[1].kind == LoggedCall::Mid);
+    CHECK(sink.log[2].kind == LoggedCall::NoteOn);
 }
 
 TEST_CASE("releaseActiveNotesForTrack offs that track's active notes and removes them", "[engine][processor]")
