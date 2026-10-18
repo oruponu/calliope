@@ -369,6 +369,8 @@ MainComponent::MainComponent()
     {
         juce::PopupMenu menu;
         menu.addCommandItem(&commandManager, AppCommands::toggleCountIn);
+        menu.addSeparator();
+        menu.addCommandItem(&commandManager, AppCommands::showMetronomeSettings);
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&target));
     };
 
