@@ -44,7 +44,8 @@ struct AppCommands
         toggleMetronome,
         toggleRecord,
         quantizeNotes,
-        toggleInputQuantize
+        toggleInputQuantize,
+        toggleCountIn
     };
 
     static void getAllCommands(juce::Array<juce::CommandID>& commands);

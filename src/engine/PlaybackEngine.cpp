@@ -1,5 +1,6 @@
 #include "engine/PlaybackEngine.h"
 #include "engine/MetronomeClicks.h"
+#include <algorithm>
 #include <utility>
 
 namespace
@@ -57,6 +58,7 @@ PlaybackEngine::ScopedPause::ScopedPause(PlaybackEngine& engineRef) : engine(eng
     if (!engine.resumeTimerAfterPause)
         return;
     engine.stopTimer();
+    engine.pausedAtMs = juce::Time::getMillisecondCounterHiRes();
     if (auto* inbox = engine.recordingInbox.load())
         inbox->clockHalted();
 }
@@ -71,8 +73,19 @@ PlaybackEngine::ScopedPause::~ScopedPause()
 
     engine.rebuildSnapshot();
     engine.lastSeenSnapshot.reset();
-    engine.lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
-    if (auto* inbox = engine.recordingInbox.load())
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    engine.lastCallbackTimeMs = now;
+    auto* inbox = engine.recordingInbox.load();
+    if (engine.countingIn)
+    {
+        // The count-in resumes where it paused, so the clicks keep their spacing.
+        const double pausedMs = now - engine.pausedAtMs;
+        engine.countInStartMs += pausedMs;
+        engine.countInEndMs += pausedMs;
+        if (inbox != nullptr)
+            inbox->countInDelayed(engine.countInEndMs);
+    }
+    else if (inbox != nullptr)
     {
         const double tick = engine.tickPosition.load();
         inbox->updateClock(engine.lastCallbackTimeMs, tick, ticksPerMsAt(*engine.currentOwner, static_cast<int>(tick)),
@@ -96,6 +109,7 @@ void PlaybackEngine::setSequence(const MidiSequence* seq)
         if (isTimerRunning())
             stopTimer();
         playing = false;
+        countingIn = false;
         FanOut sink(listeners);
         processor.sendAllNoteOffs(sink);
         snapshot.store(nullptr);
@@ -139,6 +153,40 @@ void PlaybackEngine::play()
     startTimer(1);
 }
 
+void PlaybackEngine::playWithCountIn(int bars)
+{
+    if (bars <= 0)
+    {
+        play();
+        return;
+    }
+    if (sequence == nullptr || playing)
+        return;
+    rebuildSnapshot();
+
+    const int tick = barStartAtOrBefore(currentOwner->timeSignatureChanges, currentOwner->ticksPerQuarterNote,
+                                        static_cast<int>(tickPosition.load()));
+    tickPosition.store(static_cast<double>(tick));
+    countIn = makeCountIn(currentOwner->timeSignatureChanges, currentOwner->ticksPerQuarterNote, tick, bars);
+    countInTicksPerMs = ticksPerMsAt(*currentOwner, tick);
+    countInStartMs = juce::Time::getMillisecondCounterHiRes();
+    countInEndMs = countInStartMs + countIn.lengthTicks / countInTicksPerMs;
+    countInSentTick = 0;
+    countingIn = true;
+
+    playing = true;
+    lastSeenSnapshot.reset();
+    lastCallbackTimeMs = countInStartMs;
+    if (auto* inbox = recordingInbox.load())
+        inbox->countInStarted(countInEndMs, tick, countInTicksPerMs, currentLoop());
+    startTimer(1);
+}
+
+bool PlaybackEngine::isCountingIn() const
+{
+    return countingIn.load();
+}
+
 void PlaybackEngine::stop()
 {
     if (!playing)
@@ -146,6 +194,7 @@ void PlaybackEngine::stop()
 
     stopTimer();
     playing = false;
+    countingIn = false;
     if (auto* inbox = recordingInbox.load())
         inbox->clockHalted();
 
@@ -260,14 +309,16 @@ void PlaybackEngine::hiResTimerCallback()
         return;
 
     FanOut sink(listeners);
+    auto* inbox = recordingInbox.load();
+
+    if (countingIn.load() && !advanceCountIn(*snap, inbox))
+        return;
 
     if (snap != lastSeenSnapshot)
     {
         processor.resetCursors(*snap, (int)tickPosition.load());
         lastSeenSnapshot = snap;
     }
-
-    auto* inbox = recordingInbox.load();
 
     int seek = pendingSeekTick.exchange(-1);
     if (seek >= 0)
@@ -318,6 +369,47 @@ void PlaybackEngine::hiResTimerCallback()
         processRange(*snap, previousTick, currentTick, sink);
     if (inbox != nullptr)
         inbox->updateClock(now, newPos, ticksPerMsAt(*snap, currentTick), currentLoop());
+}
+
+bool PlaybackEngine::advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox* inbox)
+{
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    const int seek = pendingSeekTick.exchange(-1);
+    const int startTick = seek >= 0 ? seek : static_cast<int>(tickPosition.load());
+    // Keeps the inbox's clock on the tempo and loop that playback will start with, like updateClock does while playing.
+    const bool updated =
+        inbox == nullptr || inbox->countInUpdated(startTick, ticksPerMsAt(snap, startTick), currentLoop());
+    if (seek >= 0)
+    {
+        if (updated)
+            tickPosition.store(static_cast<double>(seek));
+        else
+        {
+            // Input stamped past the end has already started recording at the old start, so the seek becomes an
+            // ordinary jump from there once playback starts below. A newer seek requested meanwhile wins.
+            int none = -1;
+            pendingSeekTick.compare_exchange_strong(none, seek);
+        }
+    }
+
+    const bool ended = !updated || now >= countInEndMs;
+    const int reached =
+        ended ? countIn.lengthTicks
+              : std::min(countIn.lengthTicks, static_cast<int>((now - countInStartMs) * countInTicksPerMs));
+    if (auto* listener = metronomeListener.load())
+        for (const auto& click : countInClicksInRange(countIn, countInSentTick, reached))
+            listener->onMetronomeClick(click.accent);
+    countInSentTick = reached;
+    if (!ended)
+        return false;
+
+    countingIn = false;
+    // Playback starts at the end of the count-in, where the inbox already anchors its clock.
+    lastCallbackTimeMs = countInEndMs;
+    lastSeenSnapshot.reset();
+    if (inbox != nullptr)
+        inbox->countInEnded();
+    return true;
 }
 
 void PlaybackEngine::processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink)

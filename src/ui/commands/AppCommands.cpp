@@ -39,7 +39,8 @@ void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
                        toggleMetronome,
                        toggleRecord,
                        quantizeNotes,
-                       toggleInputQuantize});
+                       toggleInputQuantize,
+                       toggleCountIn});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -193,6 +194,9 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
         break;
     case toggleInputQuantize:
         result.setInfo("Input Quantize", "", "Event", 0);
+        break;
+    case toggleCountIn:
+        result.setInfo("Count-In", "", "Transport", 0);
         break;
     default:
         break;

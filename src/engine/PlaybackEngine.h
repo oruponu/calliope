@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/CountIn.h"
 #include "engine/MetronomeListener.h"
 #include "engine/PlaybackClock.h"
 #include "engine/PlaybackListener.h"
@@ -40,6 +41,11 @@ public:
 
     void play();
     void stop();
+    // Moves the playhead back to the start of its bar, clicks `bars` bars of the time signature there, whether or not
+    // the metronome is on, then plays from it. A seek during the count-in moves where playback starts. Plays at once
+    // from the playhead when bars is 0 or less.
+    void playWithCountIn(int bars);
+    bool isCountingIn() const;
     bool isPlaying() const;
 
     double getCurrentTick() const;
@@ -81,6 +87,8 @@ private:
 
     void hiResTimerCallback() override;
     void processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink);
+    // Returns whether the count-in ended, so that the callback goes on to play from its end.
+    bool advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox* inbox);
 
     const MidiSequence* sequence = nullptr;
 
@@ -98,6 +106,16 @@ private:
 
     std::shared_ptr<const PlaybackSnapshot> currentOwner;
     std::atomic<std::shared_ptr<const PlaybackSnapshot>> snapshot;
+
+    std::atomic<bool> countingIn{false};
+    // Set on the message thread while the timer is stopped; otherwise used by the timer thread only.
+    CountIn countIn;
+    double countInStartMs = 0.0;
+    double countInEndMs = 0.0;
+    // The tempo at the playhead when the count-in started, which the whole count-in keeps.
+    double countInTicksPerMs = 0.0;
+    int countInSentTick = 0;
+    double pausedAtMs = 0.0;
 
     int pauseDepth = 0;
     bool resumeTimerAfterPause = false;

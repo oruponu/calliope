@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <limits>
+#include <utility>
 
 namespace
 {
@@ -43,6 +44,8 @@ void TakeBuilder::begin(std::optional<TrackId> newTarget, ClockPosition start)
     releasedPending.clear();
     pedalsDown.clear();
     recordedPedals.clear();
+    countInNotes.clear();
+    countInValues.clear();
     take.clear();
     ++contentRevision;
     ++noteRevision;
@@ -102,6 +105,47 @@ void TakeBuilder::handle(const std::string& sourceId, const juce::MidiMessage& m
     if (isPedal)
         recordedPedals[{*target, message.getControllerNumber()}] = {message.getControllerValue(), at.tick};
     addEvent(*target, toEvent(message, at.tick));
+}
+
+void TakeBuilder::collectCountIn(const std::string& sourceId, const juce::MidiMessage& message)
+{
+    if (!isChannelVoiceMessage(message))
+        return;
+
+    const int channel = message.getChannel();
+    if (message.isNoteOn())
+    {
+        countInNotes.insert_or_assign(NoteKey{sourceId, channel, message.getNoteNumber()}, message);
+        return;
+    }
+    if (message.isNoteOff())
+    {
+        countInNotes.erase(NoteKey{sourceId, channel, message.getNoteNumber()});
+        return;
+    }
+
+    const MidiEvent event = toEvent(message, 0);
+    const bool numbered = event.type == MidiEvent::Type::ControlChange || event.type == MidiEvent::Type::KeyPressure;
+    const CountInValueKey key{sourceId, channel, static_cast<int>(event.type), numbered ? event.data1 : 0};
+    std::erase_if(countInValues, [&](const CountInValue& value) { return value.key == key; });
+    countInValues.push_back({key, message});
+}
+
+void TakeBuilder::endCountIn(int startTick, const TimelineGrid* grid, LoopRange loop)
+{
+    const auto values = std::exchange(countInValues, {});
+    const auto notes = std::exchange(countInNotes, {});
+    const ClockPosition at{pass, startTick};
+    for (const auto& [key, message] : values)
+    {
+        const std::string& sourceId = std::get<0>(key);
+        // The pressure of a released key would outlive its note, which is dropped.
+        if (message.isAftertouch() && !notes.contains(NoteKey{sourceId, std::get<1>(key), message.getNoteNumber()}))
+            continue;
+        handle(sourceId, message, at, grid, loop);
+    }
+    for (const auto& [key, message] : notes)
+        handle(std::get<0>(key), message, at, grid, loop);
 }
 
 bool TakeBuilder::reach(ClockPosition sent)
@@ -216,6 +260,9 @@ void TakeBuilder::closeHeld(const PassBoundary& boundary, const PlaybackProgress
 
 void TakeBuilder::releaseSource(const std::string& sourceId, int tick)
 {
+    std::erase_if(countInNotes, [&](const auto& entry) { return std::get<0>(entry.first) == sourceId; });
+    std::erase_if(countInValues, [&](const CountInValue& value) { return std::get<0>(value.key) == sourceId; });
+
     std::vector<NoteKey> notes;
     for (const auto& [key, held] : heldNotes)
         if (std::get<0>(key) == sourceId)
@@ -248,6 +295,8 @@ Take TakeBuilder::end(int tick)
     target.reset();
     pedalsDown.clear();
     recordedPedals.clear();
+    countInNotes.clear();
+    countInValues.clear();
     ++contentRevision;
     ++noteRevision;
     return std::exchange(take, {});

@@ -354,10 +354,7 @@ void TransportBarComponent::togglePlay()
     }
     else
     {
-        playbackEngine.play();
-        playButton.setActive(true);
-        if (onPlaybackStateChanged)
-            onPlaybackStateChanged(true);
+        startPlayback(0);
     }
 }
 
@@ -386,15 +383,29 @@ void TransportBarComponent::toggleMetronome()
 
 void TransportBarComponent::toggleRecord()
 {
+    if (playbackEngine.isCountingIn())
+    {
+        stopAndNotify();
+        return;
+    }
     if (!playbackEngine.isPlaying())
-        togglePlay();
+    {
+        startPlayback(countInEnabled ? countInBars : 0);
+        if (playbackEngine.isCountingIn())
+            recordButton.blinkWhile([this] { return playbackEngine.isCountingIn(); });
+    }
     if (onRecordToggled)
         onRecordToggled();
 }
 
 void TransportBarComponent::setRecordActive(bool active)
 {
-    recordButton.setActive(active);
+    recordButton.setRecording(active);
+}
+
+void TransportBarComponent::setCountInEnabled(bool enabled)
+{
+    countInEnabled = enabled;
 }
 
 void TransportBarComponent::setMetronomeVolume(int percent)
@@ -412,6 +423,7 @@ void TransportBarComponent::nudgeMetronomeVolume(int direction)
 
 void TransportBarComponent::returnToStart()
 {
+    stopCountIn();
     playbackEngine.setPositionInTicks(0);
     if (onPlayheadMoved)
         onPlayheadMoved(0);
@@ -422,12 +434,20 @@ void TransportBarComponent::returnToStart()
 
 void TransportBarComponent::jumpToTick(int tick)
 {
+    stopCountIn();
     playbackEngine.setPositionInTicks(tick);
     if (onPlayheadMoved)
         onPlayheadMoved(tick);
     updateDisplay();
     if (onScrollToPlayhead)
         onScrollToPlayhead(tick);
+}
+
+void TransportBarComponent::stopCountIn()
+{
+    // The caller moves the playhead and shows it, so the position the count-in stopped at is not shown first.
+    if (playbackEngine.isCountingIn())
+        stopPlayback();
 }
 
 void TransportBarComponent::tempoChanged()
@@ -440,12 +460,25 @@ void TransportBarComponent::timelineMetadataChanged()
     updateDisplay();
 }
 
-void TransportBarComponent::stopAndNotify()
+void TransportBarComponent::startPlayback(int bars)
+{
+    playbackEngine.playWithCountIn(bars);
+    playButton.setActive(true);
+    if (onPlaybackStateChanged)
+        onPlaybackStateChanged(true);
+}
+
+void TransportBarComponent::stopPlayback()
 {
     playbackEngine.stop();
     playButton.setActive(false);
     if (onPlaybackStateChanged)
         onPlaybackStateChanged(false);
+}
+
+void TransportBarComponent::stopAndNotify()
+{
+    stopPlayback();
     if (onPlayheadMoved)
         onPlayheadMoved(playbackEngine.getCurrentTick());
     updateDisplay();

@@ -7,6 +7,7 @@
 void RecordingInbox::playbackStarted(double timeMs, int tick, double ticksPerMs, LoopRange loop)
 {
     std::lock_guard lock(mutex);
+    countIn.reset();
     setAnchor(timeMs, tick, ticksPerMs, loop);
     clock.pass = ++lastAnnouncedPass;
     clock.passStartTick = tick;
@@ -17,6 +18,8 @@ void RecordingInbox::clockHalted()
 {
     std::lock_guard lock(mutex);
     clock.ticksPerMs = 0.0;
+    if (countIn)
+        countIn->halted = true;
 }
 
 void RecordingInbox::jumped(double timeMs, int fromTick, int toTick, double ticksPerMs, LoopRange loop)
@@ -59,6 +62,48 @@ void RecordingInbox::updateClock(double timeMs, double tick, double ticksPerMs, 
     setAnchor(timeMs, tick, ticksPerMs, loop);
 }
 
+void RecordingInbox::countInStarted(double endMs, int tick, double ticksPerMs, LoopRange loop)
+{
+    std::lock_guard lock(mutex);
+    // Anchored at the end of the count-in, so locate() puts earlier times at the pass start.
+    setAnchor(endMs, tick, ticksPerMs, loop);
+    clock.pass = ++lastAnnouncedPass;
+    clock.passStartTick = tick;
+    clock.passStartedByLoop = false;
+    countIn = CountInClock{.endMs = endMs, .ticksPerMs = ticksPerMs};
+}
+
+bool RecordingInbox::countInUpdated(int tick, double ticksPerMs, LoopRange loop)
+{
+    std::lock_guard lock(mutex);
+    if (!countIn)
+        return false;
+    clock.tick = tick;
+    clock.passStartTick = tick;
+    clock.ticksPerMs = ticksPerMs;
+    clock.loop = loop;
+    countIn->ticksPerMs = ticksPerMs;
+    return true;
+}
+
+void RecordingInbox::countInDelayed(double endMs)
+{
+    std::lock_guard lock(mutex);
+    if (!countIn)
+        return;
+    countIn->endMs = endMs;
+    countIn->halted = false;
+    clock.timeMs = endMs;
+    clock.ticksPerMs = countIn->ticksPerMs;
+}
+
+void RecordingInbox::countInEnded()
+{
+    std::lock_guard lock(mutex);
+    if (countIn)
+        endCountIn();
+}
+
 void RecordingInbox::receive(const juce::String& sourceId, const juce::MidiMessage& message)
 {
     if (!isChannelVoiceMessage(message))
@@ -68,6 +113,18 @@ void RecordingInbox::receive(const juce::String& sourceId, const juce::MidiMessa
     std::lock_guard lock(mutex);
     if (!recording || timeMs < segmentStartMs)
         return;
+
+    if (countIn && !countIn->halted && timeMs >= countIn->endMs)
+        endCountIn();
+    if (countIn)
+    {
+        items.push_back(RecordedInput{.sourceId = sourceId.toStdString(),
+                                      .message = message,
+                                      .position = {clock.pass, clock.passStartTick},
+                                      .loop = clock.loop,
+                                      .countIn = true});
+        return;
+    }
 
     const auto position = locate(clock, timeMs);
     announceWrapTo(position);
@@ -147,4 +204,11 @@ ClockPosition RecordingInbox::closingPosition(double timeMs)
 PlaybackProgress RecordingInbox::handOverProgress()
 {
     return {{clock.pass, std::max(0, static_cast<int>(std::floor(clock.tick)))}, std::exchange(passEnds, {})};
+}
+
+void RecordingInbox::endCountIn()
+{
+    countIn.reset();
+    if (recording)
+        items.push_back(CountInEnd{.startTick = clock.passStartTick, .loop = clock.loop});
 }

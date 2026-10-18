@@ -3,6 +3,7 @@
 #include "audio/MetronomeVolume.h"
 #include "model/MidiSequence.h"
 #include "ui/transport/MetronomeButton.h"
+#include "ui/transport/RecordButton.h"
 #include "ui/transport/TransportButton.h"
 #include "ui/widgets/WheelLabel.h"
 #include <functional>
@@ -30,9 +31,12 @@ public:
     void toggleMetronome();
     void toggleRecord();
     void setRecordActive(bool active);
+    void setCountInEnabled(bool enabled);
     void setMetronomeVolume(int percent);
     void returnToStart();
     void jumpToTick(int tick);
+    // A move during the count-in stops it, along with the recording, before the playhead moves.
+    void stopCountIn();
 
     // Emitted to MainComponent (effects that reach other components / resources)
     std::function<void(double tick)> onPlayheadMoved;
@@ -42,7 +46,7 @@ public:
     std::function<void(bool enabled, int startTick, int endTick)> onLoopRegionChanged;
     std::function<void(bool enabled)> onMetronomeToggled;
     std::function<void(int percent)> onMetronomeVolumeChanged;
-    // Starts or ends recording; playback has already started if it was stopped.
+    // Starts or ends recording; playback, or its count-in, has already started if it was stopped.
     std::function<void()> onRecordToggled;
 
 private:
@@ -62,6 +66,8 @@ private:
         Denominator
     };
 
+    void startPlayback(int bars);
+    void stopPlayback();
     void stopAndNotify();
     void commitPositionEdit();
     void nudgePosition(PositionUnit unit, int direction);
@@ -82,10 +88,13 @@ private:
     TransportButton returnToStartButton{TransportButton::ReturnToStart};
     TransportButton stopButton{TransportButton::Stop};
     TransportButton playButton{TransportButton::Play};
-    TransportButton recordButton{TransportButton::Record};
+    RecordButton recordButton;
     TransportButton loopButton{TransportButton::Loop};
     MetronomeButton metronomeButton;
     int metronomeVolume = MetronomeVolume::defaultPercent;
+    // The count-in length until the metronome settings let the user choose it.
+    static constexpr int countInBars = 1;
+    bool countInEnabled = false;
 
     juce::Label positionHeaderLabel{"", "POSITION"};
     WheelLabel positionBarLabel;

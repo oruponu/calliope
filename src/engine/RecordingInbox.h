@@ -1,10 +1,12 @@
 #pragma once
 
+#include "engine/CountInEnd.h"
 #include "engine/PassBoundary.h"
 #include "engine/PlaybackClock.h"
 #include "engine/PlaybackProgress.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -16,9 +18,11 @@ struct RecordedInput
     ClockPosition position;
     // The clock's loop when the input was placed.
     LoopRange loop;
+    // Played before the count-in ended. Its position is the count-in end, which may still move.
+    bool countIn = false;
 };
 
-using InboxItem = std::variant<RecordedInput, PassBoundary>;
+using InboxItem = std::variant<RecordedInput, PassBoundary, CountInEnd>;
 
 // Shared by the playback timer, the MIDI input thread and the message thread. One lock covers the clock, the
 // recording flag and the queue, so an input is either queued before its segment ends or dropped, and a boundary is
@@ -44,6 +48,14 @@ public:
     void jumped(double timeMs, int fromTick, int toTick, double ticksPerMs, LoopRange loop);
     void loopWrapped(double timeMs, double tick, double ticksPerMs, LoopRange loop);
     void updateClock(double timeMs, double tick, double ticksPerMs, LoopRange loop);
+    // Playback counts in until endMs and then starts at tick. Input before endMs is count-in input, placed at tick.
+    void countInStarted(double endMs, int tick, double ticksPerMs, LoopRange loop);
+    // Called by every timer callback during the count-in: the playback that follows it starts at tick, with this tempo
+    // and loop. Returns false once input stamped past the end has ended the count-in.
+    bool countInUpdated(int tick, double ticksPerMs, LoopRange loop);
+    // The timer resumed after a pause during the count-in, which now ends at endMs.
+    void countInDelayed(double endMs);
+    void countInEnded();
 
     // MIDI input thread. Message timestamps are seconds on the Time::getMillisecondCounterHiRes() clock.
     void receive(const juce::String& sourceId, const juce::MidiMessage& message);
@@ -60,6 +72,7 @@ private:
     void announceWrapTo(const ClockPosition& position);
     ClockPosition closingPosition(double timeMs);
     PlaybackProgress handOverProgress();
+    void endCountIn();
 
     mutable std::mutex mutex;
     PlaybackClock clock;
@@ -71,4 +84,15 @@ private:
     std::vector<InboxItem> items;
     // Passes the clock left while recording, since the previous hand-over.
     std::vector<ClockPosition> passEnds;
+
+    struct CountInClock
+    {
+        double endMs = 0.0;
+        // Of the playback that follows, restored when the timer resumes.
+        double ticksPerMs = 0.0;
+        // The timer is paused, so the end may still move later: input stays count-in input whenever it is stamped.
+        bool halted = false;
+    };
+    // Until the end of the count-in is queued or the timer takes it.
+    std::optional<CountInClock> countIn;
 };

@@ -1,4 +1,5 @@
 #include "audio/Recorder.h"
+#include "engine/CountInEnd.h"
 #include "engine/PlaybackEngine.h"
 #include "model/TimelineGrid.h"
 #include "undo/RecordTakeAction.h"
@@ -186,9 +187,16 @@ void Recorder::process(const std::vector<InboxItem>& items, const PlaybackProgre
     for (const auto& item : items)
     {
         if (const auto* input = std::get_if<RecordedInput>(&item))
-            builder.handle(input->sourceId, input->message, input->position, grid ? &*grid : nullptr, input->loop);
-        else
-            builder.closeHeld(std::get<PassBoundary>(item), progress);
+        {
+            if (input->countIn)
+                builder.collectCountIn(input->sourceId, input->message);
+            else
+                builder.handle(input->sourceId, input->message, input->position, grid ? &*grid : nullptr, input->loop);
+        }
+        else if (const auto* countInEnd = std::get_if<CountInEnd>(&item))
+            builder.endCountIn(countInEnd->startTick, grid ? &*grid : nullptr, countInEnd->loop);
+        else if (const auto* boundary = std::get_if<PassBoundary>(&item))
+            builder.closeHeld(*boundary, progress);
     }
     const bool reachedPassEnds = builder.reachPassEnds(progress.passEnds);
     const bool reached = builder.reach(progress.sent);

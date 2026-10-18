@@ -26,6 +26,12 @@ public:
     // pending, neither shown, edited nor recorded, until reach() learns that playback has sent its start.
     void handle(const std::string& sourceId, const juce::MidiMessage& message, ClockPosition at,
                 const TimelineGrid* grid = nullptr, LoopRange loop = {});
+    // Count-in input waits without a tick until endCountIn. A key released meanwhile is dropped, and of everything
+    // else only the last value of each controller, program, pitch bend and pressure (per key for polyphonic pressure)
+    // is kept, per source and input channel.
+    void collectCountIn(const std::string& sourceId, const juce::MidiMessage& message);
+    // Handles the kept values, in the order they arrived, then the keys still held, at startTick.
+    void endCountIn(int startTick, const TimelineGrid* grid = nullptr, LoopRange loop = {});
     // Playback has sent every event before `sent` (PlaybackProgress::sent). Pending notes that start before it stop
     // pending; a released one joins the take, to sound from the next loop pass. Returns whether any note did.
     bool reach(ClockPosition sent);
@@ -58,6 +64,14 @@ private:
     using NoteKey = std::tuple<std::string, int, int>;
     // (source, input channel, controller number)
     using PedalKey = std::tuple<std::string, int, int>;
+    // (source, input channel, MidiEvent::Type, controller number or note number, or 0)
+    using CountInValueKey = std::tuple<std::string, int, int, int>;
+
+    struct CountInValue
+    {
+        CountInValueKey key;
+        juce::MidiMessage message;
+    };
 
     struct HeldNote
     {
@@ -117,6 +131,10 @@ private:
     std::set<PedalKey> pedalsDown;
     // The last hold pedal value, and its tick, recorded on each (track, controller) in this segment.
     std::map<std::pair<TrackId, int>, RecordedPedal> recordedPedals;
+    // The note-on of each key held during the count-in.
+    std::map<NoteKey, juce::MidiMessage> countInNotes;
+    // In the order their latest values arrived.
+    std::vector<CountInValue> countInValues;
     Take take;
     int contentRevision = 0;
     int noteRevision = 0;

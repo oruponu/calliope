@@ -30,6 +30,11 @@ MidiEvent ccEvent(int tick, int controller, int value)
     return {.type = MidiEvent::Type::ControlChange, .tick = tick, .data1 = controller, .data2 = value};
 }
 
+MidiEvent typedEvent(MidiEvent::Type type, int tick, int data1, int data2 = 0)
+{
+    return {.type = type, .tick = tick, .data1 = data1, .data2 = data2};
+}
+
 std::vector<MidiNote> notesOn(const TakeBuilder& builder, TrackId track)
 {
     const auto& take = builder.getTake();
@@ -840,4 +845,218 @@ TEST_CASE("a carried note is dropped when recording ends before the wrap", "[eng
     builder.handle("a", noteOn(60), {1, 1900}, sixteenths, oneBarLoop);
     builder.handle("a", noteOff(60), {1, 1915}, sixteenths, oneBarLoop);
     CHECK(builder.end(1918).empty());
+}
+
+TEST_CASE("a key released during the count-in is not recorded", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60));
+    builder.collectCountIn("a", noteOff(60));
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(builder.end(2400).empty());
+}
+
+TEST_CASE("a note-on with velocity zero during the count-in releases the key", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60));
+    builder.collectCountIn("a", noteOn(60, 0));
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes().empty());
+}
+
+TEST_CASE("a key held through the count-in starts at its end", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60));
+    CHECK(builder.getHeldNotes().empty());
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 1920, 1}});
+    builder.handle("a", noteOff(60), {1, 2400});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 1920, 480}});
+}
+
+TEST_CASE("a key pressed again after its release during the count-in starts at its end with the last velocity",
+          "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60, 50));
+    builder.collectCountIn("a", noteOff(60));
+    builder.collectCountIn("a", noteOn(60, 110));
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 110, 1920, 1}});
+}
+
+TEST_CASE("a key released during the count-in that was pressed before it is ignored", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOff(60));
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(builder.end(2400).empty());
+}
+
+TEST_CASE("with input quantize a key held through the count-in starts where its end rounds to",
+          "[engine][take][count-in][input-quantize]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60));
+    builder.endCountIn(1930, sixteenths);
+    builder.handle("a", noteOff(60), {1, 2410}, sixteenths);
+    builder.reach({1, 2500});
+    CHECK(notesOn(builder, piano) == std::vector<MidiNote>{{60, 90, 1920, 480}});
+}
+
+TEST_CASE("only the last value of each controller is recorded at the end of the count-in", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", cc(1, 10));
+    builder.collectCountIn("a", cc(1, 20));
+    builder.collectCountIn("a", cc(7, 100));
+    builder.collectCountIn("a", cc(1, 30));
+    builder.endCountIn(1920);
+    CHECK(eventsOn(builder, piano) == std::vector<MidiEvent>{ccEvent(1920, 7, 100), ccEvent(1920, 1, 30)});
+}
+
+TEST_CASE("pitch bend, program change and channel pressure each keep their last value", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", juce::MidiMessage::pitchWheel(1, 1000));
+    builder.collectCountIn("a", juce::MidiMessage::programChange(1, 3));
+    builder.collectCountIn("a", juce::MidiMessage::pitchWheel(1, 9000));
+    builder.collectCountIn("a", juce::MidiMessage::channelPressureChange(1, 40));
+    builder.collectCountIn("a", juce::MidiMessage::programChange(1, 5));
+    builder.endCountIn(1920);
+    CHECK(eventsOn(builder, piano) == std::vector<MidiEvent>{typedEvent(MidiEvent::Type::PitchBend, 1920, 9000),
+                                                             typedEvent(MidiEvent::Type::ChannelPressure, 1920, 40),
+                                                             typedEvent(MidiEvent::Type::ProgramChange, 1920, 5)});
+}
+
+TEST_CASE("polyphonic pressure keeps its last value per key and is dropped for released keys",
+          "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60));
+    builder.collectCountIn("a", noteOn(62));
+    builder.collectCountIn("a", juce::MidiMessage::aftertouchChange(1, 60, 50));
+    builder.collectCountIn("a", juce::MidiMessage::aftertouchChange(1, 62, 70));
+    builder.collectCountIn("a", juce::MidiMessage::aftertouchChange(1, 60, 55));
+    builder.collectCountIn("a", juce::MidiMessage::channelPressureChange(1, 30));
+    builder.collectCountIn("a", noteOff(62));
+    builder.endCountIn(1920);
+    CHECK(eventsOn(builder, piano) == std::vector<MidiEvent>{typedEvent(MidiEvent::Type::KeyPressure, 1920, 60, 55),
+                                                             typedEvent(MidiEvent::Type::ChannelPressure, 1920, 30)});
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 60, 90, 1920, 1}});
+}
+
+TEST_CASE("values from two inputs are recorded in the order their last values arrived", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", cc(64, 127));
+    builder.collectCountIn("b", cc(64, 127));
+    builder.collectCountIn("a", cc(64, 0));
+    builder.endCountIn(1920);
+    CHECK(eventsOn(builder, piano) == std::vector<MidiEvent>{ccEvent(1920, 64, 127), ccEvent(1920, 64, 0)});
+}
+
+TEST_CASE("a hold pedal down at the end of the count-in is released when the segment ends", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", cc(64, 127));
+    builder.endCountIn(1920);
+    const auto take = builder.end(2400);
+    CHECK(eventsOn(take, piano) == std::vector<MidiEvent>{ccEvent(1920, 64, 127), ccEvent(2400, 64, 0)});
+}
+
+TEST_CASE("a hold pedal below 64 at the end of the count-in is not released when the segment ends",
+          "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", cc(64, 40));
+    builder.endCountIn(1920);
+    const auto take = builder.end(2400);
+    CHECK(eventsOn(take, piano) == std::vector<MidiEvent>{ccEvent(1920, 64, 40)});
+}
+
+TEST_CASE("a pedal pressed and released during the count-in records the release at its end", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", cc(64, 127));
+    builder.collectCountIn("a", cc(64, 0));
+    builder.endCountIn(1920);
+    const auto take = builder.end(2400);
+    CHECK(eventsOn(take, piano) == std::vector<MidiEvent>{ccEvent(1920, 64, 0)});
+}
+
+TEST_CASE("a key and the sostenuto pedal played during the count-in both start at its end whichever came first",
+          "[engine][take][count-in]")
+{
+    auto keyFirst = startedOn(piano);
+    keyFirst.collectCountIn("a", noteOn(60));
+    keyFirst.collectCountIn("a", cc(66, 127));
+    keyFirst.endCountIn(1920);
+    keyFirst.handle("a", noteOff(60), {1, 2400});
+    const auto keyFirstTake = keyFirst.end(2880);
+
+    auto pedalFirst = startedOn(piano);
+    pedalFirst.collectCountIn("a", cc(66, 127));
+    pedalFirst.collectCountIn("a", noteOn(60));
+    pedalFirst.endCountIn(1920);
+    pedalFirst.handle("a", noteOff(60), {1, 2400});
+    const auto pedalFirstTake = pedalFirst.end(2880);
+
+    for (const auto* take : {&keyFirstTake, &pedalFirstTake})
+    {
+        CHECK(take->at(piano).notes == std::vector<MidiNote>{{60, 90, 1920, 480}});
+        CHECK(eventsOn(*take, piano) == std::vector<MidiEvent>{ccEvent(1920, 66, 127), ccEvent(2880, 66, 0)});
+    }
+}
+
+TEST_CASE("count-in input goes to the target at the end of the count-in", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60));
+    builder.collectCountIn("a", cc(64, 127));
+    builder.setTarget(bass, 1920);
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{bass, 60, 90, 1920, 1}});
+    CHECK(eventsOn(builder, bass) == std::vector<MidiEvent>{ccEvent(1920, 64, 127)});
+    CHECK(eventsOn(builder, piano).empty());
+}
+
+TEST_CASE("count-in input without a target at the end of the count-in is dropped", "[engine][take][count-in]")
+{
+    auto builder = startedOn(std::nullopt);
+    builder.collectCountIn("a", noteOn(60));
+    builder.collectCountIn("a", cc(1, 10));
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(builder.getTake().empty());
+}
+
+TEST_CASE("releasing an input device drops what it played during the count-in", "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60));
+    builder.collectCountIn("b", noteOn(62));
+    builder.collectCountIn("a", cc(64, 127));
+    builder.releaseSource("a", 1920);
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes() == std::vector<HeldTakeNote>{{piano, 62, 90, 1920, 1}});
+    CHECK(eventsOn(builder, piano).empty());
+}
+
+TEST_CASE("ending the segment during the count-in records nothing and leaves nothing for the next segment",
+          "[engine][take][count-in]")
+{
+    auto builder = startedOn(piano);
+    builder.collectCountIn("a", noteOn(60));
+    builder.collectCountIn("a", cc(1, 10));
+    CHECK(builder.end(1920).empty());
+
+    builder.begin(piano, {2, 0});
+    builder.endCountIn(1920);
+    CHECK(builder.getHeldNotes().empty());
+    CHECK(builder.getTake().empty());
 }

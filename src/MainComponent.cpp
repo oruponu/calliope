@@ -72,6 +72,7 @@ MainComponent::MainComponent()
 
     pianoRoll.onPlayheadMoved = [this](int tick)
     {
+        transportBar.stopCountIn();
         playbackEngine.setPositionInTicks(tick);
         controllerLane.setPlayheadTick(tick);
         eventList.setPlayheadTick(tick);
@@ -303,6 +304,7 @@ MainComponent::MainComponent()
     eventList.setSelectedTracks({0});
     eventList.onEventSelected = [this](int tick)
     {
+        transportBar.stopCountIn();
         playbackEngine.setPositionInTicks(tick);
         pianoRoll.setPlayheadTick(tick);
         transportBar.updateDisplay();
@@ -405,6 +407,8 @@ MainComponent::MainComponent()
     };
     inputQuantizeEnabled = getAppProperties().getUserSettings()->getBoolValue("inputQuantizeEnabled", false);
     updateInputQuantize();
+    countInEnabled = getAppProperties().getUserSettings()->getBoolValue("countInEnabled", false);
+    transportBar.setCountInEnabled(countInEnabled);
 
     transportBar.updateDisplay();
 
@@ -662,6 +666,9 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case AppCommands::toggleInputQuantize:
         result.setTicked(inputQuantizeEnabled);
         break;
+    case AppCommands::toggleCountIn:
+        result.setTicked(countInEnabled);
+        break;
     default:
         break;
     }
@@ -809,6 +816,9 @@ bool MainComponent::perform(const InvocationInfo& info)
     case AppCommands::toggleInputQuantize:
         toggleInputQuantize();
         return true;
+    case AppCommands::toggleCountIn:
+        toggleCountIn();
+        return true;
     default:
         return false;
     }
@@ -910,6 +920,13 @@ void MainComponent::toggleInputQuantize()
     inputQuantizeEnabled = !inputQuantizeEnabled;
     getAppProperties().getUserSettings()->setValue("inputQuantizeEnabled", inputQuantizeEnabled);
     updateInputQuantize();
+}
+
+void MainComponent::toggleCountIn()
+{
+    countInEnabled = !countInEnabled;
+    getAppProperties().getUserSettings()->setValue("countInEnabled", countInEnabled);
+    transportBar.setCountInEnabled(countInEnabled);
 }
 
 void MainComponent::updateInputQuantize()

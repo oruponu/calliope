@@ -40,6 +40,7 @@ target_sources(Calliope PRIVATE
     src/edit/NoteQuantize.cpp
     src/edit/TempoEdits.cpp
     src/edit/TimeSignatureEdits.cpp
+    src/engine/CountIn.cpp
     src/engine/InputQuantize.cpp
     src/engine/MetronomeClicks.cpp
     src/engine/PlaybackClock.cpp

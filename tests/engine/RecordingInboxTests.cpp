@@ -1,5 +1,6 @@
 #include "engine/RecordingInbox.h"
 #include <catch2/catch_test_macros.hpp>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -44,6 +45,30 @@ std::vector<PassBoundary> boundaryItems(const std::vector<InboxItem>& items)
     for (const auto& item : items)
         if (const auto* boundary = std::get_if<PassBoundary>(&item))
             found.push_back(*boundary);
+    return found;
+}
+std::vector<std::string> itemKinds(const std::vector<InboxItem>& items)
+{
+    std::vector<std::string> kinds;
+    for (const auto& item : items)
+    {
+        if (const auto* input = std::get_if<RecordedInput>(&item))
+            kinds.push_back((input->countIn ? "count-in " : "input ") + std::to_string(input->position.pass) + ":" +
+                            std::to_string(input->position.tick));
+        else if (const auto* end = std::get_if<CountInEnd>(&item))
+            kinds.push_back("end " + std::to_string(end->startTick));
+        else
+            kinds.push_back("boundary " + std::to_string(std::get<PassBoundary>(item).pass));
+    }
+    return kinds;
+}
+
+std::vector<CountInEnd> countInEnds(const std::vector<InboxItem>& items)
+{
+    std::vector<CountInEnd> found;
+    for (const auto& item : items)
+        if (const auto* end = std::get_if<CountInEnd>(&item))
+            found.push_back(*end);
     return found;
 }
 } // namespace
@@ -311,4 +336,126 @@ TEST_CASE("a jump starts the next pass at its target", "[engine][recording]")
     inbox.jumped(1010.0, 970, 480, ticksPerMsAt120, noLoop);
     CHECK(boundaryItems(inbox.takeItems().items) ==
           std::vector<PassBoundary>{{.pass = 2, .closeTick = 970, .loopWrap = false, .startTick = 480}});
+}
+
+TEST_CASE("input played during the count-in is marked and placed at its end", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    CHECK(inbox.beginSegment(1000.0) == ClockPosition{1, 1920});
+    inbox.receive("a", noteOnAt(1500.0));
+    CHECK(itemKinds(inbox.takeItems().items) == std::vector<std::string>{"count-in 1:1920"});
+}
+
+TEST_CASE("the end of the count-in is queued once, before input played after it", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.beginSegment(1000.0);
+    inbox.receive("a", noteOnAt(2990.0));
+    inbox.receive("a", noteOnAt(3010.0));
+    inbox.countInEnded();
+    CHECK(itemKinds(inbox.takeItems().items) ==
+          std::vector<std::string>{"count-in 1:1920", "end 1920", "input 1:1929"});
+}
+
+TEST_CASE("input stamped exactly at the count-in end is ordinary input", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.beginSegment(1000.0);
+    inbox.receive("a", noteOnAt(3000.0));
+    CHECK(itemKinds(inbox.takeItems().items) == std::vector<std::string>{"end 1920", "input 1:1920"});
+}
+
+TEST_CASE("the timer queues the end of the count-in once when no input crosses it", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.beginSegment(1000.0);
+    inbox.countInEnded();
+    inbox.countInEnded();
+    inbox.receive("a", noteOnAt(3010.0));
+    CHECK(itemKinds(inbox.takeItems().items) == std::vector<std::string>{"end 1920", "input 1:1929"});
+}
+
+TEST_CASE("the end of the count-in carries the loop", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 960, ticksPerMsAt120, oneBarLoop);
+    inbox.beginSegment(1000.0);
+    inbox.countInEnded();
+    CHECK(countInEnds(inbox.takeItems().items) == std::vector<CountInEnd>{{.startTick = 960, .loop = oneBarLoop}});
+}
+
+TEST_CASE("a jump during the count-in moves where it ends", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.beginSegment(1000.0);
+    CHECK(inbox.countInUpdated(960, ticksPerMsAt120, noLoop));
+    inbox.receive("a", noteOnAt(1500.0));
+    inbox.countInEnded();
+    inbox.receive("a", noteOnAt(3010.0));
+    CHECK(itemKinds(inbox.takeItems().items) == std::vector<std::string>{"count-in 1:960", "end 960", "input 1:969"});
+}
+
+TEST_CASE("input past the end of the count-in follows the tempo and loop of the latest update",
+          "[engine][recording][count-in]")
+{
+    constexpr LoopRange twoBarLoop{true, 0, 3840};
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.beginSegment(1000.0);
+    CHECK(inbox.countInUpdated(1920, 2 * ticksPerMsAt120, twoBarLoop));
+    inbox.receive("a", noteOnAt(3010.0));
+    const auto items = inbox.takeItems().items;
+    CHECK(itemKinds(items) == std::vector<std::string>{"end 1920", "input 1:1939"});
+    CHECK(countInEnds(items) == std::vector<CountInEnd>{{.startTick = 1920, .loop = twoBarLoop}});
+}
+
+TEST_CASE("an update after input has ended the count-in is refused", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.beginSegment(1000.0);
+    inbox.receive("a", noteOnAt(3010.0));
+    CHECK_FALSE(inbox.countInUpdated(960, ticksPerMsAt120, noLoop));
+    CHECK(itemKinds(inbox.takeItems().items) == std::vector<std::string>{"end 1920", "input 1:1929"});
+}
+
+TEST_CASE("input during a pause in the count-in stays count-in input past the old end", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.beginSegment(1000.0);
+    inbox.clockHalted();
+    inbox.receive("a", noteOnAt(3500.0));
+    inbox.countInDelayed(4000.0);
+    inbox.receive("a", noteOnAt(3900.0));
+    inbox.receive("a", noteOnAt(4010.0));
+    CHECK(itemKinds(inbox.takeItems().items) ==
+          std::vector<std::string>{"count-in 1:1920", "count-in 1:1920", "end 1920", "input 1:1929"});
+}
+
+TEST_CASE("the end of a count-in before the segment starts is not queued", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.countInEnded();
+    inbox.beginSegment(3100.0);
+    inbox.receive("a", noteOnAt(3110.0));
+    CHECK(itemKinds(inbox.takeItems().items) == std::vector<std::string>{"input 1:2025"});
+}
+
+TEST_CASE("starting playback again forgets an unfinished count-in", "[engine][recording][count-in]")
+{
+    RecordingInbox inbox;
+    inbox.countInStarted(3000.0, 1920, ticksPerMsAt120, noLoop);
+    inbox.clockHalted();
+    inbox.playbackStarted(5000.0, 0, ticksPerMsAt120, noLoop);
+    inbox.beginSegment(5000.0);
+    inbox.receive("a", noteOnAt(5010.0));
+    inbox.countInEnded();
+    CHECK(itemKinds(inbox.takeItems().items) == std::vector<std::string>{"input 2:9"});
 }
