@@ -1,6 +1,6 @@
 #pragma once
 
-#include "audio/MetronomeVolume.h"
+#include "engine/CountInBars.h"
 #include "model/MidiSequence.h"
 #include "ui/transport/MetronomeButton.h"
 #include "ui/transport/RecordButton.h"
@@ -32,7 +32,7 @@ public:
     void toggleRecord();
     void setRecordActive(bool active);
     void setCountInEnabled(bool enabled);
-    void setMetronomeVolume(int percent);
+    void setCountInBars(int bars);
     void returnToStart();
     void jumpToTick(int tick);
     // A move during the count-in stops it, along with the recording, before the playhead moves.
@@ -45,7 +45,6 @@ public:
     std::function<void(bool playing)> onPlaybackStateChanged;
     std::function<void(bool enabled, int startTick, int endTick)> onLoopRegionChanged;
     std::function<void(bool enabled)> onMetronomeToggled;
-    std::function<void(int percent)> onMetronomeVolumeChanged;
     std::function<void(juce::Component& target)> onMetronomeMenuRequested;
     // Starts or ends recording; playback, or its count-in, has already started if it was stopped.
     std::function<void()> onRecordToggled;
@@ -81,7 +80,6 @@ private:
     void commitKeySignatureEdit();
     void nudgeKeySignature(int direction);
     void setKeySignatureAtPlayhead(int sharpsOrFlats, bool isMinor);
-    void nudgeMetronomeVolume(int direction);
 
     Document& document;
     PlaybackEngine& playbackEngine;
@@ -92,9 +90,7 @@ private:
     RecordButton recordButton;
     TransportButton loopButton{TransportButton::Loop};
     MetronomeButton metronomeButton;
-    int metronomeVolume = MetronomeVolume::defaultPercent;
-    // The count-in length until the metronome settings let the user choose it.
-    static constexpr int countInBars = 1;
+    int countInBars = CountInBars::defaultBars;
     bool countInEnabled = false;
 
     juce::Label positionHeaderLabel{"", "POSITION"};

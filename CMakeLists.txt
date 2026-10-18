@@ -91,6 +91,7 @@ target_sources(Calliope PRIVATE
     src/ui/plugin/PluginEditorController.cpp
     src/ui/plugin/TrackOutputController.cpp
     src/ui/theme/LookAndFeel.cpp
+    src/ui/transport/MetronomeSettingsComponent.cpp
     src/ui/transport/TransportBarComponent.cpp
     src/ui/window/ToolWindow.cpp
     src/undo/UndoHistory.cpp

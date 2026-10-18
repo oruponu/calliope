@@ -12,15 +12,6 @@ TEST_CASE("gain follows the square of the volume", "[audio][metronome]")
     CHECK_THAT(MetronomeVolume::gainFor(100), WithinAbs(1.0, 1e-6));
 }
 
-TEST_CASE("nudging moves by five and stops at the ends", "[audio][metronome]")
-{
-    CHECK(MetronomeVolume::nudged(70, 1) == 75);
-    CHECK(MetronomeVolume::nudged(70, -1) == 65);
-    CHECK(MetronomeVolume::nudged(100, 1) == 100);
-    CHECK(MetronomeVolume::nudged(0, -1) == 0);
-    CHECK(MetronomeVolume::nudged(98, 1) == 100);
-}
-
 TEST_CASE("stored volume is clamped into range", "[audio][metronome]")
 {
     CHECK(MetronomeVolume::clamped(250) == 100);

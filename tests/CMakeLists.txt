@@ -69,6 +69,7 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignatureDeleteTests.cpp
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
+    engine/CountInBarsTests.cpp
     engine/CountInTests.cpp
     engine/InputQuantizeTests.cpp
     engine/MetronomeClicksTests.cpp

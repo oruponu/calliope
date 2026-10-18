@@ -31,7 +31,6 @@ TransportBarComponent::TransportBarComponent(Document& documentRef, PlaybackEngi
 
     addAndMakeVisible(metronomeButton);
     metronomeButton.onClick = [this]() { toggleMetronome(); };
-    metronomeButton.onWheel = [this](int direction) { nudgeMetronomeVolume(direction); };
     metronomeButton.onMenuRequested = [this]()
     {
         if (onMetronomeMenuRequested)
@@ -413,17 +412,9 @@ void TransportBarComponent::setCountInEnabled(bool enabled)
     countInEnabled = enabled;
 }
 
-void TransportBarComponent::setMetronomeVolume(int percent)
+void TransportBarComponent::setCountInBars(int bars)
 {
-    metronomeVolume = percent;
-}
-
-void TransportBarComponent::nudgeMetronomeVolume(int direction)
-{
-    metronomeVolume = MetronomeVolume::nudged(metronomeVolume, direction);
-    metronomeButton.showVolume(metronomeVolume);
-    if (onMetronomeVolumeChanged)
-        onMetronomeVolumeChanged(metronomeVolume);
+    countInBars = bars;
 }
 
 void TransportBarComponent::returnToStart()
