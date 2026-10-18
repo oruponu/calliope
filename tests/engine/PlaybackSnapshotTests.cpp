@@ -147,6 +147,93 @@ TEST_CASE("getTempoAt defaults to 120 when there are no tempo changes", "[engine
     CHECK_THAT(snap.getTempoAt(10000), WithinAbs(120.0, 1e-9));
 }
 
+TEST_CASE("tickAfter advances at the tempo of the tick", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.setTempoChanges({{0, 125.0}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK_THAT(snap.tickAfter(100.0, 10.0), WithinAbs(110.0, 1e-9));
+}
+
+TEST_CASE("tickAfter defaults to 120 when there are no tempo changes", "[engine][snapshot]")
+{
+    const PlaybackSnapshot snap;
+    CHECK_THAT(snap.tickAfter(0.0, 1000.0), WithinAbs(960.0, 1e-9));
+}
+
+TEST_CASE("tickAfter switches tempo at a change it crosses", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.setTempoChanges({{0, 125.0}, {100, 250.0}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK_THAT(snap.tickAfter(90.0, 20.0), WithinAbs(120.0, 1e-9));
+    CHECK_THAT(snap.tickAfter(99.5, 1.0), WithinAbs(101.0, 1e-9));
+}
+
+TEST_CASE("tickAfter crosses several tempo changes", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.setTempoChanges({{0, 125.0}, {100, 250.0}, {120, 125.0}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK_THAT(snap.tickAfter(90.0, 30.0), WithinAbs(130.0, 1e-9));
+}
+
+TEST_CASE("tickAfter uses the new tempo from a change it starts on", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.setTempoChanges({{0, 125.0}, {100, 250.0}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK_THAT(snap.tickAfter(100.0, 5.0), WithinAbs(110.0, 1e-9));
+}
+
+TEST_CASE("tickAfter stops on a change it reaches exactly", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.setTempoChanges({{0, 125.0}, {100, 250.0}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK_THAT(snap.tickAfter(90.0, 10.0), WithinAbs(100.0, 1e-9));
+}
+
+TEST_CASE("msBetween measures at the tempo of the ticks", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.setTempoChanges({{0, 125.0}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK_THAT(snap.msBetween(100.0, 110.0), WithinAbs(10.0, 1e-9));
+}
+
+TEST_CASE("msBetween defaults to 120 when there are no tempo changes", "[engine][snapshot]")
+{
+    const PlaybackSnapshot snap;
+    CHECK_THAT(snap.msBetween(0.0, 960.0), WithinAbs(1000.0, 1e-9));
+}
+
+TEST_CASE("msBetween switches tempo at changes between the ticks", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.setTempoChanges({{0, 125.0}, {100, 250.0}, {120, 125.0}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK_THAT(snap.msBetween(90.0, 130.0), WithinAbs(30.0, 1e-9));
+    CHECK_THAT(snap.msBetween(99.5, 101.0), WithinAbs(1.0, 1e-9));
+}
+
+TEST_CASE("msBetween ignores a change at the end tick", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    seq.setTempoChanges({{0, 125.0}, {100, 250.0}});
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK_THAT(snap.msBetween(90.0, 100.0), WithinAbs(10.0, 1e-9));
+    CHECK_THAT(snap.msBetween(100.0, 110.0), WithinAbs(5.0, 1e-9));
+}
+
 TEST_CASE("time signature changes are copied into the snapshot", "[engine][snapshot]")
 {
     MidiSequence seq;

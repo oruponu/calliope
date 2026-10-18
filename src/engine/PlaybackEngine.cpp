@@ -336,9 +336,9 @@ void PlaybackEngine::hiResTimerCallback()
     const double elapsedMs = now - lastCallbackTimeMs;
     lastCallbackTimeMs = now;
 
-    const int previousTick = (int)tickPosition.load();
-    const double ticksPerMs = ticksPerMsAt(*snap, previousTick);
-    const double newPos = tickPosition.load() + elapsedMs * ticksPerMs;
+    const double previousPos = tickPosition.load();
+    const int previousTick = (int)previousPos;
+    const double newPos = snap->tickAfter(previousPos, elapsedMs);
 
     const std::uint64_t lr = loopRange.load();
     const int ls = loopStartOf(lr);
@@ -348,10 +348,11 @@ void PlaybackEngine::hiResTimerCallback()
         processRange(*snap, previousTick, le, sink);
         processor.sendAllNoteOffs(sink);
 
-        double overshoot = newPos - le;
-        if (overshoot > (double)(le - ls))
-            overshoot = 0.0;
-        const double wrapped = (double)ls + overshoot;
+        // The time left after reaching the loop end plays on from the loop start, at the tempo there.
+        const double msToLoopEnd = previousPos < le ? snap->msBetween(previousPos, le) : 0.0;
+        double wrapped = snap->tickAfter(ls, std::max(0.0, elapsedMs - msToLoopEnd));
+        if (wrapped > (double)le)
+            wrapped = (double)ls;
         tickPosition.store(wrapped);
         processor.resetCursors(*snap, ls);
 

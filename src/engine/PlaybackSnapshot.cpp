@@ -14,6 +14,42 @@ double PlaybackSnapshot::getTempoAt(int tick) const
     return bpm;
 }
 
+double PlaybackSnapshot::tickAfter(double tick, double elapsedMs) const
+{
+    double bpm = 120.0;
+    auto next = tempoChanges.begin();
+    for (; next != tempoChanges.end() && next->tick <= tick; ++next)
+        bpm = next->bpm;
+
+    for (; next != tempoChanges.end(); ++next)
+    {
+        const double msToNext = (next->tick - tick) * 60000.0 / (bpm * ticksPerQuarterNote);
+        if (elapsedMs < msToNext)
+            break;
+        elapsedMs -= msToNext;
+        tick = next->tick;
+        bpm = next->bpm;
+    }
+    return tick + elapsedMs * bpm * ticksPerQuarterNote / 60000.0;
+}
+
+double PlaybackSnapshot::msBetween(double fromTick, double toTick) const
+{
+    double bpm = 120.0;
+    auto next = tempoChanges.begin();
+    for (; next != tempoChanges.end() && next->tick <= fromTick; ++next)
+        bpm = next->bpm;
+
+    double ms = 0.0;
+    for (; next != tempoChanges.end() && next->tick < toTick; ++next)
+    {
+        ms += (next->tick - fromTick) * 60000.0 / (bpm * ticksPerQuarterNote);
+        fromTick = next->tick;
+        bpm = next->bpm;
+    }
+    return ms + (toTick - fromTick) * 60000.0 / (bpm * ticksPerQuarterNote);
+}
+
 PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq, const Take* take)
 {
     PlaybackSnapshot snap;

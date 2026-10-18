@@ -37,6 +37,10 @@ struct PlaybackSnapshot
     int ticksPerQuarterNote = TimelineMap::defaultTicksPerQuarterNote;
 
     double getTempoAt(int tick) const;
+    // The tick reached by playing for elapsedMs from tick, switching tempo at each change on the way.
+    double tickAfter(double tick, double elapsedMs) const;
+    // toTick must be at or after fromTick.
+    double msBetween(double fromTick, double toTick) const;
     static PlaybackSnapshot build(const MidiSequence& seq, const Take* take = nullptr);
 };
 
