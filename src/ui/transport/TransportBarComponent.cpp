@@ -32,6 +32,11 @@ TransportBarComponent::TransportBarComponent(Document& documentRef, PlaybackEngi
     addAndMakeVisible(metronomeButton);
     metronomeButton.onClick = [this]() { toggleMetronome(); };
     metronomeButton.onWheel = [this](int direction) { nudgeMetronomeVolume(direction); };
+    metronomeButton.onMenuRequested = [this]()
+    {
+        if (onMetronomeMenuRequested)
+            onMetronomeMenuRequested(metronomeButton);
+    };
 
     auto headerColour = text::t2;
     auto headerFont = font::sans(font::sizeXS);

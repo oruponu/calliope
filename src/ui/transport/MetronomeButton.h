@@ -12,6 +12,7 @@ public:
 
     // direction is +1 (up) or -1 (down)
     std::function<void(int direction)> onWheel;
+    std::function<void()> onMenuRequested;
 
     void showVolume(int percent)
     {
@@ -32,6 +33,19 @@ public:
         g.setColour(text::t1);
         g.setFont(font::mono(font::sizeSM));
         g.drawText(volumeText, getLocalBounds(), juce::Justification::centred);
+    }
+
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        if (e.mods.isPopupMenu() && onMenuRequested)
+            onMenuRequested();
+    }
+
+    void mouseUp(const juce::MouseEvent& e) override
+    {
+        // The menu click must not also toggle the metronome.
+        if (!e.mods.isPopupMenu())
+            TransportButton::mouseUp(e);
     }
 
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override

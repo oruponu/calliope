@@ -366,6 +366,12 @@ MainComponent::MainComponent()
         metronome.setVolume(percent);
         getAppProperties().getUserSettings()->setValue("metronomeVolume", percent);
     };
+    transportBar.onMetronomeMenuRequested = [this](juce::Component& target)
+    {
+        juce::PopupMenu menu;
+        menu.addCommandItem(&commandManager, AppCommands::toggleCountIn);
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&target));
+    };
 
     pianoRoll.onLoopRegionChanged = [this](int startTick, int endTick)
     {

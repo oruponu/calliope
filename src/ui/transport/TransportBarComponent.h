@@ -46,6 +46,7 @@ public:
     std::function<void(bool enabled, int startTick, int endTick)> onLoopRegionChanged;
     std::function<void(bool enabled)> onMetronomeToggled;
     std::function<void(int percent)> onMetronomeVolumeChanged;
+    std::function<void(juce::Component& target)> onMetronomeMenuRequested;
     // Starts or ends recording; playback, or its count-in, has already started if it was stopped.
     std::function<void()> onRecordToggled;
 
