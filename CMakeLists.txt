@@ -92,8 +92,19 @@ target_sources(Calliope PRIVATE
     src/ui/plugin/TrackOutputController.cpp
     src/ui/theme/LookAndFeel.cpp
     src/ui/transport/TransportBarComponent.cpp
+    src/ui/window/ToolWindow.cpp
     src/undo/UndoHistory.cpp
 )
+
+if(WIN32)
+    target_sources(Calliope PRIVATE src/ui/window/OwnedWindow_windows.cpp)
+elseif(APPLE)
+    target_sources(Calliope PRIVATE src/ui/window/OwnedWindow_mac.mm)
+else()
+    target_sources(Calliope PRIVATE src/ui/window/OwnedWindow_linux.cpp)
+    find_package(X11 REQUIRED)
+    target_link_libraries(Calliope PRIVATE X11::X11)
+endif()
 
 target_include_directories(Calliope PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
