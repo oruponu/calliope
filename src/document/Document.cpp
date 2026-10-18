@@ -34,10 +34,10 @@ void Document::newDocument()
 
 bool Document::importMidi(const juce::File& file)
 {
-    notifyWillReplaceSequence();
     auto contents = MidiFileIO::load(file);
     if (!contents)
         return false;
+    notifyWillReplaceSequence();
     sequence.replaceContents(std::move(*contents));
     setFile({});
     history.clear();
@@ -64,10 +64,10 @@ juce::String Document::getDocumentTitle()
 
 juce::Result Document::loadDocument(const juce::File& file)
 {
-    notifyWillReplaceSequence();
     auto contents = ProjectFileIO::load(file);
     if (!contents)
         return juce::Result::fail("The file could not be read as a Calliope project.");
+    notifyWillReplaceSequence();
     sequence.replaceContents(std::move(*contents));
     history.clear();
     changedOutsideHistory = false;
