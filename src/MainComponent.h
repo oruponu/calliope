@@ -135,7 +135,12 @@ private:
     UserDisabledMidiInputs userDisabledMidiInputs{audioDeviceManager,
                                                   [this](const juce::String& id) { releaseInputSource(id); }};
     PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
-    TrackOutputController trackOutput{pluginHost, document, playbackEngine, pluginCatalog, [this] { stopPlayback(); }};
+    TrackOutputController trackOutput{pluginHost,
+                                      document,
+                                      playbackEngine,
+                                      pluginCatalog,
+                                      [this] { stopPlayback(); },
+                                      [this](TrackId trackId) { editorController.showEditor(trackId); }};
     PluginEditorController editorController{pluginHost, *this, commandManager, *this};
 
     TransportBarComponent transportBar{document, playbackEngine};

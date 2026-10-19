@@ -11,9 +11,11 @@
 TrackOutputController::TrackOutputController(VstPluginHost& pluginHostRef, Document& documentRef,
                                              PlaybackEngine& playbackEngineRef,
                                              PluginCatalogController& pluginCatalogRef,
-                                             std::function<void()> stopPlaybackCallback)
+                                             std::function<void()> stopPlaybackCallback,
+                                             std::function<void(TrackId)> showPluginEditorCallback)
     : pluginHost(pluginHostRef), document(documentRef), playbackEngine(playbackEngineRef),
-      pluginCatalog(pluginCatalogRef), stopPlayback(std::move(stopPlaybackCallback))
+      pluginCatalog(pluginCatalogRef), stopPlayback(std::move(stopPlaybackCallback)),
+      showPluginEditor(std::move(showPluginEditorCallback))
 {
 }
 
@@ -116,11 +118,14 @@ void TrackOutputController::attachPlugin(TrackId trackId, const juce::PluginDesc
         return;
 
     const int index = sequence.indexOf(trackId);
-    MidiSequence::ChangeBatch batch(sequence);
-    sequence.setTrackPluginAssignment(index, std::make_shared<const PluginAssignment>(
-                                                 PluginAssignment{PluginAssignmentCodec::toXml(description), {}}));
-    sequence.setTrackRouteTarget(index, std::nullopt);
-    sequence.setTrackOutputDestination(index, MidiTrack::OutputDestination::Plugin);
+    {
+        MidiSequence::ChangeBatch batch(sequence);
+        sequence.setTrackPluginAssignment(index, std::make_shared<const PluginAssignment>(
+                                                     PluginAssignment{PluginAssignmentCodec::toXml(description), {}}));
+        sequence.setTrackRouteTarget(index, std::nullopt);
+        sequence.setTrackOutputDestination(index, MidiTrack::OutputDestination::Plugin);
+    }
+    showPluginEditor(trackId);
 }
 
 void TrackOutputController::detachPlugin(TrackId trackId)

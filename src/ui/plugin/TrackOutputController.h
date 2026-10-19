@@ -16,7 +16,8 @@ class TrackOutputController
 {
 public:
     TrackOutputController(VstPluginHost& pluginHost, Document& document, PlaybackEngine& playbackEngine,
-                          PluginCatalogController& pluginCatalog, std::function<void()> stopPlaybackCallback);
+                          PluginCatalogController& pluginCatalog, std::function<void()> stopPlaybackCallback,
+                          std::function<void(TrackId)> showPluginEditorCallback);
 
     void showOutputMenu(int trackIndex);
     void attachPluginToFirstTrack(const juce::PluginDescription& description);
@@ -36,6 +37,7 @@ private:
     PlaybackEngine& playbackEngine;
     PluginCatalogController& pluginCatalog;
     std::function<void()> stopPlayback;
+    std::function<void(TrackId)> showPluginEditor;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
     JUCE_DECLARE_NON_COPYABLE(TrackOutputController)
