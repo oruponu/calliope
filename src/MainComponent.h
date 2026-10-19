@@ -136,7 +136,7 @@ private:
                                                   [this](const juce::String& id) { releaseInputSource(id); }};
     PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
     TrackOutputController trackOutput{pluginHost, document, playbackEngine, pluginCatalog, [this] { stopPlayback(); }};
-    PluginEditorController editorController{pluginHost};
+    PluginEditorController editorController{pluginHost, *this, commandManager, *this};
 
     TransportBarComponent transportBar{document, playbackEngine};
 

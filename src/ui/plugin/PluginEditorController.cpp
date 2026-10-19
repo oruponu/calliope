@@ -1,33 +1,11 @@
 #include "ui/plugin/PluginEditorController.h"
 #include "plugin/VstPluginHost.h"
+#include "ui/plugin/PluginEditorWindow.h"
 
-namespace
-{
-class EditorWindow : public juce::DocumentWindow
-{
-public:
-    EditorWindow(const juce::String& title, juce::AudioProcessorEditor* editor, std::function<void()> onClose)
-        : DocumentWindow(title, juce::Colours::black, DocumentWindow::closeButton), closeCallback(std::move(onClose))
-    {
-        setUsingNativeTitleBar(true);
-        setContentOwned(editor, true);
-        setResizable(editor->isResizable(), false);
-        centreWithSize(getWidth(), getHeight());
-        setVisible(true);
-    }
-
-    void closeButtonPressed() override
-    {
-        if (closeCallback)
-            juce::MessageManager::callAsync(closeCallback);
-    }
-
-private:
-    std::function<void()> closeCallback;
-};
-} // namespace
-
-PluginEditorController::PluginEditorController(VstPluginHost& pluginHostRef) : pluginHost(pluginHostRef)
+PluginEditorController::PluginEditorController(VstPluginHost& pluginHostRef, juce::Component& ownerComponent,
+                                               juce::ApplicationCommandManager& commands,
+                                               juce::ApplicationCommandTarget& target)
+    : pluginHost(pluginHostRef), owner(ownerComponent), commandManager(commands), commandTarget(target)
 {
     pluginHost.onPluginDetached = [this](TrackId trackId) { closeEditor(trackId); };
 }
@@ -41,7 +19,7 @@ void PluginEditorController::showEditor(TrackId trackId)
 {
     if (auto it = editorWindows.find(trackId); it != editorWindows.end())
     {
-        it->second->toFront(true);
+        it->second->show();
         return;
     }
 
@@ -53,11 +31,18 @@ void PluginEditorController::showEditor(TrackId trackId)
     if (editor == nullptr)
         return;
 
-    editorWindows[trackId] = std::make_unique<EditorWindow>(processor->getName(), editor,
-                                                            [this, trackId]() { editorWindows.erase(trackId); });
+    auto window = std::make_unique<PluginEditorWindow>(processor->getName(), editor, owner, commandManager,
+                                                       commandTarget, [this, trackId]() { closeEditor(trackId); });
+    window->show();
+    editorWindows[trackId] = std::move(window);
 }
 
 void PluginEditorController::closeEditor(TrackId trackId)
 {
     editorWindows.erase(trackId);
+}
+
+void PluginEditorController::closeAllEditors()
+{
+    editorWindows.clear();
 }

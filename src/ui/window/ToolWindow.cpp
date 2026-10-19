@@ -2,14 +2,15 @@
 #include "ui/window/OwnedWindow.h"
 
 ToolWindow::ToolWindow(const juce::String& title, juce::Component* content, juce::Component& ownerComponent,
-                       juce::ApplicationCommandManager& commands, juce::ApplicationCommandTarget& target)
+                       juce::ApplicationCommandManager& commands, juce::ApplicationCommandTarget& target,
+                       bool resizable)
     : DialogWindow(title,
                    juce::LookAndFeel::getDefaultLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId),
                    true, false),
       owner(ownerComponent), commandManager(commands), commandTarget(target)
 {
     setUsingNativeTitleBar(true);
-    setResizable(false, false);
+    setResizable(resizable, false);
     // Added here rather than by the base constructor, where the override of getDesktopWindowStyleFlags is not yet
     // in effect. Added before sizing: on Windows the first bounds a new window gets are measured against the frame
     // of a zero-size window without its title bar, which leaves the client area short of the content.

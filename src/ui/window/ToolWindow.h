@@ -9,7 +9,8 @@ class ToolWindow : public juce::DialogWindow, public juce::ApplicationCommandTar
 public:
     // Takes ownership of content and sizes itself to it.
     ToolWindow(const juce::String& title, juce::Component* content, juce::Component& owner,
-               juce::ApplicationCommandManager& commandManager, juce::ApplicationCommandTarget& commandTarget);
+               juce::ApplicationCommandManager& commandManager, juce::ApplicationCommandTarget& commandTarget,
+               bool resizable = false);
     ~ToolWindow() override;
 
     void show();

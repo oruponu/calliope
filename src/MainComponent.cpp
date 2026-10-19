@@ -445,9 +445,10 @@ MainComponent::MainComponent()
 
 MainComponent::~MainComponent()
 {
-    // Windows destroys owned windows along with their owner, so this one must go before the main window does.
+    // Windows destroys owned windows along with their owner, so these must go before the main window does.
     metronomeSettings = nullptr;
     metronomeSettingsWindow.reset();
+    editorController.closeAllEditors();
     document.getSequence().removeListener(this);
     document.removeChangeListener(this);
     juce::Desktop::getInstance().removeFocusChangeListener(this);
