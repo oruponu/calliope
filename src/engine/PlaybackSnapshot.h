@@ -32,6 +32,8 @@ struct PlaybackSnapshot
 {
     std::vector<ScheduledNote> notes;
     std::vector<ScheduledEvent> events;
+    // The audible tracks, in track order, whether or not they have notes or events.
+    std::vector<PlaybackTrackContext> contexts;
     std::vector<TempoChange> tempoChanges;
     std::vector<TimeSignatureChange> timeSignatureChanges;
     int ticksPerQuarterNote = TimelineMap::defaultTicksPerQuarterNote;

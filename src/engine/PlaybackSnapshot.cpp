@@ -68,6 +68,7 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq, const Take* ta
         const auto& track = seq.getTrack(t);
 
         const PlaybackTrackContext ctx = makePlaybackTrackContext(seq, t);
+        snap.contexts.push_back(ctx);
 
         for (const auto& note : track.getNotes())
             snap.notes.push_back({ctx, note});

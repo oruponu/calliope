@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/ChaseTargetState.h"
+#include "engine/ChaseTracker.h"
 #include "engine/PlaybackSnapshot.h"
 #include <vector>
 
@@ -10,3 +11,14 @@
 std::vector<ChaseTargetState> chaseStates(const PlaybackSnapshot& snap, int tick);
 
 std::vector<ScheduledEvent> chaseEvents(const PlaybackSnapshot& snap, int tick);
+
+// The targets of the contexts in only one of before and after: those only in after, in its order, then those only
+// in before. Targets without output are omitted.
+std::vector<ChaseTarget> chaseTargetsChangedBetween(const std::vector<PlaybackTrackContext>& before,
+                                                    const std::vector<PlaybackTrackContext>& after);
+
+// What to send at tick when the audible contexts change from before to those of after: for each changed target, the
+// items of its state in after that differ from what it has been sent. A changed program brings every item, since
+// some instruments reset controllers on a program change. Items that after does not have are not sent.
+std::vector<ScheduledEvent> chaseChanges(const ChaseTracker& sent, const std::vector<PlaybackTrackContext>& before,
+                                         const PlaybackSnapshot& after, int tick);

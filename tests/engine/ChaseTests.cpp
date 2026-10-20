@@ -1,5 +1,6 @@
 #include "engine/Chase.h"
 #include "engine/ChaseTarget.h"
+#include "engine/ChaseTracker.h"
 #include "support/MidiEventTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 #include <utility>
@@ -43,6 +44,23 @@ PlaybackSnapshot snapshotOf(std::vector<ScheduledEvent> events)
     PlaybackSnapshot snap;
     snap.events = std::move(events);
     return snap;
+}
+
+PlaybackSnapshot snapshotOf(std::vector<ScheduledEvent> events, std::vector<PlaybackTrackContext> contexts)
+{
+    auto snap = snapshotOf(std::move(events));
+    snap.contexts = std::move(contexts);
+    return snap;
+}
+
+const PlaybackTrackContext movedToCh2{TrackId{1}, 2, TrackId{1}, MidiTrack::OutputDestination::MidiDevice};
+
+ChaseTracker sentFrom(const std::vector<ScheduledEvent>& events)
+{
+    ChaseTracker sent;
+    for (const auto& se : events)
+        sent.record(se.ctx, se.event);
+    return sent;
 }
 
 std::vector<ScheduledEvent> on(const PlaybackTrackContext& ctx, std::vector<MidiEvent> events)
@@ -210,4 +228,162 @@ TEST_CASE("a MIDI device target ignores the route target and a plugin target kee
           chaseTargetOf({TrackId{2}, 1, TrackId{9}, Destination::MidiDevice}));
     CHECK_FALSE(chaseTargetOf({TrackId{1}, 1, TrackId{8}, Destination::Plugin}) ==
                 chaseTargetOf({TrackId{2}, 1, TrackId{9}, Destination::Plugin}));
+}
+
+TEST_CASE("an unchanged set of contexts has no changed targets", "[engine][chase]")
+{
+    CHECK(chaseTargetsChangedBetween({deviceCh1, deviceCh2}, {deviceCh1, deviceCh2}).empty());
+}
+
+TEST_CASE("an added context changes its target", "[engine][chase]")
+{
+    CHECK(chaseTargetsChangedBetween({deviceCh1}, {deviceCh1, deviceCh2}) ==
+          std::vector<ChaseTarget>{chaseTargetOf(deviceCh2)});
+}
+
+TEST_CASE("a removed context changes its target", "[engine][chase]")
+{
+    CHECK(chaseTargetsChangedBetween({deviceCh1, deviceCh2}, {deviceCh1}) ==
+          std::vector<ChaseTarget>{chaseTargetOf(deviceCh2)});
+}
+
+TEST_CASE("a track unmuted on a channel another track already plays changes the target", "[engine][chase]")
+{
+    CHECK(chaseTargetsChangedBetween({deviceCh1}, {deviceCh1, otherDeviceCh1}) ==
+          std::vector<ChaseTarget>{chaseTargetOf(deviceCh1)});
+}
+
+TEST_CASE("a channel change changes both channels, the new one first", "[engine][chase]")
+{
+    CHECK(chaseTargetsChangedBetween({deviceCh1}, {movedToCh2}) ==
+          std::vector<ChaseTarget>{chaseTargetOf(deviceCh2), chaseTargetOf(deviceCh1)});
+}
+
+TEST_CASE("a track without output is not a changed target", "[engine][chase]")
+{
+    CHECK(chaseTargetsChangedBetween({}, {silentCh1}).empty());
+}
+
+TEST_CASE("the tracker gives the state the recorded events leave", "[engine][chase]")
+{
+    ChaseTracker sent;
+    sent.record(deviceCh1, pc(0, 5));
+    sent.record(otherDeviceCh1, cc(10, 7, 90));
+    sent.record(deviceCh2, cc(20, 7, 30));
+
+    CHECK(sent.itemsOf(chaseTargetOf(deviceCh1), 1000) ==
+          std::vector<ChaseItem>{{ChaseItem::Kind::Program, 0, {pc(1000, 5)}},
+                                 {ChaseItem::Kind::Controller, 7, {cc(1000, 7, 90)}}});
+}
+
+TEST_CASE("the tracker ignores tracks without output", "[engine][chase]")
+{
+    ChaseTracker sent;
+    sent.record(silentCh1, pc(0, 5));
+
+    CHECK(sent.itemsOf(chaseTargetOf(silentCh1), 1000).empty());
+}
+
+TEST_CASE("clearing the tracker forgets what was sent", "[engine][chase]")
+{
+    ChaseTracker sent;
+    sent.record(deviceCh1, pc(0, 5));
+    sent.clear();
+
+    CHECK(sent.itemsOf(chaseTargetOf(deviceCh1), 1000).empty());
+}
+
+TEST_CASE("unmuting a track on a shared channel sends only the values it changes", "[engine][chase]")
+{
+    const auto played = on(deviceCh1, {pc(0, 5), cc(0, 7, 100), cc(0, 10, 64)});
+    auto after = played;
+    after.push_back({otherDeviceCh1, cc(500, 7, 20)});
+
+    CHECK(eventsOf(chaseChanges(sentFrom(played), {deviceCh1}, snapshotOf(after, {deviceCh1, otherDeviceCh1}), 1000)) ==
+          std::vector<MidiEvent>{cc(1000, 7, 20)});
+}
+
+TEST_CASE("muting a track on a shared channel restores the remaining track's values", "[engine][chase]")
+{
+    const auto remaining = on(deviceCh1, {pc(0, 5), cc(0, 7, 100), cc(0, 10, 64)});
+    auto both = remaining;
+    both.push_back({otherDeviceCh1, cc(500, 7, 20)});
+
+    CHECK(eventsOf(chaseChanges(sentFrom(both), {deviceCh1, otherDeviceCh1}, snapshotOf(remaining, {deviceCh1}),
+                                1000)) == std::vector<MidiEvent>{cc(1000, 7, 100)});
+}
+
+TEST_CASE("a changed program sends the whole state of the channel", "[engine][chase]")
+{
+    const auto played = on(deviceCh1, {pc(0, 5), cc(0, 7, 100)});
+    auto after = played;
+    after.push_back({otherDeviceCh1, pc(500, 9)});
+
+    CHECK(eventsOf(chaseChanges(sentFrom(played), {deviceCh1}, snapshotOf(after, {deviceCh1, otherDeviceCh1}), 1000)) ==
+          std::vector<MidiEvent>{pc(1000, 9), cc(1000, 7, 100)});
+}
+
+TEST_CASE("values only the removed track gave are not sent", "[engine][chase]")
+{
+    const auto after = on(deviceCh1, {pc(0, 5)});
+    auto played = after;
+    played.push_back({otherDeviceCh1, cc(0, 1, 50)});
+
+    CHECK(chaseChanges(sentFrom(played), {deviceCh1, otherDeviceCh1}, snapshotOf(after, {deviceCh1}), 1000).empty());
+}
+
+TEST_CASE("a changed parameter is sent with the selection restored", "[engine][chase]")
+{
+    const auto played = on(deviceCh1, {cc(0, 101, 0), cc(0, 100, 0), cc(0, 6, 2), cc(0, 101, 127), cc(0, 100, 127)});
+    auto after = played;
+    for (const auto& se :
+         on(otherDeviceCh1, {cc(500, 101, 0), cc(500, 100, 0), cc(500, 6, 12), cc(500, 101, 127), cc(500, 100, 127)}))
+        after.push_back(se);
+
+    CHECK(eventsOf(chaseChanges(sentFrom(played), {deviceCh1}, snapshotOf(after, {deviceCh1, otherDeviceCh1}), 1000)) ==
+          std::vector<MidiEvent>{cc(1000, 101, 0), cc(1000, 100, 0), cc(1000, 6, 12), cc(1000, 101, 127),
+                                 cc(1000, 100, 127)});
+}
+
+TEST_CASE("toggling a track without events sends nothing", "[engine][chase]")
+{
+    const auto played = on(deviceCh1, {pc(0, 5)});
+
+    CHECK(chaseChanges(sentFrom(played), {deviceCh1}, snapshotOf(played, {deviceCh1, otherDeviceCh1}), 1000).empty());
+}
+
+TEST_CASE("an unchanged set of contexts sends nothing even if what was sent differs", "[engine][chase]")
+{
+    CHECK(chaseChanges(sentFrom(on(deviceCh1, {cc(0, 7, 100)})), {deviceCh1},
+                       snapshotOf(on(deviceCh1, {cc(0, 7, 50)}), {deviceCh1}), 1000)
+              .empty());
+}
+
+TEST_CASE("a track moved to another channel gets the state of the new channel", "[engine][chase]")
+{
+    const auto result = chaseChanges(sentFrom(on(deviceCh1, {cc(0, 7, 100)})), {deviceCh1},
+                                     snapshotOf(on(movedToCh2, {cc(0, 7, 100)}), {movedToCh2}), 1000);
+
+    REQUIRE(eventsOf(result) == std::vector<MidiEvent>{cc(1000, 7, 100)});
+    CHECK(result[0].ctx == movedToCh2);
+}
+
+TEST_CASE("an edited value that was played is compared as it was sent", "[engine][chase]")
+{
+    const auto played = on(deviceCh1, {cc(0, 7, 100), cc(500, 7, 30)});
+    auto after = played;
+    after.push_back({otherDeviceCh1, cc(550, 7, 100)});
+
+    CHECK(eventsOf(chaseChanges(sentFrom(played), {deviceCh1}, snapshotOf(after, {deviceCh1, otherDeviceCh1}), 1000)) ==
+          std::vector<MidiEvent>{cc(1000, 7, 100)});
+}
+
+TEST_CASE("muting the track that gave the pending bank restores the bank of the program", "[engine][chase]")
+{
+    const auto remaining = on(deviceCh1, {cc(0, 0, 1), pc(0, 5)});
+    auto both = remaining;
+    both.push_back({otherDeviceCh1, cc(500, 0, 3)});
+
+    CHECK(eventsOf(chaseChanges(sentFrom(both), {deviceCh1, otherDeviceCh1}, snapshotOf(remaining, {deviceCh1}),
+                                1000)) == std::vector<MidiEvent>{cc(1000, 0, 1)});
 }

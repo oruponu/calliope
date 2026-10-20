@@ -42,6 +42,7 @@ target_sources(Calliope PRIVATE
     src/edit/TimeSignatureEdits.cpp
     src/engine/Chase.cpp
     src/engine/ChaseScan.cpp
+    src/engine/ChaseTracker.cpp
     src/engine/CountIn.cpp
     src/engine/InputQuantize.cpp
     src/engine/MetronomeClicks.cpp

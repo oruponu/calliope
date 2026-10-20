@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/ChaseTracker.h"
 #include "engine/CountIn.h"
 #include "engine/MetronomeListener.h"
 #include "engine/PlaybackClock.h"
@@ -90,6 +91,7 @@ private:
     // Returns whether the count-in ended, so that the callback goes on to play from its end.
     bool advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox* inbox, PlaybackListener& sink);
     void chaseAll(const PlaybackSnapshot& snap, int tick, PlaybackListener& sink);
+    void chaseChangesSince(const PlaybackSnapshot& snap, int tick, PlaybackListener& sink);
 
     const MidiSequence* sequence = nullptr;
 
@@ -118,8 +120,14 @@ private:
     int countInSentTick = 0;
     double pausedAtMs = 0.0;
 
-    // Set on the message thread while the timer is stopped; otherwise used by the timer thread only.
+    // These three are used by the timer thread only, except that needsFullChase and sentState are reset on the message
+    // thread while the timer is stopped.
     bool needsFullChase = false;
+    // The events sent since playback started, so that a change in the audible tracks is compared with what the
+    // instruments have rather than with the events as edited since.
+    ChaseTracker sentState;
+    // The audible tracks when the chase was last sent.
+    std::vector<PlaybackTrackContext> chasedContexts;
 
     int pauseDepth = 0;
     bool resumeTimerAfterPause = false;

@@ -99,6 +99,23 @@ TEST_CASE("with solo only unmuted solo tracks are audible", "[engine][snapshot]"
     CHECK_FALSE(isTrackAudible(seq, 2));
 }
 
+TEST_CASE("contexts list every audible track including ones without events", "[engine][snapshot]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.setChannel(3);
+    t0.addNote({60, 100, 0, 480});
+    seq.addTrack(t0);
+    seq.addTrack(MidiTrack{});
+    MidiTrack t2;
+    t2.setMuted(true);
+    seq.addTrack(t2);
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    CHECK(snap.contexts ==
+          std::vector<PlaybackTrackContext>{makePlaybackTrackContext(seq, 0), makePlaybackTrackContext(seq, 1)});
+}
+
 TEST_CASE("routeTarget carries the id of an existing target track", "[engine][snapshot]")
 {
     MidiSequence seq;

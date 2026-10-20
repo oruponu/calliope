@@ -12,6 +12,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/Chase.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ChaseScan.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/ChaseTracker.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/CountIn.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/InputQuantize.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/MetronomeClicks.cpp

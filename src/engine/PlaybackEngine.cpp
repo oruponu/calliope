@@ -9,7 +9,10 @@ namespace
 class FanOut : public PlaybackListener
 {
 public:
-    explicit FanOut(const std::vector<PlaybackListener*>& l) : listeners(l) {}
+    explicit FanOut(const std::vector<PlaybackListener*>& l, ChaseTracker* sentState = nullptr)
+        : listeners(l), sent(sentState)
+    {
+    }
     void onNoteOn(const PlaybackTrackContext& c, const MidiNote& n) override
     {
         for (auto* x : listeners)
@@ -22,12 +25,15 @@ public:
     }
     void onMidiEvent(const PlaybackTrackContext& c, const MidiEvent& e) override
     {
+        if (sent != nullptr)
+            sent->record(c, e);
         for (auto* x : listeners)
             x->onMidiEvent(c, e);
     }
 
 private:
     const std::vector<PlaybackListener*>& listeners;
+    ChaseTracker* sent;
 };
 
 std::uint64_t packLoop(int startTick, int endTick)
@@ -145,6 +151,7 @@ void PlaybackEngine::play()
 
     playing = true;
     needsFullChase = true;
+    sentState.clear();
     lastSeenSnapshot.reset();
     lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
     if (auto* inbox = recordingInbox.load())
@@ -178,6 +185,7 @@ void PlaybackEngine::playWithCountIn(int bars)
 
     playing = true;
     needsFullChase = true;
+    sentState.clear();
     lastSeenSnapshot.reset();
     lastCallbackTimeMs = countInStartMs;
     if (auto* inbox = recordingInbox.load())
@@ -311,7 +319,7 @@ void PlaybackEngine::hiResTimerCallback()
     if (!snap)
         return;
 
-    FanOut sink(listeners);
+    FanOut sink(listeners, &sentState);
     auto* inbox = recordingInbox.load();
 
     if (countingIn.load() && !advanceCountIn(*snap, inbox, sink))
@@ -323,6 +331,8 @@ void PlaybackEngine::hiResTimerCallback()
         processor.resetCursors(*snap, tick);
         if (needsFullChase)
             chaseAll(*snap, tick, sink);
+        else
+            chaseChangesSince(*snap, tick, sink);
         lastSeenSnapshot = snap;
     }
 
@@ -429,7 +439,17 @@ void PlaybackEngine::chaseAll(const PlaybackSnapshot& snap, int tick, PlaybackLi
 {
     for (const auto& se : chaseEvents(snap, tick))
         sink.onMidiEvent(se.ctx, se.event);
+    chasedContexts = snap.contexts;
     needsFullChase = false;
+}
+
+void PlaybackEngine::chaseChangesSince(const PlaybackSnapshot& snap, int tick, PlaybackListener& sink)
+{
+    if (chasedContexts == snap.contexts)
+        return;
+    for (const auto& se : chaseChanges(sentState, chasedContexts, snap, tick))
+        sink.onMidiEvent(se.ctx, se.event);
+    chasedContexts = snap.contexts;
 }
 
 void PlaybackEngine::processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink)
