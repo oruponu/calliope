@@ -15,4 +15,6 @@ struct MidiEvent
     int tick = 0;
     int data1 = 0;
     int data2 = 0;
+
+    bool operator==(const MidiEvent&) const = default;
 };

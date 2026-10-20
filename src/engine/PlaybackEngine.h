@@ -88,7 +88,8 @@ private:
     void hiResTimerCallback() override;
     void processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink);
     // Returns whether the count-in ended, so that the callback goes on to play from its end.
-    bool advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox* inbox);
+    bool advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox* inbox, PlaybackListener& sink);
+    void chaseAll(const PlaybackSnapshot& snap, int tick, PlaybackListener& sink);
 
     const MidiSequence* sequence = nullptr;
 
@@ -116,6 +117,9 @@ private:
     double countInTicksPerMs = 0.0;
     int countInSentTick = 0;
     double pausedAtMs = 0.0;
+
+    // Set on the message thread while the timer is stopped; otherwise used by the timer thread only.
+    bool needsFullChase = false;
 
     int pauseDepth = 0;
     bool resumeTimerAfterPause = false;

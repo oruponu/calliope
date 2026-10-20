@@ -1,4 +1,5 @@
 #include "engine/PlaybackEngine.h"
+#include "engine/Chase.h"
 #include "engine/MetronomeClicks.h"
 #include <algorithm>
 #include <utility>
@@ -143,6 +144,7 @@ void PlaybackEngine::play()
     rebuildSnapshot();
 
     playing = true;
+    needsFullChase = true;
     lastSeenSnapshot.reset();
     lastCallbackTimeMs = juce::Time::getMillisecondCounterHiRes();
     if (auto* inbox = recordingInbox.load())
@@ -175,6 +177,7 @@ void PlaybackEngine::playWithCountIn(int bars)
     countingIn = true;
 
     playing = true;
+    needsFullChase = true;
     lastSeenSnapshot.reset();
     lastCallbackTimeMs = countInStartMs;
     if (auto* inbox = recordingInbox.load())
@@ -311,12 +314,15 @@ void PlaybackEngine::hiResTimerCallback()
     FanOut sink(listeners);
     auto* inbox = recordingInbox.load();
 
-    if (countingIn.load() && !advanceCountIn(*snap, inbox))
+    if (countingIn.load() && !advanceCountIn(*snap, inbox, sink))
         return;
 
     if (snap != lastSeenSnapshot)
     {
-        processor.resetCursors(*snap, (int)tickPosition.load());
+        const int tick = (int)tickPosition.load();
+        processor.resetCursors(*snap, tick);
+        if (needsFullChase)
+            chaseAll(*snap, tick, sink);
         lastSeenSnapshot = snap;
     }
 
@@ -327,6 +333,7 @@ void PlaybackEngine::hiResTimerCallback()
         processor.sendAllNoteOffs(sink);
         tickPosition.store((double)seek);
         processor.resetCursors(*snap, seek);
+        chaseAll(*snap, seek, sink);
         // The seek lands at the previous callback's time; this callback then advances from there.
         if (inbox != nullptr)
             inbox->jumped(lastCallbackTimeMs, fromTick, seek, ticksPerMsAt(*snap, seek), currentLoop());
@@ -355,6 +362,7 @@ void PlaybackEngine::hiResTimerCallback()
             wrapped = (double)ls;
         tickPosition.store(wrapped);
         processor.resetCursors(*snap, ls);
+        chaseAll(*snap, ls, sink);
 
         const int headEnd = (int)wrapped;
         if (headEnd > ls)
@@ -372,7 +380,7 @@ void PlaybackEngine::hiResTimerCallback()
         inbox->updateClock(now, newPos, ticksPerMsAt(*snap, currentTick), currentLoop());
 }
 
-bool PlaybackEngine::advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox* inbox)
+bool PlaybackEngine::advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox* inbox, PlaybackListener& sink)
 {
     const double now = juce::Time::getMillisecondCounterHiRes();
     const int seek = pendingSeekTick.exchange(-1);
@@ -392,6 +400,10 @@ bool PlaybackEngine::advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox
             pendingSeekTick.compare_exchange_strong(none, seek);
         }
     }
+    // Sent at the start of the count-in, so that the instruments are ready for the first note. A rejected seek is
+    // chased as the jump it becomes.
+    if (updated && (needsFullChase || seek >= 0))
+        chaseAll(snap, startTick, sink);
 
     const bool ended = !updated || now >= countInEndMs;
     const int reached =
@@ -411,6 +423,13 @@ bool PlaybackEngine::advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox
     if (inbox != nullptr)
         inbox->countInEnded();
     return true;
+}
+
+void PlaybackEngine::chaseAll(const PlaybackSnapshot& snap, int tick, PlaybackListener& sink)
+{
+    for (const auto& se : chaseEvents(snap, tick))
+        sink.onMidiEvent(se.ctx, se.event);
+    needsFullChase = false;
 }
 
 void PlaybackEngine::processRange(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink)
