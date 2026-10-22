@@ -47,6 +47,25 @@ const char* const gmProgramNames[] = {
     "Telephone Ring", "Helicopter", "Applause", "Gunshot",
 };
 // clang-format on
+
+struct CCEntry
+{
+    int cc;
+    const char* name;
+};
+
+const CCEntry commonCCs[] = {
+    {1, "CC 1 (Modulation)"}, {7, "CC 7 (Volume)"},   {10, "CC 10 (Pan)"},    {11, "CC 11 (Expression)"},
+    {64, "CC 64 (Sustain)"},  {91, "CC 91 (Reverb)"}, {93, "CC 93 (Chorus)"},
+};
+
+juce::String ccLabel(int cc)
+{
+    for (const auto& entry : commonCCs)
+        if (entry.cc == cc)
+            return entry.name;
+    return "CC " + juce::String(cc);
+}
 } // namespace
 
 ControllerLaneComponent::~ControllerLaneComponent()
@@ -267,17 +286,22 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
         menu.addItem(1, "Velocity", true, displayMode == DisplayMode::Velocity);
 
         juce::PopupMenu ccMenu;
-        struct CCEntry
-        {
-            int cc;
-            const char* name;
-        };
-        CCEntry commonCCs[] = {
-            {1, "CC 1 (Modulation)"}, {7, "CC 7 (Volume)"},   {10, "CC 10 (Pan)"},    {11, "CC 11 (Expression)"},
-            {64, "CC 64 (Sustain)"},  {91, "CC 91 (Reverb)"}, {93, "CC 93 (Chorus)"},
-        };
+        const auto showing = [this](int cc) { return displayMode == DisplayMode::ControlChange && ccNumber == cc; };
         for (const auto& cc : commonCCs)
-            ccMenu.addItem(100 + cc.cc, cc.name, true, displayMode == DisplayMode::ControlChange && ccNumber == cc.cc);
+            ccMenu.addItem(100 + cc.cc, cc.name, true, showing(cc.cc));
+        ccMenu.addSeparator();
+        constexpr int ccsPerGroup = 16;
+        for (int first = 0; first < 128; first += ccsPerGroup)
+        {
+            const int last = first + ccsPerGroup - 1;
+            juce::PopupMenu group;
+            for (int cc = first; cc <= last; ++cc)
+                group.addItem(100 + cc, ccLabel(cc), true, showing(cc));
+            const bool groupShowing =
+                displayMode == DisplayMode::ControlChange && ccNumber >= first && ccNumber <= last;
+            ccMenu.addSubMenu("CC " + juce::String(first) + "-" + juce::String(last), group, true, nullptr,
+                              groupShowing);
+        }
         menu.addSubMenu("Control Change", ccMenu);
 
         menu.addItem(2, "Pitch Bend", true, displayMode == DisplayMode::PitchBend);
