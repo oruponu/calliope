@@ -20,6 +20,16 @@ inline int pitchBendAt(int offsetFromCentre, int halfHeight)
     return std::clamp(pitchBendCentre + offsetFromCentre * pitchBendCentre / halfHeight, 0, pitchBendMax);
 }
 
+inline int displayedPitchBend(int data1)
+{
+    return data1 - pitchBendCentre;
+}
+
+inline int pitchBendFromDisplayed(int displayed)
+{
+    return std::clamp(displayed + pitchBendCentre, 0, pitchBendMax);
+}
+
 // A point's y can read back as a nearby value, so a sideways drag would otherwise change its value.
 template <class ValueAtY> int draggedValue(int startValue, int startY, int deltaY, ValueAtY valueAtY)
 {

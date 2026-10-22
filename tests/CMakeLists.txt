@@ -58,6 +58,7 @@ target_sources(CalliopeTests PRIVATE
     edit/ControllerPointAddTests.cpp
     edit/ControllerPointDeleteTests.cpp
     edit/ControllerPointMoveTests.cpp
+    edit/ControllerPointValueTests.cpp
     edit/EditableNotesTests.cpp
     edit/KeySignatureAddChangeTests.cpp
     edit/KeySignatureDeleteTests.cpp

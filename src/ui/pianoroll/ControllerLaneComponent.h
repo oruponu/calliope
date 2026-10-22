@@ -10,6 +10,9 @@
 #include "model/MidiSequence.h"
 #include "model/TimelineGrid.h"
 #include "ui/NoteDragPreview.h"
+#include "ui/pianoroll/ControllerValueDraft.h"
+#include "ui/pianoroll/ControllerValueEditor.h"
+#include "ui/pianoroll/strips/CalloutEditorSession.h"
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "undo/UndoHistory.h"
@@ -121,6 +124,8 @@ private:
                         const ControllerPointEditResult& result);
     void selectPoints(std::set<int> indices);
     void resetPointEditing();
+    void openValueEditor(int eventIndex);
+    void commitValueEdit(int displayedValue);
     int valueToY(int value) const;
     int yToValue(int y) const;
 
@@ -169,6 +174,7 @@ private:
     };
     std::variant<Idle, VelocityDragging, PointDragging, PointRangeSelecting> drag;
     IndexSelection pointSelection;
+    CalloutEditorSession<ControllerValueEditor, ControllerValueDraft> valueEditSession;
     bool editToolSelected = false;
     bool snapEnabled = true;
     NoteDragPreview publishedPreview;

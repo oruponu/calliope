@@ -257,6 +257,12 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     const bool onLabelPanel = isOnLabelPanel(e.x);
     if (e.mods.isPopupMenu())
     {
+        if (const int hit = kind ? hitTestPoint(e.x, e.y) : -1; hit >= 0)
+        {
+            openValueEditor(hit);
+            return;
+        }
+
         juce::PopupMenu menu;
         menu.addItem(1, "Velocity", true, displayMode == DisplayMode::Velocity);
 
@@ -1145,6 +1151,48 @@ void ControllerLaneComponent::resetPointEditing()
 {
     drag = Idle{};
     pointSelection.clear();
+    valueEditSession.close();
+}
+
+void ControllerLaneComponent::openValueEditor(int eventIndex)
+{
+    const auto kind = editedKind();
+    if (!kind || !hasActiveTrack())
+        return;
+    const auto& event = sequence->getTrack(activeTrackIndex).getEvent(eventIndex);
+    const bool bend = kind->type == MidiEvent::Type::PitchBend;
+    const int value = kind->valueOf(event);
+    const int displayed = bend ? ControllerLaneScale::displayedPitchBend(value) : value;
+    const int minDisplayed = bend ? ControllerLaneScale::displayedPitchBend(0) : 0;
+    const int maxDisplayed = bend ? ControllerLaneScale::displayedPitchBend(kind->maxValue()) : kind->maxValue();
+    const auto anchor = juce::Rectangle<int>(tickToX(event.tick), pointY(*kind, value), 1, 1).expanded(4);
+
+    valueEditSession.close();
+    selectPoints({eventIndex});
+
+    auto content = std::make_unique<ControllerValueEditor>(displayed, minDisplayed, maxDisplayed);
+    content->onCommit = [this](int displayedValue) { commitValueEdit(displayedValue); };
+    content->onCancel = [this]() { valueEditSession.finish(); };
+    valueEditSession.open({eventIndex}, std::move(content), localAreaToGlobal(anchor));
+}
+
+void ControllerLaneComponent::commitValueEdit(int displayedValue)
+{
+    const auto draft = valueEditSession.finish();
+    const auto kind = editedKind();
+    if (!kind || !hasActiveTrack())
+        return;
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    if (draft.eventIndex < 0 || draft.eventIndex >= static_cast<int>(events.size()) ||
+        !kind->matches(events[static_cast<size_t>(draft.eventIndex)]))
+        return;
+
+    const int value = kind->type == MidiEvent::Type::PitchBend
+                          ? ControllerLaneScale::pitchBendFromDisplayed(displayedValue)
+                          : displayedValue;
+    const auto result = ControllerPointEdits::setValue(events, *kind, draft.eventIndex, value);
+    if (result.events != events)
+        applyPointEdit("Edit Controller Value", events, result);
 }
 
 void ControllerLaneComponent::mouseMove(const juce::MouseEvent& e)

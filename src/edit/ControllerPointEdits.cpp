@@ -182,3 +182,16 @@ ControllerPointEditResult ControllerPointEdits::remove(const std::vector<MidiEve
     std::erase_if(entries, [&removed](const Entry& e) { return removed.contains(e.order); });
     return arrange(std::move(entries));
 }
+
+ControllerPointEditResult ControllerPointEdits::setValue(const std::vector<MidiEvent>& before,
+                                                         const ControllerKind& kind, int index, int value)
+{
+    auto entries = entriesOf(before);
+    if (isValid(before, index) && kind.matches(before[static_cast<size_t>(index)]))
+    {
+        auto& entry = entries[static_cast<size_t>(index)];
+        setValueOf(kind, entry.event, value);
+        entry.selected = true;
+    }
+    return arrange(std::move(entries));
+}

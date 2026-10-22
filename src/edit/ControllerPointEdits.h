@@ -14,4 +14,6 @@ ControllerPointEditResult add(const std::vector<MidiEvent>& before, const Contro
 ControllerPointEditResult move(const std::vector<MidiEvent>& before, const ControllerKind& kind,
                                const std::set<int>& moved, int anchorIndex, int targetTick, int targetValue);
 ControllerPointEditResult remove(const std::vector<MidiEvent>& before, const std::set<int>& removed);
+ControllerPointEditResult setValue(const std::vector<MidiEvent>& before, const ControllerKind& kind, int index,
+                                   int value);
 } // namespace ControllerPointEdits

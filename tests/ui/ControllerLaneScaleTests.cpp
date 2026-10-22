@@ -19,6 +19,13 @@ TEST_CASE("a pitch bend away from the centre follows the offset", "[ui][controll
     CHECK(ControllerLaneScale::pitchBendAt(25, 50) == 12288);
 }
 
+TEST_CASE("displayed pitch bend is centred on zero", "[ui][controller]")
+{
+    CHECK(ControllerLaneScale::displayedPitchBend(8192) == 0);
+    CHECK(ControllerLaneScale::pitchBendFromDisplayed(-8192) == 0);
+    CHECK(ControllerLaneScale::pitchBendFromDisplayed(9000) == 16383);
+}
+
 TEST_CASE("a drag without vertical movement keeps the value", "[ui][controller]")
 {
     const auto valueAtY = [](int y) { return 200 - y; };
