@@ -131,11 +131,11 @@ TEST_CASE("notes and events come back in their stored order", "[io][projectxml]"
     track.addNote({64, 1, 960, 0});
     track.addNote({0, 127, 0, 480});
     track.addNote({127, 0, 2147483646, 1});
-    track.addEvent({MidiEvent::Type::PitchBend, 480, 16383, 0});
-    track.addEvent({MidiEvent::Type::ControlChange, 0, 7, 100});
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 7, 100, true});
     track.addEvent({MidiEvent::Type::ProgramChange, 0, 41, 0});
     track.addEvent({MidiEvent::Type::ChannelPressure, 240, 64, 0});
     track.addEvent({MidiEvent::Type::KeyPressure, 360, 60, 33});
+    track.addEvent({MidiEvent::Type::PitchBend, 480, 16383, 0, true});
     seq.addTrack(track);
 
     const auto loaded = roundTrip(seq);
@@ -143,6 +143,22 @@ TEST_CASE("notes and events come back in their stored order", "[io][projectxml]"
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
     CHECK(loaded->tracks[0].getNotes() == track.getNotes());
+    CHECK(loaded->tracks[0].getEvents() == track.getEvents());
+}
+
+TEST_CASE("a ramp point keeps its ramp", "[io][projectxml]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 1, 0, true});
+    track.addEvent({MidiEvent::Type::ControlChange, 480, 1, 64, true});
+    track.addEvent({MidiEvent::Type::PitchBend, 960, 8192, 0, true});
+    seq.addTrack(track);
+
+    const auto loaded = roundTrip(seq);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
     CHECK(loaded->tracks[0].getEvents() == track.getEvents());
 }
 

@@ -1,8 +1,11 @@
 #include "ui/pianoroll/ControllerLaneComponent.h"
+#include "edit/ControllerPointEdits.h"
 #include "edit/LayeredNoteEdits.h"
 #include "edit/NoteEdit.h"
 #include "model/TimelineGrid.h"
+#include "ui/pianoroll/ControllerLaneScale.h"
 #include "ui/theme/TrackColours.h"
+#include "undo/ReplaceEventsAction.h"
 #include <algorithm>
 #include <utility>
 
@@ -84,7 +87,7 @@ void ControllerLaneComponent::setSequence(MidiSequence* seq)
 void ControllerLaneComponent::setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices)
 {
     if (activeIndex != activeTrackIndex)
-        drag = Idle{};
+        resetPointEditing();
     activeTrackIndex = activeIndex;
     selectedTrackIndices = selectedIndices;
     publishDragPreview();
@@ -93,12 +96,14 @@ void ControllerLaneComponent::setSelectedTracks(int activeIndex, const std::set<
 
 void ControllerLaneComponent::setDisplayMode(DisplayMode mode)
 {
+    resetPointEditing();
     displayMode = mode;
     repaint();
 }
 
 void ControllerLaneComponent::setCCNumber(int cc)
 {
+    resetPointEditing();
     ccNumber = cc;
     repaint();
 }
@@ -126,6 +131,24 @@ void ControllerLaneComponent::setRecordingLayer(const RecordingLayer* layer, Rec
 {
     recordingLayer = layer;
     recordingEditor = editor;
+    repaint();
+}
+
+void ControllerLaneComponent::setEditToolSelected(bool editTool)
+{
+    editToolSelected = editTool;
+}
+
+void ControllerLaneComponent::setSnapEnabled(bool enabled)
+{
+    snapEnabled = enabled;
+}
+
+void ControllerLaneComponent::clearPointSelection()
+{
+    if (pointSelection.isEmpty() && std::holds_alternative<Idle>(drag))
+        return;
+    resetPointEditing();
     repaint();
 }
 
@@ -230,6 +253,8 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     if (activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return;
 
+    const auto kind = editedKind();
+    const bool onLabelPanel = isOnLabelPanel(e.x);
     if (e.mods.isPopupMenu())
     {
         juce::PopupMenu menu;
@@ -271,8 +296,14 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
         return;
     }
 
-    if (e.x < leftPanelWidth)
+    if (onLabelPanel)
         return;
+
+    if (kind)
+    {
+        pointMouseDown(e, *kind);
+        return;
+    }
 
     if (displayMode != DisplayMode::Velocity)
         return;
@@ -306,6 +337,49 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
 
 void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
 {
+    if (auto* pointDragging = std::get_if<PointDragging>(&drag))
+    {
+        const auto kind = editedKind();
+        if (!e.mouseWasDraggedSinceMouseDown() || !kind)
+            return;
+        // Measured from where the anchor is drawn, not from the mouse, so grabbing it off-centre does not move it.
+        const auto& anchor = pointDragging->before[static_cast<size_t>(pointDragging->anchor)];
+        const int tick = ControllerLaneScale::draggedTick(anchor.tick, tickToX(anchor.tick),
+                                                          e.getDistanceFromDragStartX(), [this, &e](int x)
+                                                          { return std::max(0, snapGrid(e.mods).round(xToTick(x))); });
+        const int value = ControllerLaneScale::draggedValue(kind->valueOf(anchor), pointY(*kind, kind->valueOf(anchor)),
+                                                            e.getDistanceFromDragStartY(),
+                                                            [this, &kind](int y) { return valueAtY(*kind, y); });
+        pointDragging->preview = ControllerPointEdits::move(pointDragging->before, *kind, pointDragging->moved,
+                                                            pointDragging->anchor, tick, value);
+        pointDragging->changed = pointDragging->preview.events != pointDragging->before;
+        repaint();
+        return;
+    }
+
+    if (auto* selecting = std::get_if<PointRangeSelecting>(&drag))
+    {
+        const auto kind = editedKind();
+        if (!kind || !hasActiveTrack())
+            return;
+        selecting->gesture.currentX = e.x;
+        const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+        struct LaneGeometry
+        {
+            const ControllerLaneComponent& lane;
+            int xToTick(int x) const { return lane.xToTick(x); }
+        };
+        pointSelection.assign(selecting->gesture.selectionFor(static_cast<int>(events.size()), LaneGeometry{*this},
+                                                              [&events, &kind](int i, int tickLo, int tickHi)
+                                                              {
+                                                                  const auto& event = events[static_cast<size_t>(i)];
+                                                                  return kind->matches(event) && event.tick >= tickLo &&
+                                                                         event.tick <= tickHi;
+                                                              }));
+        repaint();
+        return;
+    }
+
     auto* dragging = std::get_if<VelocityDragging>(&drag);
     if (dragging == nullptr || !sequence)
         return;
@@ -344,6 +418,28 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
 {
     const juce::ScopeGuard publishAtEnd{[this] { publishDragPreview(); }};
     auto state = std::exchange(drag, Idle{});
+
+    if (const auto* pointDragging = std::get_if<PointDragging>(&state))
+    {
+        // An edit made elsewhere during the drag leaves before stale; applying it would undo that edit.
+        const bool stillCurrent = pointDragging->trackIndex == activeTrackIndex && hasActiveTrack() &&
+                                  sequence->getTrack(activeTrackIndex).getEvents() == pointDragging->before;
+        if (pointDragging->changed && stillCurrent)
+            applyPointEdit("Move Controller Points", pointDragging->before, pointDragging->preview);
+        else if (!pointDragging->changed)
+            selectPoints({pointDragging->anchor});
+        repaint();
+        return;
+    }
+
+    if (std::holds_alternative<PointRangeSelecting>(state))
+    {
+        if (!pointSelection.isEmpty() && onPointSelectionTaken)
+            onPointSelectionTaken();
+        repaint();
+        return;
+    }
+
     const auto* dragging = std::get_if<VelocityDragging>(&state);
     if (dragging == nullptr || !sequence || dragging->trackIndex < 0 ||
         dragging->trackIndex >= sequence->getNumTracks())
@@ -376,13 +472,13 @@ int ControllerLaneComponent::tickToX(int tick) const
 
 void ControllerLaneComponent::notesChanged(int)
 {
-    drag = Idle{};
+    resetPointEditing();
     publishDragPreview();
     repaint();
 }
 void ControllerLaneComponent::tracksChanged()
 {
-    drag = Idle{};
+    resetPointEditing();
     publishDragPreview();
     repaint();
 }
@@ -401,7 +497,7 @@ void ControllerLaneComponent::timelineMetadataChanged()
 
 void ControllerLaneComponent::sequenceReset()
 {
-    drag = Idle{};
+    resetPointEditing();
     publishDragPreview();
     repaint();
 }
@@ -614,20 +710,9 @@ void ControllerLaneComponent::drawControlChange(juce::Graphics& g)
         if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
             continue;
 
-        const auto& track = sequence->getTrack(trackIdx);
-
-        std::vector<std::pair<int, int>> events;
-        for (int i = 0; i < track.getNumEvents(); ++i)
-        {
-            const auto& event = track.getEvent(i);
-            if (event.type == MidiEvent::Type::ControlChange && event.data1 == ccNumber)
-                events.push_back({event.tick, event.data2});
-        }
-
         auto colour = TrackColours::getColour(trackIdx);
         float alpha = (trackIdx == activeTrackIndex) ? 0.85f : 0.3f;
-        if (!events.empty())
-            drawStepGraph(g, events, colour, alpha, [this](int v) { return valueToY(v); });
+        drawControllerPoints(g, ControllerKind::controlChange(ccNumber), trackIdx, colour, alpha);
 
         const auto recorded = recordedValues(trackIdx,
                                              [this](const MidiEvent& e) -> std::optional<int>
@@ -646,33 +731,16 @@ void ControllerLaneComponent::drawPitchBend(juce::Graphics& g)
     if (!sequence)
         return;
 
-    int centerY = (getDrawAreaTop() + getDrawAreaBottom()) / 2;
-    int halfHeight = getDrawAreaHeight() / 2;
-    const auto toY = [centerY, halfHeight](int v)
-    {
-        float signed_ = static_cast<float>(v - 8192) / 8192.0f;
-        return centerY - static_cast<int>(signed_ * halfHeight);
-    };
+    const auto toY = [this](int v) { return pointY(ControllerKind::pitchBend(), v); };
 
     for (int trackIdx : selectedTrackIndices)
     {
         if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
             continue;
 
-        const auto& track = sequence->getTrack(trackIdx);
-
-        std::vector<std::pair<int, int>> events;
-        for (int i = 0; i < track.getNumEvents(); ++i)
-        {
-            const auto& event = track.getEvent(i);
-            if (event.type == MidiEvent::Type::PitchBend)
-                events.push_back({event.tick, event.data1});
-        }
-
         auto colour = TrackColours::getColour(trackIdx);
         float alpha = (trackIdx == activeTrackIndex) ? 0.85f : 0.3f;
-        if (!events.empty())
-            drawStepGraph(g, events, colour, alpha, toY);
+        drawControllerPoints(g, ControllerKind::pitchBend(), trackIdx, colour, alpha);
 
         const auto recorded = recordedValues(trackIdx,
                                              [](const MidiEvent& e) -> std::optional<int>
@@ -866,4 +934,232 @@ int ControllerLaneComponent::getDrawAreaBottom() const
 int ControllerLaneComponent::getDrawAreaHeight() const
 {
     return getDrawAreaBottom() - getDrawAreaTop();
+}
+
+void ControllerLaneComponent::drawControllerPoints(juce::Graphics& g, const ControllerKind& kind, int trackIndex,
+                                                   juce::Colour colour, float alpha)
+{
+    using namespace calliope::theme;
+    const auto& events = displayedEvents(trackIndex);
+    std::vector<int> points;
+    for (int i = 0; i < static_cast<int>(events.size()); ++i)
+        if (kind.matches(events[static_cast<size_t>(i)]))
+            points.push_back(i);
+    if (points.empty())
+        return;
+    std::ranges::stable_sort(points, {}, [&events](int i) { return events[static_cast<size_t>(i)].tick; });
+
+    juce::Path path;
+    float prevY = 0.0f;
+    for (size_t n = 0; n < points.size(); ++n)
+    {
+        const auto& event = events[static_cast<size_t>(points[n])];
+        const auto x = static_cast<float>(tickToX(event.tick));
+        const auto y = static_cast<float>(pointY(kind, kind.valueOf(event)));
+        if (n == 0)
+            path.startNewSubPath(x, y);
+        else if (event.ramp && kind.canRamp())
+            path.lineTo(x, y);
+        else
+        {
+            path.lineTo(x, prevY);
+            path.lineTo(x, y);
+        }
+        prevY = y;
+    }
+    path.lineTo(static_cast<float>(getWidth()), prevY);
+
+    g.setColour(colour.withAlpha(alpha));
+    g.strokePath(path, juce::PathStrokeType(2.0f));
+
+    auto* vp = findParentComponentOfClass<juce::Viewport>();
+    const int visibleLeft = vp ? vp->getViewPositionX() : 0;
+    const int visibleRight = vp ? visibleLeft + vp->getViewWidth() : getWidth();
+    const auto selected = trackIndex == activeTrackIndex ? displayedSelection() : std::set<int>{};
+    for (int i : points)
+    {
+        const auto& event = events[static_cast<size_t>(i)];
+        const int x = tickToX(event.tick);
+        if (x < visibleLeft - 10 || x > visibleRight + 10)
+            continue;
+        const bool isSelected = selected.contains(i);
+        const float radius = isSelected ? 4.0f : 3.0f;
+        const juce::Rectangle<float> dot(static_cast<float>(x) - radius,
+                                         static_cast<float>(pointY(kind, kind.valueOf(event))) - radius, radius * 2.0f,
+                                         radius * 2.0f);
+        g.setColour(colour.withAlpha(alpha));
+        g.fillEllipse(dot);
+        if (isSelected)
+        {
+            g.setColour(text::t1);
+            g.drawEllipse(dot, 1.5f);
+        }
+    }
+}
+
+std::optional<ControllerKind> ControllerLaneComponent::editedKind() const
+{
+    if (displayMode == DisplayMode::ControlChange)
+        return ControllerKind::controlChange(ccNumber);
+    if (displayMode == DisplayMode::PitchBend)
+        return ControllerKind::pitchBend();
+    return std::nullopt;
+}
+
+const std::vector<MidiEvent>& ControllerLaneComponent::displayedEvents(int trackIndex) const
+{
+    if (const auto* dragging = std::get_if<PointDragging>(&drag);
+        dragging != nullptr && dragging->trackIndex == trackIndex)
+        return dragging->preview.events;
+    return sequence->getTrack(trackIndex).getEvents();
+}
+
+std::set<int> ControllerLaneComponent::displayedSelection() const
+{
+    if (const auto* dragging = std::get_if<PointDragging>(&drag))
+        return dragging->preview.selected;
+    return pointSelection.indices();
+}
+
+bool ControllerLaneComponent::isOnLabelPanel(int x) const
+{
+    // The label panel stays at the left of the view, over whatever is scrolled under it.
+    const auto* viewport = findParentComponentOfClass<juce::Viewport>();
+    return x < (viewport != nullptr ? viewport->getViewPositionX() : 0) + leftPanelWidth;
+}
+
+bool ControllerLaneComponent::hasActiveTrack() const
+{
+    return sequence != nullptr && activeTrackIndex >= 0 && activeTrackIndex < sequence->getNumTracks();
+}
+
+int ControllerLaneComponent::hitTestPoint(int x, int y) const
+{
+    const auto kind = editedKind();
+    if (!kind || !hasActiveTrack() || isOnLabelPanel(x))
+        return -1;
+
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    std::vector<int> points;
+    for (int i = 0; i < static_cast<int>(events.size()); ++i)
+        if (kind->matches(events[static_cast<size_t>(i)]))
+            points.push_back(i);
+    std::ranges::stable_sort(points, {}, [&events](int i) { return events[static_cast<size_t>(i)].tick; });
+
+    std::vector<std::pair<float, float>> offsets;
+    offsets.reserve(points.size());
+    for (int i : points)
+    {
+        const auto& event = events[static_cast<size_t>(i)];
+        offsets.push_back(
+            {static_cast<float>(x - tickToX(event.tick)), static_cast<float>(y - pointY(*kind, kind->valueOf(event)))});
+    }
+    const int nearest = ControllerLaneScale::nearestWithin(offsets, pointHitRadius);
+    return nearest < 0 ? -1 : points[static_cast<size_t>(nearest)];
+}
+
+int ControllerLaneComponent::pointY(const ControllerKind& kind, int value) const
+{
+    if (kind.type != MidiEvent::Type::PitchBend)
+        return valueToY(value);
+    const int centerY = (getDrawAreaTop() + getDrawAreaBottom()) / 2;
+    const int halfHeight = getDrawAreaHeight() / 2;
+    const float offset = static_cast<float>(value - ControllerLaneScale::pitchBendCentre) /
+                         static_cast<float>(ControllerLaneScale::pitchBendCentre);
+    return centerY - static_cast<int>(offset * static_cast<float>(halfHeight));
+}
+
+int ControllerLaneComponent::valueAtY(const ControllerKind& kind, int y) const
+{
+    if (kind.type != MidiEvent::Type::PitchBend)
+        return yToValue(y);
+    const int centerY = (getDrawAreaTop() + getDrawAreaBottom()) / 2;
+    return ControllerLaneScale::pitchBendAt(centerY - y, getDrawAreaHeight() / 2);
+}
+
+TimelineGrid ControllerLaneComponent::snapGrid(const juce::ModifierKeys& mods) const
+{
+    if (snapEnabled != mods.isShiftDown())
+        return TimelineGrid(sequence->getTimeline(), gridDivision);
+    return TimelineGrid::everyTick(sequence->getTimeline());
+}
+
+void ControllerLaneComponent::pointMouseDown(const juce::MouseEvent& e, const ControllerKind& kind)
+{
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    if (const int hit = hitTestPoint(e.x, e.y); hit >= 0)
+    {
+        if (e.mods.isShiftDown())
+        {
+            pointSelection.toggle(hit);
+            if (pointSelection.contains(hit) && onPointSelectionTaken)
+                onPointSelectionTaken();
+            repaint();
+            return;
+        }
+        const auto group = pointSelection.dragGroup(hit);
+        const std::set<int> moved(group.begin(), group.end());
+        drag = PointDragging{activeTrackIndex, events, moved, hit, false, {events, moved}};
+        repaint();
+        return;
+    }
+
+    if (editToolSelected != e.mods.isCommandDown())
+    {
+        const int tick = std::max(0, snapGrid(e.mods).round(xToTick(e.x)));
+        applyPointEdit("Add Controller Point", events,
+                       ControllerPointEdits::add(events, kind, tick, valueAtY(kind, e.y)));
+        return;
+    }
+
+    drag = PointRangeSelecting{{e.x, e.x, e.mods.isShiftDown() ? pointSelection.indices() : std::set<int>{}}};
+    if (!e.mods.isShiftDown())
+        pointSelection.clear();
+    repaint();
+}
+
+void ControllerLaneComponent::applyPointEdit(const juce::String& transactionName, const std::vector<MidiEvent>& before,
+                                             const ControllerPointEditResult& result)
+{
+    if (!hasActiveTrack())
+        return;
+    // Copied first: before may be the track's own list, which the edit replaces.
+    auto previous = before;
+    auto selected = result.selected;
+    performReplaceEvents(undoHistory, sequence, transactionName, sequence->getTrack(activeTrackIndex).getId(),
+                         std::move(previous), result.events);
+    // The edit's own notification clears the selection, so the new one is set afterwards.
+    selectPoints(std::move(selected));
+}
+
+void ControllerLaneComponent::selectPoints(std::set<int> indices)
+{
+    const bool taken = !indices.empty();
+    pointSelection.assign(std::move(indices));
+    if (taken && onPointSelectionTaken)
+        onPointSelectionTaken();
+    repaint();
+}
+
+void ControllerLaneComponent::resetPointEditing()
+{
+    drag = Idle{};
+    pointSelection.clear();
+}
+
+void ControllerLaneComponent::mouseMove(const juce::MouseEvent& e)
+{
+    setMouseCursor(hitTestPoint(e.x, e.y) >= 0 ? juce::MouseCursor::DraggingHandCursor
+                                               : juce::MouseCursor::NormalCursor);
+}
+
+bool ControllerLaneComponent::keyPressed(const juce::KeyPress& key)
+{
+    if (key != juce::KeyPress::deleteKey && key != juce::KeyPress::backspaceKey)
+        return false;
+    if (!editedKind() || !hasActiveTrack() || pointSelection.isEmpty())
+        return false;
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    applyPointEdit("Delete Controller Points", events, ControllerPointEdits::remove(events, pointSelection.indices()));
+    return true;
 }

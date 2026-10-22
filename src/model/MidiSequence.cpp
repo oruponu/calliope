@@ -198,6 +198,12 @@ void MidiSequence::removeEvent(int trackIndex, int eventIndex)
     notifyNotesChanged(trackIndex);
 }
 
+void MidiSequence::setEvents(int trackIndex, std::vector<MidiEvent> events)
+{
+    tracks[trackIndex].setEvents(std::move(events));
+    notifyNotesChanged(trackIndex);
+}
+
 const TimelineMap& MidiSequence::getTimeline() const
 {
     return timeline;

@@ -1,4 +1,5 @@
 #include "ui/EventListItems.h"
+#include "model/ControllerPointConversion.h"
 #include <algorithm>
 #include <iterator>
 #include <ranges>
@@ -69,8 +70,10 @@ std::vector<EventListItem> EventListItems::build(const MidiSequence& sequence, c
         const auto& track = sequence.getTrack(trackIdx);
         for (int i = 0; i < track.getNumNotes(); ++i)
             items.push_back(noteItem(shown({trackIdx, i}, track.getNote(i)), trackIdx, i));
+        const auto unsent = unsentControllerPoints(track.getEvents());
         for (int i = 0; i < track.getNumEvents(); ++i)
-            items.push_back(eventItem(track.getEvent(i), trackIdx, i));
+            if (!unsent[static_cast<size_t>(i)])
+                items.push_back(eventItem(track.getEvent(i), trackIdx, i));
 
         if (layer == nullptr)
             continue;

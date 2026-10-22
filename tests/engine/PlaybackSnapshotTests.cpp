@@ -1,4 +1,6 @@
+#include "engine/Chase.h"
 #include "engine/PlaybackSnapshot.h"
+#include "support/MidiEventTestHelpers.h"
 #include "support/TimeSignatureTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -297,4 +299,60 @@ TEST_CASE("recorded notes for a track that is gone are not played", "[engine][sn
     const Take take{{TrackId{999}, {{{64, 90, 240, 240}}, {}}}};
 
     CHECK(PlaybackSnapshot::build(seq, &take).notes.empty());
+}
+
+TEST_CASE("ramps on a track are filled in the snapshot", "[engine][snapshot][ramp]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.addEvent({.type = MidiEvent::Type::ControlChange, .tick = 0, .data1 = 1, .data2 = 0});
+    t0.addEvent({.type = MidiEvent::Type::ControlChange, .tick = 4, .data1 = 1, .data2 = 4, .ramp = true});
+    seq.addTrack(t0);
+
+    const auto snap = PlaybackSnapshot::build(seq);
+    REQUIRE(snap.events.size() == 5);
+    for (int i = 0; i < 5; ++i)
+        CHECK(snap.events[static_cast<size_t>(i)].event ==
+              MidiEvent{.type = MidiEvent::Type::ControlChange, .tick = i, .data1 = 1, .data2 = i});
+}
+
+TEST_CASE("events of the recording take do not start a ramp", "[engine][snapshot][ramp]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.addEvent({.type = MidiEvent::Type::ControlChange, .tick = 4, .data1 = 1, .data2 = 4, .ramp = true});
+    seq.addTrack(t0);
+    const Take take{
+        {seq.getTrack(0).getId(), {{}, {{.type = MidiEvent::Type::ControlChange, .tick = 0, .data1 = 1, .data2 = 0}}}}};
+
+    const auto snap = PlaybackSnapshot::build(seq, &take);
+    REQUIRE(snap.events.size() == 2);
+    CHECK(snap.events[0].event == MidiEvent{.type = MidiEvent::Type::ControlChange, .tick = 0, .data1 = 1, .data2 = 0});
+    CHECK(snap.events[1].event == MidiEvent{.type = MidiEvent::Type::ControlChange, .tick = 4, .data1 = 1, .data2 = 4});
+}
+
+TEST_CASE("a start inside a ramp sends the value just before the start", "[engine][snapshot][ramp]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.addEvent({.type = MidiEvent::Type::ControlChange, .tick = 0, .data1 = 1, .data2 = 0});
+    t0.addEvent({.type = MidiEvent::Type::ControlChange, .tick = 100, .data1 = 1, .data2 = 100, .ramp = true});
+    seq.addTrack(t0);
+
+    const auto chased = chaseEvents(PlaybackSnapshot::build(seq), 50);
+    REQUIRE(chased.size() == 1);
+    CHECK(chased[0].event == MidiEvent{.type = MidiEvent::Type::ControlChange, .tick = 50, .data1 = 1, .data2 = 49});
+}
+
+TEST_CASE("a start on a ramp point leaves the point to playback", "[engine][snapshot][ramp]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.addEvent({.type = MidiEvent::Type::ControlChange, .tick = 0, .data1 = 1, .data2 = 0});
+    t0.addEvent({.type = MidiEvent::Type::ControlChange, .tick = 100, .data1 = 1, .data2 = 100, .ramp = true});
+    seq.addTrack(t0);
+
+    const auto chased = chaseEvents(PlaybackSnapshot::build(seq), 100);
+    REQUIRE(chased.size() == 1);
+    CHECK(chased[0].event == MidiEvent{.type = MidiEvent::Type::ControlChange, .tick = 100, .data1 = 1, .data2 = 99});
 }

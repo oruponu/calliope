@@ -37,7 +37,7 @@ TEST_CASE("a format 0 file is split into one track per channel", "[io][midifile]
     CHECK(loaded->tracks[0].getName() == "Ch.1");
     CHECK(loaded->tracks[0].getChannel() == 1);
     CHECK(loaded->tracks[0].getNotes() == std::vector<MidiNote>{{60, 90, 0, 480}});
-    CHECK(loaded->tracks[0].getEvents() == std::vector<MidiEvent>{{MidiEvent::Type::ControlChange, 240, 7, 80}});
+    CHECK(loaded->tracks[0].getEvents() == std::vector<MidiEvent>{{MidiEvent::Type::ControlChange, 240, 7, 80, true}});
     CHECK(loaded->tracks[1].getName() == "Ch.10");
     CHECK(loaded->tracks[1].getChannel() == 10);
     CHECK(loaded->tracks[1].getNotes() == std::vector<MidiNote>{{36, 100, 0, 120}, {38, 110, 480, 120}});

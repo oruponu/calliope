@@ -2,6 +2,7 @@
 #include "io/ProjectXmlNames.h"
 #include "io/XmlFieldReader.h"
 #include "io/XmlNumberText.h"
+#include "model/ControllerPointConversion.h"
 #include "model/SequenceContentsRules.h"
 #include <cstdint>
 #include <set>
@@ -116,7 +117,10 @@ MidiTrack readTrack(const juce::XmlElement& element, XmlFieldReader& fields)
         for (const auto* event : events->getChildWithTagNameIterator(names::eventTag))
             track.addEvent({fields.choice(*event, names::typeAttr, names::eventTypes),
                             fields.integer(*event, names::tickAttr), fields.integer(*event, names::data1Attr),
-                            fields.integer(*event, names::data2Attr)});
+                            fields.integer(*event, names::data2Attr),
+                            event->hasAttribute(names::rampAttr) && fields.flag(*event, names::rampAttr)});
+    // Files saved before ramps hold steps; converted files come back unchanged.
+    track.setEvents(convertStepsToPoints(track.getEvents()));
 
     return track;
 }

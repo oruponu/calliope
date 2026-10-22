@@ -75,6 +75,7 @@ public:
     void setNote(int trackIndex, int noteIndex, const MidiNote& note);
     void insertEvent(int trackIndex, int eventIndex, const MidiEvent& event);
     void removeEvent(int trackIndex, int eventIndex);
+    void setEvents(int trackIndex, std::vector<MidiEvent> events);
 
     const TimelineMap& getTimeline() const;
     void setTempoChanges(std::vector<TempoChange> changes);

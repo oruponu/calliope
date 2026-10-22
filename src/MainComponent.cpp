@@ -82,10 +82,13 @@ MainComponent::MainComponent()
     };
     pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
     {
+        if (!selected.empty())
+            controllerLane.clearPointSelection();
         if (updatingFromEventList)
             return;
         eventList.setSelectedNotes(selected);
     };
+    pianoRoll.onSelectionTaken = [this]() { controllerLane.clearPointSelection(); };
     pianoRoll.onNotePreview = [this](const MidiNote& note)
     {
         auto ctx = makeTrackContext(pianoRoll.getActiveTrackIndex());
@@ -231,6 +234,7 @@ MainComponent::MainComponent()
         viewport.setViewPosition(newX, newY);
     };
     controllerLane.onNoteDragPreviewChanged = [this](const auto& preview) { eventList.setNoteDragPreview(preview); };
+    controllerLane.onPointSelectionTaken = [this]() { pianoRoll.clearSelection(); };
     controllerLaneViewport.setViewedComponent(&controllerLane, false);
     controllerLaneViewport.setScrollBarsShown(false, true);
     controllerLaneViewport.setHorizontalScrollBarRightInset(zoomStripLength);
@@ -392,6 +396,7 @@ MainComponent::MainComponent()
     const bool snapEnabled = getAppProperties().getUserSettings()->getBoolValue("snapEnabled", true);
     snapButton.setActive(snapEnabled);
     pianoRoll.setSnapEnabled(snapEnabled);
+    controllerLane.setSnapEnabled(snapEnabled);
     snapButton.onClick = [this]() { toggleSnap(); };
 
     addAndMakeVisible(quantizeComboBox);
@@ -922,6 +927,7 @@ void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
     editToolButton.setActive(mode == PianoRollComponent::EditMode::Edit);
     selectToolButton.setActive(mode == PianoRollComponent::EditMode::Select);
     pianoRoll.setEditMode(mode);
+    controllerLane.setEditToolSelected(mode == PianoRollComponent::EditMode::Edit);
 }
 
 void MainComponent::toggleSnap()
@@ -929,6 +935,7 @@ void MainComponent::toggleSnap()
     const bool enabled = !snapButton.isActive();
     snapButton.setActive(enabled);
     pianoRoll.setSnapEnabled(enabled);
+    controllerLane.setSnapEnabled(enabled);
     getAppProperties().getUserSettings()->setValue("snapEnabled", enabled);
 }
 

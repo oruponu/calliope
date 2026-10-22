@@ -3,6 +3,7 @@ juce_add_console_app(CalliopeTests)
 target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/audio/ClickVoice.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/ChordTrackEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/ControllerPointEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/EditableNotes.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/LayeredNoteEdits.cpp
@@ -29,6 +30,8 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlWriter.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlFieldReader.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlNumberText.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/ControllerPointConversion.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/ControllerRamps.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/model/SequenceContentsRules.cpp
@@ -52,6 +55,9 @@ target_sources(CalliopeTests PRIVATE
     edit/ChordPasteTests.cpp
     edit/ChordResizeTests.cpp
     edit/ChordStartResizeTests.cpp
+    edit/ControllerPointAddTests.cpp
+    edit/ControllerPointDeleteTests.cpp
+    edit/ControllerPointMoveTests.cpp
     edit/EditableNotesTests.cpp
     edit/KeySignatureAddChangeTests.cpp
     edit/KeySignatureDeleteTests.cpp
@@ -93,6 +99,8 @@ target_sources(CalliopeTests PRIVATE
     io/XmlNumberTextTests.cpp
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
+    model/ControllerPointConversionTests.cpp
+    model/ControllerRampsTests.cpp
     model/DefaultTimelineTests.cpp
     model/GridDivisionTests.cpp
     model/MidiSequenceNotificationTests.cpp
@@ -106,12 +114,14 @@ target_sources(CalliopeTests PRIVATE
     notation/KeySignatureNameTests.cpp
     plugin/PluginSyncPlanTests.cpp
     plugin/RetiredStateStoreTests.cpp
+    ui/ControllerLaneScaleTests.cpp
     ui/EventListItemsTests.cpp
     ui/IndexSelectionTests.cpp
     ui/RangeSelectGestureTests.cpp
     ui/RowSelectionTests.cpp
     ui/TimelineGeometryTests.cpp
     undo/RecordTakeActionTests.cpp
+    undo/ReplaceEventsActionTests.cpp
     undo/SavePointTrackerTests.cpp
     undo/TrackActionTests.cpp
     undo/UndoHistoryTests.cpp

@@ -301,3 +301,17 @@ TEST_CASE("inserting and removing an event each notify notesChanged for its trac
     CHECK(listener.calls == std::vector<std::string>{"notes 1", "notes 1"});
     CHECK(seq.getTrack(1).getNumEvents() == 0);
 }
+
+TEST_CASE("setting events notifies notesChanged for the track", "[model][notification]")
+{
+    RecordingListener listener;
+    MidiSequence seq;
+    seq.addTrack();
+    seq.addTrack();
+    seq.addListener(&listener);
+
+    seq.setEvents(1, {{.type = MidiEvent::Type::ControlChange, .tick = 0, .data1 = 7, .data2 = 100}});
+
+    CHECK(listener.calls == std::vector<std::string>{"notes 1"});
+    CHECK(seq.getTrack(1).getNumEvents() == 1);
+}

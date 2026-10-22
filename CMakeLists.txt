@@ -33,6 +33,7 @@ target_sources(Calliope PRIVATE
     src/audio/Recorder.cpp
     src/document/Document.cpp
     src/edit/ChordTrackEdits.cpp
+    src/edit/ControllerPointEdits.cpp
     src/edit/EditableNotes.cpp
     src/edit/KeySignatureEdits.cpp
     src/edit/LayeredNoteEdits.cpp
@@ -61,6 +62,8 @@ target_sources(Calliope PRIVATE
     src/io/ProjectXmlWriter.cpp
     src/io/XmlFieldReader.cpp
     src/io/XmlNumberText.cpp
+    src/model/ControllerPointConversion.cpp
+    src/model/ControllerRamps.cpp
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp
     src/model/SequenceContentsRules.cpp

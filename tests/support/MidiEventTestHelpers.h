@@ -31,7 +31,7 @@ template <> struct StringMaker<MidiEvent>
             type = "KP";
             break;
         }
-        return std::format("{}:{} {} {}", e.tick, type, e.data1, e.data2);
+        return std::format("{}:{} {} {}{}", e.tick, type, e.data1, e.data2, e.ramp ? " ramp" : "");
     }
 };
 } // namespace Catch

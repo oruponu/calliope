@@ -72,6 +72,11 @@ void MidiTrack::removeEvent(int index)
     events.erase(events.begin() + index);
 }
 
+void MidiTrack::setEvents(std::vector<MidiEvent> newEvents)
+{
+    events = std::move(newEvents);
+}
+
 const std::vector<MidiEvent>& MidiTrack::getEvents() const
 {
     return events;

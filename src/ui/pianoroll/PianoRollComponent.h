@@ -55,6 +55,8 @@ public:
     std::function<void(const MidiNote&)> onNotePreview;
     std::function<void(const MidiNote&)> onNotePreviewEnd;
     std::function<void(const NoteDragPreview&)> onNoteDragPreviewChanged;
+    // Called when a timeline strip item or, through setSelectedNotes, a note becomes selected.
+    std::function<void()> onSelectionTaken;
     std::function<void(int startTick, int noteNumber)> onScrollToNote;
     std::function<void(int deltaY)> onScrollVertical;
     std::function<void(int deltaX)> onScrollHorizontal;
@@ -64,6 +66,7 @@ public:
 
     void setSelectedTracks(int activeIndex, const std::set<int>& selectedIndices);
     void setSelectedNotes(const std::set<NoteRef>& notes);
+    void clearSelection();
     int getActiveTrackIndex() const;
 
     void deleteSelectedNotes();

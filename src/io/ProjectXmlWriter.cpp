@@ -140,6 +140,8 @@ void writeTrack(juce::XmlElement& element, const MidiTrack& track, const Project
                         eventElement.setAttribute(names::tickAttr, event.tick);
                         eventElement.setAttribute(names::data1Attr, event.data1);
                         eventElement.setAttribute(names::data2Attr, event.data2);
+                        if (event.ramp)
+                            eventElement.setAttribute(names::rampAttr, 1);
                     });
 }
 

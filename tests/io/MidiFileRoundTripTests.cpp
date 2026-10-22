@@ -74,8 +74,8 @@ TEST_CASE("channel events keep their type, position and values", "[io][midifile]
     REQUIRE(loaded);
     REQUIRE(loaded->tracks.size() == 1);
     CHECK(loaded->tracks[0].getEvents() == std::vector<MidiEvent>{{MidiEvent::Type::ProgramChange, 0, 41, 0},
-                                                                  {MidiEvent::Type::ControlChange, 120, 7, 90},
-                                                                  {MidiEvent::Type::PitchBend, 240, 16383, 0},
+                                                                  {MidiEvent::Type::ControlChange, 120, 7, 90, true},
+                                                                  {MidiEvent::Type::PitchBend, 240, 16383, 0, true},
                                                                   {MidiEvent::Type::ChannelPressure, 360, 64, 0},
                                                                   {MidiEvent::Type::KeyPressure, 480, 60, 33}});
 }
@@ -238,4 +238,46 @@ TEST_CASE("saving to a file that cannot be written fails", "[io][midifile]")
         juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("calliope-missing", "");
 
     CHECK_FALSE(MidiFileIO::save(seq, missingDir.getChildFile("song.mid")));
+}
+
+TEST_CASE("ramps are written as the filled-in values", "[io][midifile]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 1, 0});
+    track.addEvent({MidiEvent::Type::ControlChange, 4, 1, 4, true});
+    seq.addTrack(track);
+
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getEvents() == std::vector<MidiEvent>{{MidiEvent::Type::ControlChange, 0, 1, 0, true},
+                                                                  {MidiEvent::Type::ControlChange, 1, 1, 1, true},
+                                                                  {MidiEvent::Type::ControlChange, 2, 1, 2, true},
+                                                                  {MidiEvent::Type::ControlChange, 3, 1, 3, true},
+                                                                  {MidiEvent::Type::ControlChange, 4, 1, 4, true}});
+}
+
+TEST_CASE("steps are loaded as points and saved back as they were", "[io][midifile]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 11, 50});
+    track.addEvent({MidiEvent::Type::ControlChange, 1920, 11, 100});
+    seq.addTrack(track);
+
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getEvents() ==
+          std::vector<MidiEvent>{{MidiEvent::Type::ControlChange, 0, 11, 50, true},
+                                 {MidiEvent::Type::ControlChange, 1920, 11, 50, true},
+                                 {MidiEvent::Type::ControlChange, 1920, 11, 100, true}});
+
+    MidiSequence reloaded;
+    reloaded.replaceContents(*loaded);
+    const auto again = MidiFileTest::saveAndLoad(reloaded);
+    REQUIRE(again);
+    CHECK(again->tracks[0].getEvents() == loaded->tracks[0].getEvents());
 }

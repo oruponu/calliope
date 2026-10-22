@@ -1,12 +1,17 @@
 #pragma once
 
+#include "edit/ControllerPointEditResult.h"
 #include "edit/EditableNotes.h"
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
+#include "model/ControllerKind.h"
 #include "model/GridDivision.h"
 #include "model/MidiSequence.h"
+#include "model/TimelineGrid.h"
 #include "ui/NoteDragPreview.h"
+#include "ui/pianoroll/strips/IndexSelection.h"
+#include "ui/pianoroll/strips/RangeSelectGesture.h"
 #include "undo/UndoHistory.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
@@ -42,6 +47,10 @@ public:
     void setRightPadding(int px);
     void setGridDivision(GridDivision division);
     void setRecordingLayer(const RecordingLayer* layer, RecordingLayerEditor* editor);
+    // Whether the piano roll's Edit tool is chosen; holding Ctrl (Cmd on macOS) inverts it, as in the piano roll.
+    void setEditToolSelected(bool editTool);
+    void setSnapEnabled(bool enabled);
+    void clearPointSelection();
     void recordingLayerChanged();
     void updateSize();
 
@@ -50,11 +59,15 @@ public:
 
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onMouseWheel;
     std::function<void(const NoteDragPreview&)> onNoteDragPreviewChanged;
+    // Called when the user selects controller points, so other selections can be cleared.
+    std::function<void()> onPointSelectionTaken;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
+    void mouseMove(const juce::MouseEvent& e) override;
+    bool keyPressed(const juce::KeyPress& key) override;
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override;
 
     int tickToX(int tick) const;
@@ -80,6 +93,8 @@ private:
     void publishDragPreview();
     void drawControlChange(juce::Graphics& g);
     void drawPitchBend(juce::Graphics& g);
+    void drawControllerPoints(juce::Graphics& g, const ControllerKind& kind, int trackIndex, juce::Colour colour,
+                              float alpha);
     void drawProgramChange(juce::Graphics& g);
     void drawStepGraph(juce::Graphics& g, const std::vector<std::pair<int, int>>& events, juce::Colour colour,
                        float alpha, std::function<int(int)> toY);
@@ -91,6 +106,21 @@ private:
     void drawLoopRegion(juce::Graphics& g);
 
     int xToTick(int x) const;
+    std::optional<ControllerKind> editedKind() const;
+    const std::vector<MidiEvent>& displayedEvents(int trackIndex) const;
+    std::set<int> displayedSelection() const;
+    int hitTestPoint(int x, int y) const;
+    int pointY(const ControllerKind& kind, int value) const;
+    int valueAtY(const ControllerKind& kind, int y) const;
+    TimelineGrid snapGrid(const juce::ModifierKeys& mods) const;
+    bool hasActiveTrack() const;
+    bool isOnLabelPanel(int x) const;
+
+    void pointMouseDown(const juce::MouseEvent& e, const ControllerKind& kind);
+    void applyPointEdit(const juce::String& transactionName, const std::vector<MidiEvent>& before,
+                        const ControllerPointEditResult& result);
+    void selectPoints(std::set<int> indices);
+    void resetPointEditing();
     int valueToY(int value) const;
     int yToValue(int y) const;
 
@@ -124,12 +154,29 @@ private:
         int lastDragX = -1;
         std::map<NoteRef, int> preview;
     };
-    std::variant<Idle, VelocityDragging> drag;
+    struct PointDragging
+    {
+        int trackIndex = -1;
+        std::vector<MidiEvent> before;
+        std::set<int> moved;
+        int anchor = -1;
+        bool changed = false;
+        ControllerPointEditResult preview;
+    };
+    struct PointRangeSelecting
+    {
+        RangeSelectGesture gesture;
+    };
+    std::variant<Idle, VelocityDragging, PointDragging, PointRangeSelecting> drag;
+    IndexSelection pointSelection;
+    bool editToolSelected = false;
+    bool snapEnabled = true;
     NoteDragPreview publishedPreview;
 
     static constexpr int topPadding = 6;
     static constexpr int bottomPadding = 6;
     static constexpr int velocityBarWidth = 7;
+    static constexpr float pointHitRadius = 6.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ControllerLaneComponent)
 };

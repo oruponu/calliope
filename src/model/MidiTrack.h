@@ -38,6 +38,7 @@ public:
     void addEvent(const MidiEvent& event);
     void insertEvent(int index, const MidiEvent& event);
     void removeEvent(int index);
+    void setEvents(std::vector<MidiEvent> newEvents);
     const std::vector<MidiEvent>& getEvents() const;
     const MidiEvent& getEvent(int index) const;
     int getNumEvents() const;

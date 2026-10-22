@@ -348,3 +348,17 @@ TEST_CASE("there is no focus row without a focus note or one that is listed", "[
     CHECK_FALSE(EventListItems::focusRow(items, NoteDragPreview{.dragging = true}).has_value());
     CHECK_FALSE(EventListItems::focusRow(items, NoteDragPreview{.dragging = true, .focus = {0, 5}}).has_value());
 }
+
+TEST_CASE("hold points that are not sent are not listed", "[ui][event-list]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 11, 50, true});
+    track.addEvent({MidiEvent::Type::ControlChange, 1920, 11, 50, true});
+    track.addEvent({MidiEvent::Type::ControlChange, 1920, 11, 100, true});
+    seq.addTrack(track);
+
+    const auto items = EventListItems::build(seq, {0}, nullptr);
+    CHECK(ticksOf(items) == std::vector{0, 1920});
+    CHECK(sourcesOf(items) == std::vector{0, 2});
+}

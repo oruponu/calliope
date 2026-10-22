@@ -232,3 +232,16 @@ TEST_CASE("event values stay in range for their type", "[model][contentsrules]")
     CHECK_FALSE(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::PitchBend, 0, 16384, 0})));
     CHECK(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::PitchBend, 0, 16383, 0})));
 }
+
+TEST_CASE("a ramp on a control change or pitch bend is accepted", "[model][contentsrules]")
+{
+    CHECK(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::ControlChange, 0, 1, 64, true})));
+    CHECK(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::PitchBend, 0, 8192, 0, true})));
+}
+
+TEST_CASE("a ramp on another event type is rejected", "[model][contentsrules]")
+{
+    CHECK_FALSE(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::ProgramChange, 0, 5, 0, true})));
+    CHECK_FALSE(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::ChannelPressure, 0, 5, 0, true})));
+    CHECK_FALSE(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::KeyPressure, 0, 60, 5, true})));
+}

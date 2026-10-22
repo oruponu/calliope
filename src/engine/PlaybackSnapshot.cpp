@@ -1,4 +1,5 @@
 #include "engine/PlaybackSnapshot.h"
+#include "model/ControllerRamps.h"
 #include <algorithm>
 
 double PlaybackSnapshot::getTempoAt(int tick) const
@@ -72,7 +73,7 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq, const Take* ta
 
         for (const auto& note : track.getNotes())
             snap.notes.push_back({ctx, note});
-        for (const auto& event : track.getEvents())
+        for (const auto& event : expandControllerRamps(track.getEvents()))
             snap.events.push_back({ctx, event});
         if (take == nullptr)
             continue;

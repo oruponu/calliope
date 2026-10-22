@@ -1,9 +1,11 @@
 #include "io/ProjectXml.h"
+#include "support/MidiEventTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <juce_core/juce_core.h>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -164,4 +166,35 @@ TEST_CASE("values the model does not accept are rejected", "[io][projectxml]")
                                                                       {R"(velocity="100")", R"(velocity="128")"}}));
     CAPTURE(to);
     CHECK_FALSE(readText(replaced(validProject, from, to)));
+}
+
+TEST_CASE("steps saved before ramps are read as points", "[io][projectxml]")
+{
+    const auto loaded = readText(replaced(
+        validProject, R"(<Event type="controlChange" tick="0" data1="7" data2="100"/>)",
+        R"(<Event type="controlChange" tick="0" data1="7" data2="100"/><Event type="controlChange" tick="960" data1="7" data2="50"/>)"));
+
+    REQUIRE(loaded);
+    CHECK(loaded->tracks[0].getEvents() == std::vector<MidiEvent>{{MidiEvent::Type::ControlChange, 0, 7, 100, true},
+                                                                  {MidiEvent::Type::ControlChange, 960, 7, 100, true},
+                                                                  {MidiEvent::Type::ControlChange, 960, 7, 50, true}});
+}
+
+TEST_CASE("a ramp attribute is read", "[io][projectxml]")
+{
+    const auto loaded = readText(replaced(validProject, R"(data2="100")", R"(data2="100" ramp="1")"));
+
+    REQUIRE(loaded);
+    CHECK(loaded->tracks[0].getEvent(0).ramp);
+}
+
+TEST_CASE("a ramp attribute other than 0 or 1 is rejected", "[io][projectxml]")
+{
+    CHECK_FALSE(readText(replaced(validProject, R"(data2="100")", R"(data2="100" ramp="yes")")));
+}
+
+TEST_CASE("a ramp on a program change is rejected", "[io][projectxml]")
+{
+    CHECK_FALSE(readText(replaced(validProject, R"(type="controlChange" tick="0" data1="7" data2="100")",
+                                  R"(type="programChange" tick="0" data1="7" data2="0" ramp="1")")));
 }

@@ -44,6 +44,8 @@ PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistor
     tempoStrip.onSelectionTaken = [this]
     {
         clearNoteSelection();
+        if (onSelectionTaken)
+            onSelectionTaken();
         timeSigStrip.clearTimeSignatureSelection();
         keyStrip.clearKeySignatureSelection();
         chordStrip.clearChordSelection();
@@ -53,6 +55,8 @@ PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistor
     timeSigStrip.onSelectionTaken = [this]
     {
         clearNoteSelection();
+        if (onSelectionTaken)
+            onSelectionTaken();
         tempoStrip.clearTempoSelection();
         keyStrip.clearKeySignatureSelection();
         chordStrip.clearChordSelection();
@@ -67,6 +71,8 @@ PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistor
     keyStrip.onSelectionTaken = [this]
     {
         clearNoteSelection();
+        if (onSelectionTaken)
+            onSelectionTaken();
         tempoStrip.clearTempoSelection();
         timeSigStrip.clearTimeSignatureSelection();
         chordStrip.clearChordSelection();
@@ -76,6 +82,8 @@ PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistor
     chordStrip.onSelectionTaken = [this]
     {
         clearNoteSelection();
+        if (onSelectionTaken)
+            onSelectionTaken();
         tempoStrip.clearTempoSelection();
         timeSigStrip.clearTimeSignatureSelection();
         keyStrip.clearKeySignatureSelection();
@@ -282,11 +290,23 @@ void PianoRollComponent::setSelectedNotes(const std::set<NoteRef>& notes)
         clearTimeSignatureSelection();
         clearKeySignatureSelection();
         clearChordSelection();
+        if (onSelectionTaken)
+            onSelectionTaken();
     }
     selectedNotes = notes;
     std::erase_if(selectedNotes,
                   [this](const NoteRef& ref) { return ref.isRecorded() && ref.trackIndex != activeTrackIndex; });
     selectedNote = {};
+    repaint();
+}
+
+void PianoRollComponent::clearSelection()
+{
+    clearNoteSelection();
+    clearTempoSelection();
+    clearTimeSignatureSelection();
+    clearKeySignatureSelection();
+    clearChordSelection();
     repaint();
 }
 

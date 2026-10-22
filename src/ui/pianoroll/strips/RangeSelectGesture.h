@@ -13,8 +13,9 @@ struct RangeSelectGesture
     int lo() const { return std::min(startX, currentX); }
     int hi() const { return std::max(startX, currentX); }
 
-    template <class InRange>
-    std::set<int> selectionFor(int count, const TimelineGeometry& geometry, InRange inRange) const
+    // Geometry is anything with int xToTick(int x) const, such as TimelineGeometry.
+    template <class Geometry, class InRange>
+    std::set<int> selectionFor(int count, const Geometry& geometry, InRange inRange) const
     {
         const int tickLo = geometry.xToTick(lo());
         const int tickHi = geometry.xToTick(hi());

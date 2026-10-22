@@ -1,3 +1,5 @@
+#include "model/ControllerPointConversion.h"
+#include "model/ControllerRamps.h"
 #include "model/MidiSequence.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
@@ -34,7 +36,7 @@ TEST_CASE("a recorded take is added and removed again by undo", "[undo][record]"
     action.perform();
     CHECK(seq.getTrack(0).getNotes() == std::vector<MidiNote>{{60, 100, 0, 480}, {64, 90, 240, 240}});
     CHECK(seq.getTrack(0).getEvents() ==
-          std::vector<MidiEvent>{ccAt(0, 10), ccAt(480, 20), ccAt(960, 30), ccAt(1440, 40)});
+          convertStepsToPoints({ccAt(0, 10), ccAt(480, 20), ccAt(960, 30), ccAt(1440, 40)}));
 
     action.undo();
     CHECK(seq.getTrack(0).getNotes() == std::vector<MidiNote>{{60, 100, 0, 480}});
@@ -43,7 +45,7 @@ TEST_CASE("a recorded take is added and removed again by undo", "[undo][record]"
     action.perform();
     CHECK(seq.getTrack(0).getNumNotes() == 2);
     CHECK(seq.getTrack(0).getEvents() ==
-          std::vector<MidiEvent>{ccAt(0, 10), ccAt(480, 20), ccAt(960, 30), ccAt(1440, 40)});
+          convertStepsToPoints({ccAt(0, 10), ccAt(480, 20), ccAt(960, 30), ccAt(1440, 40)}));
 }
 
 TEST_CASE("recorded events from several passes go in tick order after existing ones", "[undo][record]")
@@ -54,7 +56,7 @@ TEST_CASE("recorded events from several passes go in tick order after existing o
 
     action.perform();
     CHECK(seq.getTrack(0).getEvents() ==
-          std::vector<MidiEvent>{ccAt(100, 0), ccAt(100, 2), ccAt(100, 3), ccAt(900, 1)});
+          convertStepsToPoints({ccAt(100, 0), ccAt(100, 2), ccAt(100, 3), ccAt(900, 1)}));
 
     action.undo();
     CHECK(seq.getTrack(0).getEvents() == std::vector<MidiEvent>{ccAt(100, 0)});
@@ -127,4 +129,54 @@ TEST_CASE("a recorded track that no longer exists maps no ids", "[undo][record]"
 
     action.perform();
     CHECK(action.getCommittedNotes().empty());
+}
+
+TEST_CASE("recorded steps become points with the existing events and come back by undo", "[undo][record]")
+{
+    MidiSequence seq;
+    const TrackId id = seq.addTrack(trackWith({}, {ccAt(0, 10)})).getId();
+    RecordTakeAction action(&seq, Take{{id, {{}, {ccAt(960, 30)}}}});
+
+    action.perform();
+    CHECK(seq.getTrack(0).getEvents() ==
+          std::vector<MidiEvent>{
+              {.type = MidiEvent::Type::ControlChange, .tick = 0, .data1 = 7, .data2 = 10, .ramp = true},
+              {.type = MidiEvent::Type::ControlChange, .tick = 960, .data1 = 7, .data2 = 10, .ramp = true},
+              {.type = MidiEvent::Type::ControlChange, .tick = 960, .data1 = 7, .data2 = 30, .ramp = true}});
+
+    action.undo();
+    CHECK(seq.getTrack(0).getEvents() == std::vector<MidiEvent>{ccAt(0, 10)});
+}
+
+TEST_CASE("a value recorded inside a held stretch is held until the next switch", "[undo][record]")
+{
+    const auto point = [](int tick, int value)
+    {
+        return MidiEvent{
+            .type = MidiEvent::Type::ControlChange, .tick = tick, .data1 = 7, .data2 = value, .ramp = true};
+    };
+    MidiSequence seq;
+    const TrackId id = seq.addTrack(trackWith({}, {point(0, 50), point(960, 50), point(960, 100)})).getId();
+    RecordTakeAction action(&seq, Take{{id, {{}, {ccAt(480, 80)}}}});
+
+    action.perform();
+    CHECK(seq.getTrack(0).getEvents() ==
+          std::vector<MidiEvent>{point(0, 50), point(480, 50), point(480, 80), point(960, 80), point(960, 100)});
+}
+
+TEST_CASE("a pedal lift recorded before a held release plays without a ramp", "[undo][record]")
+{
+    const auto pedal = [](int tick, int value, bool ramp)
+    {
+        return MidiEvent{
+            .type = MidiEvent::Type::ControlChange, .tick = tick, .data1 = 64, .data2 = value, .ramp = ramp};
+    };
+    MidiSequence seq;
+    const TrackId id =
+        seq.addTrack(trackWith({}, {pedal(0, 127, true), pedal(1920, 127, true), pedal(1920, 0, true)})).getId();
+    RecordTakeAction action(&seq, Take{{id, {{}, {pedal(960, 0, false)}}}});
+
+    action.perform();
+    CHECK(expandControllerRamps(seq.getTrack(0).getEvents()) ==
+          std::vector<MidiEvent>{pedal(0, 127, false), pedal(960, 0, false), pedal(1920, 0, false)});
 }

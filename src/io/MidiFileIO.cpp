@@ -3,6 +3,8 @@
 #include "edit/KeySignatureEdits.h"
 #include "edit/TempoEdits.h"
 #include "edit/TimeSignatureEdits.h"
+#include "model/ControllerPointConversion.h"
+#include "model/ControllerRamps.h"
 #include "model/KeySignatureChange.h"
 #include "model/SequenceContentsRules.h"
 #include "model/TimeSignatureChange.h"
@@ -218,9 +220,8 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
                 lastTick = note.endTick();
         }
 
-        for (int i = 0; i < track.getNumEvents(); ++i)
+        for (const auto& event : expandControllerRamps(track.getEvents()))
         {
-            const auto& event = track.getEvent(i);
             juce::MidiMessage msg;
 
             switch (event.type)
@@ -594,6 +595,9 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
 
     if (contents.tracks.empty())
         contents.tracks.emplace_back();
+
+    for (auto& track : contents.tracks)
+        track.setEvents(convertStepsToPoints(track.getEvents()));
 
     // A song the project file would reject could not be reopened after saving.
     if (!SequenceContentsRules::accepts(contents))

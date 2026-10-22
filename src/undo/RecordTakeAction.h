@@ -2,6 +2,7 @@
 
 #include "edit/NoteRef.h"
 #include "engine/Take.h"
+#include "model/ControllerPointConversion.h"
 #include "model/MidiSequence.h"
 #include <algorithm>
 #include <juce_data_structures/juce_data_structures.h>
@@ -10,8 +11,8 @@
 #include <utility>
 #include <vector>
 
-// Appends the recorded notes and inserts the recorded events in tick order. It is always performed on top of the
-// history, so undo can remove everything by the positions perform used.
+// The recorded notes are appended and the action is always performed on top of the history, so undo can remove
+// them by the positions perform used.
 class RecordTakeAction : public juce::UndoableAction
 {
 public:
@@ -31,17 +32,17 @@ public:
             if (trackIndex < 0)
                 continue;
 
-            Placement placement{
-                id, sequence->getTrack(trackIndex).getNumNotes(), static_cast<int>(recorded.notes.size()), {}};
+            const auto& track = sequence->getTrack(trackIndex);
+            Placement placement{id, track.getNumNotes(), static_cast<int>(recorded.notes.size()), track.getEvents()};
             for (const auto& note : recorded.notes)
                 sequence->addNote(trackIndex, note);
-            for (const auto& event : recorded.events)
+            if (!recorded.events.empty())
             {
-                const auto& events = sequence->getTrack(trackIndex).getEvents();
-                const auto at = std::ranges::upper_bound(events, event.tick, {}, &MidiEvent::tick);
-                const int index = static_cast<int>(at - events.begin());
-                sequence->insertEvent(trackIndex, index, event);
-                placement.eventIndices.push_back(index);
+                // Back to steps first, so a hold point after a recorded value holds that value instead.
+                auto merged = convertHoldsToSteps(placement.eventsBefore);
+                merged.insert(merged.end(), recorded.events.begin(), recorded.events.end());
+                std::ranges::stable_sort(merged, {}, &MidiEvent::tick);
+                sequence->setEvents(trackIndex, convertStepsToPoints(merged));
             }
             placements.push_back(std::move(placement));
         }
@@ -56,8 +57,8 @@ public:
             const int trackIndex = sequence->indexOf(placement.track);
             if (trackIndex < 0)
                 continue;
-            for (const int index : placement.eventIndices | std::views::reverse)
-                sequence->removeEvent(trackIndex, index);
+            if (!take.at(placement.track).events.empty())
+                sequence->setEvents(trackIndex, placement.eventsBefore);
             for (int i = placement.numNotes - 1; i >= 0; --i)
                 sequence->removeNote(trackIndex, placement.firstNoteIndex + i);
         }
@@ -92,7 +93,7 @@ private:
         TrackId track{};
         int firstNoteIndex = 0;
         int numNotes = 0;
-        std::vector<int> eventIndices;
+        std::vector<MidiEvent> eventsBefore;
     };
 
     MidiSequence* sequence;

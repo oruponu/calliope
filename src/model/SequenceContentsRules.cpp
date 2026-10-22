@@ -78,7 +78,9 @@ bool acceptsNote(const MidiNote& note)
 bool acceptsEvent(const MidiEvent& event)
 {
     const int data1Max = event.type == MidiEvent::Type::PitchBend ? 16383 : 127;
-    return event.tick >= 0 && inRange(event.data1, 0, data1Max) && inRange(event.data2, 0, 127);
+    const bool rampAllowed = event.type == MidiEvent::Type::ControlChange || event.type == MidiEvent::Type::PitchBend;
+    return event.tick >= 0 && inRange(event.data1, 0, data1Max) && inRange(event.data2, 0, 127) &&
+           (!event.ramp || rampAllowed);
 }
 
 bool acceptsTrack(const MidiTrack& track)
