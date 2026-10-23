@@ -118,6 +118,7 @@ target_sources(CalliopeTests PRIVATE
     plugin/PluginSyncPlanTests.cpp
     plugin/RetiredStateStoreTests.cpp
     ui/ControllerLaneScaleTests.cpp
+    ui/DragValueTipTests.cpp
     ui/EventListItemsTests.cpp
     ui/IndexSelectionTests.cpp
     ui/RangeSelectGestureTests.cpp

@@ -83,6 +83,7 @@ target_sources(Calliope PRIVATE
     src/ui/menu/MainMenuModel.cpp
     src/ui/pianoroll/ControllerLaneComponent.cpp
     src/ui/pianoroll/ControllerValueEditor.cpp
+    src/ui/pianoroll/DragValueTipPainter.cpp
     src/ui/pianoroll/PianoRollComponent.cpp
     src/ui/pianoroll/strips/ChordEditor.cpp
     src/ui/pianoroll/strips/ChordStrip.cpp
