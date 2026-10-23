@@ -27,8 +27,6 @@ protected:
     void drawLabelColumn(juce::Graphics& g);
     void drawLoopOverlay(juce::Graphics& g, int top, int height, float fillAlpha);
     void drawTrackGridLines(juce::Graphics& g, int visibleLeft, int visibleRight, float top, float bottom);
-    void drawRangeBand(juce::Graphics& g, const RangeSelectGesture& gesture, juce::Colour fillColour,
-                       juce::Colour borderColour);
     // Needs a sequence, like displayedTimeline.get().
     TimelineGrid timelineGrid() const { return {displayedTimeline.get(), geometry.gridDivision()}; }
     // The grid that mouse edits land on: timelineGrid() while snapping, otherwise every tick. Needs a sequence too.

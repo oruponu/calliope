@@ -2,6 +2,7 @@
 #include "edit/TempoEdits.h"
 #include "ui/pianoroll/DragValueTip.h"
 #include "ui/pianoroll/DragValueTipPainter.h"
+#include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
@@ -218,7 +219,7 @@ void TempoTrackStrip::paint(juce::Graphics& g)
     }
 
     if (const auto* selecting = std::get_if<RangeSelecting>(&drag))
-        drawRangeBand(g, selecting->gesture, accent::soft, accent::base.withAlpha(0.6f));
+        RangeBandPainter::draw(g, selecting->gesture, getHeight(), accent::soft, accent::base.withAlpha(0.6f));
 
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 

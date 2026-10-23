@@ -91,6 +91,7 @@ target_sources(Calliope PRIVATE
     src/ui/pianoroll/strips/KeySignatureEditor.cpp
     src/ui/pianoroll/strips/KeySignatureStrip.cpp
     src/ui/pianoroll/strips/LoopStrip.cpp
+    src/ui/pianoroll/strips/RangeBandPainter.cpp
     src/ui/pianoroll/strips/RulerStrip.cpp
     src/ui/pianoroll/strips/TempoTrackStrip.cpp
     src/ui/pianoroll/strips/TimeSignatureEditor.cpp

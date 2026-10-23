@@ -1,6 +1,7 @@
 #include "ui/pianoroll/strips/KeySignatureStrip.h"
 #include "edit/KeySignatureEdits.h"
 #include "notation/KeySignatureName.h"
+#include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
@@ -210,7 +211,8 @@ void KeySignatureStrip::paint(juce::Graphics& g)
     }
 
     if (const auto* selecting = std::get_if<RangeSelecting>(&drag))
-        drawRangeBand(g, selecting->gesture, track::sand.withAlpha(0.15f), track::sand.withAlpha(0.6f));
+        RangeBandPainter::draw(g, selecting->gesture, getHeight(), track::sand.withAlpha(0.15f),
+                               track::sand.withAlpha(0.6f));
 
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 

@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/TimeSignatureStrip.h"
 #include "edit/TimeSignatureEdits.h"
+#include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
@@ -212,7 +213,8 @@ void TimeSignatureStrip::paint(juce::Graphics& g)
     }
 
     if (const auto* selecting = std::get_if<RangeSelecting>(&drag))
-        drawRangeBand(g, selecting->gesture, track::teal.withAlpha(0.15f), track::teal.withAlpha(0.6f));
+        RangeBandPainter::draw(g, selecting->gesture, getHeight(), track::teal.withAlpha(0.15f),
+                               track::teal.withAlpha(0.6f));
 
     drawLoopOverlay(g, 0, getHeight(), 0.12f);
 
