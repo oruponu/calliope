@@ -22,6 +22,7 @@
 #include "ui/menu/MainMenuModel.h"
 #include "ui/pianoroll/ControllerLaneComponent.h"
 #include "ui/pianoroll/ControllerLaneViewport.h"
+#include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/PianoRollComponent.h"
 #include "ui/pianoroll/PianoRollViewport.h"
 #include "ui/plugin/PluginCatalogController.h"
@@ -145,7 +146,8 @@ private:
 
     TransportBarComponent transportBar{document, playbackEngine};
 
-    PianoRollComponent pianoRoll{document.getHistory()};
+    EditClipboard clipboard;
+    PianoRollComponent pianoRoll{document.getHistory(), clipboard};
     PianoRollViewport viewport;
     TrackListComponent trackList;
     MidiThruSync midiThruSync{document.getSequence(), midiThru, [this] { return trackList.getActiveTrackIndex(); }};

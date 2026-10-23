@@ -30,7 +30,7 @@
 class PianoRollComponent : public juce::Component, public MidiSequence::Listener, private juce::Timer
 {
 public:
-    explicit PianoRollComponent(UndoHistory& undoHistoryRef);
+    PianoRollComponent(UndoHistory& undoHistoryRef, EditClipboard& clipboardRef);
     ~PianoRollComponent() override;
 
     enum class EditMode
@@ -302,7 +302,7 @@ private:
     NoteDragPreview publishedPreview;
     int contentBeats = 0;
 
-    EditClipboard clipboard;
+    EditClipboard& clipboard;
     LoopStrip loopStrip{geometry, displayedTimeline};
     RulerStrip ruler{geometry, displayedTimeline};
     TempoTrackStrip tempoStrip{geometry, displayedTimeline, clipboard, undoHistory};

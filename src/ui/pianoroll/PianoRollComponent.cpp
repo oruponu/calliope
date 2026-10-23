@@ -14,7 +14,8 @@
 #include <variant>
 #include <vector>
 
-PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef) : undoHistory(undoHistoryRef)
+PianoRollComponent::PianoRollComponent(UndoHistory& undoHistoryRef, EditClipboard& clipboardRef)
+    : undoHistory(undoHistoryRef), clipboard(clipboardRef)
 {
     addAndMakeVisible(loopStrip);
     loopStrip.onLoopRegionChanged = [this](int startTick, int endTick)
