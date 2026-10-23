@@ -1,5 +1,7 @@
 #include "ui/pianoroll/strips/TempoTrackStrip.h"
 #include "edit/TempoEdits.h"
+#include "ui/pianoroll/DragValueTip.h"
+#include "ui/pianoroll/DragValueTipPainter.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
 #include <algorithm>
@@ -223,6 +225,21 @@ void TempoTrackStrip::paint(juce::Graphics& g)
     g.restoreState();
 
     drawLabelColumn(g);
+    drawDragValueTip(g);
+}
+
+void TempoTrackStrip::drawDragValueTip(juce::Graphics& g)
+{
+    const auto* dragging = std::get_if<PointDragging>(&drag);
+    if (dragging == nullptr || !dragging->tipMouse || dragging->index < 0 ||
+        dragging->index >= static_cast<int>(dragging->preview.size()))
+        return;
+
+    const auto& anchor = dragging->preview[static_cast<size_t>(dragging->index)];
+    const auto position = DragValueTip::formatPosition(sequence->getTimeline().tickToBarBeatTick(anchor.tick));
+    auto area = DragValueTipPainter::visibleArea(*this);
+    area.setLeft(std::max(area.getX(), viewLeftX + labelWidth()));
+    DragValueTipPainter::draw(g, *this, *dragging->tipMouse, area, juce::String(position), juce::String(anchor.bpm, 2));
 }
 
 void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
@@ -297,6 +314,7 @@ void TempoTrackStrip::mouseDrag(const juce::MouseEvent& e)
         dragging->preview = TempoEdits::afterMove(dragging->before, dragging->group, dragging->index, targetTick,
                                                   targetBpm, grid.stepTicks());
         dragging->moved = dragging->preview != dragging->before;
+        dragging->tipMouse = e.getPosition();
         repaint();
         return;
     }

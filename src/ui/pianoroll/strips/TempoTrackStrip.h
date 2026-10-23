@@ -6,6 +6,7 @@
 #include "ui/pianoroll/strips/TimelineStrip.h"
 #include "undo/UndoHistory.h"
 #include <functional>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -45,6 +46,8 @@ private:
         std::vector<int> group;
         bool moved = false;
         std::vector<TempoChange> preview;
+        // Where the mouse is once the drag has moved, for the drag tip.
+        std::optional<juce::Point<int>> tipMouse;
     };
     struct RangeSelecting
     {
@@ -53,6 +56,7 @@ private:
 
     void cancelDrag() override;
     const std::vector<TempoChange>& displayedChanges() const;
+    void drawDragValueTip(juce::Graphics& g);
     float tempoBpmToY(double bpm) const;
     double tempoYToBpm(int y) const;
     int hitTestTempoPoint(int x, int y) const;
