@@ -140,3 +140,23 @@ TEST_CASE("a value-only drag keeps the order", "[edit][controller]")
     const Events before{p(480, 127), p(480, 0)};
     CHECK(ControllerPointEdits::move(before, cc1, {1}, 1, 480, 10) == result({p(480, 127), p(480, 10)}, {1}));
 }
+
+TEST_CASE("the moved anchor lands on the target", "[edit][controller]")
+{
+    CHECK(ControllerPointEdits::movedAnchor(spread, cc1, {1}, 1, 600, 50) == p(600, 50));
+}
+
+TEST_CASE("the moved anchor stops with its group at the value limit", "[edit][controller]")
+{
+    CHECK(ControllerPointEdits::movedAnchor(spread, cc1, {1, 2}, 1, 480, 120) == p(480, 87));
+}
+
+TEST_CASE("the moved anchor stops with its group at tick 0", "[edit][controller]")
+{
+    CHECK(ControllerPointEdits::movedAnchor(spread, cc1, {1, 2}, 2, -1000, 80) == p(480, 80));
+}
+
+TEST_CASE("an anchor outside the moved points does not move", "[edit][controller]")
+{
+    CHECK_FALSE(ControllerPointEdits::movedAnchor(spread, cc1, {2}, 1, 600, 50).has_value());
+}

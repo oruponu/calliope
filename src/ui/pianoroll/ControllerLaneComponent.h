@@ -108,6 +108,7 @@ private:
                            float alpha);
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
+    void drawDragValueTip(juce::Graphics& g);
 
     int xToTick(int x) const;
     std::optional<ControllerKind> editedKind() const;
@@ -160,6 +161,11 @@ private:
         int lastDragX = -1;
         std::map<NoteRef, int> preview;
     };
+    struct ValueTip
+    {
+        juce::Point<int> mouse;
+        MidiEvent anchor;
+    };
     struct PointDragging
     {
         int trackIndex = -1;
@@ -168,6 +174,7 @@ private:
         int anchor = -1;
         bool changed = false;
         ControllerPointEditResult preview;
+        std::optional<ValueTip> tip;
     };
     struct PointRangeSelecting
     {

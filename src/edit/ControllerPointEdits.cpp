@@ -61,6 +61,40 @@ bool isValid(const std::vector<MidiEvent>& events, int index)
 {
     return index >= 0 && index < static_cast<int>(events.size());
 }
+
+std::set<int> movedPointsOf(const std::vector<MidiEvent>& before, const ControllerKind& kind,
+                            const std::set<int>& moved)
+{
+    std::set<int> movedPoints;
+    for (int i : moved)
+        if (isValid(before, i) && kind.matches(before[static_cast<size_t>(i)]))
+            movedPoints.insert(i);
+    return movedPoints;
+}
+
+struct Delta
+{
+    int tick = 0;
+    int value = 0;
+};
+
+// Held back so that no moved point goes before tick 0 or out of the kind's range.
+Delta deltaOf(const std::vector<MidiEvent>& before, const ControllerKind& kind, const std::set<int>& movedPoints,
+              const MidiEvent& anchor, int targetTick, int targetValue)
+{
+    int minTick = std::numeric_limits<int>::max();
+    int minValue = std::numeric_limits<int>::max();
+    int maxValue = std::numeric_limits<int>::min();
+    for (int i : movedPoints)
+    {
+        const auto& event = before[static_cast<size_t>(i)];
+        minTick = std::min(minTick, event.tick);
+        minValue = std::min(minValue, kind.valueOf(event));
+        maxValue = std::max(maxValue, kind.valueOf(event));
+    }
+    return {std::max(targetTick - anchor.tick, -minTick),
+            std::clamp(targetValue - kind.valueOf(anchor), -minValue, kind.maxValue() - maxValue)};
+}
 } // namespace
 
 ControllerPointEditResult ControllerPointEdits::add(const std::vector<MidiEvent>& before, const ControllerKind& kind,
@@ -75,26 +109,12 @@ ControllerPointEditResult ControllerPointEdits::move(const std::vector<MidiEvent
                                                      const std::set<int>& moved, int anchorIndex, int targetTick,
                                                      int targetValue)
 {
-    std::set<int> movedPoints;
-    for (int i : moved)
-        if (isValid(before, i) && kind.matches(before[static_cast<size_t>(i)]))
-            movedPoints.insert(i);
+    const auto movedPoints = movedPointsOf(before, kind, moved);
     if (!movedPoints.contains(anchorIndex))
         return arrange(entriesOf(before));
 
     const MidiEvent& anchor = before[static_cast<size_t>(anchorIndex)];
-    int minTick = std::numeric_limits<int>::max();
-    int minValue = std::numeric_limits<int>::max();
-    int maxValue = std::numeric_limits<int>::min();
-    for (int i : movedPoints)
-    {
-        const auto& event = before[static_cast<size_t>(i)];
-        minTick = std::min(minTick, event.tick);
-        minValue = std::min(minValue, kind.valueOf(event));
-        maxValue = std::max(maxValue, kind.valueOf(event));
-    }
-    const int deltaTick = std::max(targetTick - anchor.tick, -minTick);
-    const int deltaValue = std::clamp(targetValue - kind.valueOf(anchor), -minValue, kind.maxValue() - maxValue);
+    const auto [deltaTick, deltaValue] = deltaOf(before, kind, movedPoints, anchor, targetTick, targetValue);
 
     std::set<int> passed;
     for (int j = 0; j < static_cast<int>(before.size()); ++j)
@@ -173,6 +193,21 @@ ControllerPointEditResult ControllerPointEdits::move(const std::vector<MidiEvent
         entries.push_back(entry);
     }
     return arrange(std::move(entries));
+}
+
+std::optional<MidiEvent> ControllerPointEdits::movedAnchor(const std::vector<MidiEvent>& before,
+                                                           const ControllerKind& kind, const std::set<int>& moved,
+                                                           int anchorIndex, int targetTick, int targetValue)
+{
+    const auto movedPoints = movedPointsOf(before, kind, moved);
+    if (!movedPoints.contains(anchorIndex))
+        return std::nullopt;
+
+    auto anchor = before[static_cast<size_t>(anchorIndex)];
+    const auto delta = deltaOf(before, kind, movedPoints, anchor, targetTick, targetValue);
+    anchor.tick += delta.tick;
+    setValueOf(kind, anchor, kind.valueOf(anchor) + delta.value);
+    return anchor;
 }
 
 ControllerPointEditResult ControllerPointEdits::remove(const std::vector<MidiEvent>& before,

@@ -3,6 +3,7 @@
 #include "edit/ControllerPointEditResult.h"
 #include "model/ControllerKind.h"
 #include "model/MidiEvent.h"
+#include <optional>
 #include <set>
 #include <vector>
 
@@ -13,6 +14,9 @@ ControllerPointEditResult add(const std::vector<MidiEvent>& before, const Contro
 // moved and anchorIndex index into before.
 ControllerPointEditResult move(const std::vector<MidiEvent>& before, const ControllerKind& kind,
                                const std::set<int>& moved, int anchorIndex, int targetTick, int targetValue);
+// The point the anchor becomes in move(), or none when anchorIndex is not one of the moved points of the kind.
+std::optional<MidiEvent> movedAnchor(const std::vector<MidiEvent>& before, const ControllerKind& kind,
+                                     const std::set<int>& moved, int anchorIndex, int targetTick, int targetValue);
 ControllerPointEditResult remove(const std::vector<MidiEvent>& before, const std::set<int>& removed);
 ControllerPointEditResult setValue(const std::vector<MidiEvent>& before, const ControllerKind& kind, int index,
                                    int value);

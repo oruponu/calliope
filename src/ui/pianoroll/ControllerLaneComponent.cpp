@@ -5,6 +5,8 @@
 #include "model/ControllerLineValue.h"
 #include "model/TimelineGrid.h"
 #include "ui/pianoroll/ControllerLaneScale.h"
+#include "ui/pianoroll/DragValueTip.h"
+#include "ui/pianoroll/DragValueTipPainter.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/ReplaceEventsAction.h"
 #include <algorithm>
@@ -265,6 +267,23 @@ void ControllerLaneComponent::paint(juce::Graphics& g)
     drawLoopRegion(g);
     drawPlayhead(g);
     drawLeftPanel(g);
+    drawDragValueTip(g);
+}
+
+void ControllerLaneComponent::drawDragValueTip(juce::Graphics& g)
+{
+    const auto* pointDragging = std::get_if<PointDragging>(&drag);
+    const auto kind = editedKind();
+    if (pointDragging == nullptr || !pointDragging->tip || !kind || !sequence)
+        return;
+
+    const auto& [mouse, anchor] = *pointDragging->tip;
+    const int value = kind->valueOf(anchor);
+    const int displayed =
+        kind->type == MidiEvent::Type::PitchBend ? ControllerLaneScale::displayedPitchBend(value) : value;
+    const auto position = DragValueTip::formatPosition(sequence->getTimeline().tickToBarBeatTick(anchor.tick));
+    DragValueTipPainter::draw(g, *this, mouse, DragValueTipPainter::visibleArea(*this).withTrimmedLeft(leftPanelWidth),
+                              juce::String(position), juce::String(displayed));
 }
 
 void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
@@ -387,6 +406,9 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
         pointDragging->preview = ControllerPointEdits::move(pointDragging->before, *kind, pointDragging->moved,
                                                             pointDragging->anchor, tick, value);
         pointDragging->changed = pointDragging->preview.events != pointDragging->before;
+        if (const auto landed = ControllerPointEdits::movedAnchor(pointDragging->before, *kind, pointDragging->moved,
+                                                                  pointDragging->anchor, tick, value))
+            pointDragging->tip = ValueTip{e.getPosition(), *landed};
         repaint();
         return;
     }
