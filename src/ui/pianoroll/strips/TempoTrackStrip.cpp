@@ -229,6 +229,8 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
 {
     if (sequence == nullptr || sequence->getNumTracks() == 0)
         return;
+    if (e.getNumberOfClicks() == 1)
+        doubleClickPoint = e.mods.isRightButtonDown() || e.mods.isShiftDown() ? -1 : hitTestTempoPoint(e.x, e.y);
     if (e.mods.isRightButtonDown())
         return;
 
@@ -341,6 +343,15 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
     }
 }
 
+void TempoTrackStrip::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    const int pressed = std::exchange(doubleClickPoint, -1);
+    if (pressed < 0 || e.mods.isRightButtonDown() || e.mods.isShiftDown() || hitTestTempoPoint(e.x, e.y) != pressed)
+        return;
+    selection.selectOnly(pressed);
+    deleteSelectedTempoPointsImpl("Delete Tempo Change");
+}
+
 void TempoTrackStrip::mouseMove(const juce::MouseEvent& e)
 {
     setMouseCursor(sequence != nullptr && hitTestTempoPoint(e.x, e.y) >= 0 ? juce::MouseCursor::DraggingHandCursor
@@ -349,6 +360,7 @@ void TempoTrackStrip::mouseMove(const juce::MouseEvent& e)
 
 void TempoTrackStrip::cancelDrag()
 {
+    doubleClickPoint = -1;
     if (std::holds_alternative<PointDragging>(drag))
         drag = Idle{};
 }

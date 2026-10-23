@@ -31,6 +31,7 @@ public:
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
+    void mouseDoubleClick(const juce::MouseEvent& e) override;
     void mouseMove(const juce::MouseEvent& e) override;
 
 private:
@@ -62,5 +63,7 @@ private:
     UndoHistory& undoHistory;
 
     IndexSelection selection;
+    // The point the first click of a double-click pressed, so a point that click added is not deleted.
+    int doubleClickPoint = -1;
     std::variant<Idle, PointDragging, RangeSelecting> drag;
 };
