@@ -69,6 +69,7 @@ public:
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
+    void mouseDoubleClick(const juce::MouseEvent& e) override;
     void mouseMove(const juce::MouseEvent& e) override;
     bool keyPressed(const juce::KeyPress& key) override;
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) override;
@@ -174,6 +175,8 @@ private:
     };
     std::variant<Idle, VelocityDragging, PointDragging, PointRangeSelecting> drag;
     IndexSelection pointSelection;
+    // The point the first click of a double-click pressed, so a point that click added is not deleted.
+    int doubleClickPoint = -1;
     CalloutEditorSession<ControllerValueEditor, ControllerValueDraft> valueEditSession;
     bool editToolSelected = false;
     bool snapEnabled = true;

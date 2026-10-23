@@ -276,6 +276,8 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
 
     const auto kind = editedKind();
     const bool onLabelPanel = isOnLabelPanel(e.x);
+    if (e.getNumberOfClicks() == 1)
+        doubleClickPoint = e.mods.isPopupMenu() || e.mods.isShiftDown() ? -1 : hitTestPoint(e.x, e.y);
     if (e.mods.isPopupMenu())
     {
         if (const int hit = kind ? hitTestPoint(e.x, e.y) : -1; hit >= 0)
@@ -483,6 +485,16 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
         if (const auto note = notes.find(ref); note.has_value() && note->velocity != velocity)
             edits.push_back({ref, {.velocity = velocity}});
     LayeredNoteEdits(*sequence, undoHistory, recordingEditor).apply(edits, "Edit Velocity");
+}
+
+void ControllerLaneComponent::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    const int pressed = std::exchange(doubleClickPoint, -1);
+    if (pressed < 0 || e.mods.isPopupMenu() || e.mods.isShiftDown() || valueEditSession.isOpen() ||
+        hitTestPoint(e.x, e.y) != pressed)
+        return;
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    applyPointEdit("Delete Controller Point", events, ControllerPointEdits::remove(events, {pressed}));
 }
 
 void ControllerLaneComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
@@ -1190,6 +1202,7 @@ void ControllerLaneComponent::resetPointEditing()
 {
     drag = Idle{};
     pointSelection.clear();
+    doubleClickPoint = -1;
     valueEditSession.close();
 }
 
