@@ -30,6 +30,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlWriter.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlFieldReader.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlNumberText.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/ControllerLineValue.cpp
     ${PROJECT_SOURCE_DIR}/src/model/ControllerPointConversion.cpp
     ${PROJECT_SOURCE_DIR}/src/model/ControllerRamps.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
@@ -100,6 +101,7 @@ target_sources(CalliopeTests PRIVATE
     io/XmlNumberTextTests.cpp
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
+    model/ControllerLineValueTests.cpp
     model/ControllerPointConversionTests.cpp
     model/ControllerRampsTests.cpp
     model/DefaultTimelineTests.cpp

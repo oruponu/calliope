@@ -62,6 +62,7 @@ target_sources(Calliope PRIVATE
     src/io/ProjectXmlWriter.cpp
     src/io/XmlFieldReader.cpp
     src/io/XmlNumberText.cpp
+    src/model/ControllerLineValue.cpp
     src/model/ControllerPointConversion.cpp
     src/model/ControllerRamps.cpp
     src/model/MidiSequence.cpp

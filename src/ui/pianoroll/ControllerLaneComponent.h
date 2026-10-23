@@ -183,6 +183,7 @@ private:
     static constexpr int bottomPadding = 6;
     static constexpr int velocityBarWidth = 7;
     static constexpr float pointHitRadius = 6.0f;
+    static constexpr int lineHitTolerance = 5;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ControllerLaneComponent)
 };

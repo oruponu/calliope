@@ -2,11 +2,13 @@
 #include "edit/ControllerPointEdits.h"
 #include "edit/LayeredNoteEdits.h"
 #include "edit/NoteEdit.h"
+#include "model/ControllerLineValue.h"
 #include "model/TimelineGrid.h"
 #include "ui/pianoroll/ControllerLaneScale.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/ReplaceEventsAction.h"
 #include <algorithm>
+#include <cstdlib>
 #include <utility>
 
 namespace
@@ -1139,6 +1141,19 @@ void ControllerLaneComponent::pointMouseDown(const juce::MouseEvent& e, const Co
         const int tick = std::max(0, snapGrid(e.mods).round(xToTick(e.x)));
         applyPointEdit("Add Controller Point", events,
                        ControllerPointEdits::add(events, kind, tick, valueAtY(kind, e.y)));
+        return;
+    }
+
+    if (const auto lineValue = controllerLineValueAt(events, kind, xToTick(e.x));
+        !e.mods.isShiftDown() && lineValue && std::abs(e.y - pointY(kind, *lineValue)) <= lineHitTolerance)
+    {
+        const int tick = std::max(0, snapGrid(e.mods).round(xToTick(e.x)));
+        const bool taken = std::ranges::any_of(events, [&](const MidiEvent& event)
+                                               { return kind.matches(event) && event.tick == tick; });
+        if (!taken)
+            applyPointEdit("Add Controller Point", events,
+                           ControllerPointEdits::add(events, kind, tick,
+                                                     controllerLineValueAt(events, kind, tick).value_or(*lineValue)));
         return;
     }
 

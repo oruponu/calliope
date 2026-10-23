@@ -18,15 +18,11 @@ std::vector<std::pair<int, int>> rampSteps(int t0, int v0, int t1, int v1)
     if (span < 2 || change == 0)
         return steps;
 
-    // Values are never negative, so rounding half away from zero is floor(x + 0.5), computed exactly.
-    const auto valueAt = [&](long long offset)
-    { return static_cast<int>((2 * v0 * span + 2 * change * offset + span) / (2 * span)); };
-
     if (span - 1 <= std::abs(change))
     {
         int last = v0;
         for (long long offset = 1; offset < span; ++offset)
-            if (const int value = valueAt(offset); value != last)
+            if (const int value = rampValueAt(t0, v0, t1, v1, static_cast<int>(t0 + offset)); value != last)
             {
                 steps.push_back({static_cast<int>(t0 + offset), value});
                 last = value;
@@ -52,6 +48,15 @@ std::vector<std::pair<int, int>> rampSteps(int t0, int v0, int t1, int v1)
     return steps;
 }
 } // namespace
+
+int rampValueAt(int fromTick, int fromValue, int toTick, int toValue, int tick)
+{
+    const long long span = static_cast<long long>(toTick) - fromTick;
+    const long long change = toValue - fromValue;
+    const long long offset = static_cast<long long>(tick) - fromTick;
+    // Values are never negative, so rounding half away from zero is floor(x + 0.5), computed exactly.
+    return static_cast<int>((2 * fromValue * span + 2 * change * offset + span) / (2 * span));
+}
 
 std::vector<MidiEvent> expandControllerRamps(const std::vector<MidiEvent>& events)
 {
