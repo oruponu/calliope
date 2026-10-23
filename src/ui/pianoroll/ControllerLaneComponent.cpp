@@ -7,6 +7,7 @@
 #include "ui/pianoroll/ControllerLaneScale.h"
 #include "ui/pianoroll/DragValueTip.h"
 #include "ui/pianoroll/DragValueTipPainter.h"
+#include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/ReplaceEventsAction.h"
 #include <algorithm>
@@ -266,6 +267,8 @@ void ControllerLaneComponent::paint(juce::Graphics& g)
 
     drawLoopRegion(g);
     drawPlayhead(g);
+    if (const auto* selecting = std::get_if<PointRangeSelecting>(&drag))
+        RangeBandPainter::draw(g, selecting->gesture, getHeight(), accent::soft, accent::base.withAlpha(0.6f));
     drawLeftPanel(g);
     drawDragValueTip(g);
 }
