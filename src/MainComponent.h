@@ -146,6 +146,7 @@ private:
 
     TransportBarComponent transportBar{document, playbackEngine};
 
+    // Shared by the piano roll and the controller lane, so one copy replaces the other's.
     EditClipboard clipboard;
     PianoRollComponent pianoRoll{document.getHistory(), clipboard};
     PianoRollViewport viewport;
@@ -156,7 +157,7 @@ private:
     juce::Viewport trackListViewport;
     juce::Rectangle<int> trackListHeaderBounds;
 
-    ControllerLaneComponent controllerLane{document.getHistory()};
+    ControllerLaneComponent controllerLane{document.getHistory(), clipboard};
 
     ControllerLaneViewport controllerLaneViewport;
 

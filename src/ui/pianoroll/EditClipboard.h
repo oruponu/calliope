@@ -1,6 +1,7 @@
 #pragma once
 
 #include "edit/ChordTrackEdits.h"
+#include "edit/CopiedControllerPoints.h"
 #include "edit/KeySignatureEdits.h"
 #include "edit/TimeSignatureEdits.h"
 #include "model/MidiNote.h"
@@ -17,6 +18,7 @@ public:
     bool hasTimeSignatures() const { return std::holds_alternative<std::vector<RelativeTimeSignature>>(content); }
     bool hasKeySignatures() const { return std::holds_alternative<std::vector<RelativeKeySignature>>(content); }
     bool hasChords() const { return std::holds_alternative<std::vector<RelativeChord>>(content); }
+    bool hasControllerPoints() const { return std::holds_alternative<CopiedControllerPoints>(content); }
 
     void setNotes(std::vector<MidiNote> notes)
     {
@@ -56,6 +58,14 @@ public:
             content = std::monostate{};
         else
             content = std::move(items);
+    }
+
+    void setControllerPoints(CopiedControllerPoints points)
+    {
+        if (points.points.empty())
+            content = std::monostate{};
+        else
+            content = std::move(points);
     }
 
     const std::vector<MidiNote>& getNotes() const
@@ -98,8 +108,16 @@ public:
         return empty;
     }
 
+    const CopiedControllerPoints& getControllerPoints() const
+    {
+        if (const auto* points = std::get_if<CopiedControllerPoints>(&content))
+            return *points;
+        static const CopiedControllerPoints empty;
+        return empty;
+    }
+
 private:
     std::variant<std::monostate, std::vector<MidiNote>, std::vector<TempoChange>, std::vector<RelativeTimeSignature>,
-                 std::vector<RelativeKeySignature>, std::vector<RelativeChord>>
+                 std::vector<RelativeKeySignature>, std::vector<RelativeChord>, CopiedControllerPoints>
         content;
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "edit/ControllerPointEditResult.h"
+#include "edit/CopiedControllerPoints.h"
 #include "model/ControllerKind.h"
 #include "model/MidiEvent.h"
 #include <optional>
@@ -20,4 +21,10 @@ std::optional<MidiEvent> movedAnchor(const std::vector<MidiEvent>& before, const
 ControllerPointEditResult remove(const std::vector<MidiEvent>& before, const std::set<int>& removed);
 ControllerPointEditResult setValue(const std::vector<MidiEvent>& before, const ControllerKind& kind, int index,
                                    int value);
+// selected indexes into events; indices that are not points of the kind are skipped.
+CopiedControllerPoints copy(const std::vector<MidiEvent>& events, const ControllerKind& kind,
+                            const std::set<int>& selected);
+// Points of the kind from the first pasted tick to the last are replaced by the pasted ones.
+ControllerPointEditResult paste(const std::vector<MidiEvent>& before, const ControllerKind& kind,
+                                const std::vector<CopiedControllerPoint>& points, int atTick);
 } // namespace ControllerPointEdits

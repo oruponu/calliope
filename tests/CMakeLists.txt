@@ -57,6 +57,7 @@ target_sources(CalliopeTests PRIVATE
     edit/ChordResizeTests.cpp
     edit/ChordStartResizeTests.cpp
     edit/ControllerPointAddTests.cpp
+    edit/ControllerPointClipboardTests.cpp
     edit/ControllerPointDeleteTests.cpp
     edit/ControllerPointMoveTests.cpp
     edit/ControllerPointValueTests.cpp
@@ -119,6 +120,7 @@ target_sources(CalliopeTests PRIVATE
     plugin/RetiredStateStoreTests.cpp
     ui/ControllerLaneScaleTests.cpp
     ui/DragValueTipTests.cpp
+    ui/EditClipboardTests.cpp
     ui/EventListItemsTests.cpp
     ui/IndexSelectionTests.cpp
     ui/RangeSelectGestureTests.cpp

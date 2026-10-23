@@ -659,10 +659,11 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         break;
     case AppCommands::cut:
     case AppCommands::copy:
-        result.setActive(pianoRoll.hasSelection());
+        result.setActive(pianoRoll.hasSelection() || controllerLane.hasPointSelection());
         break;
     case AppCommands::paste:
-        result.setActive(pianoRoll.hasClipboardContent());
+        result.setActive(clipboard.hasControllerPoints() ? controllerLane.canPastePoints()
+                                                         : pianoRoll.hasClipboardContent());
         break;
     case AppCommands::selectAll:
         result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
@@ -759,14 +760,26 @@ bool MainComponent::perform(const InvocationInfo& info)
         pianoRoll.setSelectedNotes({});
         return true;
     case AppCommands::cut:
-        pianoRoll.cutSelection();
+        if (controllerLane.hasPointSelection())
+            controllerLane.cutSelectedPoints();
+        else
+            pianoRoll.cutSelection();
         return true;
     case AppCommands::copy:
-        pianoRoll.copySelection();
+        if (controllerLane.hasPointSelection())
+            controllerLane.copySelectedPoints();
+        else
+            pianoRoll.copySelection();
         return true;
     case AppCommands::paste:
-        pianoRoll.paste(static_cast<int>(playbackEngine.getCurrentTick()));
+    {
+        const int tick = static_cast<int>(playbackEngine.getCurrentTick());
+        if (clipboard.hasControllerPoints())
+            controllerLane.pastePoints(tick);
+        else
+            pianoRoll.paste(tick);
         return true;
+    }
     case AppCommands::selectAll:
         if (focusedPanel == FocusPanel::PianoRoll)
             pianoRoll.selectAllNotes();

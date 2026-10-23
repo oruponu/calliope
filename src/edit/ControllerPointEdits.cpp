@@ -62,14 +62,13 @@ bool isValid(const std::vector<MidiEvent>& events, int index)
     return index >= 0 && index < static_cast<int>(events.size());
 }
 
-std::set<int> movedPointsOf(const std::vector<MidiEvent>& before, const ControllerKind& kind,
-                            const std::set<int>& moved)
+std::set<int> pointsOf(const std::vector<MidiEvent>& events, const ControllerKind& kind, const std::set<int>& indices)
 {
-    std::set<int> movedPoints;
-    for (int i : moved)
-        if (isValid(before, i) && kind.matches(before[static_cast<size_t>(i)]))
-            movedPoints.insert(i);
-    return movedPoints;
+    std::set<int> points;
+    for (int i : indices)
+        if (isValid(events, i) && kind.matches(events[static_cast<size_t>(i)]))
+            points.insert(i);
+    return points;
 }
 
 struct Delta
@@ -109,7 +108,7 @@ ControllerPointEditResult ControllerPointEdits::move(const std::vector<MidiEvent
                                                      const std::set<int>& moved, int anchorIndex, int targetTick,
                                                      int targetValue)
 {
-    const auto movedPoints = movedPointsOf(before, kind, moved);
+    const auto movedPoints = pointsOf(before, kind, moved);
     if (!movedPoints.contains(anchorIndex))
         return arrange(entriesOf(before));
 
@@ -199,7 +198,7 @@ std::optional<MidiEvent> ControllerPointEdits::movedAnchor(const std::vector<Mid
                                                            const ControllerKind& kind, const std::set<int>& moved,
                                                            int anchorIndex, int targetTick, int targetValue)
 {
-    const auto movedPoints = movedPointsOf(before, kind, moved);
+    const auto movedPoints = pointsOf(before, kind, moved);
     if (!movedPoints.contains(anchorIndex))
         return std::nullopt;
 
@@ -227,6 +226,60 @@ ControllerPointEditResult ControllerPointEdits::setValue(const std::vector<MidiE
         auto& entry = entries[static_cast<size_t>(index)];
         setValueOf(kind, entry.event, value);
         entry.selected = true;
+    }
+    return arrange(std::move(entries));
+}
+
+CopiedControllerPoints ControllerPointEdits::copy(const std::vector<MidiEvent>& events, const ControllerKind& kind,
+                                                  const std::set<int>& selected)
+{
+    CopiedControllerPoints copied{kind, {}};
+    for (int i : pointsOf(events, kind, selected))
+    {
+        const auto& event = events[static_cast<size_t>(i)];
+        copied.points.push_back({event.tick, kind.valueOf(event), event.ramp});
+    }
+    if (!copied.points.empty())
+    {
+        const int firstTick = copied.points.front().tick;
+        for (auto& point : copied.points)
+            point.tick -= firstTick;
+    }
+    return copied;
+}
+
+ControllerPointEditResult ControllerPointEdits::paste(const std::vector<MidiEvent>& before, const ControllerKind& kind,
+                                                      const std::vector<CopiedControllerPoint>& points, int atTick)
+{
+    auto entries = entriesOf(before);
+    if (points.empty())
+        return arrange(std::move(entries));
+
+    const int firstTick = atTick + points.front().tick;
+    const int lastTick = atTick + points.back().tick;
+    // A pasted point takes the place of a replaced one on its tick, so it keeps its order among other events there.
+    std::map<int, std::vector<int>> replacedOrders;
+    std::erase_if(entries,
+                  [&](const Entry& e)
+                  {
+                      const bool replaced =
+                          kind.matches(e.event) && e.event.tick >= firstTick && e.event.tick <= lastTick;
+                      if (replaced)
+                          replacedOrders[e.event.tick].push_back(e.order);
+                      return replaced;
+                  });
+    for (int i = 0; i < static_cast<int>(points.size()); ++i)
+    {
+        const auto& point = points[static_cast<size_t>(i)];
+        auto event = kind.point(atTick + point.tick, point.value);
+        event.ramp = kind.canRamp() && point.ramp;
+        int order = static_cast<int>(before.size()) + i;
+        if (auto& orders = replacedOrders[event.tick]; !orders.empty())
+        {
+            order = orders.front();
+            orders.erase(orders.begin());
+        }
+        entries.push_back({event, Unmoved, order, true});
     }
     return arrange(std::move(entries));
 }

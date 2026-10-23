@@ -1275,6 +1275,49 @@ void ControllerLaneComponent::mouseMove(const juce::MouseEvent& e)
                                                : juce::MouseCursor::NormalCursor);
 }
 
+bool ControllerLaneComponent::hasPointSelection() const
+{
+    return editedKind() && hasActiveTrack() && !pointSelection.isEmpty();
+}
+
+void ControllerLaneComponent::copySelectedPoints()
+{
+    if (!hasPointSelection())
+        return;
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    clipboard.setControllerPoints(ControllerPointEdits::copy(events, *editedKind(), pointSelection.indices()));
+}
+
+void ControllerLaneComponent::cutSelectedPoints()
+{
+    if (!hasPointSelection())
+        return;
+    copySelectedPoints();
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    applyPointEdit("Cut Controller Points", events, ControllerPointEdits::remove(events, pointSelection.indices()));
+}
+
+bool ControllerLaneComponent::canPastePoints() const
+{
+    const auto kind = editedKind();
+    return clipboard.hasControllerPoints() && kind && hasActiveTrack() &&
+           kind->maxValue() == clipboard.getControllerPoints().kind.maxValue();
+}
+
+void ControllerLaneComponent::pastePoints(int atTick)
+{
+    if (!canPastePoints())
+        return;
+    valueEditSession.close();
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    const auto result =
+        ControllerPointEdits::paste(events, *editedKind(), clipboard.getControllerPoints().points, atTick);
+    if (result.events != events)
+        applyPointEdit("Paste Controller Points", events, result);
+    else
+        selectPoints(result.selected);
+}
+
 bool ControllerLaneComponent::keyPressed(const juce::KeyPress& key)
 {
     if (key != juce::KeyPress::deleteKey && key != juce::KeyPress::backspaceKey)

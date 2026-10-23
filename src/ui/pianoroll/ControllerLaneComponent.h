@@ -12,6 +12,7 @@
 #include "ui/NoteDragPreview.h"
 #include "ui/pianoroll/ControllerValueDraft.h"
 #include "ui/pianoroll/ControllerValueEditor.h"
+#include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/strips/CalloutEditorSession.h"
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
@@ -28,7 +29,10 @@
 class ControllerLaneComponent : public juce::Component, public MidiSequence::Listener
 {
 public:
-    explicit ControllerLaneComponent(UndoHistory& undoHistoryRef) : undoHistory(undoHistoryRef) {}
+    ControllerLaneComponent(UndoHistory& undoHistoryRef, EditClipboard& clipboardRef)
+        : undoHistory(undoHistoryRef), clipboard(clipboardRef)
+    {
+    }
     ~ControllerLaneComponent() override;
 
     enum class DisplayMode
@@ -54,6 +58,14 @@ public:
     void setEditToolSelected(bool editTool);
     void setSnapEnabled(bool enabled);
     void clearPointSelection();
+    // Whether points of the shown controller are selected on the active track.
+    bool hasPointSelection() const;
+    void copySelectedPoints();
+    void cutSelectedPoints();
+    // Whether the clipboard's points can go into the shown controller: same value range, so control change to control
+    // change or pitch bend to pitch bend.
+    bool canPastePoints() const;
+    void pastePoints(int atTick);
     void recordingLayerChanged();
     void updateSize();
 
@@ -152,6 +164,7 @@ private:
     RecordingLayerEditor* recordingEditor = nullptr;
 
     UndoHistory& undoHistory;
+    EditClipboard& clipboard;
     struct Idle
     {
     };
