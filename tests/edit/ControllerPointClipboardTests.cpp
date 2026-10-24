@@ -79,6 +79,30 @@ TEST_CASE("a pasted step to the same value or to the next tick gets no hold poin
           result({p(0, 10), p(480, 10), p(481, 20)}, {0, 1, 2}));
 }
 
+TEST_CASE("hold points pasted where the target cannot ramp leave only the steps", "[edit][controller][clipboard]")
+{
+    const auto bank = ControllerKind::controlChange(0);
+    CHECK(ControllerPointEdits::paste(
+              {}, bank, {{0, 0, true}, {1920, 0, true}, {1920, 127, true}, {3840, 127, true}, {3840, 0, true}}, 0) ==
+          result({bank.point(0, 0), bank.point(1920, 127), bank.point(3840, 0)}, {0, 1, 2}));
+}
+
+TEST_CASE("a first pasted hold point is judged by the value before the paste", "[edit][controller][clipboard]")
+{
+    const auto bank = ControllerKind::controlChange(0);
+    CHECK(ControllerPointEdits::paste({bank.point(0, 64)}, bank, {{0, 64, true}, {0, 0, true}}, 480) ==
+          result({bank.point(0, 64), bank.point(480, 0)}, {1}));
+    CHECK(ControllerPointEdits::paste({bank.point(0, 10)}, bank, {{0, 64, true}, {0, 0, true}}, 480) ==
+          result({bank.point(0, 10), bank.point(480, 64), bank.point(480, 0)}, {1, 2}));
+}
+
+TEST_CASE("events copied where the controller cannot ramp are all pasted", "[edit][controller][clipboard]")
+{
+    const auto increment = ControllerKind::controlChange(96);
+    CHECK(ControllerPointEdits::paste({}, increment, {{0, 0, false}, {480, 0, false}, {480, 0, false}}, 0) ==
+          result({increment.point(0, 0), increment.point(480, 0), increment.point(480, 0)}, {0, 1, 2}));
+}
+
 TEST_CASE("pasting the same points leaves the events as they are", "[edit][controller][clipboard]")
 {
     const Events events{p(0, 10), p(480, 20)};

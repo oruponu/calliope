@@ -117,6 +117,23 @@ std::vector<MidiEvent> asRampPoints(const MidiEvent* before, std::vector<MidiEve
         converted.erase(converted.begin());
     return converted;
 }
+
+// Where the controller cannot ramp, a hold point would be sent as a value of its own, so only the step after it is
+// kept. Only points copied where the controller ramps can be hold points; the others are events that are sent.
+std::vector<CopiedControllerPoint> withoutHoldPoints(const std::vector<CopiedControllerPoint>& points,
+                                                     std::optional<int> valueBefore)
+{
+    std::vector<CopiedControllerPoint> steps;
+    for (size_t n = 0; n < points.size(); ++n)
+    {
+        const auto previous = n > 0 ? std::optional{points[n - 1].value} : valueBefore;
+        const bool hold = points[n].ramp && n + 1 < points.size() && points[n + 1].tick == points[n].tick &&
+                          previous == points[n].value;
+        if (!hold)
+            steps.push_back(points[n]);
+    }
+    return steps;
+}
 } // namespace
 
 ControllerPointEditResult ControllerPointEdits::add(const std::vector<MidiEvent>& before, const ControllerKind& kind,
@@ -301,8 +318,12 @@ ControllerPointEditResult ControllerPointEdits::paste(const std::vector<MidiEven
                       return replaced;
                   });
     const MidiEvent* followed = pointBefore(entries, kind, firstTick);
+    const auto kept =
+        kind.canRamp()
+            ? points
+            : withoutHoldPoints(points, followed != nullptr ? std::optional{kind.valueOf(*followed)} : std::nullopt);
     std::vector<MidiEvent> pasted;
-    for (const auto& point : points)
+    for (const auto& point : kept)
     {
         auto event = kind.point(atTick + point.tick, point.value);
         event.ramp = kind.canRamp() && point.ramp;
