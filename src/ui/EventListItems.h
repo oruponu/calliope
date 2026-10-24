@@ -2,6 +2,7 @@
 
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
+#include "model/ControllerKind.h"
 #include "model/MidiSequence.h"
 #include "ui/NoteDragPreview.h"
 #include <optional>
@@ -56,4 +57,9 @@ std::vector<int> reselectedRows(const std::vector<EventListItem>& before, const 
                                 const std::vector<EventListItem>& after);
 // The rows, in order, of the sequence's events on the track whose indices are given.
 std::vector<int> eventRows(const std::vector<EventListItem>& items, int trackIndex, const std::set<int>& eventIndices);
+// The controller of a control change or pitch bend row in the sequence; none for other rows and recorded ones.
+std::optional<ControllerKind> controllerOf(const EventListItem& item);
+// The event indices of the selected rows that hold the clicked row's controller on its track.
+std::set<int> sameControllerEvents(const std::vector<EventListItem>& items, const std::vector<int>& selectedRows,
+                                   int clickedRow);
 } // namespace EventListItems

@@ -65,6 +65,8 @@ public:
     // Whether the shown controller has points on the active track.
     bool canSelectAllPoints() const;
     void selectAllPoints();
+    // Shows the controller, then selects its points on the active track.
+    void showAndSelectPoints(const ControllerKind& kind, std::set<int> eventIndices);
     void copySelectedPoints();
     void cutSelectedPoints();
     // Whether the clipboard's points can go into the shown controller: same value range, so control change to control

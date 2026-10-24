@@ -331,9 +331,19 @@ MainComponent::MainComponent()
     eventList.onNoteSelectionFromList = [this](const auto& noteRefs)
     {
         updatingFromEventList = true;
+        controllerLane.clearPointSelection();
         pianoRoll.setSelectedNotes(noteRefs);
         updatingFromEventList = false;
         controllerLane.repaint();
+    };
+    eventList.onControllerSelectionFromList = [this](int trackIndex, const ControllerKind& kind, const auto& events)
+    {
+        // Switching the active track from a click in the list would surprise; other tracks' rows stay in the list.
+        if (trackIndex != pianoRoll.getActiveTrackIndex())
+            return;
+        updatingFromEventList = true;
+        controllerLane.showAndSelectPoints(kind, events);
+        updatingFromEventList = false;
     };
     addAndMakeVisible(eventList);
 

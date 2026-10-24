@@ -1406,6 +1406,21 @@ bool ControllerLaneComponent::canSelectAllPoints() const
            !ControllerPointEdits::allPoints(sequence->getTrack(activeTrackIndex).getEvents(), *kind).empty();
 }
 
+void ControllerLaneComponent::showAndSelectPoints(const ControllerKind& kind, std::set<int> eventIndices)
+{
+    if (kind.type == MidiEvent::Type::PitchBend)
+    {
+        if (displayMode != DisplayMode::PitchBend)
+            setDisplayMode(DisplayMode::PitchBend);
+    }
+    else if (displayMode != DisplayMode::ControlChange || ccNumber != kind.number)
+    {
+        setCCNumber(kind.number);
+        setDisplayMode(DisplayMode::ControlChange);
+    }
+    selectPoints(std::move(eventIndices));
+}
+
 void ControllerLaneComponent::selectAllPoints()
 {
     const auto kind = editedKind();

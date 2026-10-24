@@ -2,6 +2,7 @@
 
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
+#include "model/ControllerKind.h"
 #include "model/MidiSequence.h"
 #include "ui/EventListItems.h"
 #include "ui/NoteDragPreview.h"
@@ -27,6 +28,10 @@ public:
 
     std::function<void(int tick)> onEventSelected;
     std::function<void(const std::set<NoteRef>& noteRefs)> onNoteSelectionFromList;
+    // Called after onNoteSelectionFromList when the user picked a control change or pitch bend row, with the
+    // selected events of its controller on its track.
+    std::function<void(int trackIndex, const ControllerKind& kind, const std::set<int>& eventIndices)>
+        onControllerSelectionFromList;
 
     void paint(juce::Graphics& g) override;
     void resized() override;

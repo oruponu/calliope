@@ -383,3 +383,41 @@ TEST_CASE("event rows of another track or of the recording are not found", "[ui]
                             eventRow(EventListItem::ControlChange, 0, 0)};
     CHECK(EventListItems::eventRows(items, 0, {0}) == std::vector{2});
 }
+
+TEST_CASE("a control change or pitch bend row tells its controller", "[ui][event-list]")
+{
+    CHECK(EventListItems::controllerOf(eventRow(EventListItem::ControlChange, 0, 0, 11)) ==
+          ControllerKind::controlChange(11));
+    CHECK(EventListItems::controllerOf(eventRow(EventListItem::PitchBend, 0, 0, 8192)) == ControllerKind::pitchBend());
+}
+
+TEST_CASE("a note, program change or recorded row tells no controller", "[ui][event-list]")
+{
+    CHECK_FALSE(EventListItems::controllerOf(noteRow(0, 0)).has_value());
+    CHECK_FALSE(EventListItems::controllerOf(eventRow(EventListItem::ProgramChange, 0, 0)).has_value());
+    CHECK_FALSE(EventListItems::controllerOf(eventRow(EventListItem::ControlChange, 0, 0, 7, true)).has_value());
+}
+
+TEST_CASE("the clicked row's controller picks the selected events of it on its track", "[ui][event-list]")
+{
+    const std::vector items{
+        eventRow(EventListItem::ControlChange, 0, 0, 7), eventRow(EventListItem::ControlChange, 0, 1, 10),
+        eventRow(EventListItem::ControlChange, 0, 2, 7), eventRow(EventListItem::ControlChange, 1, 0, 7)};
+    CHECK(EventListItems::sameControllerEvents(items, {0, 1, 2, 3}, 2) == std::set<int>{0, 2});
+    CHECK(EventListItems::sameControllerEvents(items, {1, 2}, 2) == std::set<int>{2});
+}
+
+TEST_CASE("pitch bend rows pick pitch bends whatever their values", "[ui][event-list]")
+{
+    const std::vector items{eventRow(EventListItem::PitchBend, 0, 0, 100),
+                            eventRow(EventListItem::ControlChange, 0, 1, 100),
+                            eventRow(EventListItem::PitchBend, 0, 2, 8000)};
+    CHECK(EventListItems::sameControllerEvents(items, {0, 1, 2}, 0) == std::set<int>{0, 2});
+}
+
+TEST_CASE("a clicked row with no controller picks no events", "[ui][event-list]")
+{
+    const std::vector items{noteRow(0, 0), eventRow(EventListItem::ControlChange, 0, 0)};
+    CHECK(EventListItems::sameControllerEvents(items, {0, 1}, 0).empty());
+    CHECK(EventListItems::sameControllerEvents(items, {0, 1}, 5).empty());
+}

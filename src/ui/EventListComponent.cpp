@@ -233,13 +233,16 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
             onEventSelected(items[static_cast<size_t>(lastRowSelected)].tick);
     }
 
+    std::vector<int> selectedRows;
+    const auto selection = listBox.getSelectedRows();
+    for (int i = 0; i < selection.size(); ++i)
+        selectedRows.push_back(selection[i]);
+
     if (onNoteSelectionFromList)
     {
         std::set<NoteRef> noteRefs;
-        auto selectedRows = listBox.getSelectedRows();
-        for (int i = 0; i < selectedRows.size(); ++i)
+        for (const int row : selectedRows)
         {
-            int row = selectedRows[i];
             if (row >= 0 && row < static_cast<int>(items.size()))
             {
                 const auto& item = items[static_cast<size_t>(row)];
@@ -248,6 +251,14 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
             }
         }
         onNoteSelectionFromList(noteRefs);
+    }
+
+    if (onControllerSelectionFromList && lastRowSelected >= 0 && lastRowSelected < static_cast<int>(items.size()))
+    {
+        const auto& clicked = items[static_cast<size_t>(lastRowSelected)];
+        if (const auto kind = EventListItems::controllerOf(clicked))
+            onControllerSelectionFromList(clicked.trackIndex, *kind,
+                                          EventListItems::sameControllerEvents(items, selectedRows, lastRowSelected));
     }
 }
 

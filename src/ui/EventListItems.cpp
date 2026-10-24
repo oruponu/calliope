@@ -228,3 +228,36 @@ std::vector<int> EventListItems::eventRows(const std::vector<EventListItem>& ite
     }
     return rows;
 }
+
+std::optional<ControllerKind> EventListItems::controllerOf(const EventListItem& item)
+{
+    if (item.isRecording)
+        return std::nullopt;
+    if (item.kind == EventListItem::ControlChange)
+        return ControllerKind::controlChange(item.data1);
+    if (item.kind == EventListItem::PitchBend)
+        return ControllerKind::pitchBend();
+    return std::nullopt;
+}
+
+std::set<int> EventListItems::sameControllerEvents(const std::vector<EventListItem>& items,
+                                                   const std::vector<int>& selectedRows, int clickedRow)
+{
+    if (clickedRow < 0 || clickedRow >= static_cast<int>(items.size()))
+        return {};
+    const auto& clicked = items[static_cast<size_t>(clickedRow)];
+    const auto kind = controllerOf(clicked);
+    if (!kind)
+        return {};
+
+    std::set<int> events;
+    for (const int row : selectedRows)
+    {
+        if (row < 0 || row >= static_cast<int>(items.size()))
+            continue;
+        const auto& item = items[static_cast<size_t>(row)];
+        if (item.trackIndex == clicked.trackIndex && controllerOf(item) == kind)
+            events.insert(item.sourceIndex);
+    }
+    return events;
+}
