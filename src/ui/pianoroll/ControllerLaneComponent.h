@@ -105,6 +105,12 @@ private:
     void drawVelocity(juce::Graphics& g);
     EditableNotes editableNotes() const;
     int displayedVelocity(const NoteRef& ref, int velocity) const;
+    struct VelocityBars
+    {
+        std::vector<NoteRef> refs;
+        std::vector<VelocityBar> bars;
+    };
+    VelocityBars activeVelocityBars() const;
     NoteRef velocityTopAt(int x, int y) const;
     NoteDragPreview dragPreview() const;
     // Only a changed preview is sent, so an idle lane never clears the piano roll's.

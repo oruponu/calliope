@@ -748,18 +748,25 @@ void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
     }
 }
 
+ControllerLaneComponent::VelocityBars ControllerLaneComponent::activeVelocityBars() const
+{
+    VelocityBars result;
+    if (!hasActiveTrack())
+        return result;
+    for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
+    {
+        result.refs.push_back(ref);
+        result.bars.push_back({tickToX(note.startTick), valueToY(note.velocity)});
+    }
+    return result;
+}
+
 NoteRef ControllerLaneComponent::velocityTopAt(int x, int y) const
 {
     if (displayMode != DisplayMode::Velocity || !hasActiveTrack() || isOnLabelPanel(x))
         return {};
 
-    std::vector<NoteRef> refs;
-    std::vector<VelocityBar> bars;
-    for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
-    {
-        refs.push_back(ref);
-        bars.push_back({tickToX(note.startTick), valueToY(note.velocity)});
-    }
+    const auto [refs, bars] = activeVelocityBars();
     const int hit = VelocityBarGrab::hit(bars, x, y, velocityBarWidth, velocityTopTolerance);
     return hit >= 0 ? refs[static_cast<size_t>(hit)] : NoteRef{};
 }

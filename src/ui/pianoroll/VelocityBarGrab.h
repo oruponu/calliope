@@ -1,15 +1,10 @@
 #pragma once
 
+#include "ui/pianoroll/VelocityBar.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <vector>
-
-struct VelocityBar
-{
-    int x = 0;
-    int top = 0;
-};
 
 // Where the mouse grabbed a bar's top and the velocity the note had then.
 struct VelocityTopGrab
