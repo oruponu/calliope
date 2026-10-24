@@ -13,6 +13,7 @@
 #include "ui/pianoroll/ControllerValueDraft.h"
 #include "ui/pianoroll/ControllerValueEditor.h"
 #include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/VelocityBarGrab.h"
 #include "ui/pianoroll/strips/CalloutEditorSession.h"
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
@@ -104,6 +105,7 @@ private:
     void drawVelocity(juce::Graphics& g);
     EditableNotes editableNotes() const;
     int displayedVelocity(const NoteRef& ref, int velocity) const;
+    NoteRef velocityTopAt(int x, int y) const;
     NoteDragPreview dragPreview() const;
     // Only a changed preview is sent, so an idle lane never clears the piano roll's.
     void publishDragPreview();
@@ -173,6 +175,8 @@ private:
         int trackIndex = -1;
         int lastDragX = -1;
         std::map<NoteRef, int> preview;
+        // Set when the Select tool grabbed one bar's top; only that note changes then.
+        std::optional<VelocityTopGrab> topGrab;
     };
     struct ValueTip
     {
@@ -205,6 +209,7 @@ private:
     static constexpr int topPadding = 6;
     static constexpr int bottomPadding = 6;
     static constexpr int velocityBarWidth = 7;
+    static constexpr int velocityTopTolerance = 4;
     static constexpr float pointHitRadius = 6.0f;
     static constexpr int lineHitTolerance = 5;
 

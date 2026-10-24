@@ -364,6 +364,15 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     if (displayMode != DisplayMode::Velocity)
         return;
 
+    if (editToolSelected == e.mods.isCommandDown())
+    {
+        if (const auto grabbed = velocityTopAt(e.x, e.y); grabbed.isValid())
+            if (const auto note = editableNotes().find(grabbed))
+                drag = VelocityDragging{
+                    activeTrackIndex, e.x, {{grabbed, note->velocity}}, VelocityTopGrab{e.y, note->velocity}};
+        return;
+    }
+
     int newVelocity = yToValue(e.y);
 
     NoteRef best;
@@ -447,6 +456,14 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
 
     if (displayMode != DisplayMode::Velocity)
         return;
+
+    if (dragging->topGrab)
+    {
+        dragging->preview.begin()->second = VelocityBarGrab::draggedValue(*dragging->topGrab, e.y, getDrawAreaHeight());
+        publishDragPreview();
+        repaint();
+        return;
+    }
 
     int newVelocity = yToValue(e.y);
 
@@ -724,6 +741,22 @@ void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
             }
         }
     }
+}
+
+NoteRef ControllerLaneComponent::velocityTopAt(int x, int y) const
+{
+    if (displayMode != DisplayMode::Velocity || !hasActiveTrack() || isOnLabelPanel(x))
+        return {};
+
+    std::vector<NoteRef> refs;
+    std::vector<VelocityBar> bars;
+    for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
+    {
+        refs.push_back(ref);
+        bars.push_back({tickToX(note.startTick), valueToY(note.velocity)});
+    }
+    const int hit = VelocityBarGrab::hit(bars, x, y, velocityBarWidth, velocityTopTolerance);
+    return hit >= 0 ? refs[static_cast<size_t>(hit)] : NoteRef{};
 }
 
 EditableNotes ControllerLaneComponent::editableNotes() const
@@ -1274,8 +1307,12 @@ void ControllerLaneComponent::commitValueEdit(int displayedValue)
 
 void ControllerLaneComponent::mouseMove(const juce::MouseEvent& e)
 {
-    setMouseCursor(hitTestPoint(e.x, e.y) >= 0 ? juce::MouseCursor::DraggingHandCursor
-                                               : juce::MouseCursor::NormalCursor);
+    if (hitTestPoint(e.x, e.y) >= 0)
+        setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+    else if (editToolSelected == e.mods.isCommandDown() && velocityTopAt(e.x, e.y).isValid())
+        setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
+    else
+        setMouseCursor(juce::MouseCursor::NormalCursor);
 }
 
 bool ControllerLaneComponent::hasPointSelection() const
