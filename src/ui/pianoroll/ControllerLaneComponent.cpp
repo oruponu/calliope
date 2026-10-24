@@ -392,7 +392,7 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     for (const auto& [ref, note] : editableNotes().onTrack(activeTrackIndex))
     {
         int nx = tickToX(note.startTick);
-        if (e.x >= nx && e.x < nx + velocityBarWidth)
+        if (e.x >= nx - velocityBarHitMargin && e.x < nx + velocityBarWidth + velocityBarHitMargin)
         {
             int dist = std::abs(nx - e.x);
             // Recorded notes come after the sequence's, so a tie goes to the recorded one, as in the piano roll.
@@ -499,7 +499,7 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
     for (const auto& [ref, note] : editableNotes().onTrack(dragging->trackIndex))
     {
         int nx = tickToX(note.startTick);
-        if (nx + velocityBarWidth >= startX && nx <= endX)
+        if (nx + velocityBarWidth + velocityBarHitMargin >= startX && nx - velocityBarHitMargin <= endX)
         {
             dragging->preview[ref] = newVelocity;
             changed = true;
@@ -800,7 +800,7 @@ NoteRef ControllerLaneComponent::velocityTopAt(int x, int y) const
         return {};
 
     const auto [refs, bars] = activeVelocityBars();
-    const int hit = VelocityBarGrab::hit(bars, x, y, velocityBarWidth, velocityTopTolerance);
+    const int hit = VelocityBarGrab::hit(bars, x, y, velocityBarWidth, velocityBarHitMargin, velocityTopTolerance);
     return hit >= 0 ? refs[static_cast<size_t>(hit)] : NoteRef{};
 }
 

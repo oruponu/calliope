@@ -226,7 +226,9 @@ private:
 
     static constexpr int topPadding = 6;
     static constexpr int bottomPadding = 6;
-    static constexpr int velocityBarWidth = 7;
+    static constexpr int velocityBarWidth = 4;
+    // Clicks and the pen also take this much on each side of the drawn bar, so a thin bar is still easy to hit.
+    static constexpr int velocityBarHitMargin = 2;
     static constexpr int velocityTopTolerance = 4;
     static constexpr float pointHitRadius = 6.0f;
     static constexpr int lineHitTolerance = 5;

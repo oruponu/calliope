@@ -15,8 +15,9 @@ struct VelocityTopGrab
 
 namespace VelocityBarGrab
 {
-// The index of the bar whose top the mouse is on, or -1. Of tops equally near, the later bar wins.
-inline int hit(const std::vector<VelocityBar>& bars, int mouseX, int mouseY, int width, int tolerance)
+// The index of the bar whose top the mouse is on, or -1. A bar is hit from margin left of it to margin right of it.
+// Of tops equally near, the later bar wins.
+inline int hit(const std::vector<VelocityBar>& bars, int mouseX, int mouseY, int width, int margin, int tolerance)
 {
     int best = -1;
     int bestDistance = tolerance + 1;
@@ -24,7 +25,7 @@ inline int hit(const std::vector<VelocityBar>& bars, int mouseX, int mouseY, int
     {
         const auto& bar = bars[static_cast<size_t>(i)];
         const int distance = std::abs(bar.top - mouseY);
-        if (mouseX >= bar.x && mouseX < bar.x + width && distance <= bestDistance)
+        if (mouseX >= bar.x - margin && mouseX < bar.x + width + margin && distance <= bestDistance)
         {
             best = i;
             bestDistance = distance;
