@@ -127,6 +127,7 @@ target_sources(CalliopeTests PRIVATE
     ui/RowSelectionTests.cpp
     ui/TimelineGeometryTests.cpp
     ui/VelocityBarGrabTests.cpp
+    ui/VelocityBarSelectionTests.cpp
     undo/RecordTakeActionTests.cpp
     undo/ReplaceEventsActionTests.cpp
     undo/SavePointTrackerTests.cpp

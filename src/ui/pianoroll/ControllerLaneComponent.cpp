@@ -170,6 +170,9 @@ void ControllerLaneComponent::setSnapEnabled(bool enabled)
 
 void ControllerLaneComponent::clearPointSelection()
 {
+    // Selecting notes by their velocity bars makes the piano roll call this; the range selection goes on.
+    if (std::holds_alternative<VelocityRangeSelecting>(drag))
+        return;
     if (pointSelection.isEmpty() && std::holds_alternative<Idle>(drag))
         return;
     resetPointEditing();
@@ -269,6 +272,8 @@ void ControllerLaneComponent::paint(juce::Graphics& g)
     drawPlayhead(g);
     if (const auto* selecting = std::get_if<PointRangeSelecting>(&drag))
         RangeBandPainter::draw(g, selecting->gesture, getHeight(), accent::soft, accent::base.withAlpha(0.6f));
+    else if (const auto* selectingNotes = std::get_if<VelocityRangeSelecting>(&drag))
+        RangeBandPainter::draw(g, selectingNotes->gesture, getHeight(), accent::soft, accent::base.withAlpha(0.6f));
     drawLeftPanel(g);
     drawDragValueTip(g);
 }
@@ -367,9 +372,16 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     if (editToolSelected == e.mods.isCommandDown())
     {
         if (const auto grabbed = velocityTopAt(e.x, e.y); grabbed.isValid())
+        {
             if (const auto note = editableNotes().find(grabbed))
                 drag = VelocityDragging{
                     activeTrackIndex, e.x, {{grabbed, note->velocity}}, VelocityTopGrab{e.y, note->velocity}};
+            return;
+        }
+        drag = VelocityRangeSelecting{{e.x, e.x, {}},
+                                      e.mods.isShiftDown() && noteSelection ? noteSelection() : std::set<NoteRef>{}};
+        selectNotesInVelocityRange();
+        repaint();
         return;
     }
 
@@ -453,6 +465,14 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
+    if (auto* selectingNotes = std::get_if<VelocityRangeSelecting>(&drag))
+    {
+        selectingNotes->gesture.currentX = e.x;
+        selectNotesInVelocityRange();
+        repaint();
+        return;
+    }
+
     auto* dragging = std::get_if<VelocityDragging>(&drag);
     if (dragging == nullptr || !sequence)
         return;
@@ -517,6 +537,12 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
     {
         if (!pointSelection.isEmpty() && onPointSelectionTaken)
             onPointSelectionTaken();
+        repaint();
+        return;
+    }
+
+    if (std::holds_alternative<VelocityRangeSelecting>(state))
+    {
         repaint();
         return;
     }
@@ -711,6 +737,7 @@ void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
     int bottom = getDrawAreaBottom();
 
     const auto notes = editableNotes();
+    const auto selected = noteSelection ? noteSelection() : std::set<NoteRef>{};
     for (int trackIdx : selectedTrackIndices)
     {
         if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
@@ -731,12 +758,18 @@ void ControllerLaneComponent::drawVelocity(juce::Graphics& g)
                                              getDrawAreaHeight());
             int barTop = bottom - barHeight;
 
-            g.setColour(colour.withAlpha(alpha));
+            const bool isSelected = selected.contains(ref);
+            g.setColour((isSelected ? colour.brighter(0.4f) : colour).withAlpha(alpha));
             g.fillRect(x, barTop, velocityBarWidth, barHeight);
 
             if (ref.isRecorded())
             {
                 g.setColour(calliope::theme::status::danger.withAlpha(alpha));
+                g.drawRect(x, barTop, velocityBarWidth, barHeight, 1);
+            }
+            else if (isSelected)
+            {
+                g.setColour(calliope::theme::text::t1);
                 g.drawRect(x, barTop, velocityBarWidth, barHeight, 1);
             }
             else if (isActive)
@@ -769,6 +802,21 @@ NoteRef ControllerLaneComponent::velocityTopAt(int x, int y) const
     const auto [refs, bars] = activeVelocityBars();
     const int hit = VelocityBarGrab::hit(bars, x, y, velocityBarWidth, velocityTopTolerance);
     return hit >= 0 ? refs[static_cast<size_t>(hit)] : NoteRef{};
+}
+
+void ControllerLaneComponent::selectNotesInVelocityRange()
+{
+    const auto* selecting = std::get_if<VelocityRangeSelecting>(&drag);
+    if (selecting == nullptr || !onNotesSelected)
+        return;
+
+    auto selected = selecting->base;
+    const auto [refs, bars] = activeVelocityBars();
+    for (const int i :
+         VelocityBarSelection::overlapping(bars, selecting->gesture.lo(), selecting->gesture.hi(), velocityBarWidth))
+        selected.insert(refs[static_cast<size_t>(i)]);
+    if (!noteSelection || selected != noteSelection())
+        onNotesSelected(selected);
 }
 
 EditableNotes ControllerLaneComponent::editableNotes() const

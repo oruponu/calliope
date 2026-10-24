@@ -82,6 +82,7 @@ MainComponent::MainComponent()
     };
     pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
     {
+        controllerLane.repaint();
         if (!selected.empty())
             controllerLane.clearPointSelection();
         if (updatingFromEventList)
@@ -235,6 +236,12 @@ MainComponent::MainComponent()
     };
     controllerLane.onNoteDragPreviewChanged = [this](const auto& preview) { eventList.setNoteDragPreview(preview); };
     controllerLane.onPointSelectionTaken = [this]() { pianoRoll.clearSelection(); };
+    controllerLane.noteSelection = [this]() { return pianoRoll.getSelectedNotes(); };
+    controllerLane.onNotesSelected = [this](const auto& notes)
+    {
+        pianoRoll.setSelectedNotes(notes);
+        eventList.setSelectedNotes(pianoRoll.getSelectedNotes());
+    };
     controllerLaneViewport.setViewedComponent(&controllerLane, false);
     controllerLaneViewport.setScrollBarsShown(false, true);
     controllerLaneViewport.setHorizontalScrollBarRightInset(zoomStripLength);
@@ -321,6 +328,7 @@ MainComponent::MainComponent()
         updatingFromEventList = true;
         pianoRoll.setSelectedNotes(noteRefs);
         updatingFromEventList = false;
+        controllerLane.repaint();
     };
     addAndMakeVisible(eventList);
 

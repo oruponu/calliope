@@ -14,6 +14,7 @@
 #include "ui/pianoroll/ControllerValueEditor.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/VelocityBarGrab.h"
+#include "ui/pianoroll/VelocityBarSelection.h"
 #include "ui/pianoroll/strips/CalloutEditorSession.h"
 #include "ui/pianoroll/strips/IndexSelection.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"
@@ -77,6 +78,9 @@ public:
     std::function<void(const NoteDragPreview&)> onNoteDragPreviewChanged;
     // Called when the user selects controller points, so other selections can be cleared.
     std::function<void()> onPointSelectionTaken;
+    // The piano roll's selected notes, which the velocity bars show and a Shift range selection adds to.
+    std::function<std::set<NoteRef>()> noteSelection;
+    std::function<void(const std::set<NoteRef>&)> onNotesSelected;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
@@ -112,6 +116,7 @@ private:
     };
     VelocityBars activeVelocityBars() const;
     NoteRef velocityTopAt(int x, int y) const;
+    void selectNotesInVelocityRange();
     NoteDragPreview dragPreview() const;
     // Only a changed preview is sent, so an idle lane never clears the piano roll's.
     void publishDragPreview();
@@ -203,7 +208,14 @@ private:
     {
         RangeSelectGesture gesture;
     };
-    std::variant<Idle, VelocityDragging, PointDragging, PointRangeSelecting> drag;
+    struct VelocityRangeSelecting
+    {
+        // Only the gesture's range is used; the notes selected before are kept as NoteRefs in base, not in
+        // gesture.base.
+        RangeSelectGesture gesture;
+        std::set<NoteRef> base;
+    };
+    std::variant<Idle, VelocityDragging, PointDragging, PointRangeSelecting, VelocityRangeSelecting> drag;
     IndexSelection pointSelection;
     // The point the first click of a double-click pressed, so a point that click added is not deleted.
     int doubleClickPoint = -1;

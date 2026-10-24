@@ -96,6 +96,7 @@ public:
                clipboard.hasKeySignatures() || clipboard.hasChords();
     }
     bool hasSelectedNotes() const { return !selectedNotes.empty(); }
+    const std::set<NoteRef>& getSelectedNotes() const { return selectedNotes; }
     void quantizeSelectedNotes();
     bool hasNotesInActiveTrack() const;
 
