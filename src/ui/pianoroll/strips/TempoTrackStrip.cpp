@@ -276,13 +276,12 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
         const auto& changes = sequence->getTimeline().getTempoChanges();
         if (!std::ranges::contains(changes, tempoTick, &TempoChange::tick))
         {
-            auto before = sequence->getTimeline().getTempoChanges();
-            auto after = before;
-            const int addedIndex = TempoEdits::add(after, tempoTick, tempoBpm);
-            performReplaceList(undoHistory, sequence, "Add Tempo Change", std::move(before), std::move(after));
+            auto added = changes;
+            const int addedIndex = TempoEdits::add(added, tempoTick, tempoBpm);
             if (onSelectionTaken)
                 onSelectionTaken();
             selection.selectOnly(addedIndex);
+            drag = PointDragging{addedIndex, added, {addedIndex}, false, added, {}, changes};
             repaint();
         }
         return;
@@ -341,7 +340,15 @@ void TempoTrackStrip::mouseUp(const juce::MouseEvent&)
 
     if (const auto* dragging = std::get_if<PointDragging>(&state))
     {
-        if (dragging->moved)
+        if (dragging->beforeAdd)
+        {
+            performReplaceList(undoHistory, sequence, "Add Tempo Change", *dragging->beforeAdd, dragging->preview);
+            if (dragging->moved)
+                selection.assign(std::ranges::to<std::set>(dragging->group));
+            else
+                selection.selectOnly(dragging->index);
+        }
+        else if (dragging->moved)
         {
             performReplaceList(undoHistory, sequence, "Move Tempo Change", dragging->before, dragging->preview);
             selection.assign(std::ranges::to<std::set>(dragging->group));
@@ -380,8 +387,13 @@ void TempoTrackStrip::mouseMove(const juce::MouseEvent& e)
 void TempoTrackStrip::cancelDrag()
 {
     doubleClickPoint = -1;
-    if (std::holds_alternative<PointDragging>(drag))
+    if (const auto* dragging = std::get_if<PointDragging>(&drag))
+    {
+        // The added point was never applied, so the index selected for it names another tempo change or none.
+        if (dragging->beforeAdd)
+            selection.clear();
         drag = Idle{};
+    }
 }
 
 const std::vector<TempoChange>& TempoTrackStrip::displayedChanges() const

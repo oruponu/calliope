@@ -48,6 +48,8 @@ private:
         std::vector<TempoChange> preview;
         // Where the mouse is once the drag has moved, for the drag tip.
         std::optional<juce::Point<int>> tipMouse;
+        // Set when the point was added on the line by this press; the add is applied with the drag as one edit.
+        std::optional<std::vector<TempoChange>> beforeAdd;
     };
     struct RangeSelecting
     {
