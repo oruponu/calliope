@@ -230,6 +230,15 @@ ControllerPointEditResult ControllerPointEdits::setValue(const std::vector<MidiE
     return arrange(std::move(entries));
 }
 
+std::set<int> ControllerPointEdits::allPoints(const std::vector<MidiEvent>& events, const ControllerKind& kind)
+{
+    std::set<int> points;
+    for (int i = 0; i < static_cast<int>(events.size()); ++i)
+        if (kind.matches(events[static_cast<size_t>(i)]))
+            points.insert(i);
+    return points;
+}
+
 CopiedControllerPoints ControllerPointEdits::copy(const std::vector<MidiEvent>& events, const ControllerKind& kind,
                                                   const std::set<int>& selected)
 {

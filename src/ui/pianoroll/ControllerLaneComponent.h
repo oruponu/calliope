@@ -62,6 +62,9 @@ public:
     void clearPointSelection();
     // Whether points of the shown controller are selected on the active track.
     bool hasPointSelection() const;
+    // Whether the shown controller has points on the active track.
+    bool canSelectAllPoints() const;
+    void selectAllPoints();
     void copySelectedPoints();
     void cutSelectedPoints();
     // Whether the clipboard's points can go into the shown controller: same value range, so control change to control

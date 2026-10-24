@@ -617,6 +617,12 @@ void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
     }
 }
 
+bool MainComponent::selectAllTakesControllerPoints() const
+{
+    // The velocity view shows notes, so Select All there still selects the piano roll's notes.
+    return controllerLaneFocused && controllerLane.getDisplayMode() != ControllerLaneComponent::DisplayMode::Velocity;
+}
+
 void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
 {
     if (focusedComponent == nullptr)
@@ -630,7 +636,10 @@ void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
         detected = FocusPanel::TrackList;
     else if (belongsTo(pianoRoll) || belongsTo(controllerLane) || belongsTo(quantizeComboBox) ||
              belongsTo(selectToolButton) || belongsTo(editToolButton) || belongsTo(snapButton))
+    {
         detected = FocusPanel::PianoRoll;
+        controllerLaneFocused = belongsTo(controllerLane);
+    }
     else if (belongsTo(eventList))
         detected = FocusPanel::EventList;
     else
@@ -674,7 +683,9 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
                                                          : pianoRoll.hasClipboardContent());
         break;
     case AppCommands::selectAll:
-        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
+        result.setActive(focusedPanel == FocusPanel::PianoRoll &&
+                         (selectAllTakesControllerPoints() ? controllerLane.canSelectAllPoints()
+                                                           : pianoRoll.hasNotesInActiveTrack()));
         break;
     case AppCommands::moveNotesUp:
     case AppCommands::moveNotesDown:
@@ -789,7 +800,11 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     }
     case AppCommands::selectAll:
-        if (focusedPanel == FocusPanel::PianoRoll)
+        if (focusedPanel != FocusPanel::PianoRoll)
+            return true;
+        if (selectAllTakesControllerPoints())
+            controllerLane.selectAllPoints();
+        else
             pianoRoll.selectAllNotes();
         return true;
     case AppCommands::moveNotesUp:

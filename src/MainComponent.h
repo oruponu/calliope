@@ -89,6 +89,7 @@ private:
     void updateMetronomeSettings();
     void updateInputQuantize();
     void updateFocusBorder();
+    bool selectAllTakesControllerPoints() const;
     void onVBlank();
     void scrollToPlayhead(int tick);
     void scrollNoteIntoView(int startTick, int noteNumber);
@@ -183,6 +184,8 @@ private:
         EventList
     };
     FocusPanel focusedPanel = FocusPanel::PianoRoll;
+    // Whether the controller lane, rather than the piano roll or its tool buttons, took the focus last.
+    bool controllerLaneFocused = false;
     PanelFrame trackListFrame;
     PanelFrame pianoRollFrame;
     PanelFrame eventListFrame;

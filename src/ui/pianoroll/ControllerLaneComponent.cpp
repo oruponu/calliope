@@ -1380,6 +1380,21 @@ bool ControllerLaneComponent::hasPointSelection() const
     return editedKind() && hasActiveTrack() && !pointSelection.isEmpty();
 }
 
+bool ControllerLaneComponent::canSelectAllPoints() const
+{
+    const auto kind = editedKind();
+    return kind && hasActiveTrack() &&
+           !ControllerPointEdits::allPoints(sequence->getTrack(activeTrackIndex).getEvents(), *kind).empty();
+}
+
+void ControllerLaneComponent::selectAllPoints()
+{
+    const auto kind = editedKind();
+    if (!kind || !hasActiveTrack())
+        return;
+    selectPoints(ControllerPointEdits::allPoints(sequence->getTrack(activeTrackIndex).getEvents(), *kind));
+}
+
 void ControllerLaneComponent::copySelectedPoints()
 {
     if (!hasPointSelection())
