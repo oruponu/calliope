@@ -214,3 +214,17 @@ std::optional<int> EventListItems::focusRow(const std::vector<EventListItem>& it
         return std::nullopt;
     return static_cast<int>(it - items.begin());
 }
+
+std::vector<int> EventListItems::eventRows(const std::vector<EventListItem>& items, int trackIndex,
+                                           const std::set<int>& eventIndices)
+{
+    std::vector<int> rows;
+    for (int row = 0; row < static_cast<int>(items.size()); ++row)
+    {
+        const auto& item = items[static_cast<size_t>(row)];
+        if (item.kind != EventListItem::Note && !item.isRecording && item.trackIndex == trackIndex &&
+            eventIndices.contains(item.sourceIndex))
+            rows.push_back(row);
+    }
+    return rows;
+}

@@ -81,6 +81,8 @@ public:
     std::function<void(const NoteDragPreview&)> onNoteDragPreviewChanged;
     // Called when the user selects controller points, so other selections can be cleared.
     std::function<void()> onPointSelectionTaken;
+    // Called after onPointSelectionTaken when the selected points on the active track change.
+    std::function<void(int trackIndex, const std::set<int>& eventIndices)> onPointSelectionChanged;
     // The piano roll's selected notes, which the velocity bars show and a Shift range selection adds to.
     std::function<std::set<NoteRef>()> noteSelection;
     std::function<void(const std::set<NoteRef>&)> onNotesSelected;
@@ -153,6 +155,9 @@ private:
     void applyPointEdit(const juce::String& transactionName, const std::vector<MidiEvent>& before,
                         const ControllerPointEditResult& result);
     void selectPoints(std::set<int> indices);
+    void pointSelectionChanged();
+    // Only a changed selection is sent, so a lane without points never clears the event list's selection.
+    void publishPointSelection();
     void resetPointEditing();
     void openValueEditor(int eventIndex);
     void commitValueEdit(int displayedValue);
@@ -220,6 +225,8 @@ private:
     };
     std::variant<Idle, VelocityDragging, PointDragging, PointRangeSelecting, VelocityRangeSelecting> drag;
     IndexSelection pointSelection;
+    int publishedPointTrack = -1;
+    std::set<int> publishedPointSelection;
     // The point the first click of a double-click pressed, so a point that click added is not deleted.
     int doubleClickPoint = -1;
     CalloutEditorSession<ControllerValueEditor, ControllerValueDraft> valueEditSession;

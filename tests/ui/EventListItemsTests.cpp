@@ -61,6 +61,13 @@ EventListItem ccRow(int tick, int sourceIndex, int value)
 {
     return {.kind = EventListItem::ControlChange, .tick = tick, .sourceIndex = sourceIndex, .data1 = 7, .data2 = value};
 }
+
+EventListItem eventRow(EventListItem::Kind kind, int trackIndex, int sourceIndex, int data1 = 7,
+                       bool isRecording = false)
+{
+    return {
+        .kind = kind, .trackIndex = trackIndex, .sourceIndex = sourceIndex, .data1 = data1, .isRecording = isRecording};
+}
 } // namespace
 
 TEST_CASE("notes and events are listed by tick", "[ui][event-list]")
@@ -361,4 +368,18 @@ TEST_CASE("hold points that are not sent are not listed", "[ui][event-list]")
     const auto items = EventListItems::build(seq, {0}, nullptr);
     CHECK(ticksOf(items) == std::vector{0, 1920});
     CHECK(sourcesOf(items) == std::vector{0, 2});
+}
+
+TEST_CASE("the rows of a track's events are found by their indices", "[ui][event-list]")
+{
+    const std::vector items{noteRow(0, 0), ccRow(0, 0, 10), ccRow(480, 1, 20), ccRow(960, 2, 30)};
+    CHECK(EventListItems::eventRows(items, 0, {0, 2}) == std::vector{1, 3});
+}
+
+TEST_CASE("event rows of another track or of the recording are not found", "[ui][event-list]")
+{
+    const std::vector items{eventRow(EventListItem::ControlChange, 1, 0),
+                            eventRow(EventListItem::ControlChange, 0, 0, 7, true),
+                            eventRow(EventListItem::ControlChange, 0, 0)};
+    CHECK(EventListItems::eventRows(items, 0, {0}) == std::vector{2});
 }

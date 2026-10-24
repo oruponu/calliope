@@ -236,6 +236,11 @@ MainComponent::MainComponent()
     };
     controllerLane.onNoteDragPreviewChanged = [this](const auto& preview) { eventList.setNoteDragPreview(preview); };
     controllerLane.onPointSelectionTaken = [this]() { pianoRoll.clearSelection(); };
+    controllerLane.onPointSelectionChanged = [this](int trackIndex, const auto& events)
+    {
+        if (!updatingFromEventList)
+            eventList.setSelectedEvents(trackIndex, events);
+    };
     controllerLane.noteSelection = [this]() { return pianoRoll.getSelectedNotes(); };
     controllerLane.onNotesSelected = [this](const auto& notes)
     {

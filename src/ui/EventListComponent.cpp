@@ -82,25 +82,32 @@ void EventListComponent::setPlayheadTick(double tick)
 
 void EventListComponent::setSelectedNotes(const std::set<NoteRef>& selected)
 {
-    updatingFromNoteSelection = true;
-    listBox.deselectAllRows();
-
-    int firstRow = -1;
+    std::vector<int> rows;
     for (int i = 0; i < static_cast<int>(items.size()); ++i)
     {
         const auto& item = items[static_cast<size_t>(i)];
         if (item.kind == EventListItem::Note && selected.contains(EventListItems::noteRefOf(item)))
-        {
-            listBox.selectRow(i, true, false);
-            if (firstRow < 0)
-                firstRow = i;
-        }
+            rows.push_back(i);
     }
+    selectRows(rows);
+}
 
-    if (firstRow >= 0)
+void EventListComponent::setSelectedEvents(int trackIndex, const std::set<int>& eventIndices)
+{
+    selectRows(EventListItems::eventRows(items, trackIndex, eventIndices));
+}
+
+void EventListComponent::selectRows(const std::vector<int>& rows)
+{
+    updatingFromSelection = true;
+    listBox.deselectAllRows();
+    for (const int row : rows)
+        listBox.selectRow(row, true, false);
+
+    if (!rows.empty())
     {
         auto* vp = listBox.getViewport();
-        int rowTop = firstRow * rowHeight;
+        int rowTop = rows.front() * rowHeight;
         int viewTop = vp->getViewPositionY();
         int viewBottom = viewTop + vp->getViewHeight();
 
@@ -108,7 +115,7 @@ void EventListComponent::setSelectedNotes(const std::set<NoteRef>& selected)
             vp->setViewPosition(0, rowTop);
     }
 
-    updatingFromNoteSelection = false;
+    updatingFromSelection = false;
 }
 
 void EventListComponent::paint(juce::Graphics& g)
@@ -216,7 +223,7 @@ void EventListComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int 
 
 void EventListComponent::selectedRowsChanged(int lastRowSelected)
 {
-    if (updatingFromPlayhead || updatingFromNoteSelection)
+    if (updatingFromPlayhead || updatingFromSelection)
         return;
 
     if (lastRowSelected >= 0 && lastRowSelected < static_cast<int>(items.size()))

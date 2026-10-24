@@ -54,4 +54,6 @@ bool isSameEvent(const EventListItem& a, const EventListItem& b);
 // values and its place among the equal events.
 std::vector<int> reselectedRows(const std::vector<EventListItem>& before, const std::vector<int>& selected,
                                 const std::vector<EventListItem>& after);
+// The rows, in order, of the sequence's events on the track whose indices are given.
+std::vector<int> eventRows(const std::vector<EventListItem>& items, int trackIndex, const std::set<int>& eventIndices);
 } // namespace EventListItems

@@ -461,6 +461,7 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
                                                                   return kind->matches(event) && event.tick >= tickLo &&
                                                                          event.tick <= tickHi;
                                                               }));
+        pointSelectionChanged();
         repaint();
         return;
     }
@@ -535,8 +536,6 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
 
     if (std::holds_alternative<PointRangeSelecting>(state))
     {
-        if (!pointSelection.isEmpty() && onPointSelectionTaken)
-            onPointSelectionTaken();
         repaint();
         return;
     }
@@ -1254,8 +1253,7 @@ void ControllerLaneComponent::pointMouseDown(const juce::MouseEvent& e, const Co
         if (e.mods.isShiftDown())
         {
             pointSelection.toggle(hit);
-            if (pointSelection.contains(hit) && onPointSelectionTaken)
-                onPointSelectionTaken();
+            pointSelectionChanged();
             repaint();
             return;
         }
@@ -1289,7 +1287,10 @@ void ControllerLaneComponent::pointMouseDown(const juce::MouseEvent& e, const Co
 
     drag = PointRangeSelecting{{e.x, e.x, e.mods.isShiftDown() ? pointSelection.indices() : std::set<int>{}}};
     if (!e.mods.isShiftDown())
+    {
         pointSelection.clear();
+        publishPointSelection();
+    }
     repaint();
 }
 
@@ -1309,11 +1310,28 @@ void ControllerLaneComponent::applyPointEdit(const juce::String& transactionName
 
 void ControllerLaneComponent::selectPoints(std::set<int> indices)
 {
-    const bool taken = !indices.empty();
     pointSelection.assign(std::move(indices));
-    if (taken && onPointSelectionTaken)
-        onPointSelectionTaken();
+    pointSelectionChanged();
     repaint();
+}
+
+void ControllerLaneComponent::pointSelectionChanged()
+{
+    // A selection already sent has taken the selection from the piano roll, so a range drag takes it once.
+    if (!pointSelection.isEmpty() && publishedPointSelection.empty() && onPointSelectionTaken)
+        onPointSelectionTaken();
+    publishPointSelection();
+}
+
+void ControllerLaneComponent::publishPointSelection()
+{
+    const auto selected = editedKind() && hasActiveTrack() ? pointSelection.indices() : std::set<int>{};
+    if (selected == publishedPointSelection && (selected.empty() || activeTrackIndex == publishedPointTrack))
+        return;
+    publishedPointTrack = activeTrackIndex;
+    publishedPointSelection = selected;
+    if (onPointSelectionChanged)
+        onPointSelectionChanged(activeTrackIndex, publishedPointSelection);
 }
 
 void ControllerLaneComponent::resetPointEditing()
@@ -1322,6 +1340,7 @@ void ControllerLaneComponent::resetPointEditing()
     pointSelection.clear();
     doubleClickPoint = -1;
     valueEditSession.close();
+    publishPointSelection();
 }
 
 void ControllerLaneComponent::openValueEditor(int eventIndex)

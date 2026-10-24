@@ -20,6 +20,7 @@ public:
     void refresh();
     void setPlayheadTick(double tick);
     void setSelectedNotes(const std::set<NoteRef>& selected);
+    void setSelectedEvents(int trackIndex, const std::set<int>& eventIndices);
     void setRecordingLayer(const RecordingLayer* layer);
     void recordingLayerChanged();
     void setNoteDragPreview(const NoteDragPreview& preview);
@@ -45,6 +46,7 @@ private:
     void selectedRowsChanged(int lastRowSelected) override;
 
     void rebuildList();
+    void selectRows(const std::vector<int>& rows);
     void clearSelection();
 
     static juce::String formatPosition(const BarBeatTick& bbt);
@@ -63,5 +65,5 @@ private:
     double playheadTick = 0.0;
     int lastPlayheadRow = -1;
     bool updatingFromPlayhead = false;
-    bool updatingFromNoteSelection = false;
+    bool updatingFromSelection = false;
 };
