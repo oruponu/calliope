@@ -129,6 +129,43 @@ TEST_CASE("a group drag deletes every passed point", "[edit][controller]")
           result({p(720, 40), p(960, 60), p(1440, 20)}, {0, 1}));
 }
 
+TEST_CASE("a point of a stepped controller landing on the tick of another point replaces it", "[edit][controller]")
+{
+    const auto pedal = ControllerKind::controlChange(64);
+    const Events before{pedal.point(0, 0), pedal.point(1920, 127), pedal.point(3840, 0)};
+    CHECK(ControllerPointEdits::move(before, pedal, {2}, 2, 1920, 0) ==
+          result({pedal.point(0, 0), pedal.point(1920, 0)}, {1}));
+    CHECK(ControllerPointEdits::move(before, pedal, {0}, 0, 1920, 0) ==
+          result({pedal.point(1920, 0), pedal.point(3840, 0)}, {0}));
+}
+
+TEST_CASE("a point of a stepped controller landing on points stacked on one tick replaces them all",
+          "[edit][controller]")
+{
+    const auto pedal = ControllerKind::controlChange(64);
+    const Events before{pedal.point(0, 0), pedal.point(1920, 127), pedal.point(1920, 64), pedal.point(3840, 0)};
+    CHECK(ControllerPointEdits::move(before, pedal, {3}, 3, 1920, 0) ==
+          result({pedal.point(0, 0), pedal.point(1920, 0)}, {1}));
+    CHECK(ControllerPointEdits::move(before, pedal, {3}, 3, 960, 0) ==
+          result({pedal.point(0, 0), pedal.point(960, 0)}, {1}));
+}
+
+TEST_CASE("points of a stepped controller dragged together replace the points where they land", "[edit][controller]")
+{
+    const auto pedal = ControllerKind::controlChange(64);
+    const Events before{pedal.point(0, 0), pedal.point(960, 127), pedal.point(1920, 0), pedal.point(2880, 127)};
+    CHECK(ControllerPointEdits::move(before, pedal, {0, 1}, 0, 960, 0) ==
+          result({pedal.point(960, 0), pedal.point(1920, 127), pedal.point(2880, 127)}, {0, 1}));
+}
+
+TEST_CASE("a value-only drag of a stepped controller keeps the points on its tick", "[edit][controller]")
+{
+    const auto pedal = ControllerKind::controlChange(64);
+    const Events before{pedal.point(480, 127), pedal.point(480, 0)};
+    CHECK(ControllerPointEdits::move(before, pedal, {1}, 1, 480, 10) ==
+          result({pedal.point(480, 127), pedal.point(480, 10)}, {1}));
+}
+
 TEST_CASE("events of another kind are never deleted or carried", "[edit][controller]")
 {
     const Events before{p(0, 40), other(480), p(960, 80)};

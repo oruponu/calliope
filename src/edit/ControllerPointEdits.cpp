@@ -187,9 +187,24 @@ ControllerPointEditResult ControllerPointEdits::move(const std::vector<MidiEvent
         }
     }
 
-    // Otherwise a single point reaching or passing points stacked on one tick takes over the step: the far end comes
-    // along and stays on its side, the rest of the stack is overwritten.
-    if (movedPoints.size() == 1 && deltaTick != 0 && carried.empty())
+    // Where the controller cannot ramp, the earlier of two points on one tick is overwritten at once, so the points
+    // already where a moved point lands are deleted instead.
+    if (!kind.canRamp() && deltaTick != 0)
+    {
+        std::set<int> destinations;
+        for (int i : movedPoints)
+            destinations.insert(before[static_cast<size_t>(i)].tick + deltaTick);
+        for (int j = 0; j < static_cast<int>(before.size()); ++j)
+        {
+            const auto& event = before[static_cast<size_t>(j)];
+            if (!movedPoints.contains(j) && !carried.contains(j) && kind.matches(event) &&
+                destinations.contains(event.tick))
+                passed.insert(j);
+        }
+    }
+    // Otherwise, when nothing is carried along, a single point reaching or passing points stacked on one tick takes
+    // over the step: the far end comes along and stays on its side, the rest of the stack is overwritten.
+    else if (movedPoints.size() == 1 && deltaTick != 0 && carried.empty())
     {
         const int destination = anchor.tick + deltaTick;
         std::map<int, std::vector<int>> stacks;
