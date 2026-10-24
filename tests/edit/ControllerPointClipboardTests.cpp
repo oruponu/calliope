@@ -55,11 +55,28 @@ TEST_CASE("pasted points take the target controller number", "[edit][controller]
     CHECK(ControllerPointEdits::paste({}, cc11, {{0, 20, true}}, 0).events == Events{cc11.point(0, 20)});
 }
 
-TEST_CASE("pasted points ramp only where the target can ramp", "[edit][controller][clipboard]")
+TEST_CASE("pasted points do not ramp where the target cannot", "[edit][controller][clipboard]")
 {
     const auto bank = ControllerKind::controlChange(0);
     CHECK_FALSE(ControllerPointEdits::paste({}, bank, {{0, 20, true}}, 0).events.front().ramp);
-    CHECK_FALSE(ControllerPointEdits::paste({}, cc1, {{0, 20, false}}, 0).events.front().ramp);
+}
+
+TEST_CASE("steps pasted where the target can ramp become hold points and ramps", "[edit][controller][clipboard]")
+{
+    CHECK(ControllerPointEdits::paste({}, cc1, {{0, 0, false}, {1920, 127, false}, {3840, 0, false}}, 0) ==
+          result({p(0, 0), p(1920, 0), p(1920, 127), p(3840, 127), p(3840, 0)}, {0, 1, 2, 3, 4}));
+}
+
+TEST_CASE("a pasted step holds the value before the paste", "[edit][controller][clipboard]")
+{
+    CHECK(ControllerPointEdits::paste({p(0, 64)}, cc1, {{0, 0, false}}, 480) ==
+          result({p(0, 64), p(480, 64), p(480, 0)}, {1, 2}));
+}
+
+TEST_CASE("a pasted step to the same value or to the next tick gets no hold point", "[edit][controller][clipboard]")
+{
+    CHECK(ControllerPointEdits::paste({}, cc1, {{0, 10, false}, {480, 10, false}, {481, 20, false}}, 0) ==
+          result({p(0, 10), p(480, 10), p(481, 20)}, {0, 1, 2}));
 }
 
 TEST_CASE("pasting the same points leaves the events as they are", "[edit][controller][clipboard]")

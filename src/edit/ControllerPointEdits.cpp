@@ -1,4 +1,5 @@
 #include "edit/ControllerPointEdits.h"
+#include "model/ControllerPointConversion.h"
 #include <algorithm>
 #include <limits>
 #include <map>
@@ -93,6 +94,28 @@ Delta deltaOf(const std::vector<MidiEvent>& before, const ControllerKind& kind, 
     }
     return {std::max(targetTick - anchor.tick, -minTick),
             std::clamp(targetValue - kind.valueOf(anchor), -minValue, kind.maxValue() - maxValue)};
+}
+
+const MidiEvent* pointBefore(const std::vector<Entry>& kept, const ControllerKind& kind, int tick)
+{
+    const Entry* before = nullptr;
+    for (const auto& e : kept)
+        if (kind.matches(e.event) && e.event.tick < tick &&
+            (before == nullptr || std::tuple{e.event.tick, e.order} > std::tuple{before->event.tick, before->order}))
+            before = &e;
+    return before != nullptr ? &before->event : nullptr;
+}
+
+// For a controller that can ramp. The point the paste follows is converted along so the first step also gets its
+// hold point, then dropped.
+std::vector<MidiEvent> asRampPoints(const MidiEvent* before, std::vector<MidiEvent> pasted)
+{
+    if (before != nullptr)
+        pasted.insert(pasted.begin(), *before);
+    auto converted = convertStepsToPoints(pasted);
+    if (before != nullptr)
+        converted.erase(converted.begin());
+    return converted;
 }
 } // namespace
 
@@ -277,11 +300,19 @@ ControllerPointEditResult ControllerPointEdits::paste(const std::vector<MidiEven
                           replacedOrders[e.event.tick].push_back(e.order);
                       return replaced;
                   });
-    for (int i = 0; i < static_cast<int>(points.size()); ++i)
+    const MidiEvent* followed = pointBefore(entries, kind, firstTick);
+    std::vector<MidiEvent> pasted;
+    for (const auto& point : points)
     {
-        const auto& point = points[static_cast<size_t>(i)];
         auto event = kind.point(atTick + point.tick, point.value);
         event.ramp = kind.canRamp() && point.ramp;
+        pasted.push_back(event);
+    }
+    if (kind.canRamp())
+        pasted = asRampPoints(followed, std::move(pasted));
+    for (int i = 0; i < static_cast<int>(pasted.size()); ++i)
+    {
+        const auto& event = pasted[static_cast<size_t>(i)];
         int order = static_cast<int>(before.size()) + i;
         if (auto& orders = replacedOrders[event.tick]; !orders.empty())
         {
