@@ -31,15 +31,17 @@ struct ControllerKind
 
     int maxValue() const { return type == MidiEvent::Type::PitchBend ? 16383 : 127; }
 
-    // Filling in values between points would send bank changes, parameter edits or channel mode messages.
+    // Filling in values between points would send bank changes, parameter edits, half-pressed pedals or channel mode
+    // messages.
     bool canRamp() const
     {
         if (type == MidiEvent::Type::PitchBend)
             return true;
         const bool bankSelect = number == 0 || number == 32;
         const bool parameter = number == 6 || number == 38 || (number >= 96 && number <= 101);
+        const bool pedal = number >= 64 && number <= 69;
         const bool channelMode = number >= 120;
-        return !bankSelect && !parameter && !channelMode;
+        return !bankSelect && !parameter && !pedal && !channelMode;
     }
 
     MidiEvent point(int tick, int value) const

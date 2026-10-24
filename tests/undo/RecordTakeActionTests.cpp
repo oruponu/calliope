@@ -164,19 +164,18 @@ TEST_CASE("a value recorded inside a held stretch is held until the next switch"
           std::vector<MidiEvent>{point(0, 50), point(480, 50), point(480, 80), point(960, 80), point(960, 100)});
 }
 
-TEST_CASE("a pedal lift recorded before a held release plays without a ramp", "[undo][record]")
+TEST_CASE("a drop recorded before a held drop plays without a ramp", "[undo][record]")
 {
-    const auto pedal = [](int tick, int value, bool ramp)
+    const auto point = [](int tick, int value)
     {
         return MidiEvent{
-            .type = MidiEvent::Type::ControlChange, .tick = tick, .data1 = 64, .data2 = value, .ramp = ramp};
+            .type = MidiEvent::Type::ControlChange, .tick = tick, .data1 = 7, .data2 = value, .ramp = true};
     };
     MidiSequence seq;
-    const TrackId id =
-        seq.addTrack(trackWith({}, {pedal(0, 127, true), pedal(1920, 127, true), pedal(1920, 0, true)})).getId();
-    RecordTakeAction action(&seq, Take{{id, {{}, {pedal(960, 0, false)}}}});
+    const TrackId id = seq.addTrack(trackWith({}, {point(0, 127), point(1920, 127), point(1920, 0)})).getId();
+    RecordTakeAction action(&seq, Take{{id, {{}, {ccAt(960, 0)}}}});
 
     action.perform();
     CHECK(expandControllerRamps(seq.getTrack(0).getEvents()) ==
-          std::vector<MidiEvent>{pedal(0, 127, false), pedal(960, 0, false), pedal(1920, 0, false)});
+          std::vector<MidiEvent>{ccAt(0, 127), ccAt(960, 0), ccAt(1920, 0)});
 }

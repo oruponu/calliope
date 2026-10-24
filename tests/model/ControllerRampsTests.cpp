@@ -84,15 +84,9 @@ TEST_CASE("pitch bend ramps across its full range", "[model][ramp]")
 
 TEST_CASE("controllers that must not ramp are stepped", "[model][ramp]")
 {
-    const int number = GENERATE(0, 6, 32, 38, 96, 101, 120, 127);
+    const int number = GENERATE(0, 6, 32, 38, 64, 69, 96, 101, 120, 127);
     CHECK(expandControllerRamps({cc(0, number, 0), cc(4, number, 4, true)}) ==
           Events{cc(0, number, 0), cc(4, number, 4)});
-}
-
-TEST_CASE("pedals ramp like other controllers", "[model][ramp]")
-{
-    CHECK(expandControllerRamps({cc(0, 64, 0), cc(2, 64, 127, true)}) ==
-          Events{cc(0, 64, 0), cc(1, 64, 64), cc(2, 64, 127)});
 }
 
 TEST_CASE("events out of tick order are expanded in tick order", "[model][ramp]")

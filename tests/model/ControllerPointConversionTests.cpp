@@ -47,8 +47,9 @@ TEST_CASE("an unchanged value needs no hold point", "[model][ramp]")
 
 TEST_CASE("controllers that must not ramp stay steps", "[model][ramp]")
 {
-    const Events events{cc(0, 0, 1), cc(960, 0, 2), cc(0, 101, 0), cc(960, 101, 127)};
-    CHECK(convertStepsToPoints(events) == Events{cc(0, 0, 1), cc(0, 101, 0), cc(960, 0, 2), cc(960, 101, 127)});
+    const Events events{cc(0, 0, 1), cc(960, 0, 2), cc(0, 64, 127), cc(960, 64, 0), cc(0, 101, 0), cc(960, 101, 127)};
+    CHECK(convertStepsToPoints(events) == Events{cc(0, 0, 1), cc(0, 64, 127), cc(0, 101, 0), cc(960, 0, 2),
+                                                 cc(960, 64, 0), cc(960, 101, 127)});
 }
 
 TEST_CASE("converting twice changes nothing", "[model][ramp]")
@@ -69,10 +70,10 @@ TEST_CASE("a pitch bend step becomes a hold point and a ramp point", "[model][ra
           Events{pb(0, 8192, true), pb(480, 8192, true), pb(480, 0, true)});
 }
 
-TEST_CASE("a pedal pressed again on one tick keeps its order", "[model][ramp]")
+TEST_CASE("a value sent again on one tick keeps its order", "[model][ramp]")
 {
-    CHECK(convertStepsToPoints({cc(0, 64, 127), cc(960, 64, 0), cc(960, 64, 127)}) ==
-          Events{cc(0, 64, 127, true), cc(960, 64, 127, true), cc(960, 64, 0, true), cc(960, 64, 127, true)});
+    CHECK(convertStepsToPoints({cc(0, 11, 127), cc(960, 11, 0), cc(960, 11, 127)}) ==
+          Events{cc(0, 11, 127, true), cc(960, 11, 127, true), cc(960, 11, 0, true), cc(960, 11, 127, true)});
 }
 
 TEST_CASE("converted steps play and export as the original events", "[model][ramp]")
@@ -93,7 +94,7 @@ TEST_CASE("a point overwritten on its own tick without a change is not sent", "[
 
 TEST_CASE("a point that changes the value is sent even when overwritten on its tick", "[model][ramp]")
 {
-    CHECK(unsentControllerPoints({cc(0, 64, 127, true), cc(960, 64, 0, true), cc(960, 64, 127, true)}) ==
+    CHECK(unsentControllerPoints({cc(0, 11, 127, true), cc(960, 11, 0, true), cc(960, 11, 127, true)}) ==
           std::vector<bool>{false, false, false});
 }
 
