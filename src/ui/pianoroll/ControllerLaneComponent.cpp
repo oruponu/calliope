@@ -398,6 +398,11 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
         publishDragPreview();
         repaint();
     }
+    else
+    {
+        // Pressed between bars, so the drag still sets the bars it crosses.
+        drag = VelocityDragging{activeTrackIndex, e.x, {}};
+    }
 }
 
 void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
