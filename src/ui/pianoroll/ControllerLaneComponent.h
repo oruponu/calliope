@@ -213,6 +213,8 @@ private:
         bool changed = false;
         ControllerPointEditResult preview;
         std::optional<ValueTip> tip;
+        // Set when the point was added on the line by this press; the add is applied with the drag as one edit.
+        std::optional<std::vector<MidiEvent>> beforeAdd;
     };
     struct PointRangeSelecting
     {

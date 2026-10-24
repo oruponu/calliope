@@ -523,10 +523,16 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
 
     if (const auto* pointDragging = std::get_if<PointDragging>(&state))
     {
-        // An edit made elsewhere during the drag leaves before stale; applying it would undo that edit.
+        // An edit made elsewhere during the drag leaves base stale; applying it would undo that edit.
+        const auto& base = pointDragging->beforeAdd ? *pointDragging->beforeAdd : pointDragging->before;
         const bool stillCurrent = pointDragging->trackIndex == activeTrackIndex && hasActiveTrack() &&
-                                  sequence->getTrack(activeTrackIndex).getEvents() == pointDragging->before;
-        if (pointDragging->changed && stillCurrent)
+                                  sequence->getTrack(activeTrackIndex).getEvents() == base;
+        if (pointDragging->beforeAdd)
+        {
+            if (stillCurrent)
+                applyPointEdit("Add Controller Point", base, pointDragging->preview);
+        }
+        else if (pointDragging->changed && stillCurrent)
             applyPointEdit("Move Controller Points", pointDragging->before, pointDragging->preview);
         else if (!pointDragging->changed)
             selectPoints({pointDragging->anchor});
@@ -1279,9 +1285,13 @@ void ControllerLaneComponent::pointMouseDown(const juce::MouseEvent& e, const Co
         const bool taken = std::ranges::any_of(events, [&](const MidiEvent& event)
                                                { return kind.matches(event) && event.tick == tick; });
         if (!taken)
-            applyPointEdit("Add Controller Point", events,
-                           ControllerPointEdits::add(events, kind, tick,
-                                                     controllerLineValueAt(events, kind, tick).value_or(*lineValue)));
+        {
+            auto added = ControllerPointEdits::add(events, kind, tick,
+                                                   controllerLineValueAt(events, kind, tick).value_or(*lineValue));
+            const int anchor = *added.selected.begin();
+            drag = PointDragging{activeTrackIndex, added.events, added.selected, anchor, false, added, {}, events};
+            repaint();
+        }
         return;
     }
 
