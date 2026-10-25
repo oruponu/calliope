@@ -295,8 +295,11 @@ void EventListComponent::rebuildList()
 
     auto rebuilt = sequence != nullptr ? EventListItems::build(*sequence, selectedTracks, recordingLayer, dragPreview)
                                        : std::vector<EventListItem>{};
-    // Rows reorder when notes move, so the selection follows the notes and events rather than the row numbers.
-    const auto reselected = RowSelection::fromRows(EventListItems::reselectedRows(items, selectedRows, rebuilt));
+    // Rows reorder when notes move, so the selection follows the notes and events rather than the row numbers. Dragged
+    // points change their values, so they are found by their indices in the drag instead.
+    const auto reselected = RowSelection::fromRows(dragPreview.draggedEvents.has_value()
+                                                       ? EventListItems::draggedRows(rebuilt, dragPreview)
+                                                       : EventListItems::reselectedRows(items, selectedRows, rebuilt));
     items = std::move(rebuilt);
 
     // updateContent tells the model when it drops selected rows past the end, and the model would read those stale

@@ -40,10 +40,11 @@ namespace EventListItems
 {
 // The shown tracks' notes and events, then the recording layer's, by tick, then track, then kind. Held notes are
 // left out. A note the preview changes is listed as the preview shows it, and the preview's draft note is added when
-// its track is shown.
+// its track is shown. The events of the track whose points the preview drags are listed as the preview shows them.
 std::vector<EventListItem> build(const MidiSequence& sequence, const std::set<int>& tracks, const RecordingLayer* layer,
                                  const NoteDragPreview& preview = {});
-// The draft row while drawing, otherwise the focus note's row.
+// The grabbed point's row while dragging points, or the first dragged row when that is not listed; the draft row while
+// drawing; otherwise the focus note's row.
 std::optional<int> focusRow(const std::vector<EventListItem>& items, const NoteDragPreview& preview);
 NoteRef noteRefOf(const EventListItem& item);
 // The first row at the tick when one is there, otherwise the last row before it, or the first row; -1 for no rows.
@@ -55,8 +56,11 @@ bool isSameEvent(const EventListItem& a, const EventListItem& b);
 // values and its place among the equal events.
 std::vector<int> reselectedRows(const std::vector<EventListItem>& before, const std::vector<int>& selected,
                                 const std::vector<EventListItem>& after);
-// The rows, in order, of the sequence's events on the track whose indices are given.
+// The rows, in order, of the non-recorded events on the track whose indices are given; while points are dragged,
+// the indices are into the drag's events.
 std::vector<int> eventRows(const std::vector<EventListItem>& items, int trackIndex, const std::set<int>& eventIndices);
+// The rows, in order, of the points the preview drags; none when it drags no points.
+std::vector<int> draggedRows(const std::vector<EventListItem>& items, const NoteDragPreview& preview);
 // The controller of a control change or pitch bend row in the sequence; none for other rows and recorded ones.
 std::optional<ControllerKind> controllerOf(const EventListItem& item);
 // The event indices of the selected rows that hold the clicked row's controller on its track.

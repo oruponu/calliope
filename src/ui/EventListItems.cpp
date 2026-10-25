@@ -70,10 +70,13 @@ std::vector<EventListItem> EventListItems::build(const MidiSequence& sequence, c
         const auto& track = sequence.getTrack(trackIdx);
         for (int i = 0; i < track.getNumNotes(); ++i)
             items.push_back(noteItem(shown({trackIdx, i}, track.getNote(i)), trackIdx, i));
-        const auto unsent = unsentControllerPoints(track.getEvents());
-        for (int i = 0; i < track.getNumEvents(); ++i)
+        const auto& dragged = preview.draggedEvents;
+        const auto& events =
+            dragged.has_value() && dragged->trackIndex == trackIdx ? dragged->events : track.getEvents();
+        const auto unsent = unsentControllerPoints(events);
+        for (int i = 0; i < static_cast<int>(events.size()); ++i)
             if (!unsent[static_cast<size_t>(i)])
-                items.push_back(eventItem(track.getEvent(i), trackIdx, i));
+                items.push_back(eventItem(events[static_cast<size_t>(i)], trackIdx, i));
 
         if (layer == nullptr)
             continue;
@@ -200,6 +203,16 @@ std::vector<int> EventListItems::reselectedRows(const std::vector<EventListItem>
 
 std::optional<int> EventListItems::focusRow(const std::vector<EventListItem>& items, const NoteDragPreview& preview)
 {
+    if (const auto& dragged = preview.draggedEvents)
+    {
+        if (const auto grabbedRows = eventRows(items, dragged->trackIndex, {dragged->grabbed}); !grabbedRows.empty())
+            return grabbedRows.front();
+        const auto rows = draggedRows(items, preview);
+        if (rows.empty())
+            return std::nullopt;
+        return rows.front();
+    }
+
     const auto it =
         std::ranges::find_if(items,
                              [&preview](const EventListItem& item)
@@ -227,6 +240,13 @@ std::vector<int> EventListItems::eventRows(const std::vector<EventListItem>& ite
             rows.push_back(row);
     }
     return rows;
+}
+
+std::vector<int> EventListItems::draggedRows(const std::vector<EventListItem>& items, const NoteDragPreview& preview)
+{
+    if (!preview.draggedEvents.has_value())
+        return {};
+    return eventRows(items, preview.draggedEvents->trackIndex, preview.draggedEvents->dragged);
 }
 
 std::optional<ControllerKind> EventListItems::controllerOf(const EventListItem& item)

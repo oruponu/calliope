@@ -356,6 +356,81 @@ TEST_CASE("there is no focus row without a focus note or one that is listed", "[
     CHECK_FALSE(EventListItems::focusRow(items, NoteDragPreview{.dragging = true, .focus = {0, 5}}).has_value());
 }
 
+TEST_CASE("dragged points are listed where the drag shows them", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 480, 480}}, {cc(0, 7, 10), cc(960, 7, 20)}));
+    NoteDragPreview preview{.dragging = true};
+    preview.draggedEvents = DraggedEvents{0, {cc(960, 7, 20), cc(1440, 7, 50)}, {1}};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    CHECK(ticksOf(items) == std::vector{480, 960, 1440});
+    CHECK(sourcesOf(items) == std::vector{0, 0, 1});
+    CHECK(items[2].data2 == 50);
+}
+
+TEST_CASE("a point drag leaves the other tracks' events as they are", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({}, {cc(0, 7, 10)}));
+    seq.addTrack(trackWith({}, {cc(480, 7, 20)}));
+    NoteDragPreview preview{.dragging = true};
+    preview.draggedEvents = DraggedEvents{1, {cc(960, 7, 30)}, {0}};
+    const auto items = EventListItems::build(seq, {0, 1}, nullptr, preview);
+    CHECK(ticksOf(items) == std::vector{0, 960});
+    CHECK(tracksOf(items) == std::vector{0, 1});
+}
+
+TEST_CASE("hold points the drag shows that are not sent are not listed", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    NoteDragPreview preview{.dragging = true};
+    preview.draggedEvents = DraggedEvents{0,
+                                          {{MidiEvent::Type::ControlChange, 0, 11, 50, true},
+                                           {MidiEvent::Type::ControlChange, 1920, 11, 50, true},
+                                           {MidiEvent::Type::ControlChange, 1920, 11, 100, true}},
+                                          {2}};
+    CHECK(sourcesOf(EventListItems::build(seq, {0}, nullptr, preview)) == std::vector{0, 2});
+}
+
+TEST_CASE("the dragged rows are the rows of the dragged points", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 480, 480}}, {cc(0, 7, 10), cc(960, 7, 20)}));
+    NoteDragPreview preview{.dragging = true};
+    preview.draggedEvents = DraggedEvents{0, {cc(0, 7, 10), cc(240, 7, 15), cc(1440, 7, 20)}, {1, 2}};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    CHECK(EventListItems::draggedRows(items, preview) == std::vector{1, 3});
+}
+
+TEST_CASE("there are no dragged rows without a point drag", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({}, {cc(0, 7, 10)}));
+    const auto items = EventListItems::build(seq, {0}, nullptr);
+    CHECK(EventListItems::draggedRows(items, NoteDragPreview{.dragging = true}).empty());
+}
+
+TEST_CASE("the focus row is the grabbed point's row", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 480, 480}}, {cc(0, 7, 10), cc(960, 7, 20)}));
+    NoteDragPreview preview{.dragging = true};
+    preview.draggedEvents = DraggedEvents{0, {cc(0, 7, 10), cc(720, 7, 15), cc(1440, 7, 20)}, {1, 2}, 2};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    CHECK(EventListItems::focusRow(items, preview) == 3);
+}
+
+TEST_CASE("without a grabbed point the focus row is the first dragged point's row", "[ui][event-list]")
+{
+    MidiSequence seq;
+    seq.addTrack(trackWith({{60, 100, 480, 480}}, {cc(0, 7, 10), cc(960, 7, 20)}));
+    NoteDragPreview preview{.dragging = true};
+    preview.draggedEvents = DraggedEvents{0, {cc(0, 7, 10), cc(720, 7, 15), cc(1440, 7, 20)}, {1, 2}};
+    const auto items = EventListItems::build(seq, {0}, nullptr, preview);
+    CHECK(EventListItems::focusRow(items, preview) == 2);
+}
+
 TEST_CASE("hold points that are not sent are not listed", "[ui][event-list]")
 {
     MidiSequence seq;

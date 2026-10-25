@@ -482,6 +482,7 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
         if (const auto landed = ControllerPointEdits::movedAnchor(pointDragging->before, *kind, pointDragging->moved,
                                                                   pointDragging->anchor, tick, value))
             pointDragging->tip = ValueTip{e.getPosition(), *landed};
+        publishDragPreview();
         repaint();
         return;
     }
@@ -911,6 +912,23 @@ int ControllerLaneComponent::displayedVelocity(const NoteRef& ref, int velocity)
 NoteDragPreview ControllerLaneComponent::dragPreview() const
 {
     NoteDragPreview preview;
+    if (const auto* pointDragging = std::get_if<PointDragging>(&drag))
+    {
+        preview.dragging = true;
+        const auto& [events, selected] = pointDragging->preview;
+        preview.draggedEvents = DraggedEvents{pointDragging->trackIndex, events, selected};
+        // The tip holds the point the anchor became, so the grabbed point is the moved point equal to it.
+        if (pointDragging->tip)
+        {
+            const auto& landed = pointDragging->tip->anchor;
+            const auto it = std::ranges::find_if(selected, [&events, &landed](int i)
+                                                 { return events[static_cast<size_t>(i)] == landed; });
+            if (it != selected.end())
+                preview.draggedEvents->grabbed = *it;
+        }
+        return preview;
+    }
+
     const auto* dragging = std::get_if<VelocityDragging>(&drag);
     if (dragging == nullptr || !sequence)
         return preview;
