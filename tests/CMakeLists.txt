@@ -130,6 +130,7 @@ target_sources(CalliopeTests PRIVATE
     ui/EditClipboardTests.cpp
     ui/EventListItemsTests.cpp
     ui/IndexSelectionTests.cpp
+    ui/ProgramBrowserStateTests.cpp
     ui/RangeSelectGestureTests.cpp
     ui/RowSelectionTests.cpp
     ui/TimelineGeometryTests.cpp

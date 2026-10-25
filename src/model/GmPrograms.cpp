@@ -37,9 +37,17 @@ const char* const programNames[] = {
     "Guitar Fret Noise", "Breath Noise", "Seashore", "Bird Tweet",
     "Telephone Ring", "Helicopter", "Applause", "Gunshot",
 };
+
+const char* const familyNames[] = {
+    "Piano", "Chromatic Percussion", "Organ", "Guitar",
+    "Bass", "Strings", "Ensemble", "Brass",
+    "Reed", "Pipe", "Synth Lead", "Synth Pad",
+    "Synth Effects", "Ethnic", "Percussive", "Sound Effects",
+};
 // clang-format on
 
 static_assert(sizeof(programNames) / sizeof(programNames[0]) == GmPrograms::programCount);
+static_assert(sizeof(familyNames) / sizeof(familyNames[0]) == GmPrograms::familyCount);
 } // namespace
 
 const char* GmPrograms::programName(int program)
@@ -47,4 +55,11 @@ const char* GmPrograms::programName(int program)
     if (program < 0 || program >= programCount)
         return nullptr;
     return programNames[program];
+}
+
+const char* GmPrograms::familyName(int family)
+{
+    if (family < 0 || family >= familyCount)
+        return nullptr;
+    return familyNames[family];
 }
