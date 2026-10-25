@@ -39,6 +39,7 @@ target_sources(Calliope PRIVATE
     src/edit/LayeredNoteEdits.cpp
     src/edit/NoteEdits.cpp
     src/edit/NoteQuantize.cpp
+    src/edit/ProgramChangeEdits.cpp
     src/edit/TempoEdits.cpp
     src/edit/TimeSignatureEdits.cpp
     src/engine/Chase.cpp

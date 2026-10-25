@@ -60,7 +60,8 @@ public:
     void setEditToolSelected(bool editTool);
     void setSnapEnabled(bool enabled);
     void clearPointSelection();
-    // Whether points of the shown controller are selected on the active track.
+    // Whether points of the shown controller are selected on the active track; never for program changes, which cannot
+    // be cut or copied.
     bool hasPointSelection() const;
     // Whether the shown controller has points on the active track.
     bool canSelectAllPoints() const;
@@ -69,8 +70,8 @@ public:
     void showAndSelectPoints(const ControllerKind& kind, std::set<int> eventIndices);
     void copySelectedPoints();
     void cutSelectedPoints();
-    // Whether the clipboard's points can go into the shown controller: same value range, so control change to control
-    // change or pitch bend to pitch bend.
+    // Whether the clipboard's points can go into the shown controller: only the event type must match, so control
+    // change points go into any control change number.
     bool canPastePoints() const;
     void pastePoints(int atTick);
     void recordingLayerChanged();
@@ -136,17 +137,20 @@ private:
                        float alpha, std::function<int(int)> toY);
     std::vector<std::pair<int, int>>
     recordedValues(int trackIndex, const std::function<std::optional<int>(const MidiEvent&)>& valueOf) const;
-    void drawProgramBlocks(juce::Graphics& g, const std::vector<std::pair<int, int>>& events, juce::Colour colour,
-                           float alpha);
+    void drawProgramChanges(juce::Graphics& g, const std::vector<std::pair<int, int>>& events, juce::Colour colour,
+                            float alpha, const std::set<int>& selectedTicks = {});
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
     void drawDragValueTip(juce::Graphics& g);
 
     int xToTick(int x) const;
+    bool showsProgramChange() const;
     std::optional<ControllerKind> editedKind() const;
     const std::vector<MidiEvent>& displayedEvents(int trackIndex) const;
     std::set<int> displayedSelection() const;
     int hitTestPoint(int x, int y) const;
+    // The last program change whose label is under x on the active track; -1 for none or the label panel.
+    int hitTestLabel(int x) const;
     int pointY(const ControllerKind& kind, int value) const;
     int valueAtY(const ControllerKind& kind, int y) const;
     TimelineGrid snapGrid(const juce::ModifierKeys& mods) const;

@@ -52,7 +52,7 @@ std::vector<Entry> entriesOf(const std::vector<MidiEvent>& events)
 void setValueOf(const ControllerKind& kind, MidiEvent& event, int value)
 {
     const int clamped = std::clamp(value, 0, kind.maxValue());
-    if (kind.type == MidiEvent::Type::PitchBend)
+    if (kind.type != MidiEvent::Type::ControlChange)
         event.data1 = clamped;
     else
         event.data2 = clamped;

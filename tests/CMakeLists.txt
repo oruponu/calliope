@@ -9,6 +9,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/LayeredNoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/NoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/NoteQuantize.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/ProgramChangeEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/Chase.cpp
@@ -75,6 +76,8 @@ target_sources(CalliopeTests PRIVATE
     edit/NoteQuantizeTests.cpp
     edit/NoteShiftTests.cpp
     edit/NoteStartResizeTests.cpp
+    edit/ProgramChangeEditsTests.cpp
+    edit/ProgramChangePointTests.cpp
     edit/TempoAddChangeTests.cpp
     edit/TempoDeleteTests.cpp
     edit/TempoMoveTests.cpp
@@ -104,6 +107,7 @@ target_sources(CalliopeTests PRIVATE
     io/XmlNumberTextTests.cpp
     model/BarBeatTickTests.cpp
     model/ChordChangeTests.cpp
+    model/ControllerKindTests.cpp
     model/ControllerLineValueTests.cpp
     model/ControllerPointConversionTests.cpp
     model/ControllerRampsTests.cpp

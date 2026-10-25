@@ -2,6 +2,7 @@
 #include "edit/ControllerPointEdits.h"
 #include "edit/LayeredNoteEdits.h"
 #include "edit/NoteEdit.h"
+#include "edit/ProgramChangeEdits.h"
 #include "model/ControllerLineValue.h"
 #include "model/GmPrograms.h"
 #include "model/TimelineGrid.h"
@@ -34,6 +35,24 @@ juce::String ccLabel(int cc)
         if (entry.cc == cc)
             return entry.name;
     return "CC " + juce::String(cc);
+}
+
+// Space between a program change label's edges and its text.
+constexpr int programLabelInset = 5;
+
+juce::String programLabel(int program)
+{
+    juce::String label(program);
+    if (const char* name = GmPrograms::programName(program))
+        label += " " + juce::String(name);
+    return label;
+}
+
+int programLabelWidth(int program)
+{
+    using namespace calliope::theme;
+    return juce::GlyphArrangement::getStringWidthInt(font::sans(font::sizeSM), programLabel(program)) +
+           2 * programLabelInset;
 }
 } // namespace
 
@@ -324,6 +343,54 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
     if (onLabelPanel)
         return;
 
+    if (showsProgramChange())
+    {
+        const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+        const int hit = hitTestLabel(e.x);
+        if (hit >= 0)
+        {
+            const auto block = ProgramChangeEdits::onTick(events, events[static_cast<size_t>(hit)].tick);
+            if (e.mods.isShiftDown())
+            {
+                auto selected = pointSelection.indices();
+                const bool allSelected =
+                    std::ranges::all_of(block, [&selected](int index) { return selected.contains(index); });
+                for (int index : block)
+                {
+                    if (allSelected)
+                        selected.erase(index);
+                    else
+                        selected.insert(index);
+                }
+                selectPoints(std::move(selected));
+                return;
+            }
+
+            const bool hasSelectedBlock =
+                std::ranges::any_of(block, [this](int index) { return pointSelection.contains(index); });
+            const bool hasSelectionOutsideBlock =
+                std::ranges::any_of(pointSelection.indices(), [&block](int index) { return !block.contains(index); });
+            auto moved = block;
+            if (hasSelectedBlock && hasSelectionOutsideBlock)
+                moved.insert(pointSelection.indices().begin(), pointSelection.indices().end());
+            drag = PointDragging{activeTrackIndex, events, moved, hit, false, {events, moved}};
+            repaint();
+            return;
+        }
+
+        if (editToolSelected != e.mods.isCommandDown())
+            return;
+
+        drag = PointRangeSelecting{{e.x, e.x, e.mods.isShiftDown() ? pointSelection.indices() : std::set<int>{}}};
+        if (!e.mods.isShiftDown())
+        {
+            pointSelection.clear();
+            publishPointSelection();
+        }
+        repaint();
+        return;
+    }
+
     if (kind)
     {
         pointMouseDown(e, *kind);
@@ -393,9 +460,11 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
         const int tick = ControllerLaneScale::draggedTick(anchor.tick, tickToX(anchor.tick),
                                                           e.getDistanceFromDragStartX(), [this, &e](int x)
                                                           { return std::max(0, snapGrid(e.mods).round(xToTick(x))); });
-        const int value = ControllerLaneScale::draggedValue(kind->valueOf(anchor), pointY(*kind, kind->valueOf(anchor)),
-                                                            e.getDistanceFromDragStartY(),
-                                                            [this, &kind](int y) { return valueAtY(*kind, y); });
+        const int value = showsProgramChange()
+                              ? kind->valueOf(anchor)
+                              : ControllerLaneScale::draggedValue(
+                                    kind->valueOf(anchor), pointY(*kind, kind->valueOf(anchor)),
+                                    e.getDistanceFromDragStartY(), [this, &kind](int y) { return valueAtY(*kind, y); });
         pointDragging->preview = ControllerPointEdits::move(pointDragging->before, *kind, pointDragging->moved,
                                                             pointDragging->anchor, tick, value);
         pointDragging->changed = pointDragging->preview.events != pointDragging->before;
@@ -497,9 +566,19 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
                 applyPointEdit("Add Controller Point", base, pointDragging->preview);
         }
         else if (pointDragging->changed && stillCurrent)
-            applyPointEdit("Move Controller Points", pointDragging->before, pointDragging->preview);
+            applyPointEdit(showsProgramChange() ? "Move Program Changes" : "Move Controller Points",
+                           pointDragging->before, pointDragging->preview);
         else if (!pointDragging->changed)
-            selectPoints({pointDragging->anchor});
+        {
+            if (showsProgramChange())
+            {
+                const int tick = pointDragging->before[static_cast<size_t>(pointDragging->anchor)].tick;
+                const auto block = ProgramChangeEdits::onTick(pointDragging->before, tick);
+                selectPoints(block);
+            }
+            else
+                selectPoints({pointDragging->anchor});
+        }
         repaint();
         return;
     }
@@ -531,6 +610,9 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
 
 void ControllerLaneComponent::mouseDoubleClick(const juce::MouseEvent& e)
 {
+    if (showsProgramChange())
+        return;
+
     const int pressed = std::exchange(doubleClickPoint, -1);
     if (pressed < 0 || e.mods.isPopupMenu() || e.mods.isShiftDown() || valueEditSession.isOpen() ||
         hitTestPoint(e.x, e.y) != pressed)
@@ -895,21 +977,28 @@ void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
         if (trackIdx < 0 || trackIdx >= sequence->getNumTracks())
             continue;
 
-        const auto& track = sequence->getTrack(trackIdx);
+        const auto& trackEvents = displayedEvents(trackIdx);
         bool isActive = (trackIdx == activeTrackIndex);
         float alpha = isActive ? 0.85f : 0.3f;
 
         std::vector<std::pair<int, int>> events;
-        for (int i = 0; i < track.getNumEvents(); ++i)
+        std::set<int> selectedTicks;
+        const auto selected = isActive ? displayedSelection() : std::set<int>{};
+        for (int i = 0; i < static_cast<int>(trackEvents.size()); ++i)
         {
-            const auto& event = track.getEvent(i);
+            const auto& event = trackEvents[static_cast<size_t>(i)];
             if (event.type == MidiEvent::Type::ProgramChange)
+            {
                 events.push_back({event.tick, event.data1});
+                if (selected.contains(i))
+                    selectedTicks.insert(event.tick);
+            }
         }
+        std::ranges::stable_sort(events, {}, &std::pair<int, int>::first);
 
         auto colour = TrackColours::getColour(trackIdx);
         if (!events.empty())
-            drawProgramBlocks(g, events, colour, alpha);
+            drawProgramChanges(g, events, colour, alpha, selectedTicks);
 
         const auto recorded = recordedValues(trackIdx,
                                              [](const MidiEvent& e) -> std::optional<int>
@@ -919,20 +1008,22 @@ void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
                                                  return std::nullopt;
                                              });
         if (!recorded.empty())
-            drawProgramBlocks(g, recorded, calliope::theme::status::danger, 0.85f);
+            drawProgramChanges(g, recorded, calliope::theme::status::danger, 0.85f);
     }
 }
 
-void ControllerLaneComponent::drawProgramBlocks(juce::Graphics& g, const std::vector<std::pair<int, int>>& events,
-                                                juce::Colour colour, float alpha)
+void ControllerLaneComponent::drawProgramChanges(juce::Graphics& g, const std::vector<std::pair<int, int>>& events,
+                                                 juce::Colour colour, float alpha, const std::set<int>& selectedTicks)
 {
     using namespace calliope::theme;
     auto* vp = findParentComponentOfClass<juce::Viewport>();
     int visibleLeft = vp ? vp->getViewPositionX() : 0;
     int visibleRight = vp ? visibleLeft + vp->getViewWidth() : getWidth();
-    auto blockArea = juce::Rectangle<int>(0, getDrawAreaTop(), getWidth(), getDrawAreaHeight()).reduced(0, 2);
+    const auto labelFont = font::sans(font::sizeSM);
+    const int labelHeight = juce::roundToInt(labelFont.getHeight()) + 4;
+    const int labelY = getDrawAreaTop() + (getDrawAreaHeight() - labelHeight) / 2;
 
-    g.setFont(font::sans(font::sizeSM));
+    g.setFont(labelFont);
     for (size_t i = 0; i < events.size(); ++i)
     {
         int x1 = tickToX(events[i].first);
@@ -941,23 +1032,22 @@ void ControllerLaneComponent::drawProgramBlocks(juce::Graphics& g, const std::ve
         if (x2 < visibleLeft || x1 > visibleRight)
             continue;
 
-        auto rect = blockArea.withLeft(x1).withRight(x2).toFloat();
+        g.setColour(colour.withAlpha(alpha * 0.6f));
+        g.drawVerticalLine(x1, static_cast<float>(getDrawAreaTop()), static_cast<float>(getDrawAreaBottom()));
 
-        g.setColour(colour.withAlpha(alpha * 0.25f));
-        g.fillRoundedRectangle(rect, 3.0f);
+        const int labelRight = std::min(x1 + programLabelWidth(events[i].second), x2);
+        auto labelRect = juce::Rectangle<int>(x1, labelY, labelRight - x1, labelHeight);
+        const bool selected = selectedTicks.contains(events[i].first);
+        if (selected)
+        {
+            g.setColour(surface::selection);
+            g.fillRoundedRectangle(labelRect.toFloat(), radius::r1);
+        }
 
-        g.setColour(colour.withAlpha(alpha * 0.7f));
-        g.drawRoundedRectangle(rect, 3.0f, 1.0f);
-
-        int pgm = events[i].second;
-        juce::String text = juce::String(pgm);
-        if (const char* name = GmPrograms::programName(pgm))
-            text += " " + juce::String(name);
-
-        g.setColour(text::t1.withAlpha(alpha));
-        auto textRect = rect.reduced(5.0f, 0.0f);
-        if (textRect.getWidth() > 10.0f)
-            g.drawText(text, textRect, juce::Justification::centredLeft, true);
+        g.setColour((selected ? colour.brighter(0.5f) : colour).withAlpha(alpha));
+        auto textRect = labelRect.reduced(programLabelInset, 0);
+        if (textRect.getWidth() > 10)
+            g.drawText(programLabel(events[i].second), textRect, juce::Justification::centredLeft, true);
     }
 }
 
@@ -1128,12 +1218,19 @@ void ControllerLaneComponent::drawControllerPoints(juce::Graphics& g, const Cont
     }
 }
 
+bool ControllerLaneComponent::showsProgramChange() const
+{
+    return displayMode == DisplayMode::ProgramChange;
+}
+
 std::optional<ControllerKind> ControllerLaneComponent::editedKind() const
 {
     if (displayMode == DisplayMode::ControlChange)
         return ControllerKind::controlChange(ccNumber);
     if (displayMode == DisplayMode::PitchBend)
         return ControllerKind::pitchBend();
+    if (showsProgramChange())
+        return ControllerKind::programChange();
     return std::nullopt;
 }
 
@@ -1167,7 +1264,7 @@ bool ControllerLaneComponent::hasActiveTrack() const
 int ControllerLaneComponent::hitTestPoint(int x, int y) const
 {
     const auto kind = editedKind();
-    if (!kind || !hasActiveTrack() || isOnLabelPanel(x))
+    if (!kind || showsProgramChange() || !hasActiveTrack() || isOnLabelPanel(x))
         return -1;
 
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
@@ -1187,6 +1284,24 @@ int ControllerLaneComponent::hitTestPoint(int x, int y) const
     }
     const int nearest = ControllerLaneScale::nearestWithin(offsets, pointHitRadius);
     return nearest < 0 ? -1 : points[static_cast<size_t>(nearest)];
+}
+
+int ControllerLaneComponent::hitTestLabel(int x) const
+{
+    if (!hasActiveTrack() || isOnLabelPanel(x))
+        return -1;
+
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    const auto tick = ProgramChangeEdits::blockTickAt(events, xToTick(x));
+    if (!tick)
+        return -1;
+    const auto block = ProgramChangeEdits::onTick(events, *tick);
+    if (block.empty())
+        return -1;
+
+    const int hit = *block.rbegin();
+    const int labelRight = tickToX(*tick) + programLabelWidth(events[static_cast<size_t>(hit)].data1);
+    return x < labelRight ? hit : -1;
 }
 
 int ControllerLaneComponent::pointY(const ControllerKind& kind, int value) const
@@ -1370,7 +1485,7 @@ void ControllerLaneComponent::mouseMove(const juce::MouseEvent& e)
 
 bool ControllerLaneComponent::hasPointSelection() const
 {
-    return editedKind() && hasActiveTrack() && !pointSelection.isEmpty();
+    return editedKind() && !showsProgramChange() && hasActiveTrack() && !pointSelection.isEmpty();
 }
 
 bool ControllerLaneComponent::canSelectAllPoints() const
@@ -1424,7 +1539,7 @@ bool ControllerLaneComponent::canPastePoints() const
 {
     const auto kind = editedKind();
     return clipboard.hasControllerPoints() && kind && hasActiveTrack() &&
-           kind->maxValue() == clipboard.getControllerPoints().kind.maxValue();
+           kind->acceptsPointsOf(clipboard.getControllerPoints().kind);
 }
 
 void ControllerLaneComponent::pastePoints(int atTick)
@@ -1448,6 +1563,7 @@ bool ControllerLaneComponent::keyPressed(const juce::KeyPress& key)
     if (!editedKind() || !hasActiveTrack() || pointSelection.isEmpty())
         return false;
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
-    applyPointEdit("Delete Controller Points", events, ControllerPointEdits::remove(events, pointSelection.indices()));
+    applyPointEdit(showsProgramChange() ? "Delete Program Changes" : "Delete Controller Points", events,
+                   ControllerPointEdits::remove(events, pointSelection.indices()));
     return true;
 }
