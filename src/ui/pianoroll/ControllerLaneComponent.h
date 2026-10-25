@@ -171,7 +171,7 @@ private:
     void commitValueEdit(int displayedValue);
     // Opens the browser on the program in effect at tick; anchorX is where the callout points.
     void openProgramBrowser(int tick, int anchorX);
-    void commitProgram(int program);
+    void commitProgram(const ProgramVoice& voice);
     int valueToY(int value) const;
     int yToValue(int y) const;
 

@@ -1510,19 +1510,19 @@ void ControllerLaneComponent::openProgramBrowser(int tick, int anchorX)
         return;
 
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
-    const int program = ProgramChangeEdits::voiceAt(events, tick).program;
+    const auto voice = ProgramChangeEdits::voiceAt(events, tick);
     const auto anchor = juce::Rectangle<int>(anchorX, getDrawAreaTop(), 1, getDrawAreaHeight());
 
     valueEditSession.close();
     programEditSession.close();
 
-    auto content = std::make_unique<ProgramBrowser>(program);
-    content->onCommit = [this](int selectedProgram) { commitProgram(selectedProgram); };
+    auto content = std::make_unique<ProgramBrowser>(voice);
+    content->onCommit = [this](const ProgramVoice& selectedVoice) { commitProgram(selectedVoice); };
     content->onCancel = [this]() { programEditSession.finish(); };
     programEditSession.open({activeTrackIndex, tick, events}, std::move(content), localAreaToGlobal(anchor));
 }
 
-void ControllerLaneComponent::commitProgram(int program)
+void ControllerLaneComponent::commitProgram(const ProgramVoice& voice)
 {
     const auto draft = programEditSession.finish();
     if (!showsProgramChange() || !hasActiveTrack() || draft.trackIndex != activeTrackIndex)
@@ -1533,7 +1533,7 @@ void ControllerLaneComponent::commitProgram(int program)
         return;
 
     const bool changesExisting = !ProgramChangeEdits::onTick(draft.eventsAtOpen, draft.tick).empty();
-    const auto result = ProgramChangeEdits::place(events, draft.tick, ProgramVoice{{}, program});
+    const auto result = ProgramChangeEdits::place(events, draft.tick, voice);
     if (result.events == events)
         selectPoints(result.selected);
     else
