@@ -283,6 +283,8 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
         return;
     if (activeTrackIndex < 0 || activeTrackIndex >= sequence->getNumTracks())
         return;
+    if (programEditSession.isOpen())
+        return;
 
     const auto kind = editedKind();
     const bool onLabelPanel = isOnLabelPanel(e.x);
@@ -379,7 +381,11 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
         }
 
         if (editToolSelected != e.mods.isCommandDown())
+        {
+            const int tick = std::max(0, snapGrid(e.mods).round(xToTick(e.x)));
+            openProgramBrowser(tick, tickToX(tick));
             return;
+        }
 
         drag = PointRangeSelecting{{e.x, e.x, e.mods.isShiftDown() ? pointSelection.indices() : std::set<int>{}}};
         if (!e.mods.isShiftDown())
@@ -574,7 +580,10 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
             {
                 const int tick = pointDragging->before[static_cast<size_t>(pointDragging->anchor)].tick;
                 const auto block = ProgramChangeEdits::onTick(pointDragging->before, tick);
-                selectPoints(block);
+                if (block == pointSelection.indices() && !programEditSession.isOpen())
+                    openProgramBrowser(tick, tickToX(tick));
+                else
+                    selectPoints(block);
             }
             else
                 selectPoints({pointDragging->anchor});
@@ -610,8 +619,19 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
 
 void ControllerLaneComponent::mouseDoubleClick(const juce::MouseEvent& e)
 {
-    if (showsProgramChange())
+    if (programEditSession.isOpen())
         return;
+
+    if (showsProgramChange())
+    {
+        if (!hasActiveTrack() || e.mods.isPopupMenu() || e.mods.isShiftDown() ||
+            editToolSelected != e.mods.isCommandDown() || isOnLabelPanel(e.x) || hitTestLabel(e.x) >= 0)
+            return;
+
+        const int tick = std::max(0, snapGrid(e.mods).round(xToTick(e.x)));
+        openProgramBrowser(tick, tickToX(tick));
+        return;
+    }
 
     const int pressed = std::exchange(doubleClickPoint, -1);
     if (pressed < 0 || e.mods.isPopupMenu() || e.mods.isShiftDown() || valueEditSession.isOpen() ||
@@ -1429,6 +1449,7 @@ void ControllerLaneComponent::resetPointEditing()
     pointSelection.clear();
     doubleClickPoint = -1;
     valueEditSession.close();
+    programEditSession.close();
     publishPointSelection();
 }
 
@@ -1471,6 +1492,42 @@ void ControllerLaneComponent::commitValueEdit(int displayedValue)
     const auto result = ControllerPointEdits::setValue(events, *kind, draft.eventIndex, value);
     if (result.events != events)
         applyPointEdit("Edit Controller Value", events, result);
+}
+
+void ControllerLaneComponent::openProgramBrowser(int tick, int anchorX)
+{
+    if (!hasActiveTrack())
+        return;
+
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    const int program = ProgramChangeEdits::programAt(events, tick);
+    const auto anchor = juce::Rectangle<int>(anchorX, getDrawAreaTop(), 1, getDrawAreaHeight());
+
+    valueEditSession.close();
+    programEditSession.close();
+
+    auto content = std::make_unique<ProgramBrowser>(program);
+    content->onCommit = [this](int selectedProgram) { commitProgram(selectedProgram); };
+    content->onCancel = [this]() { programEditSession.finish(); };
+    programEditSession.open({activeTrackIndex, tick, events}, std::move(content), localAreaToGlobal(anchor));
+}
+
+void ControllerLaneComponent::commitProgram(int program)
+{
+    const auto draft = programEditSession.finish();
+    if (!showsProgramChange() || !hasActiveTrack() || draft.trackIndex != activeTrackIndex)
+        return;
+
+    const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
+    if (events != draft.eventsAtOpen)
+        return;
+
+    const bool changesExisting = !ProgramChangeEdits::onTick(draft.eventsAtOpen, draft.tick).empty();
+    const auto result = ProgramChangeEdits::place(events, draft.tick, program);
+    if (result.events == events)
+        selectPoints(result.selected);
+    else
+        applyPointEdit(changesExisting ? "Change Program" : "Add Program Change", events, result);
 }
 
 void ControllerLaneComponent::mouseMove(const juce::MouseEvent& e)
@@ -1550,6 +1607,7 @@ bool ControllerLaneComponent::canPastePoints() const
 
 void ControllerLaneComponent::pastePoints(int atTick)
 {
+    programEditSession.close();
     if (!canPastePoints())
         return;
     valueEditSession.close();

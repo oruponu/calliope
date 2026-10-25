@@ -13,6 +13,8 @@
 #include "ui/pianoroll/ControllerValueDraft.h"
 #include "ui/pianoroll/ControllerValueEditor.h"
 #include "ui/pianoroll/EditClipboard.h"
+#include "ui/pianoroll/ProgramBrowser.h"
+#include "ui/pianoroll/ProgramChangeDraft.h"
 #include "ui/pianoroll/VelocityBarGrab.h"
 #include "ui/pianoroll/VelocityBarSelection.h"
 #include "ui/pianoroll/strips/CalloutEditorSession.h"
@@ -166,6 +168,9 @@ private:
     void resetPointEditing();
     void openValueEditor(int eventIndex);
     void commitValueEdit(int displayedValue);
+    // Opens the browser on the program in effect at tick; anchorX is where the callout points.
+    void openProgramBrowser(int tick, int anchorX);
+    void commitProgram(int program);
     int valueToY(int value) const;
     int yToValue(int y) const;
 
@@ -237,6 +242,7 @@ private:
     // The point the first click of a double-click pressed, so a point that click added is not deleted.
     int doubleClickPoint = -1;
     CalloutEditorSession<ControllerValueEditor, ControllerValueDraft> valueEditSession;
+    CalloutEditorSession<ProgramBrowser, ProgramChangeDraft> programEditSession;
     bool editToolSelected = false;
     bool snapEnabled = true;
     NoteDragPreview publishedPreview;
