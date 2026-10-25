@@ -49,6 +49,17 @@ EventListItem eventItem(const MidiEvent& event, int trackIndex, int sourceIndex)
     }
     return item;
 }
+
+EventListItem sysExItem(const SysExEvent& sysEx, int trackIndex, int sourceIndex)
+{
+    EventListItem item;
+    item.kind = EventListItem::SysEx;
+    item.tick = sysEx.tick;
+    item.trackIndex = trackIndex;
+    item.sourceIndex = sourceIndex;
+    item.sysExData = sysEx.data;
+    return item;
+}
 } // namespace
 
 std::vector<EventListItem> EventListItems::build(const MidiSequence& sequence, const std::set<int>& tracks,
@@ -70,6 +81,9 @@ std::vector<EventListItem> EventListItems::build(const MidiSequence& sequence, c
         const auto& track = sequence.getTrack(trackIdx);
         for (int i = 0; i < track.getNumNotes(); ++i)
             items.push_back(noteItem(shown({trackIdx, i}, track.getNote(i)), trackIdx, i));
+        const auto& sysExEvents = track.getSysExEvents();
+        for (int i = 0; i < static_cast<int>(sysExEvents.size()); ++i)
+            items.push_back(sysExItem(sysExEvents[static_cast<size_t>(i)], trackIdx, i));
         const auto& dragged = preview.draggedEvents;
         const auto& events =
             dragged.has_value() && dragged->trackIndex == trackIdx ? dragged->events : track.getEvents();
@@ -148,7 +162,7 @@ int EventListItems::playheadRow(const std::vector<EventListItem>& items, double 
 bool EventListItems::isSameEvent(const EventListItem& a, const EventListItem& b)
 {
     return a.kind != EventListItem::Note && a.kind == b.kind && a.trackIndex == b.trackIndex && a.tick == b.tick &&
-           a.data1 == b.data1 && a.data2 == b.data2 && a.isRecording == b.isRecording;
+           a.data1 == b.data1 && a.data2 == b.data2 && a.sysExData == b.sysExData && a.isRecording == b.isRecording;
 }
 
 std::vector<int> EventListItems::reselectedRows(const std::vector<EventListItem>& before,
@@ -235,8 +249,8 @@ std::vector<int> EventListItems::eventRows(const std::vector<EventListItem>& ite
     for (int row = 0; row < static_cast<int>(items.size()); ++row)
     {
         const auto& item = items[static_cast<size_t>(row)];
-        if (item.kind != EventListItem::Note && !item.isRecording && item.trackIndex == trackIndex &&
-            eventIndices.contains(item.sourceIndex))
+        if (item.kind != EventListItem::SysEx && item.kind != EventListItem::Note && !item.isRecording &&
+            item.trackIndex == trackIndex && eventIndices.contains(item.sourceIndex))
             rows.push_back(row);
     }
     return rows;

@@ -5,6 +5,7 @@
 #include "model/ControllerKind.h"
 #include "model/MidiSequence.h"
 #include "ui/NoteDragPreview.h"
+#include <cstdint>
 #include <optional>
 #include <set>
 #include <vector>
@@ -13,6 +14,7 @@ struct EventListItem
 {
     enum Kind
     {
+        SysEx,
         Note,
         ControlChange,
         ProgramChange,
@@ -31,6 +33,7 @@ struct EventListItem
     int velocity = 0;
     int data1 = 0;
     int data2 = 0;
+    std::vector<std::uint8_t> sysExData;
     bool isRecording = false;
     // The note being drawn, not yet in the sequence; it has no note ref.
     bool isDraft = false;

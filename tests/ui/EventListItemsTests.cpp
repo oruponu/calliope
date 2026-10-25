@@ -93,6 +93,69 @@ TEST_CASE("rows at the same tick go by track, then notes before events", "[ui][e
     CHECK(items[2].kind == EventListItem::ControlChange);
 }
 
+TEST_CASE("sysex rows come first at their tick on their track", "[ui][event-list][sysex]")
+{
+    MidiSequence seq;
+    auto firstTrack = trackWith({{60, 100, 0, 480}}, {cc(0, 7, 100)});
+    firstTrack.addSysEx({0, {0x41}});
+    seq.addTrack(firstTrack);
+    auto secondTrack = trackWith({});
+    secondTrack.addSysEx({0, {0x42}});
+    seq.addTrack(secondTrack);
+
+    const auto items = EventListItems::build(seq, {0, 1}, nullptr);
+
+    REQUIRE(items.size() == 4);
+    CHECK(items[0].kind == EventListItem::SysEx);
+    CHECK(items[0].trackIndex == 0);
+    CHECK(items[0].sourceIndex == 0);
+    CHECK(items[0].sysExData == std::vector<std::uint8_t>{0x41});
+    CHECK(items[1].kind == EventListItem::Note);
+    CHECK(items[2].kind == EventListItem::ControlChange);
+    CHECK(items[3].kind == EventListItem::SysEx);
+    CHECK(items[3].trackIndex == 1);
+}
+
+TEST_CASE("sysex rows are not event rows", "[ui][event-list][sysex]")
+{
+    MidiSequence seq;
+    auto track = trackWith({}, {cc(0, 7, 100)});
+    track.addSysEx({0, {0x41}});
+    seq.addTrack(track);
+
+    const auto items = EventListItems::build(seq, {0}, nullptr);
+
+    CHECK(EventListItems::eventRows(items, 0, {0}) == std::vector{1});
+}
+
+TEST_CASE("sysex rows have no controller", "[ui][event-list][sysex]")
+{
+    EventListItem item;
+    item.kind = EventListItem::SysEx;
+    item.sysExData = {0x41};
+    CHECK_FALSE(EventListItems::controllerOf(item).has_value());
+}
+
+TEST_CASE("selected sysex rows stay selected after a rebuild", "[ui][event-list][sysex]")
+{
+    MidiSequence seq;
+    auto track = trackWith({});
+    track.addSysEx({0, {0x41}});
+    track.addSysEx({0, {0x42}});
+    seq.addTrack(track);
+
+    const auto before = EventListItems::build(seq, {0}, nullptr);
+    MidiSequence rebuiltSeq;
+    auto rebuiltTrack = trackWith({{60, 100, 0, 480}});
+    rebuiltTrack.addSysEx({0, {0x42}});
+    rebuiltTrack.addSysEx({0, {0x41}});
+    rebuiltSeq.addTrack(rebuiltTrack);
+    const auto after = EventListItems::build(rebuiltSeq, {0}, nullptr);
+
+    CHECK(EventListItems::reselectedRows(before, {1}, after) == std::vector{0});
+    CHECK(after[0].sysExData == std::vector<std::uint8_t>{0x42});
+}
+
 TEST_CASE("only the shown tracks in range are listed", "[ui][event-list]")
 {
     MidiSequence seq;

@@ -1,4 +1,5 @@
 #include "ui/EventListComponent.h"
+#include "model/SysExHex.h"
 #include "ui/RowSelection.h"
 #include "ui/theme/TrackColours.h"
 #include <utility>
@@ -326,6 +327,8 @@ juce::String EventListComponent::formatEvent(const EventListItem& item)
 {
     switch (item.kind)
     {
+    case EventListItem::SysEx:
+        return "SysEx F0 " + juce::String(SysExHex::format(item.sysExData)) + " F7";
     case EventListItem::Note:
         return "Note " + noteNumberToName(item.noteNumber);
     case EventListItem::ControlChange:
@@ -353,6 +356,8 @@ juce::String EventListComponent::formatValue(const EventListItem& item)
 {
     switch (item.kind)
     {
+    case EventListItem::SysEx:
+        return "--";
     case EventListItem::Note:
         return juce::String(item.velocity);
     case EventListItem::ControlChange:
