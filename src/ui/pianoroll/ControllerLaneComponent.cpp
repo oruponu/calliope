@@ -1485,7 +1485,7 @@ void ControllerLaneComponent::mouseMove(const juce::MouseEvent& e)
 
 bool ControllerLaneComponent::hasPointSelection() const
 {
-    return editedKind() && !showsProgramChange() && hasActiveTrack() && !pointSelection.isEmpty();
+    return editedKind() && hasActiveTrack() && !pointSelection.isEmpty();
 }
 
 bool ControllerLaneComponent::canSelectAllPoints() const
@@ -1532,7 +1532,8 @@ void ControllerLaneComponent::cutSelectedPoints()
         return;
     copySelectedPoints();
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
-    applyPointEdit("Cut Controller Points", events, ControllerPointEdits::remove(events, pointSelection.indices()));
+    applyPointEdit(showsProgramChange() ? "Cut Program Changes" : "Cut Controller Points", events,
+                   ControllerPointEdits::remove(events, pointSelection.indices()));
 }
 
 bool ControllerLaneComponent::canPastePoints() const
@@ -1551,7 +1552,7 @@ void ControllerLaneComponent::pastePoints(int atTick)
     const auto result =
         ControllerPointEdits::paste(events, *editedKind(), clipboard.getControllerPoints().points, atTick);
     if (result.events != events)
-        applyPointEdit("Paste Controller Points", events, result);
+        applyPointEdit(showsProgramChange() ? "Paste Program Changes" : "Paste Controller Points", events, result);
     else
         selectPoints(result.selected);
 }

@@ -1,5 +1,6 @@
 #include "edit/ControllerPointEdits.h"
 #include "support/ControllerPointTestHelpers.h"
+#include "support/CopiedControllerPointStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 
@@ -36,4 +37,13 @@ TEST_CASE("moving a program change keeps the bank select on its tick", "[edit][p
     const auto kind = ControllerKind::programChange();
     CHECK(ControllerPointEdits::move({bank(480, 8), pc(480, 25)}, kind, {1}, 1, 960, 25) ==
           result({bank(480, 8), pc(960, 25)}, {1}));
+}
+
+TEST_CASE("copied program changes paste only over program changes", "[edit][program-change]")
+{
+    const auto kind = ControllerKind::programChange();
+    const auto points = ControllerPointEdits::copy({pc(0, 1), bank(480, 0), pc(480, 2)}, kind, {0, 2}).points;
+    CHECK(points == std::vector<CopiedControllerPoint>{{0, 1, false}, {480, 2, false}});
+    CHECK(ControllerPointEdits::paste({bank(960, 0), pc(960, 7), pc(1200, 8)}, kind, points, 960) ==
+          result({bank(960, 0), pc(960, 1), pc(1440, 2)}, {1, 2}));
 }

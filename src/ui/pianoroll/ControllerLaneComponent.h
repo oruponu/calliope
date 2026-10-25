@@ -60,8 +60,7 @@ public:
     void setEditToolSelected(bool editTool);
     void setSnapEnabled(bool enabled);
     void clearPointSelection();
-    // Whether points of the shown controller are selected on the active track; never for program changes, which cannot
-    // be cut or copied.
+    // Whether points of the shown controller are selected on the active track.
     bool hasPointSelection() const;
     // Whether the shown controller has points on the active track.
     bool canSelectAllPoints() const;
