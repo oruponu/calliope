@@ -1,6 +1,7 @@
 #include "io/ProjectXml.h"
 #include "io/ProjectXmlNames.h"
 #include "io/XmlNumberText.h"
+#include "model/SysExHex.h"
 #include <array>
 #include <cstddef>
 #include <iterator>
@@ -143,6 +144,17 @@ void writeTrack(juce::XmlElement& element, const MidiTrack& track, const Project
                         if (event.ramp)
                             eventElement.setAttribute(names::rampAttr, 1);
                     });
+
+    if (!track.getSysExEvents().empty())
+    {
+        auto* sysExEvents = element.createNewChildElement(names::sysExEventsTag);
+        prependChildren(*sysExEvents, track.getSysExEvents(), names::sysExTag,
+                        [](juce::XmlElement& sysExElement, const SysExEvent& sysEx)
+                        {
+                            sysExElement.setAttribute(names::tickAttr, sysEx.tick);
+                            sysExElement.setAttribute(names::dataAttr, utf8(SysExHex::format(sysEx.data)));
+                        });
+    }
 }
 
 void writeTracks(juce::XmlElement& root, const MidiSequence& sequence, const ProjectXml::PluginStateSource& stateSource)

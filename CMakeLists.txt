@@ -70,6 +70,7 @@ target_sources(Calliope PRIVATE
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp
     src/model/SequenceContentsRules.cpp
+    src/model/SysExHex.cpp
     src/model/TimelineGrid.cpp
     src/model/TimelineMap.cpp
     src/notation/ChordSymbol.cpp

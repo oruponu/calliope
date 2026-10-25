@@ -58,6 +58,10 @@ inline constexpr const char* data1Attr = "data1";
 inline constexpr const char* data2Attr = "data2";
 inline constexpr const char* rampAttr = "ramp";
 
+inline constexpr const char* sysExEventsTag = "SysExEvents";
+inline constexpr const char* sysExTag = "SysEx";
+inline constexpr const char* dataAttr = "data";
+
 inline constexpr std::array<std::pair<MidiTrack::OutputDestination, const char*>, 3> outputs{{
     {MidiTrack::OutputDestination::MidiDevice, "midiDevice"},
     {MidiTrack::OutputDestination::Plugin, "plugin"},

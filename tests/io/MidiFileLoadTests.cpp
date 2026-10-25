@@ -2,6 +2,7 @@
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiFileTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
+#include "support/SysExEventStringMaker.h"
 #include "support/TempoStringMaker.h"
 #include "support/TimeSignatureStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
@@ -15,6 +16,16 @@
 #endif
 
 using MidiFileTest::at;
+
+namespace
+{
+const std::vector<std::uint8_t> gsReset{0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41};
+
+juce::MidiMessage sysExAt(const std::vector<std::uint8_t>& data, double tick)
+{
+    return at(juce::MidiMessage::createSysExMessage(data.data(), static_cast<int>(data.size())), tick);
+}
+} // namespace
 
 TEST_CASE("a format 0 file is split into one track per channel", "[io][midifile]")
 {
@@ -44,6 +55,49 @@ TEST_CASE("a format 0 file is split into one track per channel", "[io][midifile]
     CHECK(loaded->tracks[1].getEvents().empty());
 }
 
+TEST_CASE("a format 0 file puts its sysex on a SysEx track first", "[io][midifile][sysex]")
+{
+    juce::MidiMessageSequence events;
+    events.addEvent(sysExAt(gsReset, 0));
+    events.addEvent(at(juce::MidiMessage::noteOn(1, 60, juce::uint8{90}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOn(10, 36, juce::uint8{100}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOff(10, 36), 120));
+    events.addEvent(at(juce::MidiMessage::noteOff(1, 60), 480));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 0));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 3);
+    CHECK(loaded->tracks[0].getName() == "SysEx");
+    CHECK(loaded->tracks[0].getChannel() == 1);
+    CHECK(loaded->tracks[0].getSysExEvents() == std::vector<SysExEvent>{{0, gsReset}});
+    CHECK(loaded->tracks[0].getNotes().empty());
+    CHECK(loaded->tracks[0].getEvents().empty());
+    CHECK(loaded->tracks[1].getName() == "Ch.1");
+    CHECK(loaded->tracks[1].getNotes() == std::vector<MidiNote>{{60, 90, 0, 480}});
+    CHECK(loaded->tracks[2].getName() == "Ch.10");
+    CHECK(loaded->tracks[2].getNotes() == std::vector<MidiNote>{{36, 100, 0, 120}});
+}
+
+TEST_CASE("a format 0 file with only sysex loads as one SysEx track", "[io][midifile][sysex]")
+{
+    juce::MidiMessageSequence events;
+    events.addEvent(sysExAt(gsReset, 0));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 0));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getName() == "SysEx");
+    CHECK(loaded->tracks[0].getSysExEvents() == std::vector<SysExEvent>{{0, gsReset}});
+}
+
 TEST_CASE("a format 1 track takes its channel from its first channel event", "[io][midifile]")
 {
     juce::MidiMessageSequence conductor;
@@ -64,6 +118,130 @@ TEST_CASE("a format 1 track takes its channel from its first channel event", "[i
     CHECK(loaded->tracks[0].getChannel() == 3);
     CHECK(loaded->tracks[0].getNotes() == std::vector<MidiNote>{{60, 100, 0, 480}});
     CHECK(loaded->tracks[0].getEvents() == std::vector<MidiEvent>{{MidiEvent::Type::ProgramChange, 0, 5, 0}});
+}
+
+TEST_CASE("a format 1 track keeps its sysex in file order", "[io][midifile][sysex]")
+{
+    const std::vector<std::uint8_t> parameterChange{0x41, 0x10, 0x42, 0x12, 0x40, 0x11, 0x15, 0x00, 0x1A};
+    const std::vector<std::uint8_t> xgReset{0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00};
+    juce::MidiMessageSequence conductor;
+    juce::MidiMessageSequence events;
+    events.addEvent(sysExAt(gsReset, 0));
+    events.addEvent(sysExAt(parameterChange, 0));
+    events.addEvent(sysExAt(xgReset, 480));
+    events.addEvent(at(juce::MidiMessage::noteOn(2, 60, juce::uint8{100}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOff(2, 60), 960));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getChannel() == 2);
+    CHECK(loaded->tracks[0].getSysExEvents() ==
+          std::vector<SysExEvent>{{0, gsReset}, {0, parameterChange}, {480, xgReset}});
+}
+
+TEST_CASE("a format 1 first track with sysex becomes a track", "[io][midifile][sysex]")
+{
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(at(juce::MidiMessage::tempoMetaEvent(500000), 0));
+    conductor.addEvent(sysExAt(gsReset, 0));
+    juce::MidiMessageSequence events;
+    events.addEvent(at(juce::MidiMessage::noteOn(3, 60, juce::uint8{100}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOff(3, 60), 480));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 2);
+    CHECK(loaded->tracks[0].getChannel() == 1);
+    CHECK(loaded->tracks[0].getSysExEvents() == std::vector<SysExEvent>{{0, gsReset}});
+    CHECK(loaded->tracks[1].getChannel() == 3);
+    CHECK(loaded->tracks[1].getNotes() == std::vector<MidiNote>{{60, 100, 0, 480}});
+}
+
+TEST_CASE("a sysex before the first channel event does not decide the channel", "[io][midifile][sysex]")
+{
+    juce::MidiMessageSequence events;
+    events.addEvent(sysExAt(gsReset, 0));
+    events.addEvent(at(juce::MidiMessage::noteOn(5, 60, juce::uint8{100}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOff(5, 60), 480));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getChannel() == 5);
+    CHECK(loaded->tracks[0].getSysExEvents() == std::vector<SysExEvent>{{0, gsReset}});
+}
+
+TEST_CASE("a track with only sysex takes its channel from the channel prefix", "[io][midifile][sysex]")
+{
+    juce::MidiMessageSequence conductor;
+    juce::MidiMessageSequence events;
+    events.addEvent(at(juce::MidiMessage::midiChannelMetaEvent(4), 0));
+    events.addEvent(sysExAt(gsReset, 0));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getChannel() == 4);
+    CHECK(loaded->tracks[0].getSysExEvents() == std::vector<SysExEvent>{{0, gsReset}});
+}
+
+TEST_CASE("an empty sysex is dropped", "[io][midifile][sysex]")
+{
+    std::uint8_t unused = 0;
+    juce::MidiMessageSequence conductor;
+    juce::MidiMessageSequence events;
+    events.addEvent(at(juce::MidiMessage::createSysExMessage(&unused, 0), 0));
+    events.addEvent(at(juce::MidiMessage::noteOn(1, 60, juce::uint8{100}), 0));
+    events.addEvent(at(juce::MidiMessage::noteOff(1, 60), 480));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getSysExEvents().empty());
+    CHECK(loaded->tracks[0].getNotes() == std::vector<MidiNote>{{60, 100, 0, 480}});
+}
+
+TEST_CASE("a sysex without its end byte is dropped", "[io][midifile][sysex]")
+{
+    const std::uint8_t raw[] = {0xF0, 0x41, 0x10};
+    juce::MidiMessageSequence conductor;
+    juce::MidiMessageSequence events;
+    events.addEvent(at(juce::MidiMessage(raw, static_cast<int>(sizeof(raw))), 0));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
+
+    REQUIRE(loaded);
+    for (const auto& track : loaded->tracks)
+        CHECK(track.getSysExEvents().empty());
 }
 
 TEST_CASE("format 1 tracks after the first are loaded even when empty", "[io][midifile]")

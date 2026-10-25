@@ -127,6 +127,19 @@ std::optional<KeySignatureChange> readKeySignature(const juce::MidiMessage& msg)
     return change;
 }
 
+std::optional<SysExEvent> readSysEx(const juce::MidiMessage& msg)
+{
+    if (!msg.isSysEx())
+        return std::nullopt;
+
+    const int dataSize = msg.getSysExDataSize();
+    if (dataSize <= 0 || msg.getRawData()[msg.getRawDataSize() - 1] != 0xF7)
+        return std::nullopt;
+
+    const auto* data = msg.getSysExData();
+    return SysExEvent{static_cast<int>(msg.getTimeStamp()), {data, data + dataSize}};
+}
+
 } // anonymous namespace
 
 bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
@@ -202,6 +215,16 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         auto channelPrefix = juce::MidiMessage::midiChannelMetaEvent(trackChannel);
         channelPrefix.setTimeStamp(0);
         msgSeq.addEvent(channelPrefix);
+
+        for (const auto& sysEx : track.getSysExEvents())
+        {
+            auto msg = juce::MidiMessage::createSysExMessage(sysEx.data.data(), static_cast<int>(sysEx.data.size()));
+            msg.setTimeStamp(sysEx.tick);
+            msgSeq.addEvent(msg);
+
+            if (sysEx.tick > lastTick)
+                lastTick = sysEx.tick;
+        }
 
         for (int i = 0; i < track.getNumNotes(); ++i)
         {
@@ -373,8 +396,9 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
 
     if (format == 0)
     {
-        // Format 0: split into one track per channel
+        // Format 0: SysEx goes to its own track, then one track per channel
         std::set<int> usedChannels;
+        std::vector<SysExEvent> sysExEvents;
         for (int t = 0; t < midiFile.getNumTracks(); ++t)
         {
             const auto* msgSeq = midiFile.getTrack(t);
@@ -386,7 +410,20 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                 {
                     usedChannels.insert(msg.getChannel());
                 }
+                else if (const auto sysEx = readSysEx(msg))
+                {
+                    sysExEvents.push_back(*sysEx);
+                }
             }
+        }
+
+        if (!sysExEvents.empty())
+        {
+            auto& track = contents.tracks.emplace_back();
+            track.setName("SysEx");
+            track.setChannel(1);
+            for (const auto& sysEx : sysExEvents)
+                track.addSysEx(sysEx);
         }
 
         std::map<int, int> channelTrackIndex;
@@ -481,6 +518,25 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
             MidiTrack* track = nullptr;
             juce::String trackName;
             std::optional<int> prefixChannel;
+            std::optional<int> firstChannel;
+
+            const auto ensureTrack = [&]() -> MidiTrack&
+            {
+                if (!track)
+                    track = &contents.tracks.emplace_back();
+                return *track;
+            };
+
+            const auto trackForChannel = [&](int channel) -> MidiTrack&
+            {
+                auto& result = ensureTrack();
+                if (!firstChannel)
+                {
+                    firstChannel = channel;
+                    result.setChannel(channel);
+                }
+                return result;
+            };
 
             for (int i = 0; i < sorted.getNumEvents(); ++i)
             {
@@ -499,11 +555,7 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                 }
                 else if (msg.isNoteOn())
                 {
-                    if (!track)
-                    {
-                        track = &contents.tracks.emplace_back();
-                        track->setChannel(msg.getChannel());
-                    }
+                    auto& channelTrack = trackForChannel(msg.getChannel());
 
                     int noteNumber = msg.getNoteNumber();
                     int velocity = msg.getVelocity();
@@ -513,80 +565,65 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                     if (event->noteOffObject != nullptr)
                         endTick = static_cast<int>(event->noteOffObject->message.getTimeStamp());
 
-                    track->addNote({noteNumber, velocity, startTick, endTick - startTick});
+                    channelTrack.addNote({noteNumber, velocity, startTick, endTick - startTick});
                 }
                 else if (msg.isController())
                 {
-                    if (!track)
-                    {
-                        track = &contents.tracks.emplace_back();
-                        track->setChannel(msg.getChannel());
-                    }
+                    auto& channelTrack = trackForChannel(msg.getChannel());
 
-                    track->addEvent({.type = MidiEvent::Type::ControlChange,
-                                     .tick = static_cast<int>(msg.getTimeStamp()),
-                                     .data1 = msg.getControllerNumber(),
-                                     .data2 = msg.getControllerValue()});
+                    channelTrack.addEvent({.type = MidiEvent::Type::ControlChange,
+                                           .tick = static_cast<int>(msg.getTimeStamp()),
+                                           .data1 = msg.getControllerNumber(),
+                                           .data2 = msg.getControllerValue()});
                 }
                 else if (msg.isProgramChange())
                 {
-                    if (!track)
-                    {
-                        track = &contents.tracks.emplace_back();
-                        track->setChannel(msg.getChannel());
-                    }
+                    auto& channelTrack = trackForChannel(msg.getChannel());
 
-                    track->addEvent({.type = MidiEvent::Type::ProgramChange,
-                                     .tick = static_cast<int>(msg.getTimeStamp()),
-                                     .data1 = msg.getProgramChangeNumber()});
+                    channelTrack.addEvent({.type = MidiEvent::Type::ProgramChange,
+                                           .tick = static_cast<int>(msg.getTimeStamp()),
+                                           .data1 = msg.getProgramChangeNumber()});
                 }
                 else if (msg.isPitchWheel())
                 {
-                    if (!track)
-                    {
-                        track = &contents.tracks.emplace_back();
-                        track->setChannel(msg.getChannel());
-                    }
+                    auto& channelTrack = trackForChannel(msg.getChannel());
 
-                    track->addEvent({.type = MidiEvent::Type::PitchBend,
-                                     .tick = static_cast<int>(msg.getTimeStamp()),
-                                     .data1 = msg.getPitchWheelValue()});
+                    channelTrack.addEvent({.type = MidiEvent::Type::PitchBend,
+                                           .tick = static_cast<int>(msg.getTimeStamp()),
+                                           .data1 = msg.getPitchWheelValue()});
                 }
                 else if (msg.isChannelPressure())
                 {
-                    if (!track)
-                    {
-                        track = &contents.tracks.emplace_back();
-                        track->setChannel(msg.getChannel());
-                    }
+                    auto& channelTrack = trackForChannel(msg.getChannel());
 
-                    track->addEvent({.type = MidiEvent::Type::ChannelPressure,
-                                     .tick = static_cast<int>(msg.getTimeStamp()),
-                                     .data1 = msg.getChannelPressureValue()});
+                    channelTrack.addEvent({.type = MidiEvent::Type::ChannelPressure,
+                                           .tick = static_cast<int>(msg.getTimeStamp()),
+                                           .data1 = msg.getChannelPressureValue()});
                 }
                 else if (msg.isAftertouch())
                 {
-                    if (!track)
-                    {
-                        track = &contents.tracks.emplace_back();
-                        track->setChannel(msg.getChannel());
-                    }
+                    auto& channelTrack = trackForChannel(msg.getChannel());
 
-                    track->addEvent({.type = MidiEvent::Type::KeyPressure,
-                                     .tick = static_cast<int>(msg.getTimeStamp()),
-                                     .data1 = msg.getNoteNumber(),
-                                     .data2 = msg.getAfterTouchValue()});
+                    channelTrack.addEvent({.type = MidiEvent::Type::KeyPressure,
+                                           .tick = static_cast<int>(msg.getTimeStamp()),
+                                           .data1 = msg.getNoteNumber(),
+                                           .data2 = msg.getAfterTouchValue()});
+                }
+                else if (const auto sysEx = readSysEx(msg))
+                {
+                    ensureTrack().addSysEx(*sysEx);
                 }
             }
 
             // By convention the first track of a format 1 file is the conductor track, so it becomes a track only when
-            // it has channel events.
+            // it has channel events or SysEx.
             if (!track && t > 0)
             {
                 track = &contents.tracks.emplace_back();
-                if (prefixChannel)
-                    track->setChannel(*prefixChannel);
             }
+
+            if (track && !firstChannel && prefixChannel)
+                track->setChannel(*prefixChannel);
 
             if (track && trackName.isNotEmpty())
                 track->setName(trackName.toStdString());

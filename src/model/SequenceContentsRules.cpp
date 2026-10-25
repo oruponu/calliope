@@ -83,10 +83,17 @@ bool acceptsEvent(const MidiEvent& event)
            (!event.ramp || rampAllowed);
 }
 
+bool acceptsSysEx(const SysExEvent& sysEx)
+{
+    return sysEx.tick >= 0 && !sysEx.data.empty() &&
+           std::ranges::all_of(sysEx.data, [](std::uint8_t byte) { return byte <= 0x7F; });
+}
+
 bool acceptsTrack(const MidiTrack& track)
 {
     return inRange(track.getChannel(), 1, 16) && std::ranges::all_of(track.getNotes(), acceptsNote) &&
-           std::ranges::all_of(track.getEvents(), acceptsEvent);
+           std::ranges::all_of(track.getEvents(), acceptsEvent) &&
+           std::ranges::all_of(track.getSysExEvents(), acceptsSysEx) && ticksNeverDecrease(track.getSysExEvents());
 }
 } // namespace
 

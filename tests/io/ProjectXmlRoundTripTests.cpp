@@ -4,10 +4,12 @@
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiFileTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
+#include "support/SysExEventStringMaker.h"
 #include "support/TempoStringMaker.h"
 #include "support/TimeSignatureStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <juce_core/juce_core.h>
 #include <memory>
@@ -144,6 +146,50 @@ TEST_CASE("notes and events come back in their stored order", "[io][projectxml]"
     REQUIRE(loaded->tracks.size() == 1);
     CHECK(loaded->tracks[0].getNotes() == track.getNotes());
     CHECK(loaded->tracks[0].getEvents() == track.getEvents());
+}
+
+TEST_CASE("sysex keeps its bytes, position and order", "[io][projectxml][sysex]")
+{
+    std::vector<std::uint8_t> longData;
+    for (int i = 0; i < 300; ++i)
+        longData.push_back(static_cast<std::uint8_t>(i % 128));
+
+    MidiSequence seq;
+    MidiTrack track;
+    track.addSysEx({0, {0x41, 0x10, 0x42}});
+    track.addSysEx({0, {0x7F}});
+    track.addSysEx({960, longData});
+    seq.addTrack(track);
+
+    const auto loaded = roundTrip(seq);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getSysExEvents() == track.getSysExEvents());
+}
+
+TEST_CASE("sysex is written as spaced uppercase hex after the events", "[io][projectxml][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 7, 100});
+    track.addSysEx({0, {0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41}});
+    seq.addTrack(track);
+
+    const auto xml = singleLineXml(*ProjectXml::write(seq, {}));
+
+    CHECK(xml.find(R"(</Events><SysExEvents><SysEx tick="0" data="41 10 42 12 40 00 7F 00 41"/></SysExEvents>)") !=
+          std::string::npos);
+}
+
+TEST_CASE("a track without sysex writes no SysExEvents", "[io][projectxml][sysex]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+
+    const auto xml = singleLineXml(*ProjectXml::write(seq, {}));
+
+    CHECK(xml.find("SysExEvents") == std::string::npos);
 }
 
 TEST_CASE("a ramp point keeps its ramp", "[io][projectxml]")

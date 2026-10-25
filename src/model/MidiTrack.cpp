@@ -28,6 +28,7 @@ void MidiTrack::clear()
 {
     notes.clear();
     events.clear();
+    sysExEvents.clear();
 }
 
 void MidiTrack::sortByStartTime()
@@ -90,6 +91,16 @@ const MidiEvent& MidiTrack::getEvent(int index) const
 int MidiTrack::getNumEvents() const
 {
     return static_cast<int>(events.size());
+}
+
+void MidiTrack::addSysEx(const SysExEvent& sysEx)
+{
+    sysExEvents.push_back(sysEx);
+}
+
+const std::vector<SysExEvent>& MidiTrack::getSysExEvents() const
+{
+    return sysExEvents;
 }
 
 bool MidiTrack::isMuted() const

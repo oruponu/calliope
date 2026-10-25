@@ -1,5 +1,6 @@
 #include "model/SequenceContentsRules.h"
 #include "support/BarBeatTickTestHelpers.h"
+#include "support/SysExEventStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <cmath>
@@ -33,6 +34,13 @@ SequenceContents withEvent(const MidiEvent& event)
 {
     auto contents = validContents();
     contents.tracks[0].addEvent(event);
+    return contents;
+}
+
+SequenceContents withSysEx(const SysExEvent& sysEx)
+{
+    auto contents = validContents();
+    contents.tracks[0].addSysEx(sysEx);
     return contents;
 }
 
@@ -244,4 +252,28 @@ TEST_CASE("a ramp on another event type is rejected", "[model][contentsrules]")
     CHECK_FALSE(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::ProgramChange, 0, 5, 0, true})));
     CHECK_FALSE(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::ChannelPressure, 0, 5, 0, true})));
     CHECK_FALSE(SequenceContentsRules::accepts(withEvent({MidiEvent::Type::KeyPressure, 0, 60, 5, true})));
+}
+
+TEST_CASE("sysex in range is accepted", "[model][contentsrules][sysex]")
+{
+    CHECK(SequenceContentsRules::accepts(withSysEx({0, {0x41, 0x00, 0x7F}})));
+}
+
+TEST_CASE("sysex outside its ranges is rejected", "[model][contentsrules][sysex]")
+{
+    const auto sysEx =
+        GENERATE(SysExEvent{-1, {0x41}}, SysExEvent{0, {}}, SysExEvent{0, {0x41, 0x80}}, SysExEvent{0, {0xF7}});
+    CAPTURE(sysEx);
+    CHECK_FALSE(SequenceContentsRules::accepts(withSysEx(sysEx)));
+}
+
+TEST_CASE("sysex may share a tick but not go back in time", "[model][contentsrules][sysex]")
+{
+    auto sameTick = withSysEx({480, {0x41}});
+    sameTick.tracks[0].addSysEx({480, {0x42}});
+    CHECK(SequenceContentsRules::accepts(sameTick));
+
+    auto backwards = withSysEx({480, {0x41}});
+    backwards.tracks[0].addSysEx({0, {0x42}});
+    CHECK_FALSE(SequenceContentsRules::accepts(backwards));
 }

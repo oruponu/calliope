@@ -4,6 +4,7 @@
 #include "io/XmlNumberText.h"
 #include "model/ControllerPointConversion.h"
 #include "model/SequenceContentsRules.h"
+#include "model/SysExHex.h"
 #include <cstdint>
 #include <set>
 #include <utility>
@@ -121,6 +122,16 @@ MidiTrack readTrack(const juce::XmlElement& element, XmlFieldReader& fields)
                             event->hasAttribute(names::rampAttr) && fields.flag(*event, names::rampAttr)});
     // Files saved before ramps hold steps; converted files come back unchanged.
     track.setEvents(convertStepsToPoints(track.getEvents()));
+
+    if (const auto* sysExEvents = element.getChildByName(names::sysExEventsTag))
+        for (const auto* sysEx : sysExEvents->getChildWithTagNameIterator(names::sysExTag))
+        {
+            const int tick = fields.integer(*sysEx, names::tickAttr);
+            const auto data = SysExHex::parse(fields.text(*sysEx, names::dataAttr));
+            fields.require(data.has_value());
+            if (data)
+                track.addSysEx({tick, *data});
+        }
 
     return track;
 }

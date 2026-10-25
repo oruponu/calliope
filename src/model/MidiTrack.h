@@ -3,6 +3,7 @@
 #include "model/MidiEvent.h"
 #include "model/MidiNote.h"
 #include "model/PluginAssignment.h"
+#include "model/SysExEvent.h"
 #include "model/TrackId.h"
 #include <memory>
 #include <optional>
@@ -43,6 +44,9 @@ public:
     const MidiEvent& getEvent(int index) const;
     int getNumEvents() const;
 
+    void addSysEx(const SysExEvent& sysEx);
+    const std::vector<SysExEvent>& getSysExEvents() const;
+
     bool isMuted() const;
     void setMuted(bool muted);
 
@@ -70,6 +74,7 @@ private:
     TrackId id{};
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
+    std::vector<SysExEvent> sysExEvents;
     std::string name;
     bool muted = false;
     bool solo = false;

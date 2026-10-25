@@ -3,13 +3,20 @@
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiFileTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
+#include "support/SysExEventStringMaker.h"
 #include "support/TimeSignatureStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
 using Catch::Matchers::WithinAbs;
+
+namespace
+{
+const std::vector<std::uint8_t> gsReset{0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41};
+}
 
 TEST_CASE("notes keep their pitch, velocity, position and length", "[io][midifile]")
 {
@@ -78,6 +85,125 @@ TEST_CASE("channel events keep their type, position and values", "[io][midifile]
                                                                   {MidiEvent::Type::PitchBend, 240, 16383, 0, true},
                                                                   {MidiEvent::Type::ChannelPressure, 360, 64, 0},
                                                                   {MidiEvent::Type::KeyPressure, 480, 60, 33}});
+}
+
+TEST_CASE("sysex keeps its bytes, position and order", "[io][midifile][sysex]")
+{
+    const std::vector<std::uint8_t> parameterChange{0x41, 0x10, 0x42, 0x12, 0x40, 0x11, 0x15, 0x00, 0x1A};
+    const std::vector<std::uint8_t> xgReset{0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00};
+    MidiSequence seq;
+    MidiTrack track;
+    track.addSysEx({0, gsReset});
+    track.addSysEx({0, parameterChange});
+    track.addSysEx({960, xgReset});
+    seq.addTrack(track);
+
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getSysExEvents() ==
+          std::vector<SysExEvent>{{0, gsReset}, {0, parameterChange}, {960, xgReset}});
+}
+
+TEST_CASE("a long sysex survives the round trip", "[io][midifile][sysex]")
+{
+    std::vector<std::uint8_t> data;
+    data.reserve(300);
+    for (int i = 0; i < 300; ++i)
+        data.push_back(static_cast<std::uint8_t>(i % 128));
+
+    MidiSequence seq;
+    MidiTrack track;
+    track.addSysEx({240, data});
+    seq.addTrack(track);
+
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getSysExEvents() == std::vector<SysExEvent>{{240, data}});
+}
+
+TEST_CASE("a track with only sysex keeps its channel through a midi file", "[io][midifile][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.setChannel(5);
+    track.addSysEx({0, gsReset});
+    seq.addTrack(track);
+
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getChannel() == 5);
+    CHECK(loaded->tracks[0].getSysExEvents() == std::vector<SysExEvent>{{0, gsReset}});
+}
+
+TEST_CASE("at the same tick, sysex is written before channel events and notes", "[io][midifile][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 7, 100});
+    track.addNote({60, 100, 0, 480});
+    track.addSysEx({0, gsReset});
+    seq.addTrack(track);
+    juce::TemporaryFile temp(".mid");
+
+    REQUIRE(MidiFileIO::save(seq, temp.getFile()));
+    juce::FileInputStream stream(temp.getFile());
+    REQUIRE(stream.openedOk());
+    juce::MidiFile midiFile;
+    REQUIRE(midiFile.readFrom(stream));
+    REQUIRE(midiFile.getNumTracks() == 2);
+
+    const auto* events = midiFile.getTrack(1);
+    const juce::MidiMessage* firstNonMeta = nullptr;
+    for (int i = 0; i < events->getNumEvents(); ++i)
+    {
+        const auto& message = events->getEventPointer(i)->message;
+        if (!message.isMetaEvent())
+        {
+            firstNonMeta = &message;
+            break;
+        }
+    }
+
+    REQUIRE(firstNonMeta != nullptr);
+    CHECK(firstNonMeta->isSysEx());
+}
+
+TEST_CASE("the end of track comes after the last sysex", "[io][midifile][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addNote({60, 100, 0, 480});
+    track.addSysEx({1920, gsReset});
+    seq.addTrack(track);
+    juce::TemporaryFile temp(".mid");
+
+    REQUIRE(MidiFileIO::save(seq, temp.getFile()));
+    juce::FileInputStream stream(temp.getFile());
+    REQUIRE(stream.openedOk());
+    juce::MidiFile midiFile;
+    REQUIRE(midiFile.readFrom(stream));
+    REQUIRE(midiFile.getNumTracks() == 2);
+
+    const auto* events = midiFile.getTrack(1);
+    const juce::MidiMessage* endOfTrack = nullptr;
+    for (int i = 0; i < events->getNumEvents(); ++i)
+    {
+        const auto& message = events->getEventPointer(i)->message;
+        if (message.isEndOfTrackMetaEvent())
+        {
+            endOfTrack = &message;
+            break;
+        }
+    }
+
+    REQUIRE(endOfTrack != nullptr);
+    CHECK(endOfTrack->getTimeStamp() == 1920);
 }
 
 TEST_CASE("tracks keep their order, names and channels", "[io][midifile]")

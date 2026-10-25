@@ -1,5 +1,6 @@
 #include "io/ProjectXml.h"
 #include "support/MidiEventTestHelpers.h"
+#include "support/SysExEventStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <juce_core/juce_core.h>
@@ -62,6 +63,38 @@ TEST_CASE("the reference project is read", "[io][projectxml]")
     CHECK(loaded->tracks[1].getRouteTarget() == TrackId{1});
     CHECK(loaded->tracks[1].isMuted());
     CHECK(loaded->tracks[1].isSolo());
+}
+
+TEST_CASE("a track without SysExEvents has no sysex", "[io][projectxml][sysex]")
+{
+    const auto loaded = readText(validProject);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 2);
+    CHECK(loaded->tracks[0].getSysExEvents().empty());
+    CHECK(loaded->tracks[1].getSysExEvents().empty());
+}
+
+TEST_CASE("sysex in a project is read", "[io][projectxml][sysex]")
+{
+    const auto loaded = readText(replaced(
+        validProject, "</Events>",
+        R"(</Events><SysExEvents><SysEx tick="0" data="41 10 42"/><SysEx tick="0" data="7F"/></SysExEvents>)"));
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 2);
+    CHECK(loaded->tracks[0].getSysExEvents() == std::vector<SysExEvent>{{0, {0x41, 0x10, 0x42}}, {0, {0x7F}}});
+}
+
+TEST_CASE("malformed sysex is rejected", "[io][projectxml][sysex]")
+{
+    const auto sysEx =
+        GENERATE(as<std::string>{}, R"(<SysEx tick="0" data=""/>)", R"(<SysEx tick="0" data="41  10"/>)",
+                 R"(<SysEx tick="0" data="7f"/>)", R"(<SysEx tick="0" data="4G"/>)", R"(<SysEx tick="0" data="80"/>)",
+                 R"(<SysEx tick="-1" data="41"/>)", R"(<SysEx data="41"/>)", R"(<SysEx tick="0"/>)",
+                 R"(<SysEx tick="480" data="41"/><SysEx tick="0" data="42"/>)");
+    CAPTURE(sysEx);
+    CHECK_FALSE(readText(replaced(validProject, "</Events>", "</Events><SysExEvents>" + sysEx + "</SysExEvents>")));
 }
 
 TEST_CASE("a document that is not a Calliope project is rejected", "[io][projectxml]")
