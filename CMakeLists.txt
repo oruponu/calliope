@@ -65,6 +65,7 @@ target_sources(Calliope PRIVATE
     src/model/ControllerLineValue.cpp
     src/model/ControllerPointConversion.cpp
     src/model/ControllerRamps.cpp
+    src/model/GmPrograms.cpp
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp
     src/model/SequenceContentsRules.cpp
