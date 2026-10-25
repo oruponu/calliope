@@ -40,6 +40,39 @@ TEST_CASE("muted track is excluded", "[engine][snapshot]")
     CHECK(snap.notes[0].ctx.trackId == seq.getTrack(0).getId());
 }
 
+TEST_CASE("sysex of audible tracks are scheduled by tick in track order", "[engine][snapshot][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.addSysEx({480, {0x01}});
+    seq.addTrack(t0);
+    MidiTrack t1;
+    t1.addSysEx({0, {0x02}});
+    t1.addSysEx({480, {0x03}});
+    seq.addTrack(t1);
+
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    REQUIRE(snap.sysExEvents.size() == 3);
+    CHECK(snap.sysExEvents[0].sysEx.data == std::vector<std::uint8_t>{0x02});
+    CHECK(snap.sysExEvents[0].ctx.trackId == seq.getTrack(1).getId());
+    CHECK(snap.sysExEvents[1].sysEx.data == std::vector<std::uint8_t>{0x01});
+    CHECK(snap.sysExEvents[1].ctx.trackId == seq.getTrack(0).getId());
+    CHECK(snap.sysExEvents[2].sysEx.data == std::vector<std::uint8_t>{0x03});
+    CHECK(snap.sysExEvents[2].ctx.trackId == seq.getTrack(1).getId());
+}
+
+TEST_CASE("a muted track's sysex is not scheduled", "[engine][snapshot][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.setMuted(true);
+    track.addSysEx({0, {0x01}});
+    seq.addTrack(track);
+
+    CHECK(PlaybackSnapshot::build(seq).sysExEvents.empty());
+}
+
 TEST_CASE("solo excludes non-solo tracks", "[engine][snapshot]")
 {
     MidiSequence seq;

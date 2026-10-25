@@ -10,12 +10,17 @@ void PlaybackProcessor::resetCursors(const PlaybackSnapshot& snap, int tick)
     eventCursor = (std::size_t)(std::lower_bound(snap.events.begin(), snap.events.end(), tick,
                                                  [](const ScheduledEvent& e, int t) { return e.event.tick < t; }) -
                                 snap.events.begin());
+    sysExCursor = (std::size_t)(std::lower_bound(snap.sysExEvents.begin(), snap.sysExEvents.end(), tick,
+                                                 [](const ScheduledSysEx& s, int t) { return s.sysEx.tick < t; }) -
+                                snap.sysExEvents.begin());
 }
 
 void PlaybackProcessor::process(const PlaybackSnapshot& snap, int fromTick, int toTick, PlaybackListener& sink)
 {
     while (eventCursor < snap.events.size() && snap.events[eventCursor].event.tick < fromTick)
         ++eventCursor;
+    while (sysExCursor < snap.sysExEvents.size() && snap.sysExEvents[sysExCursor].sysEx.tick < fromTick)
+        ++sysExCursor;
     while (noteCursor < snap.notes.size() && snap.notes[noteCursor].note.startTick < fromTick)
         ++noteCursor;
 
@@ -25,8 +30,8 @@ void PlaybackProcessor::process(const PlaybackSnapshot& snap, int fromTick, int 
     constexpr int none = std::numeric_limits<int>::max();
     while (true)
     {
-        // Note-offs are due up to and including toTick; events and note-ons only before it. At the same tick,
-        // note-offs go first, then events, then note-ons.
+        // Note-offs are due up to and including toTick; SysEx, events and note-ons only before it. At the same tick,
+        // note-offs go first, then SysEx, events and note-ons.
         int offTick = none;
         for (const auto& a : activeNotes)
             offTick = std::min(offTick, a.note.endTick());
@@ -35,16 +40,24 @@ void PlaybackProcessor::process(const PlaybackSnapshot& snap, int fromTick, int 
         const int eventTick = eventCursor < snap.events.size() && snap.events[eventCursor].event.tick < toTick
                                   ? snap.events[eventCursor].event.tick
                                   : none;
+        const int sysExTick = sysExCursor < snap.sysExEvents.size() && snap.sysExEvents[sysExCursor].sysEx.tick < toTick
+                                  ? snap.sysExEvents[sysExCursor].sysEx.tick
+                                  : none;
         const int noteTick = noteCursor < snap.notes.size() && snap.notes[noteCursor].note.startTick < toTick
                                  ? snap.notes[noteCursor].note.startTick
                                  : none;
 
-        const int tick = std::min({offTick, eventTick, noteTick});
+        const int tick = std::min({offTick, sysExTick, eventTick, noteTick});
         if (tick == none)
             break;
         if (offTick == tick)
         {
             offEndingAt(tick, sink);
+        }
+        else if (sysExTick == tick)
+        {
+            const auto& ss = snap.sysExEvents[sysExCursor++];
+            sink.onSysEx(ss.ctx, ss.sysEx);
         }
         else if (eventTick == tick)
         {

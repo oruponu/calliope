@@ -75,6 +75,8 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq, const Take* ta
             snap.notes.push_back({ctx, note});
         for (const auto& event : expandControllerRamps(track.getEvents()))
             snap.events.push_back({ctx, event});
+        for (const auto& sysEx : track.getSysExEvents())
+            snap.sysExEvents.push_back({ctx, sysEx});
         if (take == nullptr)
             continue;
         if (const auto recorded = take->find(track.getId()); recorded != take->end())
@@ -90,6 +92,8 @@ PlaybackSnapshot PlaybackSnapshot::build(const MidiSequence& seq, const Take* ta
                      { return a.note.startTick < b.note.startTick; });
     std::stable_sort(snap.events.begin(), snap.events.end(),
                      [](const ScheduledEvent& a, const ScheduledEvent& b) { return a.event.tick < b.event.tick; });
+    std::stable_sort(snap.sysExEvents.begin(), snap.sysExEvents.end(),
+                     [](const ScheduledSysEx& a, const ScheduledSysEx& b) { return a.sysEx.tick < b.sysEx.tick; });
 
     return snap;
 }

@@ -164,6 +164,15 @@ void VstPluginHost::onNoteOff(const PlaybackTrackContext& ctx, const MidiNote& n
     collector->addMessageToQueue(juce::MidiMessage::noteOff(ctx.channel, note.noteNumber));
 }
 
+void VstPluginHost::onSysEx(const PlaybackTrackContext& ctx, const SysExEvent& sysEx)
+{
+    auto* collector = resolveCollector(ctx);
+    if (collector == nullptr)
+        return;
+    collector->addMessageToQueue(
+        juce::MidiMessage::createSysExMessage(sysEx.data.data(), static_cast<int>(sysEx.data.size())));
+}
+
 void VstPluginHost::onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event)
 {
     auto* collector = resolveCollector(ctx);

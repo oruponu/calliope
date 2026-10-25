@@ -20,6 +20,7 @@ private:
 
     std::size_t noteCursor = 0;
     std::size_t eventCursor = 0;
+    std::size_t sysExCursor = 0;
     std::vector<ScheduledNote> activeNotes;
     std::mutex activeNotesMutex;
 };

@@ -97,6 +97,17 @@ void MidiDeviceOutput::onNoteOff(const PlaybackTrackContext& ctx, const MidiNote
     midiOutput->sendMessageNow(juce::MidiMessage::noteOff(ctx.channel, note.noteNumber));
 }
 
+void MidiDeviceOutput::onSysEx(const PlaybackTrackContext& ctx, const SysExEvent& sysEx)
+{
+    std::lock_guard<std::mutex> lock(sendMutex);
+    if (!midiOutput)
+        return;
+    if (ctx.destination != MidiTrack::OutputDestination::MidiDevice)
+        return;
+    midiOutput->sendMessageNow(
+        juce::MidiMessage::createSysExMessage(sysEx.data.data(), static_cast<int>(sysEx.data.size())));
+}
+
 void MidiDeviceOutput::onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event)
 {
     std::lock_guard<std::mutex> lock(sendMutex);

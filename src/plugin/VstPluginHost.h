@@ -43,6 +43,7 @@ public:
 
     void onNoteOn(const PlaybackTrackContext& ctx, const MidiNote& note) override;
     void onNoteOff(const PlaybackTrackContext& ctx, const MidiNote& note) override;
+    void onSysEx(const PlaybackTrackContext& ctx, const SysExEvent& sysEx) override;
     void onMidiEvent(const PlaybackTrackContext& ctx, const MidiEvent& event) override;
     void sendLive(const PlaybackTrackContext& ctx, const juce::MidiMessage& message) override;
 

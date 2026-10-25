@@ -30,6 +30,11 @@ public:
         for (auto* x : listeners)
             x->onMidiEvent(c, e);
     }
+    void onSysEx(const PlaybackTrackContext& c, const SysExEvent& s) override
+    {
+        for (auto* x : listeners)
+            x->onSysEx(c, s);
+    }
 
 private:
     const std::vector<PlaybackListener*>& listeners;

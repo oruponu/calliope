@@ -12,11 +12,13 @@ struct LoggedCall
     {
         NoteOn,
         NoteOff,
+        SysEx,
         Mid
     } kind;
     PlaybackTrackContext ctx;
     MidiNote note;
     MidiEvent event;
+    SysExEvent sysEx;
 };
 
 class MockListener : public PlaybackListener
@@ -26,15 +28,19 @@ public:
 
     void onNoteOn(const PlaybackTrackContext& c, const MidiNote& n) override
     {
-        log.push_back({LoggedCall::NoteOn, c, n, {}});
+        log.push_back({LoggedCall::NoteOn, c, n, {}, {}});
     }
     void onNoteOff(const PlaybackTrackContext& c, const MidiNote& n) override
     {
-        log.push_back({LoggedCall::NoteOff, c, n, {}});
+        log.push_back({LoggedCall::NoteOff, c, n, {}, {}});
+    }
+    void onSysEx(const PlaybackTrackContext& c, const SysExEvent& s) override
+    {
+        log.push_back({LoggedCall::SysEx, c, {}, {}, s});
     }
     void onMidiEvent(const PlaybackTrackContext& c, const MidiEvent& e) override
     {
-        log.push_back({LoggedCall::Mid, c, {}, e});
+        log.push_back({LoggedCall::Mid, c, {}, e, {}});
     }
 };
 
@@ -313,6 +319,98 @@ TEST_CASE("at the same tick, note-off precedes midi event which precedes note-on
     CHECK(sink.log[0].kind == LoggedCall::NoteOff);
     CHECK(sink.log[1].kind == LoggedCall::Mid);
     CHECK(sink.log[2].kind == LoggedCall::NoteOn);
+}
+
+TEST_CASE("at the same tick, note-off precedes sysex which precedes midi event and note-on",
+          "[engine][processor][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addNote({60, 100, 0, 480});
+    track.addNote({62, 100, 480, 100});
+    track.addEvent(controlChange(480));
+    track.addSysEx({480, {0x01}});
+    seq.addTrack(track);
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    PlaybackProcessor proc;
+    MockListener sink;
+    proc.resetCursors(snap, 0);
+    proc.process(snap, 0, 1, sink);
+    sink.log.clear();
+    proc.process(snap, 480, 481, sink);
+
+    REQUIRE(sink.log.size() == 4);
+    CHECK(sink.log[0].kind == LoggedCall::NoteOff);
+    CHECK(sink.log[1].kind == LoggedCall::SysEx);
+    CHECK(sink.log[2].kind == LoggedCall::Mid);
+    CHECK(sink.log[3].kind == LoggedCall::NoteOn);
+}
+
+TEST_CASE("at the same tick, every track's sysex precedes every track's midi events", "[engine][processor][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack t0;
+    t0.addEvent(controlChange(0));
+    t0.addSysEx({0, {0x01}});
+    seq.addTrack(t0);
+    MidiTrack t1;
+    t1.addSysEx({0, {0x02}});
+    seq.addTrack(t1);
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    PlaybackProcessor proc;
+    MockListener sink;
+    proc.resetCursors(snap, 0);
+    proc.process(snap, 0, 1, sink);
+
+    REQUIRE(sink.log.size() == 3);
+    CHECK(sink.log[0].kind == LoggedCall::SysEx);
+    CHECK(sink.log[0].sysEx.data == std::vector<std::uint8_t>{0x01});
+    CHECK(sink.log[0].ctx.trackId == seq.getTrack(0).getId());
+    CHECK(sink.log[1].kind == LoggedCall::SysEx);
+    CHECK(sink.log[1].sysEx.data == std::vector<std::uint8_t>{0x02});
+    CHECK(sink.log[1].ctx.trackId == seq.getTrack(1).getId());
+    CHECK(sink.log[2].kind == LoggedCall::Mid);
+}
+
+TEST_CASE("sysex at the start tick is sent and earlier sysex is not", "[engine][processor][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addSysEx({0, {0x01}});
+    track.addSysEx({480, {0x02}});
+    seq.addTrack(track);
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    PlaybackProcessor proc;
+    MockListener sink;
+    proc.resetCursors(snap, 480);
+    proc.process(snap, 480, 481, sink);
+
+    REQUIRE(sink.log.size() == 1);
+    CHECK(sink.log[0].kind == LoggedCall::SysEx);
+    CHECK(sink.log[0].sysEx.data == std::vector<std::uint8_t>{0x02});
+}
+
+TEST_CASE("sysex inside a loop is sent again after the loop restarts", "[engine][processor][sysex]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addSysEx({240, {0x01}});
+    seq.addTrack(track);
+    const auto snap = PlaybackSnapshot::build(seq);
+
+    PlaybackProcessor proc;
+    MockListener sink;
+    proc.resetCursors(snap, 0);
+    proc.process(snap, 0, 480, sink);
+    proc.resetCursors(snap, 0);
+    proc.process(snap, 0, 480, sink);
+
+    REQUIRE(sink.log.size() == 2);
+    CHECK(sink.log[0].kind == LoggedCall::SysEx);
+    CHECK(sink.log[1].kind == LoggedCall::SysEx);
 }
 
 TEST_CASE("releaseActiveNotesForTrack offs that track's active notes and removes them", "[engine][processor]")

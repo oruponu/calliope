@@ -5,6 +5,7 @@
 #include "model/MidiNote.h"
 #include "model/MidiSequence.h"
 #include "model/MidiTrack.h"
+#include "model/SysExEvent.h"
 #include <vector>
 
 struct PlaybackTrackContext
@@ -28,10 +29,17 @@ struct ScheduledEvent
     MidiEvent event;
 };
 
+struct ScheduledSysEx
+{
+    PlaybackTrackContext ctx;
+    SysExEvent sysEx;
+};
+
 struct PlaybackSnapshot
 {
     std::vector<ScheduledNote> notes;
     std::vector<ScheduledEvent> events;
+    std::vector<ScheduledSysEx> sysExEvents;
     // The audible tracks, in track order, whether or not they have notes or events.
     std::vector<PlaybackTrackContext> contexts;
     std::vector<TempoChange> tempoChanges;
