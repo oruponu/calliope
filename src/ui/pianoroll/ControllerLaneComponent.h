@@ -8,6 +8,7 @@
 #include "model/ControllerKind.h"
 #include "model/GridDivision.h"
 #include "model/MidiSequence.h"
+#include "model/ProgramVoice.h"
 #include "model/TimelineGrid.h"
 #include "ui/NoteDragPreview.h"
 #include "ui/pianoroll/ControllerValueDraft.h"
@@ -138,8 +139,8 @@ private:
                        float alpha, std::function<int(int)> toY);
     std::vector<std::pair<int, int>>
     recordedValues(int trackIndex, const std::function<std::optional<int>(const MidiEvent&)>& valueOf) const;
-    void drawProgramChanges(juce::Graphics& g, const std::vector<std::pair<int, int>>& events, juce::Colour colour,
-                            float alpha, const std::set<int>& selectedTicks = {});
+    void drawProgramChanges(juce::Graphics& g, const std::vector<std::pair<int, ProgramVoice>>& events,
+                            juce::Colour colour, float alpha, const std::set<int>& selectedTicks = {});
     void drawPlayhead(juce::Graphics& g);
     void drawLoopRegion(juce::Graphics& g);
     void drawDragValueTip(juce::Graphics& g);

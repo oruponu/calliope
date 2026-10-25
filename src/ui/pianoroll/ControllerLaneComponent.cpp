@@ -40,18 +40,20 @@ juce::String ccLabel(int cc)
 // Space between a program change label's edges and its text.
 constexpr int programLabelInset = 5;
 
-juce::String programLabel(int program)
+juce::String programLabel(const ProgramVoice& voice)
 {
-    juce::String label(program);
-    if (const char* name = GmPrograms::programName(program))
+    juce::String label(voice.program);
+    if (const char* name = GmPrograms::programName(voice.program))
         label += " " + juce::String(name);
+    if (!voice.bank.isZero())
+        label += " (" + juce::String(voice.bank.msb) + ":" + juce::String(voice.bank.lsb) + ")";
     return label;
 }
 
-int programLabelWidth(int program)
+int programLabelWidth(const ProgramVoice& voice)
 {
     using namespace calliope::theme;
-    return juce::GlyphArrangement::getStringWidthInt(font::sans(font::sizeSM), programLabel(program)) +
+    return juce::GlyphArrangement::getStringWidthInt(font::sans(font::sizeSM), programLabel(voice)) +
            2 * programLabelInset;
 }
 } // namespace
@@ -1004,20 +1006,18 @@ void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
         bool isActive = (trackIdx == activeTrackIndex);
         float alpha = isActive ? 0.85f : 0.3f;
 
-        std::vector<std::pair<int, int>> events;
+        std::vector<std::pair<int, ProgramVoice>> events;
         std::set<int> selectedTicks;
         const auto selected = isActive ? displayedSelection() : std::set<int>{};
-        for (int i = 0; i < static_cast<int>(trackEvents.size()); ++i)
+        const auto voices = ProgramChangeEdits::voicesOf(trackEvents);
+        for (const auto& [i, voice] : voices)
         {
             const auto& event = trackEvents[static_cast<size_t>(i)];
-            if (event.type == MidiEvent::Type::ProgramChange)
-            {
-                events.push_back({event.tick, event.data1});
-                if (selected.contains(i))
-                    selectedTicks.insert(event.tick);
-            }
+            events.push_back({event.tick, voice});
+            if (selected.contains(i))
+                selectedTicks.insert(event.tick);
         }
-        std::ranges::stable_sort(events, {}, &std::pair<int, int>::first);
+        std::ranges::stable_sort(events, {}, &std::pair<int, ProgramVoice>::first);
 
         auto colour = TrackColours::getColour(trackIdx);
         if (!events.empty())
@@ -1031,11 +1031,18 @@ void ControllerLaneComponent::drawProgramChange(juce::Graphics& g)
                                                  return std::nullopt;
                                              });
         if (!recorded.empty())
-            drawProgramChanges(g, recorded, calliope::theme::status::danger, 0.85f);
+        {
+            std::vector<std::pair<int, ProgramVoice>> recordedVoices;
+            recordedVoices.reserve(recorded.size());
+            for (const auto& [tick, program] : recorded)
+                recordedVoices.push_back({tick, ProgramVoice{{}, program}});
+            drawProgramChanges(g, recordedVoices, calliope::theme::status::danger, 0.85f);
+        }
     }
 }
 
-void ControllerLaneComponent::drawProgramChanges(juce::Graphics& g, const std::vector<std::pair<int, int>>& events,
+void ControllerLaneComponent::drawProgramChanges(juce::Graphics& g,
+                                                 const std::vector<std::pair<int, ProgramVoice>>& events,
                                                  juce::Colour colour, float alpha, const std::set<int>& selectedTicks)
 {
     using namespace calliope::theme;
@@ -1323,7 +1330,7 @@ int ControllerLaneComponent::hitTestLabel(int x) const
         return -1;
 
     const int hit = *block.rbegin();
-    const int labelRight = tickToX(*tick) + programLabelWidth(events[static_cast<size_t>(hit)].data1);
+    const int labelRight = tickToX(*tick) + programLabelWidth(ProgramChangeEdits::voiceOf(events, hit));
     return x < labelRight ? hit : -1;
 }
 

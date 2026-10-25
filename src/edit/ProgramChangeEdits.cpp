@@ -217,22 +217,26 @@ std::set<int> ProgramChangeEdits::withBankSelects(const std::vector<MidiEvent>& 
     return indices;
 }
 
-ProgramVoice ProgramChangeEdits::voiceOf(const std::vector<MidiEvent>& events, int pcIndex)
+std::map<int, ProgramVoice> ProgramChangeEdits::voicesOf(const std::vector<MidiEvent>& events)
 {
-    if (pcIndex < 0 || pcIndex >= static_cast<int>(events.size()) ||
-        events[static_cast<size_t>(pcIndex)].type != MidiEvent::Type::ProgramChange)
-        return {};
-
+    std::map<int, ProgramVoice> voices;
     ProgramBank bank;
     for (int i : eventIndicesInTickOrder(events))
     {
         const auto& event = events[static_cast<size_t>(i)];
         if (isBankSelect(event))
             applyBankSelect(bank, event);
-        if (i == pcIndex)
-            return {bank, event.data1};
+        else if (event.type == MidiEvent::Type::ProgramChange)
+            voices.emplace(i, ProgramVoice{bank, event.data1});
     }
-    return {};
+    return voices;
+}
+
+ProgramVoice ProgramChangeEdits::voiceOf(const std::vector<MidiEvent>& events, int pcIndex)
+{
+    const auto voices = voicesOf(events);
+    const auto voice = voices.find(pcIndex);
+    return voice == voices.end() ? ProgramVoice{} : voice->second;
 }
 
 ProgramVoice ProgramChangeEdits::voiceAt(const std::vector<MidiEvent>& events, int tick)

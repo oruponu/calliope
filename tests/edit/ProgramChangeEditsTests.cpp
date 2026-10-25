@@ -89,6 +89,12 @@ TEST_CASE("the voice keeps the bank across program changes", "[edit][program-cha
     CHECK((ProgramChangeEdits::voiceOf(events, 3) == ProgramVoice{{8, 2}, 2}));
 }
 
+TEST_CASE("the voices of all program changes are found in one pass", "[edit][program-change]")
+{
+    const auto events = std::vector{bank(0, 8), pc(0, 1), bankLsb(480, 2), pc(480, 2), cc(960, 7, 100)};
+    CHECK((ProgramChangeEdits::voicesOf(events) == std::map<int, ProgramVoice>{{1, {{8, 0}, 1}}, {3, {{8, 2}, 2}}}));
+}
+
 TEST_CASE("the voice in effect counts the tick itself", "[edit][program-change]")
 {
     const auto events = std::vector{pc(480, 10), pc(480, 20), pc(960, 30)};

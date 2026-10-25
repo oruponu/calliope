@@ -3,6 +3,7 @@
 #include "edit/ControllerPointEditResult.h"
 #include "edit/CopiedControllerPoints.h"
 #include "model/ProgramVoice.h"
+#include <map>
 #include <optional>
 #include <set>
 #include <vector>
@@ -20,6 +21,9 @@ std::set<int> onTick(const std::vector<MidiEvent>& events, int tick);
 std::set<int> bankSelectsOf(const std::vector<MidiEvent>& events, int pcIndex);
 
 std::set<int> withBankSelects(const std::vector<MidiEvent>& events, const std::set<int>& pcIndices);
+
+// The voice of every program change, keyed by its index, found in one pass in tick order.
+std::map<int, ProgramVoice> voicesOf(const std::vector<MidiEvent>& events);
 
 // The program and the latest CC0 and CC32 before it in tick order (0 for none), as the instrument has them.
 ProgramVoice voiceOf(const std::vector<MidiEvent>& events, int pcIndex);
