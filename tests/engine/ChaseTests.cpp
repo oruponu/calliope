@@ -323,6 +323,92 @@ TEST_CASE("a changed program sends the whole state of the channel", "[engine][ch
           std::vector<MidiEvent>{pc(1000, 9), cc(1000, 7, 100)});
 }
 
+TEST_CASE("an edited program before the playhead sends the whole state of the channel", "[engine][chase]")
+{
+    CHECK(eventsOf(chaseChanges(sentFrom(on(deviceCh1, {pc(0, 5), cc(0, 7, 100)})), {deviceCh1},
+                                snapshotOf(on(deviceCh1, {pc(0, 9), cc(0, 7, 100)}), {deviceCh1}), 1000)) ==
+          std::vector<MidiEvent>{pc(1000, 9), cc(1000, 7, 100)});
+}
+
+TEST_CASE("an edited program is sent with its bank select", "[engine][chase]")
+{
+    CHECK(eventsOf(chaseChanges(sentFrom(on(deviceCh1, {pc(0, 5)})), {deviceCh1},
+                                snapshotOf(on(deviceCh1, {cc(0, 0, 1), pc(0, 5)}), {deviceCh1}), 1000)) ==
+          std::vector<MidiEvent>{cc(1000, 0, 1), pc(1000, 5)});
+}
+
+TEST_CASE("a removed program falls back to the program before it", "[engine][chase]")
+{
+    CHECK(eventsOf(chaseChanges(sentFrom(on(deviceCh1, {pc(0, 3), pc(500, 5)})), {deviceCh1},
+                                snapshotOf(on(deviceCh1, {pc(0, 3)}), {deviceCh1}), 1000)) ==
+          std::vector<MidiEvent>{pc(1000, 3)});
+}
+
+TEST_CASE("a removed program with none before it sends nothing", "[engine][chase]")
+{
+    CHECK(chaseChanges(sentFrom(on(deviceCh1, {pc(0, 5), cc(0, 7, 100)})), {deviceCh1},
+                       snapshotOf(on(deviceCh1, {cc(0, 7, 100)}), {deviceCh1}), 1000)
+              .empty());
+}
+
+TEST_CASE("a program edited past the playhead sends nothing", "[engine][chase]")
+{
+    CHECK(chaseChanges(sentFrom(on(deviceCh1, {pc(0, 5)})), {deviceCh1},
+                       snapshotOf(on(deviceCh1, {pc(0, 5), pc(1200, 9)}), {deviceCh1}), 1000)
+              .empty());
+}
+
+TEST_CASE("a program added where none was sent is sent", "[engine][chase]")
+{
+    CHECK(eventsOf(chaseChanges(sentFrom(on(deviceCh1, {cc(0, 7, 100)})), {deviceCh1},
+                                snapshotOf(on(deviceCh1, {pc(0, 9), cc(0, 7, 100)}), {deviceCh1}), 1000)) ==
+          std::vector<MidiEvent>{pc(1000, 9), cc(1000, 7, 100)});
+}
+
+TEST_CASE("an edited program is sent only to its own channel", "[engine][chase]")
+{
+    auto played = on(deviceCh1, {pc(0, 5)});
+    played.push_back({deviceCh2, pc(0, 1)});
+    auto after = on(deviceCh1, {pc(0, 5)});
+    after.push_back({deviceCh2, pc(0, 2)});
+
+    const auto result =
+        chaseChanges(sentFrom(played), {deviceCh1, deviceCh2}, snapshotOf(after, {deviceCh1, deviceCh2}), 1000);
+
+    REQUIRE(result.size() == 1);
+    CHECK(eventsOf(result) == std::vector<MidiEvent>{pc(1000, 2)});
+    CHECK(result[0].ctx == deviceCh2);
+}
+
+TEST_CASE("a removed bank select keeps the program as sent", "[engine][chase]")
+{
+    CHECK(chaseChanges(sentFrom(on(deviceCh1, {cc(0, 0, 1), pc(0, 5), cc(0, 7, 100)})), {deviceCh1},
+                       snapshotOf(on(deviceCh1, {pc(0, 5), cc(0, 7, 100)}), {deviceCh1}), 1000)
+              .empty());
+}
+
+TEST_CASE("a program sent for an edit is not sent again", "[engine][chase]")
+{
+    auto sent = sentFrom(on(deviceCh1, {cc(0, 0, 1), pc(0, 5)}));
+    const auto after = snapshotOf(on(deviceCh1, {pc(0, 9)}), {deviceCh1});
+    const auto first = chaseChanges(sent, {deviceCh1}, after, 1000);
+    REQUIRE_FALSE(first.empty());
+    for (const auto& se : first)
+        sent.record(se.ctx, se.event);
+
+    CHECK(chaseChanges(sent, {deviceCh1}, after, 1000).empty());
+}
+
+TEST_CASE("muting the track that gave the program sends no program", "[engine][chase]")
+{
+    auto played = on(deviceCh1, {cc(0, 7, 100)});
+    played.push_back({otherDeviceCh1, pc(0, 5)});
+
+    CHECK(chaseChanges(sentFrom(played), {deviceCh1, otherDeviceCh1},
+                       snapshotOf(on(deviceCh1, {cc(0, 7, 100)}), {deviceCh1}), 1000)
+              .empty());
+}
+
 TEST_CASE("values only the removed track gave are not sent", "[engine][chase]")
 {
     const auto after = on(deviceCh1, {pc(0, 5)});

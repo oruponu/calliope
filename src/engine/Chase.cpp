@@ -11,6 +11,19 @@ struct ScannedTarget
     PlaybackTrackContext firstCtx;
     ChaseScan scan;
 };
+
+bool programIsSatisfiedBy(const ChaseItem& program, const std::vector<ChaseItem>& sent)
+{
+    const auto sentProgram = std::find_if(sent.begin(), sent.end(),
+                                          [](const ChaseItem& item) { return item.kind == ChaseItem::Kind::Program; });
+    return sentProgram != sent.end() &&
+           std::all_of(program.events.begin(), program.events.end(),
+                       [&](const MidiEvent& event)
+                       {
+                           return std::find(sentProgram->events.begin(), sentProgram->events.end(), event) !=
+                                  sentProgram->events.end();
+                       });
+}
 } // namespace
 
 std::vector<ChaseTargetState> chaseStates(const PlaybackSnapshot& snap, int tick)
@@ -74,11 +87,20 @@ std::vector<ChaseTarget> chaseTargetsChangedBetween(const std::vector<PlaybackTr
 std::vector<ScheduledEvent> chaseChanges(const ChaseTracker& sent, const std::vector<PlaybackTrackContext>& before,
                                          const PlaybackSnapshot& after, int tick)
 {
-    const auto changed = chaseTargetsChangedBetween(before, after.contexts);
+    const auto contextsChanged = chaseTargetsChangedBetween(before, after.contexts);
+    auto changed = contextsChanged;
+    const auto afterStates = chaseStates(after, tick);
+    for (const auto& state : afterStates)
+    {
+        if (std::find(changed.begin(), changed.end(), state.target) != changed.end() || state.items.empty() ||
+            state.items.front().kind != ChaseItem::Kind::Program)
+            continue;
+        if (!programIsSatisfiedBy(state.items.front(), sent.itemsOf(state.target, tick)))
+            changed.push_back(state.target);
+    }
     if (changed.empty())
         return {};
 
-    const auto afterStates = chaseStates(after, tick);
     std::vector<ScheduledEvent> events;
     for (const auto& target : changed)
     {
@@ -94,8 +116,11 @@ std::vector<ScheduledEvent> chaseChanges(const ChaseTracker& sent, const std::ve
             return previous == old.end() || *previous != item;
         };
 
+        const bool contextsUnchanged =
+            std::find(contextsChanged.begin(), contextsChanged.end(), target) == contextsChanged.end();
         const bool programChanged =
-            !now->items.empty() && now->items.front().kind == ChaseItem::Kind::Program && differs(now->items.front());
+            contextsUnchanged ||
+            (!now->items.empty() && now->items.front().kind == ChaseItem::Kind::Program && differs(now->items.front()));
         const auto hasPendingBank = [](const std::vector<ChaseItem>& items)
         {
             return std::ranges::any_of(items,

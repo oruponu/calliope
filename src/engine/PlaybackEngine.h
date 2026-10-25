@@ -123,10 +123,10 @@ private:
     // These three are used by the timer thread only, except that needsFullChase and sentState are reset on the message
     // thread while the timer is stopped.
     bool needsFullChase = false;
-    // The events sent since playback started, so that a change in the audible tracks is compared with what the
-    // instruments have rather than with the events as edited since.
+    // The events sent since playback started, so that a snapshot change is compared with what the instruments have
+    // rather than with the events as edited since.
     ChaseTracker sentState;
-    // The audible tracks when the chase was last sent.
+    // The audible tracks in the last snapshot examined for chase changes.
     std::vector<PlaybackTrackContext> chasedContexts;
 
     int pauseDepth = 0;

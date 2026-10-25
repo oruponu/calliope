@@ -17,8 +17,9 @@ std::vector<ScheduledEvent> chaseEvents(const PlaybackSnapshot& snap, int tick);
 std::vector<ChaseTarget> chaseTargetsChangedBetween(const std::vector<PlaybackTrackContext>& before,
                                                     const std::vector<PlaybackTrackContext>& after);
 
-// What to send at tick when the audible contexts change from before to those of after: for each changed target, the
-// items of its state in after that differ from what it has been sent. A changed program brings every item, since
-// some instruments reset controllers on a program change. Items that after does not have are not sent.
+// What to send at tick after the snapshot changes: targets whose audible contexts changed send the items of their
+// state in after that differ from what they have been sent. Targets whose contexts did not change send their entire
+// state only when its program is not satisfied by the program sent to the target. A changed program brings every
+// item, since some instruments reset controllers on a program change. Items that after does not have are not sent.
 std::vector<ScheduledEvent> chaseChanges(const ChaseTracker& sent, const std::vector<PlaybackTrackContext>& before,
                                          const PlaybackSnapshot& after, int tick);

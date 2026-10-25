@@ -445,8 +445,6 @@ void PlaybackEngine::chaseAll(const PlaybackSnapshot& snap, int tick, PlaybackLi
 
 void PlaybackEngine::chaseChangesSince(const PlaybackSnapshot& snap, int tick, PlaybackListener& sink)
 {
-    if (chasedContexts == snap.contexts)
-        return;
     for (const auto& se : chaseChanges(sentState, chasedContexts, snap, tick))
         sink.onMidiEvent(se.ctx, se.event);
     chasedContexts = snap.contexts;
