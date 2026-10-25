@@ -471,8 +471,11 @@ void ControllerLaneComponent::mouseDrag(const juce::MouseEvent& e)
                               : ControllerLaneScale::draggedValue(
                                     kind->valueOf(anchor), pointY(*kind, kind->valueOf(anchor)),
                                     e.getDistanceFromDragStartY(), [this, &kind](int y) { return valueAtY(*kind, y); });
-        pointDragging->preview = ControllerPointEdits::move(pointDragging->before, *kind, pointDragging->moved,
-                                                            pointDragging->anchor, tick, value);
+        pointDragging->preview =
+            showsProgramChange()
+                ? ProgramChangeEdits::move(pointDragging->before, pointDragging->moved, pointDragging->anchor, tick)
+                : ControllerPointEdits::move(pointDragging->before, *kind, pointDragging->moved, pointDragging->anchor,
+                                             tick, value);
         pointDragging->changed = pointDragging->preview.events != pointDragging->before;
         if (const auto landed = ControllerPointEdits::movedAnchor(pointDragging->before, *kind, pointDragging->moved,
                                                                   pointDragging->anchor, tick, value))
@@ -1500,7 +1503,7 @@ void ControllerLaneComponent::openProgramBrowser(int tick, int anchorX)
         return;
 
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
-    const int program = ProgramChangeEdits::programAt(events, tick);
+    const int program = ProgramChangeEdits::voiceAt(events, tick).program;
     const auto anchor = juce::Rectangle<int>(anchorX, getDrawAreaTop(), 1, getDrawAreaHeight());
 
     valueEditSession.close();
@@ -1523,7 +1526,7 @@ void ControllerLaneComponent::commitProgram(int program)
         return;
 
     const bool changesExisting = !ProgramChangeEdits::onTick(draft.eventsAtOpen, draft.tick).empty();
-    const auto result = ProgramChangeEdits::place(events, draft.tick, program);
+    const auto result = ProgramChangeEdits::place(events, draft.tick, ProgramVoice{{}, program});
     if (result.events == events)
         selectPoints(result.selected);
     else
@@ -1585,7 +1588,9 @@ void ControllerLaneComponent::copySelectedPoints()
     if (!hasPointSelection())
         return;
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
-    clipboard.setControllerPoints(ControllerPointEdits::copy(events, *editedKind(), pointSelection.indices()));
+    clipboard.setControllerPoints(showsProgramChange()
+                                      ? ProgramChangeEdits::copy(events, pointSelection.indices())
+                                      : ControllerPointEdits::copy(events, *editedKind(), pointSelection.indices()));
 }
 
 void ControllerLaneComponent::cutSelectedPoints()
@@ -1594,8 +1599,9 @@ void ControllerLaneComponent::cutSelectedPoints()
         return;
     copySelectedPoints();
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
-    applyPointEdit(showsProgramChange() ? "Cut Program Changes" : "Cut Controller Points", events,
-                   ControllerPointEdits::remove(events, pointSelection.indices()));
+    const auto result = showsProgramChange() ? ProgramChangeEdits::remove(events, pointSelection.indices())
+                                             : ControllerPointEdits::remove(events, pointSelection.indices());
+    applyPointEdit(showsProgramChange() ? "Cut Program Changes" : "Cut Controller Points", events, result);
 }
 
 bool ControllerLaneComponent::canPastePoints() const
@@ -1613,7 +1619,9 @@ void ControllerLaneComponent::pastePoints(int atTick)
     valueEditSession.close();
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
     const auto result =
-        ControllerPointEdits::paste(events, *editedKind(), clipboard.getControllerPoints().points, atTick);
+        showsProgramChange()
+            ? ProgramChangeEdits::paste(events, clipboard.getControllerPoints().points, atTick)
+            : ControllerPointEdits::paste(events, *editedKind(), clipboard.getControllerPoints().points, atTick);
     if (result.events != events)
         applyPointEdit(showsProgramChange() ? "Paste Program Changes" : "Paste Controller Points", events, result);
     else
@@ -1627,7 +1635,8 @@ bool ControllerLaneComponent::keyPressed(const juce::KeyPress& key)
     if (!editedKind() || !hasActiveTrack() || pointSelection.isEmpty())
         return false;
     const auto& events = sequence->getTrack(activeTrackIndex).getEvents();
-    applyPointEdit(showsProgramChange() ? "Delete Program Changes" : "Delete Controller Points", events,
-                   ControllerPointEdits::remove(events, pointSelection.indices()));
+    const auto result = showsProgramChange() ? ProgramChangeEdits::remove(events, pointSelection.indices())
+                                             : ControllerPointEdits::remove(events, pointSelection.indices());
+    applyPointEdit(showsProgramChange() ? "Delete Program Changes" : "Delete Controller Points", events, result);
     return true;
 }

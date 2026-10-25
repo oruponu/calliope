@@ -77,6 +77,7 @@ target_sources(CalliopeTests PRIVATE
     edit/NoteShiftTests.cpp
     edit/NoteStartResizeTests.cpp
     edit/ProgramChangeEditsTests.cpp
+    edit/ProgramChangeGroupTests.cpp
     edit/ProgramChangePointTests.cpp
     edit/TempoAddChangeTests.cpp
     edit/TempoDeleteTests.cpp
