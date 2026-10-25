@@ -384,17 +384,18 @@ TEST_CASE("event rows of another track or of the recording are not found", "[ui]
     CHECK(EventListItems::eventRows(items, 0, {0}) == std::vector{2});
 }
 
-TEST_CASE("a control change or pitch bend row tells its controller", "[ui][event-list]")
+TEST_CASE("a control change, pitch bend or program change row tells its controller", "[ui][event-list]")
 {
     CHECK(EventListItems::controllerOf(eventRow(EventListItem::ControlChange, 0, 0, 11)) ==
           ControllerKind::controlChange(11));
     CHECK(EventListItems::controllerOf(eventRow(EventListItem::PitchBend, 0, 0, 8192)) == ControllerKind::pitchBend());
+    CHECK(EventListItems::controllerOf(eventRow(EventListItem::ProgramChange, 0, 0, 40)) ==
+          ControllerKind::programChange());
 }
 
-TEST_CASE("a note, program change or recorded row tells no controller", "[ui][event-list]")
+TEST_CASE("a note or recorded row tells no controller", "[ui][event-list]")
 {
     CHECK_FALSE(EventListItems::controllerOf(noteRow(0, 0)).has_value());
-    CHECK_FALSE(EventListItems::controllerOf(eventRow(EventListItem::ProgramChange, 0, 0)).has_value());
     CHECK_FALSE(EventListItems::controllerOf(eventRow(EventListItem::ControlChange, 0, 0, 7, true)).has_value());
 }
 

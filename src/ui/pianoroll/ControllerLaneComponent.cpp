@@ -1497,7 +1497,12 @@ bool ControllerLaneComponent::canSelectAllPoints() const
 
 void ControllerLaneComponent::showAndSelectPoints(const ControllerKind& kind, std::set<int> eventIndices)
 {
-    if (kind.type == MidiEvent::Type::PitchBend)
+    if (kind.type == MidiEvent::Type::ProgramChange)
+    {
+        if (!showsProgramChange())
+            setDisplayMode(DisplayMode::ProgramChange);
+    }
+    else if (kind.type == MidiEvent::Type::PitchBend)
     {
         if (displayMode != DisplayMode::PitchBend)
             setDisplayMode(DisplayMode::PitchBend);

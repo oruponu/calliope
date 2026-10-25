@@ -237,6 +237,8 @@ std::optional<ControllerKind> EventListItems::controllerOf(const EventListItem& 
         return ControllerKind::controlChange(item.data1);
     if (item.kind == EventListItem::PitchBend)
         return ControllerKind::pitchBend();
+    if (item.kind == EventListItem::ProgramChange)
+        return ControllerKind::programChange();
     return std::nullopt;
 }
 
