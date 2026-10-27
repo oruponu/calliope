@@ -264,6 +264,8 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         if (onTrack)
         {
             const std::set<int> targets = selectedTrackIndices.contains(row) ? selectedTrackIndices : std::set{row};
+            menu.addItem(targets.size() > 1 ? "Duplicate Tracks" : "Duplicate Track",
+                         [this, targets]() { requestDuplicateTracks(targets); });
             menu.addItem(targets.size() > 1 ? "Delete Tracks" : "Delete Track", canRemoveTracks(targets), false,
                          [this, targets]() { requestRemoveTracks(targets); });
         }
