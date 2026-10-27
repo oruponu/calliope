@@ -72,6 +72,7 @@ void TrackListComponent::setActiveTrackIndex(int index)
     selectedTrackIndices = {index};
     repaint();
     notifySelectionChanged();
+    scrollRowIntoView(index);
 }
 
 const std::set<int>& TrackListComponent::getSelectedTrackIndices() const
@@ -263,11 +264,13 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         }
         else
         {
+            const int insertIndex =
+                selectedTrackIndices.empty() ? sequence->getNumTracks() : *selectedTrackIndices.rbegin() + 1;
             menu.addItem("Add Track", true, false,
-                         [this]()
+                         [this, insertIndex]()
                          {
-                             if (onAddTrackRequested)
-                                 onAddTrackRequested();
+                             if (onInsertTrackRequested)
+                                 onInsertTrackRequested(insertIndex);
                          });
         }
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({screenPos.x, screenPos.y, 1, 1}));

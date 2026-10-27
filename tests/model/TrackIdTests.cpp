@@ -31,6 +31,19 @@ TEST_CASE("addTrack assigns a fresh id even to a track that already has one", "[
     CHECK(seq.getTrack(1).getId() != seq.getTrack(0).getId());
 }
 
+TEST_CASE("addTrackAt inserts a track with a fresh id at the index", "[model][trackid]")
+{
+    MidiSequence seq;
+    const TrackId first = seq.addTrack().getId();
+    const TrackId second = seq.addTrack().getId();
+    const TrackId added = seq.addTrackAt(1).getId();
+    CHECK(added != first);
+    CHECK(added != second);
+    CHECK(seq.indexOf(first) == 0);
+    CHECK(seq.indexOf(added) == 1);
+    CHECK(seq.indexOf(second) == 2);
+}
+
 TEST_CASE("insertTrack keeps the id of the inserted track", "[model][trackid]")
 {
     MidiSequence seq;

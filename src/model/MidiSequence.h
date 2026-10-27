@@ -53,6 +53,7 @@ public:
     void replaceContents(SequenceContents contents);
 
     const MidiTrack& addTrack(MidiTrack track = {});
+    const MidiTrack& addTrackAt(int index, MidiTrack track = {});
     void insertTrack(int index, const MidiTrack& track);
     void removeTrack(int index);
 

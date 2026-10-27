@@ -11,7 +11,7 @@ TEST_CASE("redoing a track addition restores the same id", "[undo][track]")
 {
     MidiSequence seq;
     seq.addTrack();
-    TrackAddAction action(&seq);
+    TrackAddAction action(&seq, seq.getNumTracks());
     action.perform();
     REQUIRE(action.getAddedIndex() == 1);
     const TrackId added = seq.getTrack(1).getId();
@@ -25,11 +25,31 @@ TEST_CASE("redoing a track addition restores the same id", "[undo][track]")
     CHECK(seq.getTrack(1).getId() == added);
 }
 
+TEST_CASE("undoing and redoing a track addition in the middle keeps its index and id", "[undo][track]")
+{
+    MidiSequence seq;
+    const TrackId first = seq.addTrack().getId();
+    const TrackId second = seq.addTrack().getId();
+    TrackAddAction action(&seq, 1);
+    action.perform();
+    const TrackId added = seq.getTrack(1).getId();
+    CHECK(seq.indexOf(first) == 0);
+    CHECK(seq.indexOf(second) == 2);
+
+    action.undo();
+    CHECK(seq.indexOf(added) == -1);
+    CHECK(seq.indexOf(second) == 1);
+
+    action.perform();
+    CHECK(seq.indexOf(added) == 1);
+    CHECK(seq.indexOf(second) == 2);
+}
+
 TEST_CASE("redoing a track addition makes routes to it resolve again", "[undo][track]")
 {
     MidiSequence seq;
     seq.addTrack();
-    TrackAddAction action(&seq);
+    TrackAddAction action(&seq, seq.getNumTracks());
     action.perform();
     const TrackId added = seq.getTrack(1).getId();
     seq.setTrackRouteTarget(0, added);

@@ -25,6 +25,7 @@ public:
     std::function<void(int trackIndex)> onEditorButtonClicked;
     std::function<void(int trackIndex)> onChannelLabelClicked;
     std::function<void()> onAddTrackRequested;
+    std::function<void(int trackIndex)> onInsertTrackRequested;
     std::function<void(const std::set<int>& trackIndices)> onRemoveTracksRequested;
     std::function<void(int trackIndex, juce::String newName)> onTrackRenamed;
 

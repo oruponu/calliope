@@ -59,10 +59,15 @@ void MidiSequence::replaceContents(SequenceContents contents)
 
 const MidiTrack& MidiSequence::addTrack(MidiTrack track)
 {
+    return addTrackAt(getNumTracks(), std::move(track));
+}
+
+const MidiTrack& MidiSequence::addTrackAt(int index, MidiTrack track)
+{
     track.id = TrackId{nextTrackId++};
-    tracks.push_back(std::move(track));
+    tracks.insert(tracks.begin() + index, std::move(track));
     notifyTrackStructureChanged();
-    return tracks.back();
+    return tracks[index];
 }
 
 void MidiSequence::insertTrack(int index, const MidiTrack& track)

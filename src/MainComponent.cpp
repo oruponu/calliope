@@ -190,8 +190,16 @@ MainComponent::MainComponent()
     trackList.onAddTrackRequested = [this]()
     {
         document.getHistory().beginNewTransaction("Add Track");
-        document.getHistory().perform(new TrackAddAction(&document.getSequence()));
+        auto& sequence = document.getSequence();
+        document.getHistory().perform(new TrackAddAction(&sequence, sequence.getNumTracks()));
         trackList.refresh();
+    };
+    trackList.onInsertTrackRequested = [this](int trackIndex)
+    {
+        document.getHistory().beginNewTransaction("Add Track");
+        document.getHistory().perform(new TrackAddAction(&document.getSequence(), trackIndex));
+        trackList.refresh();
+        trackList.setActiveTrackIndex(trackIndex);
     };
     trackList.onRemoveTracksRequested = [this](const std::set<int>& trackIndices)
     {
