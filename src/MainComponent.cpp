@@ -9,6 +9,8 @@
 #include "ui/transport/MetronomeSettingsComponent.h"
 #include "undo/TrackActions.h"
 #include <ranges>
+#include <set>
+#include <utility>
 
 namespace
 {
@@ -191,15 +193,17 @@ MainComponent::MainComponent()
         document.getHistory().perform(new TrackAddAction(&document.getSequence()));
         trackList.refresh();
     };
-    trackList.onRemoveTrackRequested = [this](int trackIndex)
+    trackList.onRemoveTracksRequested = [this](const std::set<int>& trackIndices)
     {
-        if (document.getSequence().getNumTracks() <= 1)
+        auto& sequence = document.getSequence();
+        if (trackIndices.empty() || std::cmp_greater_equal(trackIndices.size(), sequence.getNumTracks()))
             return;
 
         document.getHistory().beginNewTransaction("Remove Track");
-        document.getHistory().perform(new TrackRemoveAction(&document.getSequence(), trackIndex));
+        for (int trackIndex : trackIndices | std::views::reverse)
+            document.getHistory().perform(new TrackRemoveAction(&sequence, trackIndex));
 
-        int newActive = juce::jlimit(0, document.getSequence().getNumTracks() - 1, trackIndex);
+        int newActive = juce::jlimit(0, sequence.getNumTracks() - 1, *trackIndices.begin());
         trackList.refresh();
         trackList.setActiveTrackIndex(newActive);
     };

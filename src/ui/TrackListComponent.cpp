@@ -1,6 +1,7 @@
 #include "ui/TrackListComponent.h"
 #include "ui/theme/TrackColours.h"
 #include <ranges>
+#include <utility>
 
 namespace
 {
@@ -256,13 +257,9 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
         juce::PopupMenu menu;
         if (onTrack)
         {
-            bool canRemove = sequence->getNumTracks() > 1;
-            menu.addItem("Delete Track", canRemove, false,
-                         [this, row]()
-                         {
-                             if (onRemoveTrackRequested)
-                                 onRemoveTrackRequested(row);
-                         });
+            const std::set<int> targets = selectedTrackIndices.contains(row) ? selectedTrackIndices : std::set{row};
+            menu.addItem(targets.size() > 1 ? "Delete Tracks" : "Delete Track", canRemoveTracks(targets), false,
+                         [this, targets]() { requestRemoveTracks(targets); });
         }
         else
         {
@@ -380,6 +377,14 @@ bool TrackListComponent::keyPressed(const juce::KeyPress& key)
             else
                 toggleSolo(activeTrackIndex);
         }
+        return true;
+    }
+
+    if (key == juce::KeyPress(juce::KeyPress::deleteKey, juce::ModifierKeys::shiftModifier, 0) ||
+        key == juce::KeyPress(juce::KeyPress::backspaceKey, juce::ModifierKeys::shiftModifier, 0))
+    {
+        if (sequence)
+            requestRemoveTracks(selectedTrackIndices);
         return true;
     }
 
@@ -533,6 +538,17 @@ void TrackListComponent::toggleSolo(int row)
         sequence->setTrackSolo(row, newSolo);
     }
     repaint();
+}
+
+bool TrackListComponent::canRemoveTracks(const std::set<int>& indices) const
+{
+    return !indices.empty() && std::cmp_less(indices.size(), sequence->getNumTracks());
+}
+
+void TrackListComponent::requestRemoveTracks(const std::set<int>& indices)
+{
+    if (canRemoveTracks(indices) && onRemoveTracksRequested)
+        onRemoveTracksRequested(indices);
 }
 
 void TrackListComponent::selectRangeTo(int row)
