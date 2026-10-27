@@ -1,4 +1,5 @@
 #include "model/SequenceContentsRules.h"
+#include "model/MetaEventRetention.h"
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -89,11 +90,20 @@ bool acceptsSysEx(const SysExEvent& sysEx)
            std::ranges::all_of(sysEx.data, [](std::uint8_t byte) { return byte <= 0x7F; });
 }
 
+bool acceptsMetaEvents(const std::vector<MetaEvent>& events, MetaEventRetention::Owner owner)
+{
+    return std::ranges::all_of(
+               events, [owner](const MetaEvent& event)
+               { return event.tick >= 0 && MetaEventRetention::isRetained(event.type, event.data, owner); }) &&
+           ticksNeverDecrease(events);
+}
+
 bool acceptsTrack(const MidiTrack& track)
 {
     return inRange(track.getChannel(), 1, 16) && std::ranges::all_of(track.getNotes(), acceptsNote) &&
            std::ranges::all_of(track.getEvents(), acceptsEvent) &&
-           std::ranges::all_of(track.getSysExEvents(), acceptsSysEx) && ticksNeverDecrease(track.getSysExEvents());
+           std::ranges::all_of(track.getSysExEvents(), acceptsSysEx) && ticksNeverDecrease(track.getSysExEvents()) &&
+           acceptsMetaEvents(track.getMetaEvents(), MetaEventRetention::Owner::Track);
 }
 } // namespace
 
@@ -118,6 +128,8 @@ bool acceptsKeySignature(const KeySignatureChange& change)
 bool accepts(const SequenceContents& contents)
 {
     return acceptsTimeline(contents.timeline) && acceptsKeySignatures(contents.keySignatureChanges) &&
-           acceptsChords(contents.chordChanges) && std::ranges::all_of(contents.tracks, acceptsTrack);
+           acceptsChords(contents.chordChanges) &&
+           acceptsMetaEvents(contents.metaEvents, MetaEventRetention::Owner::Song) &&
+           std::ranges::all_of(contents.tracks, acceptsTrack);
 }
 } // namespace SequenceContentsRules

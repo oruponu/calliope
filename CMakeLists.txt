@@ -57,6 +57,7 @@ target_sources(Calliope PRIVATE
     src/engine/TakeBuilder.cpp
     src/engine/ThruRouter.cpp
     src/engine/ThruTarget.cpp
+    src/io/MetaText.cpp
     src/io/MidiFileIO.cpp
     src/io/ProjectFileIO.cpp
     src/io/ProjectXmlReader.cpp
@@ -67,6 +68,7 @@ target_sources(Calliope PRIVATE
     src/model/ControllerPointConversion.cpp
     src/model/ControllerRamps.cpp
     src/model/GmPrograms.cpp
+    src/model/MetaEventRetention.cpp
     src/model/MidiSequence.cpp
     src/model/MidiTrack.cpp
     src/model/SequenceContentsRules.cpp

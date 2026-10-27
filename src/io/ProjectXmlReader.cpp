@@ -59,6 +59,33 @@ std::vector<ChordChange> readChords(const juce::XmlElement& element, XmlFieldRea
     return changes;
 }
 
+std::vector<MetaEvent> readMetaEvents(const juce::XmlElement& parent, XmlFieldReader& fields)
+{
+    std::vector<MetaEvent> events;
+    const auto* element = parent.getChildByName(names::metaEventsTag);
+    if (element == nullptr)
+        return events;
+
+    for (const auto* meta : element->getChildWithTagNameIterator(names::metaTag))
+    {
+        const int tick = fields.integer(*meta, names::tickAttr);
+        const int type = fields.integer(*meta, names::typeAttr);
+        fields.require(type >= 0 && type <= 0xFF);
+
+        std::vector<std::uint8_t> data;
+        const auto text = fields.text(*meta, names::dataAttr);
+        if (!text.empty())
+        {
+            auto parsed = SysExHex::parse(text);
+            fields.require(parsed.has_value());
+            if (parsed)
+                data = std::move(*parsed);
+        }
+        events.push_back({tick, static_cast<std::uint8_t>(type), std::move(data)});
+    }
+    return events;
+}
+
 std::shared_ptr<const PluginAssignment> readPlugin(const juce::XmlElement& element, XmlFieldReader& fields)
 {
     PluginAssignment assignment;
@@ -133,6 +160,9 @@ MidiTrack readTrack(const juce::XmlElement& element, XmlFieldReader& fields)
                 track.addSysEx({tick, *data});
         }
 
+    for (const auto& event : readMetaEvents(element, fields))
+        track.addMetaEvent(event);
+
     return track;
 }
 
@@ -165,6 +195,7 @@ std::optional<SequenceContents> read(const juce::XmlElement& root)
         contents.keySignatureChanges = readKeySignatures(*keys, fields);
     if (const auto* chords = requireChild(root, names::chordsTag, fields))
         contents.chordChanges = readChords(*chords, fields);
+    contents.metaEvents = readMetaEvents(root, fields);
     if (const auto* tracks = requireChild(root, names::tracksTag, fields))
         contents.tracks = readTracks(*tracks, fields);
 

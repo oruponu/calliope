@@ -1,4 +1,5 @@
 #include "io/ProjectXml.h"
+#include "support/MetaEventStringMaker.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/SysExEventStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
@@ -95,6 +96,54 @@ TEST_CASE("malformed sysex is rejected", "[io][projectxml][sysex]")
                  R"(<SysEx tick="480" data="41"/><SysEx tick="0" data="42"/>)");
     CAPTURE(sysEx);
     CHECK_FALSE(readText(replaced(validProject, "</Events>", "</Events><SysExEvents>" + sysEx + "</SysExEvents>")));
+}
+
+TEST_CASE("a project without MetaEvents has no meta events", "[io][projectxml][meta]")
+{
+    const auto loaded = readText(validProject);
+
+    REQUIRE(loaded);
+    CHECK(loaded->metaEvents.empty());
+    REQUIRE(loaded->tracks.size() == 2);
+    CHECK(loaded->tracks[0].getMetaEvents().empty());
+    CHECK(loaded->tracks[1].getMetaEvents().empty());
+}
+
+TEST_CASE("meta events in a project are read", "[io][projectxml][meta]")
+{
+    auto project = replaced(
+        validProject, "</Events>",
+        R"(</Events><MetaEvents><Meta tick="0" type="5" data="82 A0"/><Meta tick="0" type="0" data=""/></MetaEvents>)");
+    project =
+        replaced(project, "</Chords>", R"(</Chords><MetaEvents><Meta tick="0" type="3" data="53"/></MetaEvents>)");
+
+    const auto loaded = readText(project);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 2);
+    CHECK(loaded->tracks[0].getMetaEvents() == std::vector<MetaEvent>{{0, 0x05, {0x82, 0xA0}}, {0, 0x00, {}}});
+    CHECK(loaded->metaEvents == std::vector<MetaEvent>{{0, 0x03, {0x53}}});
+}
+
+TEST_CASE("malformed meta events are rejected", "[io][projectxml][meta]")
+{
+    const auto meta = GENERATE(as<std::string>{}, R"(<Meta tick="0" type="5" data="8"/>)",
+                               R"(<Meta tick="0" type="5" data="82  A0"/>)", R"(<Meta tick="0" type="5" data="a0"/>)",
+                               R"(<Meta tick="0" type="256" data=""/>)", R"(<Meta tick="0" type="-1" data=""/>)",
+                               R"(<Meta tick="0" type="128" data=""/>)", R"(<Meta tick="0" type="47" data=""/>)",
+                               R"(<Meta tick="0" type="3" data="53"/>)", R"(<Meta tick="-1" type="5" data=""/>)",
+                               R"(<Meta tick="0" data=""/>)", R"(<Meta tick="0" type="5"/>)",
+                               R"(<Meta tick="480" type="5" data=""/><Meta tick="0" type="5" data=""/>)");
+    CAPTURE(meta);
+    CHECK_FALSE(readText(replaced(validProject, "</Events>", "</Events><MetaEvents>" + meta + "</MetaEvents>")));
+}
+
+TEST_CASE("a song track name is accepted but a song end of track is not", "[io][projectxml][meta]")
+{
+    CHECK(readText(replaced(validProject, "</Chords>",
+                            R"(</Chords><MetaEvents><Meta tick="0" type="3" data="53"/></MetaEvents>)")));
+    CHECK_FALSE(readText(replaced(validProject, "</Chords>",
+                                  R"(</Chords><MetaEvents><Meta tick="0" type="47" data=""/></MetaEvents>)")));
 }
 
 TEST_CASE("a document that is not a Calliope project is rejected", "[io][projectxml]")

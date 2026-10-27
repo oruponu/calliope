@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/MetaEvent.h"
 #include "model/MidiEvent.h"
 #include "model/MidiNote.h"
 #include "model/PluginAssignment.h"
@@ -47,6 +48,9 @@ public:
     void addSysEx(const SysExEvent& sysEx);
     const std::vector<SysExEvent>& getSysExEvents() const;
 
+    void addMetaEvent(const MetaEvent& event);
+    const std::vector<MetaEvent>& getMetaEvents() const;
+
     bool isMuted() const;
     void setMuted(bool muted);
 
@@ -75,6 +79,7 @@ private:
     std::vector<MidiNote> notes;
     std::vector<MidiEvent> events;
     std::vector<SysExEvent> sysExEvents;
+    std::vector<MetaEvent> metaEvents;
     std::string name;
     bool muted = false;
     bool solo = false;

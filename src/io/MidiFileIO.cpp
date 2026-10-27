@@ -3,105 +3,22 @@
 #include "edit/KeySignatureEdits.h"
 #include "edit/TempoEdits.h"
 #include "edit/TimeSignatureEdits.h"
+#include "io/MetaText.h"
 #include "model/ControllerPointConversion.h"
 #include "model/ControllerRamps.h"
 #include "model/KeySignatureChange.h"
+#include "model/MetaEventRetention.h"
 #include "model/SequenceContentsRules.h"
 #include "model/TimeSignatureChange.h"
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <optional>
 #include <set>
 #include <utility>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <iconv.h>
-#include <langinfo.h>
-#endif
-
 namespace
 {
-
-bool isValidUtf8(const char* data, int length)
-{
-    int i = 0;
-    while (i < length)
-    {
-        auto byte = static_cast<unsigned char>(data[i]);
-        int seqLen;
-
-        if (byte <= 0x7F)
-            seqLen = 1;
-        else if ((byte & 0xE0) == 0xC0 && byte >= 0xC2)
-            seqLen = 2;
-        else if ((byte & 0xF0) == 0xE0)
-            seqLen = 3;
-        else if ((byte & 0xF8) == 0xF0 && byte <= 0xF4)
-            seqLen = 4;
-        else
-            return false;
-
-        if (i + seqLen > length)
-            return false;
-
-        for (int j = 1; j < seqLen; ++j)
-        {
-            if ((static_cast<unsigned char>(data[i + j]) & 0xC0) != 0x80)
-                return false;
-        }
-
-        i += seqLen;
-    }
-    return true;
-}
-
-juce::String decodeMetaText(const juce::MidiMessage& msg)
-{
-    auto* data = reinterpret_cast<const char*>(msg.getMetaEventData());
-    int length = msg.getMetaEventLength();
-
-    if (data == nullptr || length <= 0)
-        return {};
-
-    if (isValidUtf8(data, length))
-        return juce::String::fromUTF8(data, length);
-
-#ifdef _WIN32
-    int wideLen = MultiByteToWideChar(CP_ACP, 0, data, length, nullptr, 0);
-    if (wideLen > 0)
-    {
-        std::vector<wchar_t> wideBuf(wideLen + 1, L'\0');
-        MultiByteToWideChar(CP_ACP, 0, data, length, wideBuf.data(), wideLen);
-        return juce::String(wideBuf.data());
-    }
-#else
-    const char* localeEncoding = nl_langinfo(CODESET);
-    iconv_t cd = iconv_open("UTF-8", localeEncoding);
-    if (cd != reinterpret_cast<iconv_t>(-1))
-    {
-        size_t inBytesLeft = static_cast<size_t>(length);
-        size_t outBytesLeft = inBytesLeft * 4;
-        std::vector<char> outBuf(outBytesLeft + 1, '\0');
-
-        char* inPtr = const_cast<char*>(data);
-        char* outPtr = outBuf.data();
-
-        size_t result = iconv(cd, &inPtr, &inBytesLeft, &outPtr, &outBytesLeft);
-        iconv_close(cd);
-
-        if (result != static_cast<size_t>(-1))
-        {
-            int outLength = static_cast<int>(outPtr - outBuf.data());
-            return juce::String::fromUTF8(outBuf.data(), outLength);
-        }
-    }
-#endif
-
-    return juce::String::fromUTF8(data, length);
-}
-
 std::optional<TimeSignatureChange> readTimeSignature(const juce::MidiMessage& msg, int ppq)
 {
     const auto* data = msg.getMetaEventData();
@@ -140,6 +57,41 @@ std::optional<SysExEvent> readSysEx(const juce::MidiMessage& msg)
     return SysExEvent{static_cast<int>(msg.getTimeStamp()), {data, data + dataSize}};
 }
 
+std::optional<MetaEvent> readMetaEvent(const juce::MidiMessage& msg, MetaEventRetention::Owner owner)
+{
+    if (!msg.isMetaEvent())
+        return std::nullopt;
+
+    std::vector<std::uint8_t> data;
+    const int dataSize = msg.getMetaEventLength();
+    if (const auto* bytes = msg.getMetaEventData(); bytes != nullptr && dataSize > 0)
+        data.assign(bytes, bytes + dataSize);
+
+    const int type = msg.getMetaEventType();
+    if (!MetaEventRetention::isRetained(type, data, owner))
+        return std::nullopt;
+
+    return MetaEvent{static_cast<int>(msg.getTimeStamp()), static_cast<std::uint8_t>(type), std::move(data)};
+}
+
+juce::MidiMessage metaMessage(const MetaEvent& event)
+{
+    std::vector<std::uint8_t> bytes{0xFF, event.type};
+    std::vector<std::uint8_t> lengthBytes;
+    auto length = event.data.size();
+    do
+    {
+        lengthBytes.push_back(static_cast<std::uint8_t>(length & 0x7F));
+        length >>= 7;
+    } while (length != 0);
+
+    for (std::size_t i = lengthBytes.size(); i-- > 0;)
+        bytes.push_back(static_cast<std::uint8_t>(lengthBytes[i] | (i == 0 ? 0x00 : 0x80)));
+    bytes.insert(bytes.end(), event.data.begin(), event.data.end());
+
+    return juce::MidiMessage(bytes.data(), static_cast<int>(bytes.size()), event.tick);
+}
+
 } // anonymous namespace
 
 bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
@@ -149,6 +101,9 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
     midiFile.setTicksPerQuarterNote(ppq);
 
     juce::MidiMessageSequence tempoTrack;
+
+    for (const auto& event : sequence.getMetaEvents())
+        tempoTrack.addEvent(metaMessage(event));
 
     for (const auto& tc : sequence.getTimeline().getTempoChanges())
     {
@@ -193,7 +148,7 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
     tempoTrack.sort();
 
     auto endOfTempoTrack = juce::MidiMessage::endOfTrack();
-    endOfTempoTrack.setTimeStamp(0);
+    endOfTempoTrack.setTimeStamp(tempoTrack.getEndTime());
     tempoTrack.addEvent(endOfTempoTrack);
     midiFile.addTrack(tempoTrack);
 
@@ -215,6 +170,14 @@ bool MidiFileIO::save(const MidiSequence& sequence, const juce::File& file)
         auto channelPrefix = juce::MidiMessage::midiChannelMetaEvent(trackChannel);
         channelPrefix.setTimeStamp(0);
         msgSeq.addEvent(channelPrefix);
+
+        for (const auto& event : track.getMetaEvents())
+        {
+            msgSeq.addEvent(metaMessage(event));
+
+            if (event.tick > lastTick)
+                lastTick = event.tick;
+        }
 
         for (const auto& sysEx : track.getSysExEvents())
         {
@@ -399,6 +362,7 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
         // Format 0: SysEx goes to its own track, then one track per channel
         std::set<int> usedChannels;
         std::vector<SysExEvent> sysExEvents;
+        std::vector<MetaEvent> metaEvents;
         for (int t = 0; t < midiFile.getNumTracks(); ++t)
         {
             const auto* msgSeq = midiFile.getTrack(t);
@@ -414,8 +378,15 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                 {
                     sysExEvents.push_back(*sysEx);
                 }
+
+                if (const auto metaEvent = readMetaEvent(msg, MetaEventRetention::Owner::Song))
+                    metaEvents.push_back(*metaEvent);
             }
         }
+
+        std::stable_sort(metaEvents.begin(), metaEvents.end(),
+                         [](const MetaEvent& a, const MetaEvent& b) { return a.tick < b.tick; });
+        contents.metaEvents.insert(contents.metaEvents.end(), metaEvents.begin(), metaEvents.end());
 
         if (!sysExEvents.empty())
         {
@@ -538,6 +509,16 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                 return result;
             };
 
+            const auto addMetaEvent = [&](const MetaEvent& event)
+            {
+                if (t == 0)
+                    contents.metaEvents.push_back(event);
+                else
+                    ensureTrack().addMetaEvent(event);
+            };
+
+            const auto metaOwner = t == 0 ? MetaEventRetention::Owner::Song : MetaEventRetention::Owner::Track;
+
             for (int i = 0; i < sorted.getNumEvents(); ++i)
             {
                 const auto* event = sorted.getEventPointer(i);
@@ -545,7 +526,9 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
 
                 if (msg.isTrackNameEvent())
                 {
-                    trackName = decodeMetaText(msg);
+                    trackName = MetaText::decode(msg.getMetaEventData(), msg.getMetaEventLength());
+                    if (const auto metaEvent = readMetaEvent(msg, metaOwner))
+                        addMetaEvent(*metaEvent);
                 }
                 else if (msg.isMidiChannelMetaEvent())
                 {
@@ -612,6 +595,10 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                 else if (const auto sysEx = readSysEx(msg))
                 {
                     ensureTrack().addSysEx(*sysEx);
+                }
+                else if (const auto metaEvent = readMetaEvent(msg, metaOwner))
+                {
+                    addMetaEvent(*metaEvent);
                 }
             }
 

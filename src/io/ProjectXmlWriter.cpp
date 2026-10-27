@@ -91,6 +91,21 @@ void writeChords(juce::XmlElement& root, const std::vector<ChordChange>& changes
                     });
 }
 
+void writeMetaEvents(juce::XmlElement& parent, const std::vector<MetaEvent>& events)
+{
+    if (events.empty())
+        return;
+
+    auto* element = parent.createNewChildElement(names::metaEventsTag);
+    prependChildren(*element, events, names::metaTag,
+                    [](juce::XmlElement& metaElement, const MetaEvent& event)
+                    {
+                        metaElement.setAttribute(names::tickAttr, event.tick);
+                        metaElement.setAttribute(names::typeAttr, static_cast<int>(event.type));
+                        metaElement.setAttribute(names::dataAttr, utf8(SysExHex::format(event.data)));
+                    });
+}
+
 void writePlugin(juce::XmlElement& trackElement, const PluginAssignment& assignment,
                  const std::optional<std::vector<std::byte>>& liveState)
 {
@@ -155,6 +170,8 @@ void writeTrack(juce::XmlElement& element, const MidiTrack& track, const Project
                             sysExElement.setAttribute(names::dataAttr, utf8(SysExHex::format(sysEx.data)));
                         });
     }
+
+    writeMetaEvents(element, track.getMetaEvents());
 }
 
 void writeTracks(juce::XmlElement& root, const MidiSequence& sequence, const ProjectXml::PluginStateSource& stateSource)
@@ -178,6 +195,7 @@ std::unique_ptr<juce::XmlElement> write(const MidiSequence& sequence, const Plug
     writeTimeline(*root, sequence.getTimeline());
     writeKeySignatures(*root, sequence.getKeySignatureChanges());
     writeChords(*root, sequence.getChordChanges());
+    writeMetaEvents(*root, sequence.getMetaEvents());
     writeTracks(*root, sequence, stateSource);
     return root;
 }

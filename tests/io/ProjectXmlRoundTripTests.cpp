@@ -1,6 +1,7 @@
 #include "io/ProjectXml.h"
 #include "support/ChordTestHelpers.h"
 #include "support/KeySignatureStringMaker.h"
+#include "support/MetaEventStringMaker.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiFileTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
@@ -190,6 +191,60 @@ TEST_CASE("a track without sysex writes no SysExEvents", "[io][projectxml][sysex
     const auto xml = singleLineXml(*ProjectXml::write(seq, {}));
 
     CHECK(xml.find("SysExEvents") == std::string::npos);
+}
+
+TEST_CASE("meta events keep their bytes, position and order", "[io][projectxml][meta]")
+{
+    const std::vector<MetaEvent> songMeta{{0, 0x03, {0x53, 0x6F}}, {0, 0x06, {0x49}}, {1920, 0x06, {0x56}}};
+    const std::vector<MetaEvent> trackMeta{{0, 0x05, {0x82, 0xA0}}, {0, 0x05, {0x82, 0xA2}}, {960, 0x01, {}}};
+    SequenceContents contents;
+    contents.metaEvents = songMeta;
+    MidiTrack track;
+    for (const auto& event : trackMeta)
+        track.addMetaEvent(event);
+    contents.tracks.push_back(track);
+    MidiSequence seq;
+    seq.replaceContents(std::move(contents));
+
+    const auto loaded = roundTrip(seq);
+
+    REQUIRE(loaded);
+    CHECK(loaded->metaEvents == songMeta);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getMetaEvents() == trackMeta);
+}
+
+TEST_CASE("meta events are written as decimal type and spaced hex", "[io][projectxml][meta]")
+{
+    SequenceContents contents;
+    contents.metaEvents.push_back({0, 0x06, {0x49}});
+    MidiTrack track;
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 7, 100});
+    track.addSysEx({0, {0x41}});
+    track.addMetaEvent({0, 0x05, {0x82, 0xA0}});
+    track.addMetaEvent({0, 0x00, {}});
+    contents.tracks.push_back(track);
+    MidiSequence seq;
+    seq.replaceContents(std::move(contents));
+
+    const auto xml = singleLineXml(*ProjectXml::write(seq, {}));
+
+    CHECK(
+        xml.find(
+            R"(</SysExEvents><MetaEvents><Meta tick="0" type="5" data="82 A0"/><Meta tick="0" type="0" data=""/></MetaEvents>)") !=
+        std::string::npos);
+    CHECK(xml.find(R"(<Chords/><MetaEvents><Meta tick="0" type="6" data="49"/></MetaEvents><Tracks>)") !=
+          std::string::npos);
+}
+
+TEST_CASE("nothing is written for empty meta event lists", "[io][projectxml][meta]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+
+    const auto xml = singleLineXml(*ProjectXml::write(seq, {}));
+
+    CHECK(xml.find("MetaEvents") == std::string::npos);
 }
 
 TEST_CASE("a ramp point keeps its ramp", "[io][projectxml]")

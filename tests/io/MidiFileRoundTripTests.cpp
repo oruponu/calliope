@@ -1,5 +1,6 @@
 #include "support/ChordTestHelpers.h"
 #include "support/KeySignatureStringMaker.h"
+#include "support/MetaEventStringMaker.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiFileTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
@@ -204,6 +205,181 @@ TEST_CASE("the end of track comes after the last sysex", "[io][midifile][sysex]"
 
     REQUIRE(endOfTrack != nullptr);
     CHECK(endOfTrack->getTimeStamp() == 1920);
+}
+
+TEST_CASE("meta events keep their bytes, position and order", "[io][midifile][meta]")
+{
+    const std::vector<MetaEvent> songMeta{{0, 0x03, {0x53, 0x6F}}, {0, 0x06, {0x49}}, {1920, 0x06, {0x56}}};
+    const std::vector<MetaEvent> trackMeta{{0, 0x05, {0x82, 0xA0}}, {0, 0x05, {0x82, 0xA2}}, {960, 0x01, {}}};
+    SequenceContents contents;
+    contents.metaEvents = songMeta;
+    MidiTrack track;
+    for (const auto& event : trackMeta)
+        track.addMetaEvent(event);
+    contents.tracks.push_back(track);
+    MidiSequence seq;
+    seq.replaceContents(std::move(contents));
+
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
+
+    REQUIRE(loaded);
+    CHECK(loaded->metaEvents == songMeta);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getMetaEvents() == trackMeta);
+}
+
+TEST_CASE("the conductor track ends after its last meta event", "[io][midifile][meta]")
+{
+    SequenceContents contents;
+    contents.metaEvents = {{0, 0x06, {0x49}}, {1920, 0x06, {0x56}}};
+    MidiSequence seq;
+    seq.replaceContents(std::move(contents));
+    juce::TemporaryFile temp(".mid");
+
+    REQUIRE(MidiFileIO::save(seq, temp.getFile()));
+    juce::FileInputStream stream(temp.getFile());
+    REQUIRE(stream.openedOk());
+    juce::MidiFile midiFile;
+    REQUIRE(midiFile.readFrom(stream));
+    REQUIRE(midiFile.getNumTracks() >= 1);
+
+    const auto* events = midiFile.getTrack(0);
+    REQUIRE(events->getNumEvents() > 0);
+    const auto& last = events->getEventPointer(events->getNumEvents() - 1)->message;
+    CHECK(last.isEndOfTrackMetaEvent());
+    CHECK(last.getTimeStamp() == 1920);
+}
+
+TEST_CASE("a long meta event survives the round trip", "[io][midifile][meta]")
+{
+    std::vector<std::uint8_t> data;
+    data.reserve(300);
+    for (int i = 0; i < 300; ++i)
+        data.push_back(static_cast<std::uint8_t>(i % 256));
+
+    MidiTrack track;
+    track.addMetaEvent({240, 0x01, data});
+    MidiSequence seq;
+    seq.addTrack(track);
+
+    const auto loaded = MidiFileTest::saveAndLoad(seq);
+
+    REQUIRE(loaded);
+    REQUIRE(loaded->tracks.size() == 1);
+    CHECK(loaded->tracks[0].getMetaEvents() == std::vector<MetaEvent>{{240, 0x01, data}});
+}
+
+TEST_CASE("at the same tick, meta events are written before sysex, channel events and notes", "[io][midifile][meta]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.setName("Piano");
+    track.addEvent({MidiEvent::Type::ControlChange, 0, 7, 100});
+    track.addNote({60, 100, 0, 480});
+    track.addSysEx({0, gsReset});
+    track.addMetaEvent({0, 0x05, {'a'}});
+    seq.addTrack(track);
+    juce::TemporaryFile temp(".mid");
+
+    REQUIRE(MidiFileIO::save(seq, temp.getFile()));
+    juce::FileInputStream stream(temp.getFile());
+    REQUIRE(stream.openedOk());
+    juce::MidiFile midiFile;
+    REQUIRE(midiFile.readFrom(stream));
+    REQUIRE(midiFile.getNumTracks() == 2);
+
+    const auto* events = midiFile.getTrack(1);
+    std::vector<const juce::MidiMessage*> afterTrackHeader;
+    for (int i = 0; i < events->getNumEvents(); ++i)
+    {
+        const auto& message = events->getEventPointer(i)->message;
+        if (!message.isTrackNameEvent() && !message.isMidiChannelMetaEvent())
+            afterTrackHeader.push_back(&message);
+    }
+
+    REQUIRE(afterTrackHeader.size() >= 2);
+    CHECK(afterTrackHeader[0]->getMetaEventType() == 0x05);
+    CHECK(afterTrackHeader[1]->isSysEx());
+}
+
+TEST_CASE("the song's meta events come before the tempo at the same tick", "[io][midifile][meta]")
+{
+    SequenceContents contents;
+    contents.metaEvents.push_back({0, 0x06, {0x49}});
+    contents.tracks.emplace_back();
+    MidiSequence seq;
+    seq.replaceContents(std::move(contents));
+    juce::TemporaryFile temp(".mid");
+
+    REQUIRE(MidiFileIO::save(seq, temp.getFile()));
+    juce::FileInputStream stream(temp.getFile());
+    REQUIRE(stream.openedOk());
+    juce::MidiFile midiFile;
+    REQUIRE(midiFile.readFrom(stream));
+    REQUIRE(midiFile.getNumTracks() == 2);
+
+    const auto* events = midiFile.getTrack(0);
+    REQUIRE(events->getNumEvents() > 0);
+    CHECK(events->getEventPointer(0)->message.getMetaEventType() == 0x06);
+}
+
+TEST_CASE("the end of track comes after the last meta event", "[io][midifile][meta]")
+{
+    MidiSequence seq;
+    MidiTrack track;
+    track.addNote({60, 100, 0, 480});
+    track.addMetaEvent({1920, 0x05, {'a'}});
+    seq.addTrack(track);
+    juce::TemporaryFile temp(".mid");
+
+    REQUIRE(MidiFileIO::save(seq, temp.getFile()));
+    juce::FileInputStream stream(temp.getFile());
+    REQUIRE(stream.openedOk());
+    juce::MidiFile midiFile;
+    REQUIRE(midiFile.readFrom(stream));
+    REQUIRE(midiFile.getNumTracks() == 2);
+
+    const auto* events = midiFile.getTrack(1);
+    const juce::MidiMessage* endOfTrack = nullptr;
+    for (int i = 0; i < events->getNumEvents(); ++i)
+    {
+        const auto& message = events->getEventPointer(i)->message;
+        if (message.isEndOfTrackMetaEvent())
+        {
+            endOfTrack = &message;
+            break;
+        }
+    }
+
+    REQUIRE(endOfTrack != nullptr);
+    CHECK(endOfTrack->getTimeStamp() == 1920);
+}
+
+TEST_CASE("saving twice does not duplicate meta events", "[io][midifile][meta]")
+{
+    juce::MidiMessageSequence conductor;
+    conductor.addEvent(MidiFileTest::at(juce::MidiMessage::textMetaEvent(0x03, "Song"), 0));
+    conductor.addEvent(MidiFileTest::at(juce::MidiMessage::tempoMetaEvent(500000), 0));
+    juce::MidiMessageSequence events;
+    events.addEvent(MidiFileTest::at(juce::MidiMessage::textMetaEvent(0x03, "Piano"), 0));
+    events.addEvent(MidiFileTest::at(juce::MidiMessage::textMetaEvent(0x05, "la"), 0));
+    events.addEvent(MidiFileTest::at(juce::MidiMessage::noteOn(1, 60, juce::uint8{100}), 0));
+    events.addEvent(MidiFileTest::at(juce::MidiMessage::noteOff(1, 60), 480));
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote(480);
+    midiFile.addTrack(conductor);
+    midiFile.addTrack(events);
+
+    const auto loaded = MidiFileTest::loadBytes(MidiFileTest::toBytes(midiFile, 1));
+    REQUIRE(loaded);
+    MidiSequence reloaded;
+    reloaded.replaceContents(*loaded);
+    const auto again = MidiFileTest::saveAndLoad(reloaded);
+
+    REQUIRE(again);
+    CHECK(again->metaEvents == std::vector<MetaEvent>{{0, 0x03, {'S', 'o', 'n', 'g'}}});
+    REQUIRE(again->tracks.size() == 1);
+    CHECK(again->tracks[0].getMetaEvents() == std::vector<MetaEvent>{{0, 0x05, {'l', 'a'}}});
 }
 
 TEST_CASE("tracks keep their order, names and channels", "[io][midifile]")

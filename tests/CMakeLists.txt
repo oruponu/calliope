@@ -25,6 +25,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/engine/TakeBuilder.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ThruRouter.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ThruTarget.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/MetaText.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
     ${PROJECT_SOURCE_DIR}/src/io/ProjectFileIO.cpp
     ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlReader.cpp
@@ -35,6 +36,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/ControllerPointConversion.cpp
     ${PROJECT_SOURCE_DIR}/src/model/ControllerRamps.cpp
     ${PROJECT_SOURCE_DIR}/src/model/GmPrograms.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/MetaEventRetention.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/model/SequenceContentsRules.cpp

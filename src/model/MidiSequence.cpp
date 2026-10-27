@@ -53,6 +53,7 @@ void MidiSequence::replaceContents(SequenceContents contents)
     timeline = std::move(contents.timeline);
     keySignatureChanges = std::move(contents.keySignatureChanges);
     chordChanges = std::move(contents.chordChanges);
+    metaEvents = std::move(contents.metaEvents);
     notifySequenceReset();
 }
 
@@ -248,6 +249,11 @@ void MidiSequence::setChordChanges(std::vector<ChordChange> changes)
 {
     chordChanges = std::move(changes);
     notifyTimelineMetadataChanged();
+}
+
+const std::vector<MetaEvent>& MidiSequence::getMetaEvents() const
+{
+    return metaEvents;
 }
 
 template <typename Callback> void MidiSequence::forEachListener(Callback callback)

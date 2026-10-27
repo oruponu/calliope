@@ -1,5 +1,6 @@
 #include "model/SequenceContentsRules.h"
 #include "support/BarBeatTickTestHelpers.h"
+#include "support/MetaEventStringMaker.h"
 #include "support/SysExEventStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -41,6 +42,20 @@ SequenceContents withSysEx(const SysExEvent& sysEx)
 {
     auto contents = validContents();
     contents.tracks[0].addSysEx(sysEx);
+    return contents;
+}
+
+SequenceContents withTrackMeta(const MetaEvent& event)
+{
+    auto contents = validContents();
+    contents.tracks[0].addMetaEvent(event);
+    return contents;
+}
+
+SequenceContents withSongMeta(const MetaEvent& event)
+{
+    auto contents = validContents();
+    contents.metaEvents.push_back(event);
     return contents;
 }
 
@@ -276,4 +291,45 @@ TEST_CASE("sysex may share a tick but not go back in time", "[model][contentsrul
     auto backwards = withSysEx({480, {0x41}});
     backwards.tracks[0].addSysEx({0, {0x42}});
     CHECK_FALSE(SequenceContentsRules::accepts(backwards));
+}
+
+TEST_CASE("meta events in range are accepted", "[model][contentsrules][meta]")
+{
+    CHECK(SequenceContentsRules::accepts(withTrackMeta({0, 0x05, {0x82, 0xA0}})));
+    CHECK(SequenceContentsRules::accepts(withTrackMeta({0, 0x00, {}})));
+    CHECK(SequenceContentsRules::accepts(withTrackMeta({0, 0x7F, {0x43, 0x7B, 0x00, 0x58, 0x46, 0x30, 0x32}})));
+    CHECK(SequenceContentsRules::accepts(withSongMeta({0, 0x03, {0x53}})));
+    CHECK(SequenceContentsRules::accepts(withSongMeta({480, 0x06, {}})));
+}
+
+TEST_CASE("meta events the app handles itself are rejected", "[model][contentsrules][meta]")
+{
+    const auto event =
+        GENERATE(MetaEvent{-1, 0x05, {}}, MetaEvent{0, 0x80, {}}, MetaEvent{0, 0x2F, {}}, MetaEvent{0, 0x20, {0x00}},
+                 MetaEvent{0, 0x51, {0x07, 0xA1, 0x20}}, MetaEvent{0, 0x58, {0x04, 0x02, 0x18, 0x08}},
+                 MetaEvent{0, 0x59, {0x00, 0x00}}, MetaEvent{0, 0x7F, {0x43, 0x7B, 0x01, 0x31, 0x00, 0x7F, 0x7F}},
+                 MetaEvent{0, 0x7F, {0x43, 0x7B, 0x01}});
+    CAPTURE(event);
+    CHECK_FALSE(SequenceContentsRules::accepts(withTrackMeta(event)));
+    CHECK_FALSE(SequenceContentsRules::accepts(withSongMeta(event)));
+}
+
+TEST_CASE("a track name meta event belongs to the song, not a track", "[model][contentsrules][meta]")
+{
+    CHECK_FALSE(SequenceContentsRules::accepts(withTrackMeta({0, 0x03, {0x53}})));
+}
+
+TEST_CASE("meta events may share a tick but not go back in time", "[model][contentsrules][meta]")
+{
+    auto sameTick = withTrackMeta({480, 0x05, {0x61}});
+    sameTick.tracks[0].addMetaEvent({480, 0x05, {0x62}});
+    CHECK(SequenceContentsRules::accepts(sameTick));
+
+    auto backwards = withTrackMeta({480, 0x05, {0x61}});
+    backwards.tracks[0].addMetaEvent({0, 0x05, {0x62}});
+    CHECK_FALSE(SequenceContentsRules::accepts(backwards));
+
+    auto songBackwards = withSongMeta({480, 0x06, {}});
+    songBackwards.metaEvents.push_back({0, 0x06, {}});
+    CHECK_FALSE(SequenceContentsRules::accepts(songBackwards));
 }

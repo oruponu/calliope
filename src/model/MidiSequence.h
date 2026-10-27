@@ -2,6 +2,7 @@
 
 #include "model/ChordChange.h"
 #include "model/KeySignatureChange.h"
+#include "model/MetaEvent.h"
 #include "model/MidiTrack.h"
 #include "model/SequenceContents.h"
 #include "model/TimelineMap.h"
@@ -86,6 +87,7 @@ public:
     void setKeySignatureChanges(std::vector<KeySignatureChange> changes);
     const std::vector<ChordChange>& getChordChanges() const;
     void setChordChanges(std::vector<ChordChange> changes);
+    const std::vector<MetaEvent>& getMetaEvents() const;
 
 private:
     struct PendingNotifications
@@ -112,6 +114,7 @@ private:
     TimelineMap timeline;
     std::vector<KeySignatureChange> keySignatureChanges;
     std::vector<ChordChange> chordChanges;
+    std::vector<MetaEvent> metaEvents;
     std::vector<Listener*> listeners;
     std::uint32_t nextTrackId = 1;
     int batchDepth = 0;

@@ -2,6 +2,7 @@
 
 #include "model/ChordChange.h"
 #include "model/KeySignatureChange.h"
+#include "model/MetaEvent.h"
 #include "model/MidiTrack.h"
 #include "model/TimelineMap.h"
 #include <vector>
@@ -12,4 +13,5 @@ struct SequenceContents
     std::vector<MidiTrack> tracks;
     std::vector<KeySignatureChange> keySignatureChanges;
     std::vector<ChordChange> chordChanges;
+    std::vector<MetaEvent> metaEvents;
 };
