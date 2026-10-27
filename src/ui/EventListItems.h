@@ -14,6 +14,7 @@ struct EventListItem
 {
     enum Kind
     {
+        Meta,
         SysEx,
         Note,
         ControlChange,
@@ -31,8 +32,10 @@ struct EventListItem
     int noteNumber = 0;
     int duration = 0;
     int velocity = 0;
+    // The first MIDI data byte, or the meta event type.
     int data1 = 0;
     int data2 = 0;
+    std::vector<std::uint8_t> metaData;
     std::vector<std::uint8_t> sysExData;
     bool isRecording = false;
     // The note being drawn, not yet in the sequence; it has no note ref.

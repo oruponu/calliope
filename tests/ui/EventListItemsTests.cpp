@@ -2,6 +2,7 @@
 #include "ui/EventListItems.h"
 #include <catch2/catch_test_macros.hpp>
 #include <ranges>
+#include <utility>
 #include <vector>
 
 namespace
@@ -154,6 +155,75 @@ TEST_CASE("selected sysex rows stay selected after a rebuild", "[ui][event-list]
 
     CHECK(EventListItems::reselectedRows(before, {1}, after) == std::vector{0});
     CHECK(after[0].sysExData == std::vector<std::uint8_t>{0x42});
+}
+
+TEST_CASE("meta event rows come first at their tick on their track", "[ui][event-list][meta]")
+{
+    MidiSequence seq;
+    auto track = trackWith({{60, 100, 0, 480}}, {cc(0, 7, 100)});
+    track.addSysEx({0, {0x41}});
+    track.addMetaEvent({0, 0x05, {0x61}});
+    seq.addTrack(track);
+
+    const auto items = EventListItems::build(seq, {0}, nullptr);
+
+    REQUIRE(items.size() == 4);
+    CHECK(items[0].kind == EventListItem::Meta);
+    CHECK(items[0].data1 == 0x05);
+    CHECK(items[0].metaData == std::vector<std::uint8_t>{0x61});
+    CHECK(items[0].sourceIndex == 0);
+    CHECK(items[1].kind == EventListItem::SysEx);
+    CHECK(items[2].kind == EventListItem::Note);
+    CHECK(items[3].kind == EventListItem::ControlChange);
+}
+
+TEST_CASE("song meta events are not listed", "[ui][event-list][meta]")
+{
+    SequenceContents contents;
+    contents.metaEvents.push_back({0, 0x06, {0x49}});
+    contents.tracks.push_back(trackWith({{60, 100, 0, 480}}));
+    MidiSequence seq;
+    seq.replaceContents(std::move(contents));
+
+    const auto items = EventListItems::build(seq, {0}, nullptr);
+
+    REQUIRE(items.size() == 1);
+    CHECK(items[0].kind == EventListItem::Note);
+}
+
+TEST_CASE("meta event rows are not event rows and have no controller", "[ui][event-list][meta]")
+{
+    MidiSequence seq;
+    auto track = trackWith({}, {cc(0, 7, 100)});
+    track.addMetaEvent({0, 0x05, {0x61}});
+    seq.addTrack(track);
+
+    const auto items = EventListItems::build(seq, {0}, nullptr);
+
+    CHECK(EventListItems::eventRows(items, 0, {0}) == std::vector{1});
+    CHECK_FALSE(EventListItems::controllerOf(items[0]).has_value());
+}
+
+TEST_CASE("selected meta event rows stay selected after a rebuild", "[ui][event-list][meta]")
+{
+    MidiSequence seq;
+    auto track = trackWith({});
+    track.addMetaEvent({0, 0x05, {0x61}});
+    track.addMetaEvent({0, 0x05, {0x61}});
+    track.addMetaEvent({0, 0x05, {0x62}});
+    seq.addTrack(track);
+    const auto before = EventListItems::build(seq, {0}, nullptr);
+
+    MidiSequence rebuiltSeq;
+    auto rebuiltTrack = trackWith({{60, 100, 0, 480}});
+    rebuiltTrack.addMetaEvent({0, 0x05, {0x62}});
+    rebuiltTrack.addMetaEvent({0, 0x05, {0x61}});
+    rebuiltTrack.addMetaEvent({0, 0x05, {0x61}});
+    rebuiltSeq.addTrack(rebuiltTrack);
+    const auto after = EventListItems::build(rebuiltSeq, {0}, nullptr);
+
+    CHECK(EventListItems::reselectedRows(before, {1}, after) == std::vector{2});
+    CHECK(after[2].metaData == std::vector<std::uint8_t>{0x61});
 }
 
 TEST_CASE("only the shown tracks in range are listed", "[ui][event-list]")
