@@ -371,13 +371,9 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                 const auto& msg = msgSeq->getEventPointer(i)->message;
                 if (msg.isNoteOn() || msg.isController() || msg.isProgramChange() || msg.isPitchWheel() ||
                     msg.isChannelPressure() || msg.isAftertouch())
-                {
                     usedChannels.insert(msg.getChannel());
-                }
                 else if (const auto sysEx = readSysEx(msg))
-                {
                     sysExEvents.push_back(*sysEx);
-                }
 
                 if (const auto metaEvent = readMetaEvent(msg, MetaEventRetention::Owner::Song))
                     metaEvents.push_back(*metaEvent);
@@ -605,9 +601,7 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
             // By convention the first track of a format 1 file is the conductor track, so it becomes a track only when
             // it has channel events or SysEx.
             if (!track && t > 0)
-            {
                 track = &contents.tracks.emplace_back();
-            }
 
             if (track && !firstChannel && prefixChannel)
                 track->setChannel(*prefixChannel);

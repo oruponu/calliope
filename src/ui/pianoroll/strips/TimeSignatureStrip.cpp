@@ -109,9 +109,7 @@ void TimeSignatureStrip::pasteTimeSignatures(int atTick)
 
     const bool changed = (after != before);
     if (changed)
-    {
         performReplaceList(undoHistory, sequence, "Paste Time Signature Changes", std::move(before), after);
-    }
 
     std::vector<int> pastedTicks;
     for (int b : pastedBars)

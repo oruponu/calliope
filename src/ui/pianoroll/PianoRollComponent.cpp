@@ -731,7 +731,9 @@ void PianoRollComponent::paste(int atTick)
         repaint();
     }
     else
+    {
         pasteNotes(atTick);
+    }
 }
 
 bool PianoRollComponent::hasNotesInActiveTrack() const
@@ -870,7 +872,9 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& e)
             if (e.mods.isShiftDown())
             {
                 if (edge != ResizeEdge::None)
+                {
                     drag = PendingResize{hit, edge};
+                }
                 else
                 {
                     toggleNoteSelection(hit);
@@ -2093,17 +2097,17 @@ void PianoRollComponent::pruneRecordedRefs()
     if (isGone(selectedNote))
         selectedNote = {};
     if (std::erase_if(selectedNotes, isGone) > 0)
-    {
         if (onNoteSelectionChanged)
             onNoteSelectionChanged(selectedNotes);
-    }
 }
 
 void PianoRollComponent::beginResize(const NoteRef& hit, ResizeEdge edge)
 {
     std::set<NoteRef> targets;
     if (selectedNotes.contains(hit))
+    {
         targets = selectedNotes;
+    }
     else
     {
         selectedNotes.clear();

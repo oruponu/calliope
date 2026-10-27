@@ -15,7 +15,9 @@ std::optional<int> controllerLineValueAt(const std::vector<MidiEvent>& events, c
                 before = &event;
         }
         else if (after == nullptr || event.tick < after->tick)
+        {
             after = &event;
+        }
     }
     if (before == nullptr)
         return std::nullopt;

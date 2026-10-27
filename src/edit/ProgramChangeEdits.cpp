@@ -356,7 +356,9 @@ ControllerPointEditResult ProgramChangeEdits::move(const std::vector<MidiEvent>&
     {
         const auto found = survivingProgramTicks.find(i);
         if (found == survivingProgramTicks.end())
+        {
             affectedPrograms.insert(i);
+        }
         else if (found->second != before[static_cast<size_t>(i)].tick)
         {
             affectedPrograms.insert(i);

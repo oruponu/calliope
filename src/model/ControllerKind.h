@@ -55,7 +55,9 @@ struct ControllerKind
         MidiEvent event{.type = type, .tick = tick, .ramp = canRamp()};
         const int clamped = std::clamp(value, 0, maxValue());
         if (type != MidiEvent::Type::ControlChange)
+        {
             event.data1 = clamped;
+        }
         else
         {
             event.data1 = number;

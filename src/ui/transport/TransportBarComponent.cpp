@@ -325,7 +325,9 @@ void TransportBarComponent::updateDisplay()
     if (keyValueLabel.getCurrentTextEditor() == nullptr)
     {
         if (document.getSequence().getKeySignatureChanges().empty())
+        {
             keyValueLabel.setText("-", juce::dontSendNotification);
+        }
         else
         {
             auto ks = document.getSequence().getKeySignatureAt(tick);
@@ -353,13 +355,9 @@ void TransportBarComponent::setLoopActive(bool active)
 void TransportBarComponent::togglePlay()
 {
     if (playbackEngine.isPlaying())
-    {
         stopAndNotify();
-    }
     else
-    {
         startPlayback(0);
-    }
 }
 
 void TransportBarComponent::toggleLoop()

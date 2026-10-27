@@ -194,9 +194,13 @@ void Recorder::process(const std::vector<InboxItem>& items, const PlaybackProgre
                 builder.handle(input->sourceId, input->message, input->position, grid ? &*grid : nullptr, input->loop);
         }
         else if (const auto* countInEnd = std::get_if<CountInEnd>(&item))
+        {
             builder.endCountIn(countInEnd->startTick, grid ? &*grid : nullptr, countInEnd->loop);
+        }
         else if (const auto* boundary = std::get_if<PassBoundary>(&item))
+        {
             builder.closeHeld(*boundary, progress);
+        }
     }
     const bool reachedPassEnds = builder.reachPassEnds(progress.passEnds);
     const bool reached = builder.reach(progress.sent);

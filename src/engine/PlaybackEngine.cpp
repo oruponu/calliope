@@ -406,7 +406,9 @@ bool PlaybackEngine::advanceCountIn(const PlaybackSnapshot& snap, RecordingInbox
     if (seek >= 0)
     {
         if (updated)
+        {
             tickPosition.store(static_cast<double>(seek));
+        }
         else
         {
             // Input stamped past the end has already started recording at the old start, so the seek becomes an

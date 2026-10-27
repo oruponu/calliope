@@ -107,9 +107,7 @@ void TempoTrackStrip::pasteTempoPoints(int atTick)
 
     const bool changed = (after != before);
     if (changed)
-    {
         performReplaceList(undoHistory, sequence, "Paste Tempo Changes", std::move(before), after);
-    }
 
     selection.selectTicks(sequence->getTimeline().getTempoChanges(), pastedTicks);
 

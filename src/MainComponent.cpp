@@ -648,7 +648,9 @@ void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
 
     FocusPanel detected = focusedPanel;
     if (belongsTo(trackList))
+    {
         detected = FocusPanel::TrackList;
+    }
     else if (belongsTo(pianoRoll) || belongsTo(controllerLane) || belongsTo(quantizeComboBox) ||
              belongsTo(selectToolButton) || belongsTo(editToolButton) || belongsTo(snapButton))
     {
@@ -656,9 +658,13 @@ void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
         controllerLaneFocused = belongsTo(controllerLane);
     }
     else if (belongsTo(eventList))
+    {
         detected = FocusPanel::EventList;
+    }
     else
+    {
         return;
+    }
 
     if (detected == focusedPanel)
         return;

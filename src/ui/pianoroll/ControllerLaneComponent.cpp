@@ -330,11 +330,17 @@ void ControllerLaneComponent::mouseDown(const juce::MouseEvent& e)
                            [this](int result)
                            {
                                if (result == 1)
+                               {
                                    setDisplayMode(DisplayMode::Velocity);
+                               }
                                else if (result == 2)
+                               {
                                    setDisplayMode(DisplayMode::PitchBend);
+                               }
                                else if (result == 3)
+                               {
                                    setDisplayMode(DisplayMode::ProgramChange);
+                               }
                                else if (result >= 100)
                                {
                                    setCCNumber(result - 100);
@@ -578,8 +584,10 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
                 applyPointEdit("Add Controller Point", base, pointDragging->preview);
         }
         else if (pointDragging->changed && stillCurrent)
+        {
             applyPointEdit(showsProgramChange() ? "Move Program Changes" : "Move Controller Points",
                            pointDragging->before, pointDragging->preview);
+        }
         else if (!pointDragging->changed)
         {
             if (showsProgramChange())
@@ -592,7 +600,9 @@ void ControllerLaneComponent::mouseUp(const juce::MouseEvent&)
                     selectPoints(block);
             }
             else
+            {
                 selectPoints({pointDragging->anchor});
+            }
         }
         repaint();
         return;
@@ -1226,9 +1236,13 @@ void ControllerLaneComponent::drawControllerPoints(juce::Graphics& g, const Cont
         const auto x = static_cast<float>(tickToX(event.tick));
         const auto y = static_cast<float>(pointY(kind, kind.valueOf(event)));
         if (n == 0)
+        {
             path.startNewSubPath(x, y);
+        }
         else if (event.ramp && kind.canRamp())
+        {
             path.lineTo(x, y);
+        }
         else
         {
             path.lineTo(x, prevY);

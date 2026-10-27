@@ -157,10 +157,8 @@ public:
             std::sort(indices.begin(), indices.end(), std::greater<int>());
 
         for (const auto& [trackIdx, indices] : byTrack)
-        {
             for (int idx : indices)
                 deletedNotes.push_back({trackIdx, idx, seq->getTrack(trackIdx).getNote(idx)});
-        }
     }
 
     bool perform() override

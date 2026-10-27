@@ -193,9 +193,13 @@ void ProgramBrowser::mouseDown(const juce::MouseEvent& event)
 bool ProgramBrowser::keyPressed(const juce::KeyPress& key)
 {
     if (key == juce::KeyPress::upKey)
+    {
         state.moveUp();
+    }
     else if (key == juce::KeyPress::downKey)
+    {
         state.moveDown();
+    }
     else if (key == juce::KeyPress::leftKey)
     {
         state.moveLeft();
@@ -227,7 +231,9 @@ bool ProgramBrowser::keyPressed(const juce::KeyPress& key)
         return true;
     }
     else
+    {
         return false;
+    }
 
     repaint();
     return true;

@@ -119,9 +119,7 @@ void KeySignatureStrip::pasteKeySignatures(int atTick)
 
     const bool changed = (after != before);
     if (changed)
-    {
         performReplaceList(undoHistory, sequence, "Paste Key Signature Changes", std::move(before), after);
-    }
 
     selection.selectTicks(sequence->getKeySignatureChanges(), pastedTicks);
 

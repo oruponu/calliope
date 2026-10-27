@@ -128,9 +128,7 @@ void ChordStrip::pasteChords(int atTick)
 
     const bool changed = (after != before);
     if (changed)
-    {
         performReplaceList(undoHistory, sequence, "Paste Chords", std::move(before), after);
-    }
 
     selection.clear();
     const auto& changes = sequence->getChordChanges();

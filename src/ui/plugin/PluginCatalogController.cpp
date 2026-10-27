@@ -39,8 +39,6 @@ void PluginCatalogController::showManageDialog()
 void PluginCatalogController::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
     if (source == &knownPluginList)
-    {
         if (auto xml = knownPluginList.createXml())
             getAppProperties().getUserSettings()->setValue("knownPluginList", xml.get());
-    }
 }

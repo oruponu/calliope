@@ -111,7 +111,9 @@ std::vector<KeySignatureChange> KeySignatureEdits::afterPaste(const std::vector<
             it->isMinor = item.isMinor;
         }
         else
+        {
             after.push_back({tick, item.sharpsOrFlats, item.isMinor});
+        }
     }
     std::ranges::sort(after, {}, &KeySignatureChange::tick);
     return after;

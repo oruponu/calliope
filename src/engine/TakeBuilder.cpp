@@ -91,7 +91,9 @@ void TakeBuilder::handle(const std::string& sourceId, const juce::MidiMessage& m
                 held.endOffset = *start - at.tick;
             }
             else
+            {
                 held.pass = pass + 1;
+            }
         }
         heldNotes[key] = held;
         return;
@@ -167,7 +169,9 @@ bool TakeBuilder::reach(ClockPosition sent)
             changed = true;
         }
         else
+        {
             stillPending.push_back(std::move(released));
+        }
     }
     releasedPending = std::move(stillPending);
     return changed;
@@ -181,7 +185,9 @@ bool TakeBuilder::reachPassEnds(const std::vector<ClockPosition>& passEnds)
     {
         const auto end = std::ranges::find(passEnds, released.pass, &ClockPosition::pass);
         if (released.pass >= pass || end == passEnds.end())
+        {
             stillPending.push_back(std::move(released));
+        }
         else if (released.note.startTick < end->tick)
         {
             addNote(released.track, released.note, released.id);
@@ -221,7 +227,9 @@ void TakeBuilder::closeHeld(const PassBoundary& boundary, const PlaybackProgress
             kept.push_back(std::move(released));
         }
         else if (released.pass == pass && passStillPlaying)
+        {
             kept.push_back(std::move(released));
+        }
     }
     releasedPending = std::move(kept);
 
@@ -245,7 +253,9 @@ void TakeBuilder::closeHeld(const PassBoundary& boundary, const PlaybackProgress
             waiting.push_back(key);
         }
         else
+        {
             closing.push_back(key);
+        }
     }
     for (const auto& key : waiting)
         heldNotes.erase(key);
@@ -307,7 +317,9 @@ void TakeBuilder::editNotes(const std::vector<RecordedNoteEdit>& edits, int play
     for (const auto& edit : edits)
     {
         if (const auto held = findHeld(edit.id); held != heldNotes.end())
+        {
             editHeldNote(held, edit.fields, playheadTick);
+        }
         else if (auto* note = findFinished(edit.id))
         {
             *note = edit.fields.appliedTo(*note);
@@ -437,7 +449,9 @@ void TakeBuilder::editHeldNote(HeldNotes::iterator it, const NoteFieldEdit& edit
         endHeldNote(it, start, std::max(1, *edit.endTick - start));
     }
     else if (edit.startTick && *edit.startTick >= playheadTick)
+    {
         endHeldNote(it, *edit.startTick, std::max(1, edit.heldLength.value_or(playheadTick - held.startTick)));
+    }
     else if (edit.startTick)
     {
         held.startTick = *edit.startTick;

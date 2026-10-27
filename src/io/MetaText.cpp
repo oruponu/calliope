@@ -33,10 +33,8 @@ bool isValidUtf8(const char* data, int length)
             return false;
 
         for (int j = 1; j < seqLen; ++j)
-        {
             if ((static_cast<unsigned char>(data[i + j]) & 0xC0) != 0x80)
                 return false;
-        }
 
         i += seqLen;
     }
