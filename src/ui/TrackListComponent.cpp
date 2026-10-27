@@ -288,41 +288,15 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
     if (row < 0 || row >= sequence->getNumTracks())
         return;
 
-    const auto& track = sequence->getTrack(row);
-
     if (getMuteButtonBounds(row).contains(e.x, e.y))
     {
-        const bool newMuted = !track.isMuted();
-        MidiSequence::ChangeBatch batch(*sequence);
-        if (selectedTrackIndices.contains(row))
-        {
-            for (int idx : selectedTrackIndices)
-                if (idx >= 0 && idx < sequence->getNumTracks())
-                    sequence->setTrackMuted(idx, newMuted);
-        }
-        else
-        {
-            sequence->setTrackMuted(row, newMuted);
-        }
-        repaint();
+        toggleMuted(row);
         return;
     }
 
     if (getSoloButtonBounds(row).contains(e.x, e.y))
     {
-        const bool newSolo = !track.isSolo();
-        MidiSequence::ChangeBatch batch(*sequence);
-        if (selectedTrackIndices.contains(row))
-        {
-            for (int idx : selectedTrackIndices)
-                if (idx >= 0 && idx < sequence->getNumTracks())
-                    sequence->setTrackSolo(idx, newSolo);
-        }
-        else
-        {
-            sequence->setTrackSolo(row, newSolo);
-        }
-        repaint();
+        toggleSolo(row);
         return;
     }
 
@@ -397,6 +371,18 @@ void TrackListComponent::mouseDoubleClick(const juce::MouseEvent& e)
 
 bool TrackListComponent::keyPressed(const juce::KeyPress& key)
 {
+    if (key == juce::KeyPress('M') || key == juce::KeyPress('S'))
+    {
+        if (sequence && activeTrackIndex >= 0)
+        {
+            if (key == juce::KeyPress('M'))
+                toggleMuted(activeTrackIndex);
+            else
+                toggleSolo(activeTrackIndex);
+        }
+        return true;
+    }
+
     const bool extends = key == juce::KeyPress(juce::KeyPress::upKey, juce::ModifierKeys::shiftModifier, 0) ||
                          key == juce::KeyPress(juce::KeyPress::downKey, juce::ModifierKeys::shiftModifier, 0);
     if (!extends && key != juce::KeyPress::upKey && key != juce::KeyPress::downKey)
@@ -513,6 +499,40 @@ void TrackListComponent::scrollRowIntoView(int rowIndex)
         viewport->setViewPosition(viewport->getViewPositionX(), rowTop);
     else if (rowBottom > viewY + viewport->getViewHeight())
         viewport->setViewPosition(viewport->getViewPositionX(), rowBottom - viewport->getViewHeight());
+}
+
+void TrackListComponent::toggleMuted(int row)
+{
+    const bool newMuted = !sequence->getTrack(row).isMuted();
+    MidiSequence::ChangeBatch batch(*sequence);
+    if (selectedTrackIndices.contains(row))
+    {
+        for (int idx : selectedTrackIndices)
+            if (idx >= 0 && idx < sequence->getNumTracks())
+                sequence->setTrackMuted(idx, newMuted);
+    }
+    else
+    {
+        sequence->setTrackMuted(row, newMuted);
+    }
+    repaint();
+}
+
+void TrackListComponent::toggleSolo(int row)
+{
+    const bool newSolo = !sequence->getTrack(row).isSolo();
+    MidiSequence::ChangeBatch batch(*sequence);
+    if (selectedTrackIndices.contains(row))
+    {
+        for (int idx : selectedTrackIndices)
+            if (idx >= 0 && idx < sequence->getNumTracks())
+                sequence->setTrackSolo(idx, newSolo);
+    }
+    else
+    {
+        sequence->setTrackSolo(row, newSolo);
+    }
+    repaint();
 }
 
 void TrackListComponent::selectRangeTo(int row)

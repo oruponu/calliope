@@ -52,6 +52,8 @@ private:
     void updateSize();
     void scrollRowIntoView(int rowIndex);
     void selectRangeTo(int row);
+    void toggleMuted(int row);
+    void toggleSolo(int row);
     void notifySelectionChanged();
     bool reconcileSelectionWithTracks();
 
