@@ -51,6 +51,7 @@ private:
     juce::Rectangle<int> getAddButtonBounds() const;
     void updateSize();
     void scrollRowIntoView(int rowIndex);
+    void selectRangeTo(int row);
     void notifySelectionChanged();
     bool reconcileSelectionWithTracks();
 

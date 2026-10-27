@@ -370,12 +370,7 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
     }
     else if (e.mods.isShiftDown())
     {
-        selectedTrackIndices.clear();
-        int lo = std::min(anchorTrackIndex, row);
-        int hi = std::max(anchorTrackIndex, row);
-        for (int i = lo; i <= hi; ++i)
-            selectedTrackIndices.insert(i);
-        activeTrackIndex = row;
+        selectRangeTo(row);
     }
     else
     {
@@ -402,17 +397,32 @@ void TrackListComponent::mouseDoubleClick(const juce::MouseEvent& e)
 
 bool TrackListComponent::keyPressed(const juce::KeyPress& key)
 {
-    const bool isUp = key == juce::KeyPress::upKey;
-    if (!isUp && key != juce::KeyPress::downKey)
+    const bool extends = key == juce::KeyPress(juce::KeyPress::upKey, juce::ModifierKeys::shiftModifier, 0) ||
+                         key == juce::KeyPress(juce::KeyPress::downKey, juce::ModifierKeys::shiftModifier, 0);
+    if (!extends && key != juce::KeyPress::upKey && key != juce::KeyPress::downKey)
         return false;
     if (!sequence || activeTrackIndex < 0)
         return true;
 
+    const bool isUp = key.getKeyCode() == juce::KeyPress::upKey;
     const int next = juce::jlimit(0, sequence->getNumTracks() - 1, activeTrackIndex + (isUp ? -1 : 1));
-    if (next == activeTrackIndex && selectedTrackIndices.size() == 1)
+    const auto previousSelection = selectedTrackIndices;
+    const int previousActive = activeTrackIndex;
+    if (extends)
+    {
+        selectRangeTo(next);
+    }
+    else
+    {
+        activeTrackIndex = next;
+        anchorTrackIndex = next;
+        selectedTrackIndices = {next};
+    }
+    if (selectedTrackIndices == previousSelection && activeTrackIndex == previousActive)
         return true;
 
-    setActiveTrackIndex(next);
+    repaint();
+    notifySelectionChanged();
     scrollRowIntoView(next);
     return true;
 }
@@ -503,6 +513,16 @@ void TrackListComponent::scrollRowIntoView(int rowIndex)
         viewport->setViewPosition(viewport->getViewPositionX(), rowTop);
     else if (rowBottom > viewY + viewport->getViewHeight())
         viewport->setViewPosition(viewport->getViewPositionX(), rowBottom - viewport->getViewHeight());
+}
+
+void TrackListComponent::selectRangeTo(int row)
+{
+    selectedTrackIndices.clear();
+    int lo = std::min(anchorTrackIndex, row);
+    int hi = std::max(anchorTrackIndex, row);
+    for (int i = lo; i <= hi; ++i)
+        selectedTrackIndices.insert(i);
+    activeTrackIndex = row;
 }
 
 void TrackListComponent::notifySelectionChanged()
