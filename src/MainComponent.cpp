@@ -3,6 +3,7 @@
 #include "audio/MetronomeVolume.h"
 #include "engine/CountInBars.h"
 #include "model/GridDivision.h"
+#include "model/TrackDuplication.h"
 #include "plugin/PluginAssignmentCodec.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
@@ -200,6 +201,21 @@ MainComponent::MainComponent()
         document.getHistory().perform(new TrackAddAction(&document.getSequence(), trackIndex));
         trackList.refresh();
         trackList.setActiveTrackIndex(trackIndex);
+    };
+    trackList.onDuplicateTracksRequested = [this](const std::set<int>& trackIndices)
+    {
+        auto& sequence = document.getSequence();
+        document.getHistory().beginNewTransaction(trackIndices.size() > 1 ? "Duplicate Tracks" : "Duplicate Track");
+        std::set<int> copies;
+        for (int trackIndex : trackIndices)
+        {
+            const int sourceIndex = trackIndex + static_cast<int>(copies.size());
+            document.getHistory().perform(
+                new TrackAddAction(&sequence, sourceIndex + 1, TrackDuplication::makeCopy(sequence, sourceIndex)));
+            copies.insert(sourceIndex + 1);
+        }
+        trackList.refresh();
+        trackList.selectTracks(*copies.begin(), copies);
     };
     trackList.onRemoveTracksRequested = [this](const std::set<int>& trackIndices)
     {

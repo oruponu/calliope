@@ -1,5 +1,6 @@
 #include "model/MidiNote.h"
 #include "model/MidiSequence.h"
+#include "model/MidiTrack.h"
 #include "model/TrackId.h"
 #include "support/MidiNoteTestHelpers.h"
 #include "undo/TrackActions.h"
@@ -59,6 +60,24 @@ TEST_CASE("redoing a track addition makes routes to it resolve again", "[undo][t
 
     action.perform();
     CHECK(seq.resolveRouteTarget(0) == added);
+}
+
+TEST_CASE("redoing the addition of a given track restores its contents and id", "[undo][track]")
+{
+    MidiSequence seq;
+    seq.addTrack();
+    MidiTrack track;
+    track.setName("Bass");
+    track.addNote({40, 90, 0, 480});
+    TrackAddAction action(&seq, 0, track);
+    action.perform();
+    const TrackId added = seq.getTrack(0).getId();
+    CHECK(seq.getTrack(0).getName() == "Bass");
+
+    action.undo();
+    action.perform();
+    CHECK(seq.getTrack(0).getId() == added);
+    CHECK(seq.getTrack(0).getNotes() == std::vector<MidiNote>{{40, 90, 0, 480}});
 }
 
 TEST_CASE("undoing a track removal restores the track at its index with its id", "[undo][track]")

@@ -74,7 +74,10 @@ private:
 class TrackAddAction : public juce::UndoableAction
 {
 public:
-    TrackAddAction(MidiSequence* seq, int index) : sequence(seq), addedIndex(index) {}
+    TrackAddAction(MidiSequence* seq, int index, MidiTrack track = {})
+        : sequence(seq), addedIndex(index), newTrack(std::move(track))
+    {
+    }
 
     bool perform() override
     {
@@ -85,7 +88,7 @@ public:
         }
         else
         {
-            sequence->addTrackAt(addedIndex);
+            sequence->addTrackAt(addedIndex, newTrack);
         }
         return true;
     }
@@ -104,6 +107,7 @@ public:
 private:
     MidiSequence* sequence;
     int addedIndex;
+    MidiTrack newTrack;
     // Held between undo and redo so redo restores the same id.
     std::optional<MidiTrack> removedTrack;
 };

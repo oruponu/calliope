@@ -15,6 +15,7 @@ public:
 
     int getActiveTrackIndex() const;
     void setActiveTrackIndex(int index);
+    void selectTracks(int activeIndex, const std::set<int>& indices);
     const std::set<int>& getSelectedTrackIndices() const;
     bool isTrackSelected(int index) const;
     void setSelectedTrackIndices(const std::set<int>& indices);
@@ -26,6 +27,7 @@ public:
     std::function<void(int trackIndex)> onChannelLabelClicked;
     std::function<void()> onAddTrackRequested;
     std::function<void(int trackIndex)> onInsertTrackRequested;
+    std::function<void(const std::set<int>& trackIndices)> onDuplicateTracksRequested;
     std::function<void(const std::set<int>& trackIndices)> onRemoveTracksRequested;
     std::function<void(int trackIndex, juce::String newName)> onTrackRenamed;
 
@@ -55,6 +57,7 @@ private:
     void selectRangeTo(int row);
     void toggleMuted(int row);
     void toggleSolo(int row);
+    void requestDuplicateTracks(const std::set<int>& indices);
     bool canRemoveTracks(const std::set<int>& indices) const;
     void requestRemoveTracks(const std::set<int>& indices);
     void notifySelectionChanged();

@@ -65,14 +65,19 @@ int TrackListComponent::getActiveTrackIndex() const
 
 void TrackListComponent::setActiveTrackIndex(int index)
 {
-    if (!sequence || index < 0 || index >= sequence->getNumTracks())
+    selectTracks(index, {index});
+}
+
+void TrackListComponent::selectTracks(int activeIndex, const std::set<int>& indices)
+{
+    if (!sequence || activeIndex < 0 || activeIndex >= sequence->getNumTracks())
         return;
-    activeTrackIndex = index;
-    anchorTrackIndex = index;
-    selectedTrackIndices = {index};
+    activeTrackIndex = activeIndex;
+    anchorTrackIndex = activeIndex;
+    selectedTrackIndices = indices;
     repaint();
     notifySelectionChanged();
-    scrollRowIntoView(index);
+    scrollRowIntoView(activeIndex);
 }
 
 const std::set<int>& TrackListComponent::getSelectedTrackIndices() const
@@ -383,6 +388,13 @@ bool TrackListComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key == juce::KeyPress('D', juce::ModifierKeys::commandModifier, 0))
+    {
+        if (sequence)
+            requestDuplicateTracks(selectedTrackIndices);
+        return true;
+    }
+
     if (key == juce::KeyPress(juce::KeyPress::deleteKey, juce::ModifierKeys::shiftModifier, 0) ||
         key == juce::KeyPress(juce::KeyPress::backspaceKey, juce::ModifierKeys::shiftModifier, 0))
     {
@@ -546,6 +558,12 @@ void TrackListComponent::toggleSolo(int row)
 bool TrackListComponent::canRemoveTracks(const std::set<int>& indices) const
 {
     return !indices.empty() && std::cmp_less(indices.size(), sequence->getNumTracks());
+}
+
+void TrackListComponent::requestDuplicateTracks(const std::set<int>& indices)
+{
+    if (!indices.empty() && onDuplicateTracksRequested)
+        onDuplicateTracksRequested(indices);
 }
 
 void TrackListComponent::requestRemoveTracks(const std::set<int>& indices)
