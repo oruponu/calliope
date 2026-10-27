@@ -31,6 +31,7 @@ public:
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
     static constexpr int trackRowHeight = 48;
     static constexpr int addButtonRowHeight = 44;
@@ -49,6 +50,7 @@ private:
     juce::Rectangle<int> getChannelLabelBounds(int rowIndex) const;
     juce::Rectangle<int> getAddButtonBounds() const;
     void updateSize();
+    void scrollRowIntoView(int rowIndex);
     void notifySelectionChanged();
     bool reconcileSelectionWithTracks();
 

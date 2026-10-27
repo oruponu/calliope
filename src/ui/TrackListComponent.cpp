@@ -400,6 +400,23 @@ void TrackListComponent::mouseDoubleClick(const juce::MouseEvent& e)
         beginEditingName(row);
 }
 
+bool TrackListComponent::keyPressed(const juce::KeyPress& key)
+{
+    const bool isUp = key == juce::KeyPress::upKey;
+    if (!isUp && key != juce::KeyPress::downKey)
+        return false;
+    if (!sequence || activeTrackIndex < 0)
+        return true;
+
+    const int next = juce::jlimit(0, sequence->getNumTracks() - 1, activeTrackIndex + (isUp ? -1 : 1));
+    if (next == activeTrackIndex && selectedTrackIndices.size() == 1)
+        return true;
+
+    setActiveTrackIndex(next);
+    scrollRowIntoView(next);
+    return true;
+}
+
 void TrackListComponent::notesChanged(int)
 {
     updateSize();
@@ -471,6 +488,21 @@ void TrackListComponent::updateSize()
     int numTracks = sequence ? sequence->getNumTracks() : 0;
     int requiredHeight = numTracks * trackRowHeight + addButtonRowHeight;
     setSize(getWidth(), juce::jmax(requiredHeight, getParentHeight()));
+}
+
+void TrackListComponent::scrollRowIntoView(int rowIndex)
+{
+    auto* viewport = findParentComponentOfClass<juce::Viewport>();
+    if (viewport == nullptr)
+        return;
+
+    const int rowTop = rowIndex * trackRowHeight;
+    const int rowBottom = rowTop + trackRowHeight;
+    const int viewY = viewport->getViewPositionY();
+    if (rowTop < viewY)
+        viewport->setViewPosition(viewport->getViewPositionX(), rowTop);
+    else if (rowBottom > viewY + viewport->getViewHeight())
+        viewport->setViewPosition(viewport->getViewPositionX(), rowBottom - viewport->getViewHeight());
 }
 
 void TrackListComponent::notifySelectionChanged()
