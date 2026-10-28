@@ -56,6 +56,7 @@ public:
     const MidiTrack& addTrackAt(int index, MidiTrack track = {});
     void insertTrack(int index, const MidiTrack& track);
     void removeTrack(int index);
+    void reorderTracks(const std::vector<int>& order);
 
     const MidiTrack& getTrack(int index) const;
     int getNumTracks() const;

@@ -1,10 +1,12 @@
 #pragma once
 
 #include "model/MidiSequence.h"
+#include "model/TrackOrder.h"
 #include <functional>
 #include <juce_data_structures/juce_data_structures.h>
 #include <optional>
 #include <string>
+#include <vector>
 
 class ChannelChangeAction : public juce::UndoableAction
 {
@@ -110,6 +112,30 @@ private:
     MidiTrack newTrack;
     // Held between undo and redo so redo restores the same id.
     std::optional<MidiTrack> removedTrack;
+};
+
+class TrackMoveAction : public juce::UndoableAction
+{
+public:
+    TrackMoveAction(MidiSequence* seq, std::vector<int> trackOrder) : sequence(seq), order(std::move(trackOrder)) {}
+
+    bool perform() override
+    {
+        sequence->reorderTracks(order);
+        return true;
+    }
+
+    bool undo() override
+    {
+        sequence->reorderTracks(TrackOrder::inverse(order));
+        return true;
+    }
+
+    int getSizeInUnits() override { return 1; }
+
+private:
+    MidiSequence* sequence;
+    std::vector<int> order;
 };
 
 class TrackRemoveAction : public juce::UndoableAction

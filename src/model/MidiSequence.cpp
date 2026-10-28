@@ -83,6 +83,17 @@ void MidiSequence::removeTrack(int index)
     notifyTrackStructureChanged();
 }
 
+void MidiSequence::reorderTracks(const std::vector<int>& order)
+{
+    assert(order.size() == tracks.size());
+    std::vector<MidiTrack> reordered;
+    reordered.reserve(tracks.size());
+    for (int index : order)
+        reordered.push_back(std::move(tracks[index]));
+    tracks = std::move(reordered);
+    notifyTrackStructureChanged();
+}
+
 const MidiTrack& MidiSequence::getTrack(int index) const
 {
     return tracks[index];

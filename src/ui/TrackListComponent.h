@@ -3,6 +3,7 @@
 #include "model/MidiSequence.h"
 #include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <optional>
 #include <set>
 
 class TrackListComponent : public juce::Component, public MidiSequence::Listener
@@ -29,10 +30,13 @@ public:
     std::function<void(int trackIndex)> onInsertTrackRequested;
     std::function<void(const std::set<int>& trackIndices)> onDuplicateTracksRequested;
     std::function<void(const std::set<int>& trackIndices)> onRemoveTracksRequested;
+    std::function<void(const std::set<int>& trackIndices, int gap)> onMoveTracksRequested;
     std::function<void(int trackIndex, juce::String newName)> onTrackRenamed;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
     bool keyPressed(const juce::KeyPress& key) override;
 
@@ -45,6 +49,8 @@ private:
     void tracksChanged() override;
 
     int getRowIndexAt(int y) const;
+    int getGapAt(int y) const;
+    bool movesSelectedTracks(int gap) const;
     juce::Rectangle<int> getEditorButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getMuteButtonBounds(int rowIndex) const;
     juce::Rectangle<int> getSoloButtonBounds(int rowIndex) const;
@@ -71,6 +77,11 @@ private:
     std::set<int> selectedTrackIndices = {0};
     int activeTrackIndex = 0;
     int anchorTrackIndex = 0;
+    int pressedRow = -1;
+    // A press on a track that is part of a multiple selection keeps the selection, so that it can be
+    // dragged together, and only selects that track alone when released without dragging.
+    bool selectAloneOnRelease = false;
+    std::optional<int> dropGap;
     std::unique_ptr<juce::TextEditor> nameEditor;
     int editingRow = -1;
 };

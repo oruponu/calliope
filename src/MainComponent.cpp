@@ -4,6 +4,7 @@
 #include "engine/CountInBars.h"
 #include "model/GridDivision.h"
 #include "model/TrackDuplication.h"
+#include "model/TrackOrder.h"
 #include "plugin/PluginAssignmentCodec.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
@@ -230,6 +231,23 @@ MainComponent::MainComponent()
         int newActive = juce::jlimit(0, sequence.getNumTracks() - 1, *trackIndices.begin());
         trackList.refresh();
         trackList.setActiveTrackIndex(newActive);
+    };
+    trackList.onMoveTracksRequested = [this](const std::set<int>& trackIndices, int gap)
+    {
+        auto& sequence = document.getSequence();
+        auto order = TrackOrder::moveTogether(sequence.getNumTracks(), trackIndices, gap);
+        if (TrackOrder::isIdentity(order))
+            return;
+
+        const auto newIndexOf = TrackOrder::inverse(order);
+        const int newActive = newIndexOf[trackList.getActiveTrackIndex()];
+        const auto moved = trackIndices | std::views::transform([&](int index) { return newIndexOf[index]; }) |
+                           std::ranges::to<std::set>();
+
+        document.getHistory().beginNewTransaction(trackIndices.size() > 1 ? "Move Tracks" : "Move Track");
+        document.getHistory().perform(new TrackMoveAction(&sequence, std::move(order)));
+        trackList.refresh();
+        trackList.selectTracks(newActive, moved);
     };
     trackList.onTrackRenamed = [this](int trackIndex, juce::String newName)
     {

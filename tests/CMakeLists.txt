@@ -44,6 +44,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/TimelineGrid.cpp
     ${PROJECT_SOURCE_DIR}/src/model/TimelineMap.cpp
     ${PROJECT_SOURCE_DIR}/src/model/TrackDuplication.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/TrackOrder.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/KeySignatureName.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
@@ -129,6 +130,7 @@ target_sources(CalliopeTests PRIVATE
     model/TimelineLookupTests.cpp
     model/TrackDuplicationTests.cpp
     model/TrackIdTests.cpp
+    model/TrackOrderTests.cpp
     notation/ChordSymbolTests.cpp
     notation/KeySignatureNameTests.cpp
     plugin/PluginSyncPlanTests.cpp

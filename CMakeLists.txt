@@ -76,6 +76,7 @@ target_sources(Calliope PRIVATE
     src/model/TimelineGrid.cpp
     src/model/TimelineMap.cpp
     src/model/TrackDuplication.cpp
+    src/model/TrackOrder.cpp
     src/notation/ChordSymbol.cpp
     src/notation/KeySignatureName.cpp
     src/plugin/PluginAssignmentCodec.cpp

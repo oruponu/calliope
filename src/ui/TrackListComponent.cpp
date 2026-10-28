@@ -1,5 +1,7 @@
 #include "ui/TrackListComponent.h"
+#include "model/TrackOrder.h"
 #include "ui/theme/TrackColours.h"
+#include <algorithm>
 #include <ranges>
 #include <utility>
 
@@ -234,6 +236,12 @@ void TrackListComponent::paint(juce::Graphics& g)
         drawToggle(getSoloButtonBounds(i), "S", track.isSolo(), status::warn, surface::bg);
     }
 
+    if (dropGap)
+    {
+        g.setColour(accent::base);
+        g.fillRect(4, std::max(0, *dropGap * trackRowHeight - 1), getWidth() - 8, 2);
+    }
+
     auto addBounds = getAddButtonBounds().reduced(8, 8).toFloat();
     juce::Path dashed;
     dashed.addRoundedRectangle(addBounds, radius::r2);
@@ -254,6 +262,10 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
 
     if (nameEditor != nullptr)
         commitNameEdit();
+
+    pressedRow = -1;
+    selectAloneOnRelease = false;
+    dropGap.reset();
 
     if (e.mods.isPopupMenu())
     {
@@ -353,14 +365,63 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
     {
         selectRangeTo(row);
     }
+    else if (selectedTrackIndices.contains(row) && selectedTrackIndices.size() > 1)
+    {
+        selectAloneOnRelease = true;
+    }
     else
     {
         activeTrackIndex = row;
         anchorTrackIndex = row;
         selectedTrackIndices = {row};
     }
+    pressedRow = row;
     repaint();
     notifySelectionChanged();
+}
+
+void TrackListComponent::mouseDrag(const juce::MouseEvent& e)
+{
+    if (!sequence || pressedRow < 0 || !selectedTrackIndices.contains(pressedRow) || !e.mouseWasDraggedSinceMouseDown())
+        return;
+
+    selectAloneOnRelease = false;
+    beginDragAutoRepeat(40);
+    if (auto* viewport = findParentComponentOfClass<juce::Viewport>())
+    {
+        const auto inViewport = viewport->getLocalPoint(this, e.getPosition());
+        viewport->autoScroll(inViewport.x, inViewport.y, 20, 10);
+    }
+
+    const int gap = getGapAt(e.y);
+    const auto shownGap = movesSelectedTracks(gap) ? std::optional{gap} : std::nullopt;
+    if (shownGap != dropGap)
+    {
+        dropGap = shownGap;
+        repaint();
+    }
+}
+
+void TrackListComponent::mouseUp(const juce::MouseEvent&)
+{
+    const int row = std::exchange(pressedRow, -1);
+    const auto gap = std::exchange(dropGap, std::nullopt);
+    if (std::exchange(selectAloneOnRelease, false))
+    {
+        activeTrackIndex = row;
+        anchorTrackIndex = row;
+        selectedTrackIndices = {row};
+        repaint();
+        notifySelectionChanged();
+        return;
+    }
+
+    if (gap)
+    {
+        repaint();
+        if (onMoveTracksRequested)
+            onMoveTracksRequested(selectedTrackIndices, *gap);
+    }
 }
 
 void TrackListComponent::mouseDoubleClick(const juce::MouseEvent& e)
@@ -449,6 +510,16 @@ void TrackListComponent::tracksChanged()
 int TrackListComponent::getRowIndexAt(int y) const
 {
     return y / trackRowHeight;
+}
+
+int TrackListComponent::getGapAt(int y) const
+{
+    return juce::jlimit(0, sequence->getNumTracks(), (y + trackRowHeight / 2) / trackRowHeight);
+}
+
+bool TrackListComponent::movesSelectedTracks(int gap) const
+{
+    return !TrackOrder::isIdentity(TrackOrder::moveTogether(sequence->getNumTracks(), selectedTrackIndices, gap));
 }
 
 juce::Rectangle<int> TrackListComponent::getEditorButtonBounds(int rowIndex) const

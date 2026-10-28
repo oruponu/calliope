@@ -80,6 +80,22 @@ TEST_CASE("redoing the addition of a given track restores its contents and id", 
     CHECK(seq.getTrack(0).getNotes() == std::vector<MidiNote>{{40, 90, 0, 480}});
 }
 
+TEST_CASE("undoing a track move restores the previous order", "[undo][track]")
+{
+    MidiSequence seq;
+    const TrackId first = seq.addTrack().getId();
+    const TrackId second = seq.addTrack().getId();
+    const TrackId third = seq.addTrack().getId();
+    TrackMoveAction action(&seq, {1, 2, 0});
+    action.perform();
+    CHECK(seq.indexOf(first) == 2);
+
+    action.undo();
+    CHECK(seq.indexOf(first) == 0);
+    CHECK(seq.indexOf(second) == 1);
+    CHECK(seq.indexOf(third) == 2);
+}
+
 TEST_CASE("undoing a track removal restores the track at its index with its id", "[undo][track]")
 {
     MidiSequence seq;
