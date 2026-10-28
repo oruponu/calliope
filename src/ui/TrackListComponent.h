@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
+#include "ui/TrackNameEditor.h"
 #include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <optional>
@@ -82,6 +83,6 @@ private:
     // dragged together, and only selects that track alone when released without dragging.
     bool selectAloneOnRelease = false;
     std::optional<int> dropGap;
-    std::unique_ptr<juce::TextEditor> nameEditor;
+    std::unique_ptr<TrackNameEditor> nameEditor;
     int editingRow = -1;
 };

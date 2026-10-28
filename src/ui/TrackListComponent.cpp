@@ -729,7 +729,7 @@ void TrackListComponent::beginEditingName(int rowIndex)
         track.getName().empty() ? "Track " + juce::String(rowIndex + 1) : juce::String(track.getName());
 
     editingRow = rowIndex;
-    nameEditor = std::make_unique<juce::TextEditor>();
+    nameEditor = std::make_unique<TrackNameEditor>();
     nameEditor->setBounds(getNameLabelBounds(rowIndex));
     nameEditor->setFont(calliope::theme::font::sans(calliope::theme::font::sizeLG));
     nameEditor->setText(initialText, juce::dontSendNotification);
@@ -747,6 +747,21 @@ void TrackListComponent::beginEditingName(int rowIndex)
         auto* list = this;
         list->cancelNameEdit();
         list->grabKeyboardFocus();
+    };
+    nameEditor->onTabKey = [this](bool backwards)
+    {
+        auto* list = this;
+        const int nextRow = list->editingRow + (backwards ? -1 : 1);
+        list->commitNameEdit();
+        if (nextRow >= 0 && nextRow < list->sequence->getNumTracks())
+        {
+            list->setActiveTrackIndex(nextRow);
+            list->beginEditingName(nextRow);
+        }
+        else
+        {
+            list->grabKeyboardFocus();
+        }
     };
     addAndMakeVisible(*nameEditor);
     nameEditor->grabKeyboardFocus();
@@ -768,8 +783,10 @@ void TrackListComponent::commitNameEdit()
 
     if (sequence && row < sequence->getNumTracks())
     {
-        juce::String currentName = juce::String(sequence->getTrack(row).getName());
-        if (newName != currentName && onTrackRenamed)
+        const auto& track = sequence->getTrack(row);
+        const juce::String shownName =
+            track.getName().empty() ? "Track " + juce::String(row + 1) : juce::String(track.getName());
+        if (newName != shownName && onTrackRenamed)
             onTrackRenamed(row, newName);
     }
     repaint();
