@@ -452,6 +452,16 @@ bool TrackListComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key == juce::KeyPress::F2Key)
+    {
+        if (sequence && activeTrackIndex >= 0)
+        {
+            scrollRowIntoView(activeTrackIndex);
+            beginEditingName(activeTrackIndex);
+        }
+        return true;
+    }
+
     if (key == juce::KeyPress('D', juce::ModifierKeys::commandModifier, 0))
     {
         if (sequence)
@@ -724,9 +734,20 @@ void TrackListComponent::beginEditingName(int rowIndex)
     nameEditor->setFont(calliope::theme::font::sans(calliope::theme::font::sizeLG));
     nameEditor->setText(initialText, juce::dontSendNotification);
     nameEditor->setSelectAllWhenFocused(true);
-    nameEditor->onReturnKey = [this]() { commitNameEdit(); };
+    // Ending the edit destroys the editor along with these lambdas, so they copy this before ending it.
+    nameEditor->onReturnKey = [this]()
+    {
+        auto* list = this;
+        list->commitNameEdit();
+        list->grabKeyboardFocus();
+    };
     nameEditor->onFocusLost = [this]() { commitNameEdit(); };
-    nameEditor->onEscapeKey = [this]() { cancelNameEdit(); };
+    nameEditor->onEscapeKey = [this]()
+    {
+        auto* list = this;
+        list->cancelNameEdit();
+        list->grabKeyboardFocus();
+    };
     addAndMakeVisible(*nameEditor);
     nameEditor->grabKeyboardFocus();
     nameEditor->selectAll();
