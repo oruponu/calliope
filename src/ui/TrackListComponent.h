@@ -62,7 +62,7 @@ private:
     void scrollRowIntoView(int rowIndex);
     void selectRangeTo(int row);
     void toggleMuted(int row);
-    void toggleSolo(int row);
+    void toggleSolo(int row, bool exclusive = false);
     void requestDuplicateTracks(const std::set<int>& indices);
     bool canRemoveTracks(const std::set<int>& indices) const;
     void requestRemoveTracks(const std::set<int>& indices);

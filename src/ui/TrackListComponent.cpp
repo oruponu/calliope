@@ -1,4 +1,5 @@
 #include "ui/TrackListComponent.h"
+#include "model/ExclusiveSolo.h"
 #include "model/TrackOrder.h"
 #include "ui/theme/TrackColours.h"
 #include <algorithm>
@@ -315,7 +316,7 @@ void TrackListComponent::mouseDown(const juce::MouseEvent& e)
 
     if (getSoloButtonBounds(row).contains(e.x, e.y))
     {
-        toggleSolo(row);
+        toggleSolo(row, e.mods.isAltDown());
         return;
     }
 
@@ -611,8 +612,15 @@ void TrackListComponent::toggleMuted(int row)
     repaint();
 }
 
-void TrackListComponent::toggleSolo(int row)
+void TrackListComponent::toggleSolo(int row, bool exclusive)
 {
+    if (exclusive)
+    {
+        ExclusiveSolo::toggle(*sequence, selectedTrackIndices.contains(row) ? selectedTrackIndices : std::set{row});
+        repaint();
+        return;
+    }
+
     const bool newSolo = !sequence->getTrack(row).isSolo();
     MidiSequence::ChangeBatch batch(*sequence);
     if (selectedTrackIndices.contains(row))

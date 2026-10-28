@@ -35,6 +35,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/ControllerLineValue.cpp
     ${PROJECT_SOURCE_DIR}/src/model/ControllerPointConversion.cpp
     ${PROJECT_SOURCE_DIR}/src/model/ControllerRamps.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/ExclusiveSolo.cpp
     ${PROJECT_SOURCE_DIR}/src/model/GmPrograms.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MetaEventRetention.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
@@ -119,6 +120,7 @@ target_sources(CalliopeTests PRIVATE
     model/ControllerPointConversionTests.cpp
     model/ControllerRampsTests.cpp
     model/DefaultTimelineTests.cpp
+    model/ExclusiveSoloTests.cpp
     model/GmProgramsTests.cpp
     model/GridDivisionTests.cpp
     model/MidiSequenceNotificationTests.cpp
