@@ -56,6 +56,7 @@ public:
     void resized() override;
     void parentHierarchyChanged() override;
     void mouseDown(const juce::MouseEvent& e) override;
+    std::unique_ptr<juce::ComponentTraverser> createKeyboardFocusTraverser() override;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 

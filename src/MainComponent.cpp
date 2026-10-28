@@ -7,6 +7,7 @@
 #include "model/TrackDuplication.h"
 #include "model/TrackOrder.h"
 #include "plugin/PluginAssignmentCodec.h"
+#include "ui/NoTabFocusTraverser.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
 #include "ui/transport/MetronomeSettingsComponent.h"
@@ -666,6 +667,11 @@ void MainComponent::mouseDown(const juce::MouseEvent& e)
 {
     if (toolBarBounds.contains(e.getPosition()))
         pianoRoll.grabKeyboardFocus();
+}
+
+std::unique_ptr<juce::ComponentTraverser> MainComponent::createKeyboardFocusTraverser()
+{
+    return std::make_unique<NoTabFocusTraverser>();
 }
 
 void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
