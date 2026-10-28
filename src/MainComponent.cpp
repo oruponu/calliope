@@ -3,6 +3,7 @@
 #include "audio/MetronomeVolume.h"
 #include "engine/CountInBars.h"
 #include "model/GridDivision.h"
+#include "model/NewTrack.h"
 #include "model/TrackDuplication.h"
 #include "model/TrackOrder.h"
 #include "plugin/PluginAssignmentCodec.h"
@@ -193,13 +194,15 @@ MainComponent::MainComponent()
     {
         document.getHistory().beginNewTransaction("Add Track");
         auto& sequence = document.getSequence();
-        document.getHistory().perform(new TrackAddAction(&sequence, sequence.getNumTracks()));
+        const int index = sequence.getNumTracks();
+        document.getHistory().perform(new TrackAddAction(&sequence, index, NewTrack::make(index)));
         trackList.refresh();
     };
     trackList.onInsertTrackRequested = [this](int trackIndex)
     {
         document.getHistory().beginNewTransaction("Add Track");
-        document.getHistory().perform(new TrackAddAction(&document.getSequence(), trackIndex));
+        document.getHistory().perform(
+            new TrackAddAction(&document.getSequence(), trackIndex, NewTrack::make(trackIndex)));
         trackList.refresh();
         trackList.setActiveTrackIndex(trackIndex);
     };

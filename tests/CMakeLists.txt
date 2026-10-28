@@ -122,6 +122,7 @@ target_sources(CalliopeTests PRIVATE
     model/GmProgramsTests.cpp
     model/GridDivisionTests.cpp
     model/MidiSequenceNotificationTests.cpp
+    model/NewTrackTests.cpp
     model/RouteTargetTests.cpp
     model/SequenceContentsRulesTests.cpp
     model/SysExHexTests.cpp

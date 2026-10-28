@@ -2,6 +2,7 @@
 #include "AppProperties.h"
 #include "io/MidiFileIO.h"
 #include "io/ProjectFileIO.h"
+#include "model/NewTrack.h"
 #include <utility>
 
 namespace
@@ -24,7 +25,7 @@ void Document::newDocument()
 {
     notifyWillReplaceSequence();
     SequenceContents contents;
-    contents.tracks.emplace_back();
+    contents.tracks.push_back(NewTrack::make(0));
     sequence.replaceContents(std::move(contents));
     setFile({});
     history.clear();
