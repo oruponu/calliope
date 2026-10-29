@@ -15,6 +15,8 @@ set(FOLDER_edit/track "")
 set(FOLDER_edit/timeline "")
 set(FOLDER_edit/harmony "")
 
+set(LAYER_settings "")
+
 set(LAYER_engine "model;edit")
 set(FOLDER_engine/transport "")
 set(FOLDER_engine/metronome "")
@@ -31,6 +33,8 @@ set(FOLDER_undo/track "undo")
 set(LAYER_io "model")
 set(FOLDER_io/smf "")
 set(FOLDER_io/project "")
+
+set(LAYER_document "model;edit;settings;undo;io")
 
 set(LAYER_audio "model;engine")
 set(LAYER_device "model;engine")

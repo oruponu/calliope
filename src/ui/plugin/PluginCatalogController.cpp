@@ -1,5 +1,5 @@
 #include "ui/plugin/PluginCatalogController.h"
-#include "AppProperties.h"
+#include "settings/AppProperties.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 
 PluginCatalogController::PluginCatalogController(juce::AudioPluginFormatManager& formatManagerRef)

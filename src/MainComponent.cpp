@@ -1,5 +1,4 @@
 #include "MainComponent.h"
-#include "AppProperties.h"
 #include "audio/MetronomeVolume.h"
 #include "edit/track/NewTrack.h"
 #include "edit/track/TrackDuplication.h"
@@ -7,6 +6,7 @@
 #include "model/TrackOrder.h"
 #include "model/grid/GridDivision.h"
 #include "plugin/PluginAssignmentCodec.h"
+#include "settings/AppProperties.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
 #include "ui/transport/MetronomeSettingsComponent.h"

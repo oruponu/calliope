@@ -1,5 +1,5 @@
-#include "AppProperties.h"
 #include "MainComponent.h"
+#include "settings/AppProperties.h"
 #include "ui/theme/LookAndFeel.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 

@@ -1,7 +1,7 @@
 #include "ui/menu/MainMenuModel.h"
-#include "AppProperties.h"
 #include "device/MidiDeviceOutput.h"
 #include "device/UserDisabledMidiInputs.h"
+#include "settings/AppProperties.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/plugin/PluginCatalogController.h"
 #include "ui/plugin/TrackOutputController.h"
