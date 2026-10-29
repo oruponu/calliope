@@ -2,14 +2,14 @@ juce_add_console_app(CalliopeTests)
 
 target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/audio/ClickVoice.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/ChordTrackEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/ControllerPointEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/NoteEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/NoteQuantize.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/ProgramChangeEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/controller/ControllerPointEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/controller/ProgramChangeEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/event/NoteEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/event/NoteQuantize.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/harmony/ChordTrackEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/harmony/KeySignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/timeline/TempoEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/timeline/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/track/ExclusiveSolo.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/track/TrackDuplication.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/Chase.cpp
@@ -63,37 +63,37 @@ target_sources(CalliopeTests PRIVATE
 target_sources(CalliopeTests PRIVATE
     audio/ClickVoiceTests.cpp
     audio/MetronomeVolumeTests.cpp
-    edit/ChordAddSpanTests.cpp
-    edit/ChordAddTests.cpp
-    edit/ChordDeleteTests.cpp
-    edit/ChordMoveTests.cpp
-    edit/ChordPasteTests.cpp
-    edit/ChordResizeTests.cpp
-    edit/ChordStartResizeTests.cpp
-    edit/ControllerPointAddTests.cpp
-    edit/ControllerPointClipboardTests.cpp
-    edit/ControllerPointDeleteTests.cpp
-    edit/ControllerPointMoveTests.cpp
-    edit/ControllerPointSelectAllTests.cpp
-    edit/ControllerPointValueTests.cpp
-    edit/KeySignatureDeleteTests.cpp
-    edit/KeySignatureMoveTests.cpp
-    edit/KeySignaturePasteTests.cpp
-    edit/NoteAdjacentLineTests.cpp
-    edit/NoteClampShiftTests.cpp
-    edit/NoteEndResizeTests.cpp
-    edit/NoteQuantizeTests.cpp
-    edit/NoteShiftTests.cpp
-    edit/NoteStartResizeTests.cpp
-    edit/ProgramChangeEditsTests.cpp
-    edit/ProgramChangeGroupTests.cpp
-    edit/ProgramChangePointTests.cpp
-    edit/TempoDeleteTests.cpp
-    edit/TempoMoveTests.cpp
-    edit/TempoPasteTests.cpp
-    edit/TimeSignatureDeleteTests.cpp
-    edit/TimeSignatureMoveTests.cpp
-    edit/TimeSignaturePasteTests.cpp
+    edit/controller/ControllerPointAddTests.cpp
+    edit/controller/ControllerPointClipboardTests.cpp
+    edit/controller/ControllerPointDeleteTests.cpp
+    edit/controller/ControllerPointMoveTests.cpp
+    edit/controller/ControllerPointSelectAllTests.cpp
+    edit/controller/ControllerPointValueTests.cpp
+    edit/controller/ProgramChangeEditsTests.cpp
+    edit/controller/ProgramChangeGroupTests.cpp
+    edit/controller/ProgramChangePointTests.cpp
+    edit/event/NoteAdjacentLineTests.cpp
+    edit/event/NoteClampShiftTests.cpp
+    edit/event/NoteEndResizeTests.cpp
+    edit/event/NoteQuantizeTests.cpp
+    edit/event/NoteShiftTests.cpp
+    edit/event/NoteStartResizeTests.cpp
+    edit/harmony/ChordAddSpanTests.cpp
+    edit/harmony/ChordAddTests.cpp
+    edit/harmony/ChordDeleteTests.cpp
+    edit/harmony/ChordMoveTests.cpp
+    edit/harmony/ChordPasteTests.cpp
+    edit/harmony/ChordResizeTests.cpp
+    edit/harmony/ChordStartResizeTests.cpp
+    edit/harmony/KeySignatureDeleteTests.cpp
+    edit/harmony/KeySignatureMoveTests.cpp
+    edit/harmony/KeySignaturePasteTests.cpp
+    edit/timeline/TempoDeleteTests.cpp
+    edit/timeline/TempoMoveTests.cpp
+    edit/timeline/TempoPasteTests.cpp
+    edit/timeline/TimeSignatureDeleteTests.cpp
+    edit/timeline/TimeSignatureMoveTests.cpp
+    edit/timeline/TimeSignaturePasteTests.cpp
     edit/track/ExclusiveSoloTests.cpp
     edit/track/NewTrackTests.cpp
     edit/track/TrackDuplicationTests.cpp

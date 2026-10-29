@@ -1,6 +1,6 @@
 #pragma once
 
-#include "edit/ControllerPointEditResult.h"
+#include "edit/controller/ControllerPointEditResult.h"
 #include "model/controller/ControllerKind.h"
 #include "support/MidiEventTestHelpers.h"
 #include <set>

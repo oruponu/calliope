@@ -1,7 +1,7 @@
 #pragma once
 
-#include "edit/ControllerPointEditResult.h"
-#include "edit/NoteRef.h"
+#include "edit/controller/ControllerPointEditResult.h"
+#include "edit/event/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"

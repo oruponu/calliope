@@ -1,6 +1,6 @@
 #pragma once
 
-#include "edit/NoteRef.h"
+#include "edit/event/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"

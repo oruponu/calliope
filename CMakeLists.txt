@@ -30,14 +30,14 @@ target_sources(Calliope PRIVATE
     src/audio/MidiThru.cpp
     src/audio/UserDisabledMidiInputs.cpp
     src/document/Document.cpp
-    src/edit/ChordTrackEdits.cpp
-    src/edit/ControllerPointEdits.cpp
-    src/edit/KeySignatureEdits.cpp
-    src/edit/NoteEdits.cpp
-    src/edit/NoteQuantize.cpp
-    src/edit/ProgramChangeEdits.cpp
-    src/edit/TempoEdits.cpp
-    src/edit/TimeSignatureEdits.cpp
+    src/edit/controller/ControllerPointEdits.cpp
+    src/edit/controller/ProgramChangeEdits.cpp
+    src/edit/event/NoteEdits.cpp
+    src/edit/event/NoteQuantize.cpp
+    src/edit/harmony/ChordTrackEdits.cpp
+    src/edit/harmony/KeySignatureEdits.cpp
+    src/edit/timeline/TempoEdits.cpp
+    src/edit/timeline/TimeSignatureEdits.cpp
     src/edit/track/ExclusiveSolo.cpp
     src/edit/track/TrackDuplication.cpp
     src/engine/Chase.cpp

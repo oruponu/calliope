@@ -1,6 +1,6 @@
 #pragma once
 
-#include "edit/ChordTrackEdits.h"
+#include "edit/harmony/ChordTrackEdits.h"
 #include "model/grid/TimelineGrid.h"
 #include "model/notation/ChordSymbol.h"
 #include "model/timeline/TimelineMap.h"

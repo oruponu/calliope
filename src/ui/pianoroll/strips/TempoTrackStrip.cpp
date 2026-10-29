@@ -1,5 +1,5 @@
 #include "ui/pianoroll/strips/TempoTrackStrip.h"
-#include "edit/TempoEdits.h"
+#include "edit/timeline/TempoEdits.h"
 #include "model/timeline/TempoChangeList.h"
 #include "ui/pianoroll/DragValueTip.h"
 #include "ui/pianoroll/DragValueTipPainter.h"

@@ -1,5 +1,5 @@
 #include "ui/pianoroll/strips/KeySignatureStrip.h"
-#include "edit/KeySignatureEdits.h"
+#include "edit/harmony/KeySignatureEdits.h"
 #include "model/harmony/KeySignatureChangeList.h"
 #include "model/notation/KeySignatureName.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"

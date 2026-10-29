@@ -1,5 +1,5 @@
 #include "ui/pianoroll/strips/TimeSignatureStrip.h"
-#include "edit/TimeSignatureEdits.h"
+#include "edit/timeline/TimeSignatureEdits.h"
 #include "model/timeline/TimeSignatureChangeList.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/Theme.h"

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "edit/ChordTrackEdits.h"
-#include "edit/CopiedControllerPoints.h"
-#include "edit/KeySignatureEdits.h"
-#include "edit/TimeSignatureEdits.h"
+#include "edit/controller/CopiedControllerPoints.h"
+#include "edit/harmony/ChordTrackEdits.h"
+#include "edit/harmony/KeySignatureEdits.h"
+#include "edit/timeline/TimeSignatureEdits.h"
 #include "model/event/MidiNote.h"
 #include "model/timeline/TempoChange.h"
 #include <utility>

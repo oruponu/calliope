@@ -1,6 +1,6 @@
 #pragma once
 
-#include "edit/NoteRef.h"
+#include "edit/event/NoteRef.h"
 #include "model/event/MidiNote.h"
 #include "ui/DraftNote.h"
 #include "ui/DraggedEvents.h"

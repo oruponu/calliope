@@ -1,6 +1,6 @@
 #pragma once
 
-#include "edit/NoteRef.h"
+#include "edit/event/NoteRef.h"
 #include "engine/Take.h"
 #include "model/MidiSequence.h"
 #include "model/controller/ControllerPointConversion.h"

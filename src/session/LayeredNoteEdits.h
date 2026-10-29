@@ -1,7 +1,7 @@
 #pragma once
 
-#include "edit/NoteEdit.h"
-#include "edit/NoteRef.h"
+#include "edit/event/NoteEdit.h"
+#include "edit/event/NoteRef.h"
 #include "engine/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"
 #include "undo/UndoHistory.h"

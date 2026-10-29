@@ -1,4 +1,4 @@
-#include "edit/ControllerPointEdits.h"
+#include "edit/controller/ControllerPointEdits.h"
 #include "model/MidiSequence.h"
 #include "support/ControllerPointTestHelpers.h"
 #include "undo/ReplaceEventsAction.h"

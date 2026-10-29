@@ -1,7 +1,7 @@
 #pragma once
 // IWYU pragma: always_keep
 
-#include "edit/NoteEdit.h"
+#include "edit/event/NoteEdit.h"
 #include <catch2/catch_tostring.hpp>
 #include <format>
 #include <optional>

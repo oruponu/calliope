@@ -1,5 +1,5 @@
 #include "ui/pianoroll/strips/ChordStrip.h"
-#include "edit/ChordTrackEdits.h"
+#include "edit/harmony/ChordTrackEdits.h"
 #include "model/harmony/ChordChangeList.h"
 #include "model/harmony/ChordValue.h"
 #include "model/notation/ChordSymbol.h"

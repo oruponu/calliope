@@ -1,7 +1,7 @@
 #pragma once
 // IWYU pragma: always_keep
 
-#include "edit/CopiedControllerPoints.h"
+#include "edit/controller/CopiedControllerPoints.h"
 #include <catch2/catch_tostring.hpp>
 #include <format>
 #include <string>
