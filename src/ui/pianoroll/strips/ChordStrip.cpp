@@ -1,6 +1,6 @@
 #include "ui/pianoroll/strips/ChordStrip.h"
 #include "edit/ChordTrackEdits.h"
-#include "notation/ChordSymbol.h"
+#include "model/notation/ChordSymbol.h"
 #include "ui/pianoroll/strips/ChordSymbolPainter.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/Theme.h"

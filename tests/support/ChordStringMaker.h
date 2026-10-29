@@ -2,7 +2,7 @@
 // IWYU pragma: always_keep
 
 #include "model/harmony/ChordChange.h"
-#include "notation/ChordSymbol.h"
+#include "model/notation/ChordSymbol.h"
 #include <catch2/catch_tostring.hpp>
 #include <format>
 #include <string>

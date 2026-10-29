@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notation/ChordSymbolParts.h"
+#include "model/notation/ChordSymbolParts.h"
 #include <juce_graphics/juce_graphics.h>
 
 namespace ChordSymbolPainter

@@ -74,12 +74,12 @@ target_sources(Calliope PRIVATE
     src/model/controller/ControllerPointConversion.cpp
     src/model/controller/ControllerRamps.cpp
     src/model/grid/TimelineGrid.cpp
+    src/model/notation/ChordSymbol.cpp
     src/model/notation/GmPrograms.cpp
+    src/model/notation/KeySignatureName.cpp
     src/model/notation/SysExHex.cpp
     src/model/timeline/TimelineMap.cpp
     src/model/track/MidiTrack.cpp
-    src/notation/ChordSymbol.cpp
-    src/notation/KeySignatureName.cpp
     src/plugin/PluginAssignmentCodec.cpp
     src/plugin/PluginStateChangeWatcher.cpp
     src/plugin/PluginSyncPlan.cpp

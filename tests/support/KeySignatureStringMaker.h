@@ -2,7 +2,7 @@
 // IWYU pragma: always_keep
 
 #include "model/harmony/KeySignatureChange.h"
-#include "notation/KeySignatureName.h"
+#include "model/notation/KeySignatureName.h"
 #include <catch2/catch_tostring.hpp>
 #include <string>
 

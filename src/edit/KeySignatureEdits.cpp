@@ -1,5 +1,5 @@
 #include "edit/KeySignatureEdits.h"
-#include "notation/KeySignatureName.h"
+#include "model/notation/KeySignatureName.h"
 #include <algorithm>
 #include <limits>
 

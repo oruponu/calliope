@@ -42,12 +42,12 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerPointConversion.cpp
     ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerRamps.cpp
     ${PROJECT_SOURCE_DIR}/src/model/grid/TimelineGrid.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/GmPrograms.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/notation/KeySignatureName.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/SysExHex.cpp
     ${PROJECT_SOURCE_DIR}/src/model/timeline/TimelineMap.cpp
     ${PROJECT_SOURCE_DIR}/src/model/track/MidiTrack.cpp
-    ${PROJECT_SOURCE_DIR}/src/notation/ChordSymbol.cpp
-    ${PROJECT_SOURCE_DIR}/src/notation/KeySignatureName.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/EventListItems.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/MetaEventDescription.cpp
@@ -130,12 +130,12 @@ target_sources(CalliopeTests PRIVATE
     model/grid/GridDivisionTests.cpp
     model/grid/TimelineGridTests.cpp
     model/harmony/ChordChangeTests.cpp
+    model/notation/ChordSymbolTests.cpp
     model/notation/GmProgramsTests.cpp
+    model/notation/KeySignatureNameTests.cpp
     model/notation/SysExHexTests.cpp
     model/timeline/BarBeatTickTests.cpp
     model/timeline/TickSecondsTests.cpp
-    notation/ChordSymbolTests.cpp
-    notation/KeySignatureNameTests.cpp
     plugin/PluginSyncPlanTests.cpp
     plugin/RetiredStateStoreTests.cpp
     ui/ControllerLaneScaleTests.cpp

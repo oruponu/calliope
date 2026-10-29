@@ -4,7 +4,7 @@
 #include "edit/TempoEdits.h"
 #include "edit/TimeSignatureEdits.h"
 #include "engine/PlaybackEngine.h"
-#include "notation/KeySignatureName.h"
+#include "model/notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
 #include <utility>

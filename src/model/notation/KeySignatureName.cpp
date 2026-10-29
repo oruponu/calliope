@@ -1,4 +1,4 @@
-#include "notation/KeySignatureName.h"
+#include "model/notation/KeySignatureName.h"
 #include <cctype>
 #include <ranges>
 

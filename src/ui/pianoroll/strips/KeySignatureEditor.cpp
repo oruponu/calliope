@@ -1,5 +1,5 @@
 #include "ui/pianoroll/strips/KeySignatureEditor.h"
-#include "notation/KeySignatureName.h"
+#include "model/notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
 
 KeySignatureEditor::KeySignatureEditor(int sharpsOrFlats, bool isMinor, bool startTextEdit)

@@ -1,6 +1,6 @@
 #include "ui/pianoroll/strips/KeySignatureStrip.h"
 #include "edit/KeySignatureEdits.h"
-#include "notation/KeySignatureName.h"
+#include "model/notation/KeySignatureName.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"

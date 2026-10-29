@@ -1,4 +1,4 @@
-#include "notation/ChordSymbol.h"
+#include "model/notation/ChordSymbol.h"
 #include <cctype>
 #include <ranges>
 

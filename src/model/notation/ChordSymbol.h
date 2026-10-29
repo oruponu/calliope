@@ -1,7 +1,7 @@
 #pragma once
 
 #include "model/harmony/ChordChange.h"
-#include "notation/ChordSymbolParts.h"
+#include "model/notation/ChordSymbolParts.h"
 #include <string>
 
 enum class ChordSpelling
