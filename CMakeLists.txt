@@ -29,7 +29,6 @@ target_sources(Calliope PRIVATE
     src/audio/MidiInputReconnector.cpp
     src/audio/MidiThru.cpp
     src/audio/MidiThruSync.cpp
-    src/audio/Recorder.cpp
     src/audio/UserDisabledMidiInputs.cpp
     src/document/Document.cpp
     src/edit/ChordTrackEdits.cpp
@@ -90,6 +89,7 @@ target_sources(Calliope PRIVATE
     src/plugin/PluginStateChangeWatcher.cpp
     src/plugin/PluginSyncPlan.cpp
     src/plugin/VstPluginHost.cpp
+    src/session/Recorder.cpp
     src/ui/EventListComponent.cpp
     src/ui/EventListItems.cpp
     src/ui/MetaEventDescription.cpp
