@@ -55,8 +55,8 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
     ${PROJECT_SOURCE_DIR}/src/session/EditableNotes.cpp
     ${PROJECT_SOURCE_DIR}/src/session/LayeredNoteEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/ui/EventListItems.cpp
-    ${PROJECT_SOURCE_DIR}/src/ui/MetaEventDescription.cpp
+    ${PROJECT_SOURCE_DIR}/src/ui/eventlist/EventListItems.cpp
+    ${PROJECT_SOURCE_DIR}/src/ui/eventlist/MetaEventDescription.cpp
     ${PROJECT_SOURCE_DIR}/src/undo/UndoHistory.cpp
 )
 
@@ -147,18 +147,18 @@ target_sources(CalliopeTests PRIVATE
     plugin/RetiredStateStoreTests.cpp
     session/EditableNotesTests.cpp
     session/LayeredNoteEditsTests.cpp
-    ui/ControllerLaneScaleTests.cpp
-    ui/DragValueTipTests.cpp
-    ui/EditClipboardTests.cpp
-    ui/EventListItemsTests.cpp
-    ui/IndexSelectionTests.cpp
-    ui/MetaEventDescriptionTests.cpp
-    ui/ProgramBrowserStateTests.cpp
-    ui/RangeSelectGestureTests.cpp
-    ui/RowSelectionTests.cpp
-    ui/TimelineGeometryTests.cpp
-    ui/VelocityBarGrabTests.cpp
-    ui/VelocityBarSelectionTests.cpp
+    ui/eventlist/EventListItemsTests.cpp
+    ui/eventlist/MetaEventDescriptionTests.cpp
+    ui/eventlist/RowSelectionTests.cpp
+    ui/pianoroll/ControllerLaneScaleTests.cpp
+    ui/pianoroll/DragValueTipTests.cpp
+    ui/pianoroll/EditClipboardTests.cpp
+    ui/pianoroll/ProgramBrowserStateTests.cpp
+    ui/pianoroll/TimelineGeometryTests.cpp
+    ui/pianoroll/VelocityBarGrabTests.cpp
+    ui/pianoroll/VelocityBarSelectionTests.cpp
+    ui/pianoroll/strips/IndexSelectionTests.cpp
+    ui/pianoroll/strips/RangeSelectGestureTests.cpp
     undo/SavePointTrackerTests.cpp
     undo/UndoHistoryTests.cpp
     undo/event/RecordTakeActionTests.cpp

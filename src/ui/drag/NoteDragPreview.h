@@ -2,8 +2,8 @@
 
 #include "edit/event/NoteRef.h"
 #include "model/event/MidiNote.h"
-#include "ui/DraftNote.h"
-#include "ui/DraggedEvents.h"
+#include "ui/drag/DraftNote.h"
+#include "ui/drag/DraggedEvents.h"
 #include <map>
 #include <optional>
 

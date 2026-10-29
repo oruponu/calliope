@@ -1,4 +1,4 @@
-#include "ui/TrackListComponent.h"
+#include "ui/tracklist/TrackListComponent.h"
 #include "edit/track/ExclusiveSolo.h"
 #include "model/TrackOrder.h"
 #include "ui/theme/TrackColours.h"

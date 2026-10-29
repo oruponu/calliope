@@ -1,7 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
-#include "ui/TrackNameEditor.h"
+#include "ui/tracklist/TrackNameEditor.h"
 #include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <optional>

@@ -90,11 +90,10 @@ target_sources(Calliope PRIVATE
     src/session/MidiThruSync.cpp
     src/session/PlaybackSync.cpp
     src/session/Recorder.cpp
-    src/ui/EventListComponent.cpp
-    src/ui/EventListItems.cpp
-    src/ui/MetaEventDescription.cpp
-    src/ui/TrackListComponent.cpp
     src/ui/commands/AppCommands.cpp
+    src/ui/eventlist/EventListComponent.cpp
+    src/ui/eventlist/EventListItems.cpp
+    src/ui/eventlist/MetaEventDescription.cpp
     src/ui/menu/MainMenuModel.cpp
     src/ui/pianoroll/ControllerLaneComponent.cpp
     src/ui/pianoroll/ControllerValueEditor.cpp
@@ -117,6 +116,7 @@ target_sources(Calliope PRIVATE
     src/ui/plugin/PluginEditorController.cpp
     src/ui/plugin/TrackOutputController.cpp
     src/ui/theme/LookAndFeel.cpp
+    src/ui/tracklist/TrackListComponent.cpp
     src/ui/transport/MetronomeSettingsComponent.cpp
     src/ui/transport/TransportBarComponent.cpp
     src/ui/window/ToolWindow.cpp

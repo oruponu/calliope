@@ -10,7 +10,7 @@
 #include "model/grid/GridDivision.h"
 #include "model/grid/TimelineGrid.h"
 #include "session/EditableNotes.h"
-#include "ui/NoteDragPreview.h"
+#include "ui/drag/NoteDragPreview.h"
 #include "ui/pianoroll/ControllerValueDraft.h"
 #include "ui/pianoroll/ControllerValueEditor.h"
 #include "ui/pianoroll/EditClipboard.h"

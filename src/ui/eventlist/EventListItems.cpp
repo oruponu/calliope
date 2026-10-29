@@ -1,4 +1,4 @@
-#include "ui/EventListItems.h"
+#include "ui/eventlist/EventListItems.h"
 #include "model/controller/ControllerPointConversion.h"
 #include <algorithm>
 #include <iterator>

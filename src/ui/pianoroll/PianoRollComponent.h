@@ -8,7 +8,7 @@
 #include "model/grid/TimelineGrid.h"
 #include "session/EditableNotes.h"
 #include "session/LayeredNoteEdits.h"
-#include "ui/NoteDragPreview.h"
+#include "ui/drag/NoteDragPreview.h"
 #include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/TimelineGeometry.h"

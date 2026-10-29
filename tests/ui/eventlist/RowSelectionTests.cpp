@@ -1,4 +1,4 @@
-#include "ui/RowSelection.h"
+#include "ui/eventlist/RowSelection.h"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 

@@ -4,8 +4,8 @@
 #include "engine/recording/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include "model/controller/ControllerKind.h"
-#include "ui/EventListItems.h"
-#include "ui/NoteDragPreview.h"
+#include "ui/drag/NoteDragPreview.h"
+#include "ui/eventlist/EventListItems.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <set>
 #include <vector>
