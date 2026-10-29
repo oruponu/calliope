@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/ChordStrip.h"
 #include "edit/ChordTrackEdits.h"
+#include "model/harmony/ChordValue.h"
 #include "model/notation/ChordSymbol.h"
 #include "ui/pianoroll/strips/ChordSymbolPainter.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"
@@ -811,10 +812,10 @@ void ChordStrip::openChordEditor(int tick, int endTick, int chordRoot, int chord
 {
     anchorInLocal.setX(std::max(anchorInLocal.getX(), viewLeftX + labelWidth()));
 
-    chordRoot = ChordSymbol::normalizeRoot(chordRoot);
-    chordType = ChordSymbol::normalizeType(chordType);
-    bassRoot = ChordSymbol::normalizeBassRoot(bassRoot);
-    const auto spelling = ChordSymbol::spellingForKeySignature(sequence->getKeySignatureAt(tick).sharpsOrFlats);
+    chordRoot = ChordValue::normalizeRoot(chordRoot);
+    chordType = ChordValue::normalizeType(chordType);
+    bassRoot = ChordValue::normalizeBassRoot(bassRoot);
+    const auto spelling = ChordValue::spellingForKeySignature(sequence->getKeySignatureAt(tick).sharpsOrFlats);
 
     auto content = std::make_unique<ChordEditor>(chordRoot, chordType, bassRoot, spelling, isNew);
     content->onDraftChanged = [this](int root, int type, int bass)

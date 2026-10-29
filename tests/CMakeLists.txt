@@ -42,6 +42,8 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerPointConversion.cpp
     ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerRamps.cpp
     ${PROJECT_SOURCE_DIR}/src/model/grid/TimelineGrid.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/harmony/ChordValue.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/harmony/KeySignatureValue.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/GmPrograms.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/KeySignatureName.cpp
@@ -130,6 +132,8 @@ target_sources(CalliopeTests PRIVATE
     model/grid/GridDivisionTests.cpp
     model/grid/TimelineGridTests.cpp
     model/harmony/ChordChangeTests.cpp
+    model/harmony/ChordValueTests.cpp
+    model/harmony/KeySignatureValueTests.cpp
     model/notation/ChordSymbolTests.cpp
     model/notation/GmProgramsTests.cpp
     model/notation/KeySignatureNameTests.cpp

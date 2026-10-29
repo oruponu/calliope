@@ -74,6 +74,8 @@ target_sources(Calliope PRIVATE
     src/model/controller/ControllerPointConversion.cpp
     src/model/controller/ControllerRamps.cpp
     src/model/grid/TimelineGrid.cpp
+    src/model/harmony/ChordValue.cpp
+    src/model/harmony/KeySignatureValue.cpp
     src/model/notation/ChordSymbol.cpp
     src/model/notation/GmPrograms.cpp
     src/model/notation/KeySignatureName.cpp

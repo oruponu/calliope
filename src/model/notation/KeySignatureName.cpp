@@ -72,12 +72,3 @@ bool KeySignatureName::fromString(const std::string& text, int& sharpsOrFlats, b
 
     return false;
 }
-
-int KeySignatureName::normalizeSharpsOrFlats(int sharpsOrFlats)
-{
-    if (sharpsOrFlats == 7)
-        return -5;
-    if (sharpsOrFlats == -7)
-        return 5;
-    return sharpsOrFlats;
-}

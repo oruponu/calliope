@@ -4,6 +4,7 @@
 #include "edit/TempoEdits.h"
 #include "edit/TimeSignatureEdits.h"
 #include "engine/PlaybackEngine.h"
+#include "model/harmony/KeySignatureValue.h"
 #include "model/notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
@@ -637,7 +638,7 @@ void TransportBarComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool is
             break;
         }
 
-    sharpsOrFlats = KeySignatureName::normalizeSharpsOrFlats(sharpsOrFlats);
+    sharpsOrFlats = KeySignatureValue::normalizeSharpsOrFlats(sharpsOrFlats);
     if (hasActiveKey && sharpsOrFlats == ks.sharpsOrFlats && isMinor == ks.isMinor)
     {
         updateDisplay();

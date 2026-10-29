@@ -24,21 +24,6 @@ Key parse(const std::string& text)
 }
 } // namespace
 
-TEST_CASE("seven sharps or flats are normalized to the simpler spelling", "[notation][keysig]")
-{
-    CHECK(KeySignatureName::normalizeSharpsOrFlats(7) == -5);
-    CHECK(KeySignatureName::normalizeSharpsOrFlats(-7) == 5);
-}
-
-TEST_CASE("other sharps or flats are unchanged", "[notation][keysig]")
-{
-    for (int sf = -6; sf <= 6; ++sf)
-    {
-        CAPTURE(sf);
-        CHECK(KeySignatureName::normalizeSharpsOrFlats(sf) == sf);
-    }
-}
-
 TEST_CASE("every key signature has a name", "[notation][keysig]")
 {
     for (int sf = -7; sf <= 7; ++sf)

@@ -1,9 +1,10 @@
 #include "ui/pianoroll/strips/KeySignatureEditor.h"
+#include "model/harmony/KeySignatureValue.h"
 #include "model/notation/KeySignatureName.h"
 #include "ui/theme/Theme.h"
 
 KeySignatureEditor::KeySignatureEditor(int sharpsOrFlats, bool isMinor, bool startTextEdit)
-    : draftSharpsOrFlats(KeySignatureName::normalizeSharpsOrFlats(sharpsOrFlats)), draftIsMinor(isMinor),
+    : draftSharpsOrFlats(KeySignatureValue::normalizeSharpsOrFlats(sharpsOrFlats)), draftIsMinor(isMinor),
       startTextEdit(startTextEdit)
 {
     using namespace calliope::theme;
@@ -105,7 +106,7 @@ void KeySignatureEditor::parentHierarchyChanged()
 
 void KeySignatureEditor::setDraft(int sharpsOrFlats, bool isMinor)
 {
-    sharpsOrFlats = KeySignatureName::normalizeSharpsOrFlats(sharpsOrFlats);
+    sharpsOrFlats = KeySignatureValue::normalizeSharpsOrFlats(sharpsOrFlats);
     bool changed = (sharpsOrFlats != draftSharpsOrFlats || isMinor != draftIsMinor);
     draftSharpsOrFlats = sharpsOrFlats;
     draftIsMinor = isMinor;

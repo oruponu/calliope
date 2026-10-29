@@ -1,5 +1,4 @@
 #include "model/notation/ChordSymbol.h"
-#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <string>
 
@@ -18,15 +17,6 @@ int parseType(const std::string& text)
     int type = -1;
     return ChordSymbol::typeFromString(text, type) ? type : -1;
 }
-
-std::string spell(int semitone, ChordSpelling spelling)
-{
-    return ChordSymbol::rootToString(ChordSymbol::semitoneToRoot(semitone, spelling));
-}
-
-const std::array<std::string, 12> sharpNames{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-const std::array<std::string, 12> flatNames{"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"};
-const std::array<std::string, 12> mixedNames{"C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"};
 } // namespace
 
 TEST_CASE("roots are encoded as accidental and note nibbles", "[notation][chord]")
@@ -114,61 +104,6 @@ TEST_CASE("every type round-trips", "[notation][chord]")
         CAPTURE(type);
         CHECK(parseType(ChordSymbol::typeToString(type)) == type);
     }
-}
-
-TEST_CASE("roots map to semitones", "[notation][chord]")
-{
-    CHECK(ChordSymbol::rootToSemitone(0x31) == 0);
-    CHECK(ChordSymbol::rootToSemitone(0x41) == 1);
-    CHECK(ChordSymbol::rootToSemitone(0x21) == 11);
-    CHECK(ChordSymbol::rootToSemitone(0x37) == 11);
-    CHECK(ChordSymbol::rootToSemitone(0x01) == 9);
-    CHECK(ChordSymbol::rootToSemitone(0x07) == 8);
-    CHECK(ChordSymbol::rootToSemitone(0x67) == 2);
-}
-
-TEST_CASE("invalid roots have no semitone", "[notation][chord]")
-{
-    CHECK(ChordSymbol::rootToSemitone(none) == -1);
-    CHECK(ChordSymbol::rootToSemitone(0x30) == -1);
-}
-
-TEST_CASE("semitones are spelled by the chosen spelling", "[notation][chord]")
-{
-    for (int semitone = 0; semitone < 12; ++semitone)
-    {
-        CAPTURE(semitone);
-        CHECK(spell(semitone, ChordSpelling::Sharp) == sharpNames[static_cast<size_t>(semitone)]);
-        CHECK(spell(semitone, ChordSpelling::Flat) == flatNames[static_cast<size_t>(semitone)]);
-        CHECK(spell(semitone, ChordSpelling::Mixed) == mixedNames[static_cast<size_t>(semitone)]);
-    }
-}
-
-TEST_CASE("semitones wrap around the octave", "[notation][chord]")
-{
-    CHECK(spell(-1, ChordSpelling::Sharp) == "B");
-    CHECK(spell(13, ChordSpelling::Flat) == "Db");
-    CHECK(spell(-13, ChordSpelling::Mixed) == "B");
-}
-
-TEST_CASE("the key signature decides the spelling", "[notation][chord]")
-{
-    CHECK(ChordSymbol::spellingForKeySignature(3) == ChordSpelling::Sharp);
-    CHECK(ChordSymbol::spellingForKeySignature(-2) == ChordSpelling::Flat);
-    CHECK(ChordSymbol::spellingForKeySignature(0) == ChordSpelling::Mixed);
-}
-
-TEST_CASE("invalid values are replaced by defaults", "[notation][chord]")
-{
-    CHECK(ChordSymbol::normalizeRoot(none) == 0x31);
-    CHECK(ChordSymbol::normalizeRoot(0x30) == 0x31);
-    CHECK(ChordSymbol::normalizeRoot(0x23) == 0x23);
-    CHECK(ChordSymbol::normalizeType(-1) == 0);
-    CHECK(ChordSymbol::normalizeType(ChordChange::typeCount) == 0);
-    CHECK(ChordSymbol::normalizeType(33) == 33);
-    CHECK(ChordSymbol::normalizeBassRoot(0x30) == none);
-    CHECK(ChordSymbol::normalizeBassRoot(none) == none);
-    CHECK(ChordSymbol::normalizeBassRoot(0x32) == 0x32);
 }
 
 TEST_CASE("chords are written as root, type and bass", "[notation][chord]")

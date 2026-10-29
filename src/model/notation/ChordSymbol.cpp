@@ -1,4 +1,5 @@
 #include "model/notation/ChordSymbol.h"
+#include "model/harmony/ChordValue.h"
 #include <cctype>
 #include <ranges>
 
@@ -10,14 +11,6 @@ const char* const chordTypeNames[] = {"",     "6",       "maj7",  "maj7#11", "ad
                                       "m6",   "m7",      "m7b5",  "madd9",   "m9",   "m11",  "mmaj7", "mmaj9", "dim",
                                       "dim7", "7",       "7sus4", "7b5",     "9",    "7#11", "13",    "7b9",   "7b13",
                                       "7#9",  "augmaj7", "aug7",  "1+8",     "5",    "sus4", "sus2",  ""};
-
-// semitone of each XF note index 1-7 (C, D, E, F, G, A, B)
-constexpr int chordNoteSemitones[] = {-1, 0, 2, 4, 5, 7, 9, 11};
-
-// XF root nibbles per semitone
-constexpr int sharpRoots[] = {0x31, 0x41, 0x32, 0x42, 0x33, 0x34, 0x44, 0x35, 0x45, 0x36, 0x46, 0x37};
-constexpr int flatRoots[] = {0x31, 0x22, 0x32, 0x23, 0x33, 0x34, 0x25, 0x35, 0x26, 0x36, 0x27, 0x37};
-constexpr int mixedRoots[] = {0x31, 0x41, 0x32, 0x23, 0x33, 0x34, 0x44, 0x35, 0x26, 0x36, 0x27, 0x37};
 } // namespace
 
 std::string ChordSymbol::toString(const ChordChange& chord)
@@ -47,11 +40,11 @@ ChordSymbolParts ChordSymbol::toParts(const ChordChange& chord)
 
 std::string ChordSymbol::rootToString(int root)
 {
-    int noteIndex = root & 0x0F;
-    int accIndex = (root >> 4) & 0x07;
-    if (root == ChordChange::none || noteIndex < 1 || noteIndex > 7 || accIndex > 6)
+    if (!ChordValue::isValidRoot(root))
         return {};
 
+    int noteIndex = root & 0x0F;
+    int accIndex = (root >> 4) & 0x07;
     std::string result = chordNoteNames[noteIndex];
     result += chordAccidentals[accIndex];
     return result;
@@ -116,49 +109,4 @@ bool ChordSymbol::typeFromString(const std::string& text, int& type)
         }
     }
     return false;
-}
-
-int ChordSymbol::rootToSemitone(int root)
-{
-    int noteIndex = root & 0x0F;
-    int accIndex = (root >> 4) & 0x07;
-    if (root == ChordChange::none || noteIndex < 1 || noteIndex > 7 || accIndex > 6)
-        return -1;
-
-    int semitone = (chordNoteSemitones[noteIndex] + accIndex - 3) % 12;
-    return semitone < 0 ? semitone + 12 : semitone;
-}
-
-int ChordSymbol::semitoneToRoot(int semitone, ChordSpelling spelling)
-{
-    semitone = ((semitone % 12) + 12) % 12;
-    if (spelling == ChordSpelling::Sharp)
-        return sharpRoots[semitone];
-    if (spelling == ChordSpelling::Flat)
-        return flatRoots[semitone];
-    return mixedRoots[semitone];
-}
-
-ChordSpelling ChordSymbol::spellingForKeySignature(int sharpsOrFlats)
-{
-    if (sharpsOrFlats > 0)
-        return ChordSpelling::Sharp;
-    if (sharpsOrFlats < 0)
-        return ChordSpelling::Flat;
-    return ChordSpelling::Mixed;
-}
-
-int ChordSymbol::normalizeRoot(int root)
-{
-    return rootToString(root).empty() ? 0x31 : root;
-}
-
-int ChordSymbol::normalizeType(int type)
-{
-    return (type < 0 || type >= ChordChange::typeCount) ? 0 : type;
-}
-
-int ChordSymbol::normalizeBassRoot(int bassRoot)
-{
-    return rootToString(bassRoot).empty() ? ChordChange::none : bassRoot;
 }

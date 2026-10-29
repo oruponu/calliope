@@ -1,9 +1,11 @@
 #include "ui/pianoroll/strips/ChordEditor.h"
+#include "model/harmony/ChordValue.h"
+#include "model/notation/ChordSymbol.h"
 #include "ui/theme/Theme.h"
 
 ChordEditor::ChordEditor(int chordRoot, int chordType, int bassRoot, ChordSpelling spelling, bool startRootEdit)
-    : draftRoot(ChordSymbol::normalizeRoot(chordRoot)), draftType(ChordSymbol::normalizeType(chordType)),
-      draftBassRoot(ChordSymbol::normalizeBassRoot(bassRoot)), spelling(spelling), startRootEdit(startRootEdit)
+    : draftRoot(ChordValue::normalizeRoot(chordRoot)), draftType(ChordValue::normalizeType(chordType)),
+      draftBassRoot(ChordValue::normalizeBassRoot(bassRoot)), spelling(spelling), startRootEdit(startRootEdit)
 {
     using namespace calliope::theme;
 
@@ -157,9 +159,9 @@ void ChordEditor::parentHierarchyChanged()
 
 void ChordEditor::setDraft(int chordRoot, int chordType, int bassRoot)
 {
-    chordRoot = ChordSymbol::normalizeRoot(chordRoot);
-    chordType = ChordSymbol::normalizeType(chordType);
-    bassRoot = ChordSymbol::normalizeBassRoot(bassRoot);
+    chordRoot = ChordValue::normalizeRoot(chordRoot);
+    chordType = ChordValue::normalizeType(chordType);
+    bassRoot = ChordValue::normalizeBassRoot(bassRoot);
     bool changed = (chordRoot != draftRoot || chordType != draftType || bassRoot != draftBassRoot);
     draftRoot = chordRoot;
     draftType = chordType;
@@ -171,10 +173,10 @@ void ChordEditor::setDraft(int chordRoot, int chordType, int bassRoot)
 
 void ChordEditor::nudgeRoot(int direction)
 {
-    int semitone = ChordSymbol::rootToSemitone(draftRoot);
+    int semitone = ChordValue::rootToSemitone(draftRoot);
     if (semitone < 0)
         semitone = 0;
-    setDraft(ChordSymbol::semitoneToRoot(semitone + direction, spelling), draftType, draftBassRoot);
+    setDraft(ChordValue::semitoneToRoot(semitone + direction, spelling), draftType, draftBassRoot);
 }
 
 void ChordEditor::nudgeType(int direction)
@@ -187,11 +189,11 @@ void ChordEditor::nudgeBass(int direction)
     int step = 0;
     if (draftBassRoot != ChordChange::none)
     {
-        int semitone = ChordSymbol::rootToSemitone(draftBassRoot);
+        int semitone = ChordValue::rootToSemitone(draftBassRoot);
         step = semitone < 0 ? 0 : semitone + 1;
     }
     step = ((step + direction) % 13 + 13) % 13;
-    setDraft(draftRoot, draftType, step == 0 ? ChordChange::none : ChordSymbol::semitoneToRoot(step - 1, spelling));
+    setDraft(draftRoot, draftType, step == 0 ? ChordChange::none : ChordValue::semitoneToRoot(step - 1, spelling));
 }
 
 void ChordEditor::refreshLabels()

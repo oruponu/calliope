@@ -1,11 +1,11 @@
 #include "edit/KeySignatureEdits.h"
-#include "model/notation/KeySignatureName.h"
+#include "model/harmony/KeySignatureValue.h"
 #include <algorithm>
 #include <limits>
 
 void KeySignatureEdits::add(std::vector<KeySignatureChange>& changes, int tick, int sharpsOrFlats, bool isMinor)
 {
-    sharpsOrFlats = KeySignatureName::normalizeSharpsOrFlats(sharpsOrFlats);
+    sharpsOrFlats = KeySignatureValue::normalizeSharpsOrFlats(sharpsOrFlats);
 
     for (auto& ks : changes)
     {
