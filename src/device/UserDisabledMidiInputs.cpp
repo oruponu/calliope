@@ -1,4 +1,4 @@
-#include "audio/UserDisabledMidiInputs.h"
+#include "device/UserDisabledMidiInputs.h"
 #include <utility>
 
 UserDisabledMidiInputs::UserDisabledMidiInputs(juce::AudioDeviceManager& managerRef,

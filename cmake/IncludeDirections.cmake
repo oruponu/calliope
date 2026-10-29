@@ -17,6 +17,8 @@ set(FOLDER_edit/harmony "")
 
 set(LAYER_io "model")
 
+set(LAYER_audio "model;engine")
+set(LAYER_device "model;engine")
 set(LAYER_plugin "model;engine")
 
-set(LAYER_session "model;edit;engine;undo;audio")
+set(LAYER_session "model;edit;engine;undo;device")

@@ -25,10 +25,10 @@ target_sources(Calliope PRIVATE
     src/audio/ClickVoice.cpp
     src/audio/Metronome.cpp
     src/audio/MetronomeProcessor.cpp
-    src/audio/MidiDeviceOutput.cpp
-    src/audio/MidiInputReconnector.cpp
-    src/audio/MidiThru.cpp
-    src/audio/UserDisabledMidiInputs.cpp
+    src/device/MidiDeviceOutput.cpp
+    src/device/MidiInputReconnector.cpp
+    src/device/MidiThru.cpp
+    src/device/UserDisabledMidiInputs.cpp
     src/document/Document.cpp
     src/edit/controller/ControllerPointEdits.cpp
     src/edit/controller/ProgramChangeEdits.cpp

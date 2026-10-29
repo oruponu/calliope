@@ -1,5 +1,5 @@
 #include "session/MidiThruSync.h"
-#include "audio/MidiThru.h"
+#include "device/MidiThru.h"
 #include "engine/ThruTarget.h"
 #include <utility>
 

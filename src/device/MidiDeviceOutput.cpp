@@ -1,4 +1,4 @@
-#include "audio/MidiDeviceOutput.h"
+#include "device/MidiDeviceOutput.h"
 #include "model/track/MidiTrack.h"
 
 namespace

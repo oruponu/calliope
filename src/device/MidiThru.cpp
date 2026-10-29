@@ -1,4 +1,4 @@
-#include "audio/MidiThru.h"
+#include "device/MidiThru.h"
 #include <utility>
 
 namespace

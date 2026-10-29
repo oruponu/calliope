@@ -1,4 +1,4 @@
-#include "audio/MidiInputReconnector.h"
+#include "device/MidiInputReconnector.h"
 #include <algorithm>
 #include <utility>
 
