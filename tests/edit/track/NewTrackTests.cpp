@@ -1,4 +1,4 @@
-#include "model/NewTrack.h"
+#include "edit/track/NewTrack.h"
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("a new track is named after the row it is added at", "[model][track]")

@@ -94,6 +94,7 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignatureDeleteTests.cpp
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
+    edit/track/NewTrackTests.cpp
     engine/ChaseTests.cpp
     engine/CountInBarsTests.cpp
     engine/CountInTests.cpp
@@ -116,7 +117,6 @@ target_sources(CalliopeTests PRIVATE
     model/DefaultTimelineTests.cpp
     model/ExclusiveSoloTests.cpp
     model/MidiSequenceNotificationTests.cpp
-    model/NewTrackTests.cpp
     model/RouteTargetTests.cpp
     model/SequenceContentsRulesTests.cpp
     model/TimelineLookupTests.cpp

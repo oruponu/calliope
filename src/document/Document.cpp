@@ -1,8 +1,8 @@
 #include "document/Document.h"
 #include "AppProperties.h"
+#include "edit/track/NewTrack.h"
 #include "io/MidiFileIO.h"
 #include "io/ProjectFileIO.h"
-#include "model/NewTrack.h"
 #include <utility>
 
 namespace
