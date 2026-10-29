@@ -12,6 +12,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/ProgramChangeEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/track/TrackDuplication.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/Chase.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ChaseScan.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ChaseTracker.cpp
@@ -36,7 +37,6 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/MetaEventRetention.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/SequenceContentsRules.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/TrackDuplication.cpp
     ${PROJECT_SOURCE_DIR}/src/model/TrackOrder.cpp
     ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerLineValue.cpp
     ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerPointConversion.cpp
@@ -95,6 +95,7 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
     edit/track/NewTrackTests.cpp
+    edit/track/TrackDuplicationTests.cpp
     engine/ChaseTests.cpp
     engine/CountInBarsTests.cpp
     engine/CountInTests.cpp
@@ -120,7 +121,6 @@ target_sources(CalliopeTests PRIVATE
     model/RouteTargetTests.cpp
     model/SequenceContentsRulesTests.cpp
     model/TimelineLookupTests.cpp
-    model/TrackDuplicationTests.cpp
     model/TrackIdTests.cpp
     model/TrackOrderTests.cpp
     model/controller/ControllerKindTests.cpp

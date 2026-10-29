@@ -1,4 +1,4 @@
-#include "model/TrackDuplication.h"
+#include "edit/track/TrackDuplication.h"
 #include <algorithm>
 #include <charconv>
 #include <string>

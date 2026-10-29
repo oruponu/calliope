@@ -1,5 +1,5 @@
+#include "edit/track/TrackDuplication.h"
 #include "model/MidiSequence.h"
-#include "model/TrackDuplication.h"
 #include "model/event/MidiNote.h"
 #include "model/track/PluginAssignment.h"
 #include "support/MidiNoteTestHelpers.h"

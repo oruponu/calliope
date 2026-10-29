@@ -42,6 +42,7 @@ target_sources(Calliope PRIVATE
     src/edit/ProgramChangeEdits.cpp
     src/edit/TempoEdits.cpp
     src/edit/TimeSignatureEdits.cpp
+    src/edit/track/TrackDuplication.cpp
     src/engine/Chase.cpp
     src/engine/ChaseScan.cpp
     src/engine/ChaseTracker.cpp
@@ -68,7 +69,6 @@ target_sources(Calliope PRIVATE
     src/model/MetaEventRetention.cpp
     src/model/MidiSequence.cpp
     src/model/SequenceContentsRules.cpp
-    src/model/TrackDuplication.cpp
     src/model/TrackOrder.cpp
     src/model/controller/ControllerLineValue.cpp
     src/model/controller/ControllerPointConversion.cpp
