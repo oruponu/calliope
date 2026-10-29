@@ -12,6 +12,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/ProgramChangeEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TempoEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/TimeSignatureEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/edit/track/ExclusiveSolo.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/track/TrackDuplication.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/Chase.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/ChaseScan.cpp
@@ -33,7 +34,6 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlWriter.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlFieldReader.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlNumberText.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/ExclusiveSolo.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MetaEventRetention.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/SequenceContentsRules.cpp
@@ -94,6 +94,7 @@ target_sources(CalliopeTests PRIVATE
     edit/TimeSignatureDeleteTests.cpp
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
+    edit/track/ExclusiveSoloTests.cpp
     edit/track/NewTrackTests.cpp
     edit/track/TrackDuplicationTests.cpp
     engine/ChaseTests.cpp
@@ -116,7 +117,6 @@ target_sources(CalliopeTests PRIVATE
     io/ProjectXmlRoundTripTests.cpp
     io/XmlNumberTextTests.cpp
     model/DefaultTimelineTests.cpp
-    model/ExclusiveSoloTests.cpp
     model/MidiSequenceNotificationTests.cpp
     model/RouteTargetTests.cpp
     model/SequenceContentsRulesTests.cpp

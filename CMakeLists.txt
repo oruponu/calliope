@@ -42,6 +42,7 @@ target_sources(Calliope PRIVATE
     src/edit/ProgramChangeEdits.cpp
     src/edit/TempoEdits.cpp
     src/edit/TimeSignatureEdits.cpp
+    src/edit/track/ExclusiveSolo.cpp
     src/edit/track/TrackDuplication.cpp
     src/engine/Chase.cpp
     src/engine/ChaseScan.cpp
@@ -65,7 +66,6 @@ target_sources(Calliope PRIVATE
     src/io/ProjectXmlWriter.cpp
     src/io/XmlFieldReader.cpp
     src/io/XmlNumberText.cpp
-    src/model/ExclusiveSolo.cpp
     src/model/MetaEventRetention.cpp
     src/model/MidiSequence.cpp
     src/model/SequenceContentsRules.cpp

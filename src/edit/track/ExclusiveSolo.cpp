@@ -1,4 +1,4 @@
-#include "model/ExclusiveSolo.h"
+#include "edit/track/ExclusiveSolo.h"
 
 namespace ExclusiveSolo
 {

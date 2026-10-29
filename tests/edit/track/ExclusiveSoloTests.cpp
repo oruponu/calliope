@@ -1,4 +1,4 @@
-#include "model/ExclusiveSolo.h"
+#include "edit/track/ExclusiveSolo.h"
 #include "model/MidiSequence.h"
 #include <catch2/catch_test_macros.hpp>
 

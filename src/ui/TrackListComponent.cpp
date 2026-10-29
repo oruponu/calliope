@@ -1,5 +1,5 @@
 #include "ui/TrackListComponent.h"
-#include "model/ExclusiveSolo.h"
+#include "edit/track/ExclusiveSolo.h"
 #include "model/TrackOrder.h"
 #include "ui/theme/TrackColours.h"
 #include <algorithm>
