@@ -1,7 +1,6 @@
 #pragma once
 
 #include "edit/ControllerPointEditResult.h"
-#include "edit/EditableNotes.h"
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
@@ -10,6 +9,7 @@
 #include "model/controller/ProgramVoice.h"
 #include "model/grid/GridDivision.h"
 #include "model/grid/TimelineGrid.h"
+#include "session/EditableNotes.h"
 #include "ui/NoteDragPreview.h"
 #include "ui/pianoroll/ControllerValueDraft.h"
 #include "ui/pianoroll/ControllerValueEditor.h"

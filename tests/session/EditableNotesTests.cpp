@@ -1,4 +1,4 @@
-#include "edit/EditableNotes.h"
+#include "session/EditableNotes.h"
 #include "support/MidiNoteTestHelpers.h"
 #include "support/NoteRefStringMaker.h"
 #include <catch2/catch_test_macros.hpp>

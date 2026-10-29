@@ -1,4 +1,4 @@
-#include "edit/LayeredNoteEdits.h"
+#include "session/LayeredNoteEdits.h"
 #include "undo/NoteActions.h"
 #include <utility>
 

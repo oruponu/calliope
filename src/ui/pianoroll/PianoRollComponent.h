@@ -1,13 +1,13 @@
 #pragma once
 
-#include "edit/EditableNotes.h"
-#include "edit/LayeredNoteEdits.h"
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"
 #include "model/grid/GridDivision.h"
 #include "model/grid/TimelineGrid.h"
+#include "session/EditableNotes.h"
+#include "session/LayeredNoteEdits.h"
 #include "ui/NoteDragPreview.h"
 #include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/EditClipboard.h"

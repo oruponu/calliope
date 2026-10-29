@@ -1,4 +1,4 @@
-#include "edit/EditableNotes.h"
+#include "session/EditableNotes.h"
 #include <algorithm>
 #include <ranges>
 

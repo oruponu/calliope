@@ -4,9 +4,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/audio/ClickVoice.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/ChordTrackEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/ControllerPointEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/EditableNotes.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/KeySignatureEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/LayeredNoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/NoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/NoteQuantize.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/ProgramChangeEdits.cpp
@@ -55,6 +53,8 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/timeline/TimelineMap.cpp
     ${PROJECT_SOURCE_DIR}/src/model/track/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
+    ${PROJECT_SOURCE_DIR}/src/session/EditableNotes.cpp
+    ${PROJECT_SOURCE_DIR}/src/session/LayeredNoteEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/EventListItems.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/MetaEventDescription.cpp
     ${PROJECT_SOURCE_DIR}/src/undo/UndoHistory.cpp
@@ -76,11 +76,9 @@ target_sources(CalliopeTests PRIVATE
     edit/ControllerPointMoveTests.cpp
     edit/ControllerPointSelectAllTests.cpp
     edit/ControllerPointValueTests.cpp
-    edit/EditableNotesTests.cpp
     edit/KeySignatureDeleteTests.cpp
     edit/KeySignatureMoveTests.cpp
     edit/KeySignaturePasteTests.cpp
-    edit/LayeredNoteEditsTests.cpp
     edit/NoteAdjacentLineTests.cpp
     edit/NoteClampShiftTests.cpp
     edit/NoteEndResizeTests.cpp
@@ -147,6 +145,8 @@ target_sources(CalliopeTests PRIVATE
     model/timeline/TimeSignatureChangeListTests.cpp
     plugin/PluginSyncPlanTests.cpp
     plugin/RetiredStateStoreTests.cpp
+    session/EditableNotesTests.cpp
+    session/LayeredNoteEditsTests.cpp
     ui/ControllerLaneScaleTests.cpp
     ui/DragValueTipTests.cpp
     ui/EditClipboardTests.cpp

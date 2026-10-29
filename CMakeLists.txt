@@ -32,9 +32,7 @@ target_sources(Calliope PRIVATE
     src/document/Document.cpp
     src/edit/ChordTrackEdits.cpp
     src/edit/ControllerPointEdits.cpp
-    src/edit/EditableNotes.cpp
     src/edit/KeySignatureEdits.cpp
-    src/edit/LayeredNoteEdits.cpp
     src/edit/NoteEdits.cpp
     src/edit/NoteQuantize.cpp
     src/edit/ProgramChangeEdits.cpp
@@ -87,6 +85,8 @@ target_sources(Calliope PRIVATE
     src/plugin/PluginStateChangeWatcher.cpp
     src/plugin/PluginSyncPlan.cpp
     src/plugin/VstPluginHost.cpp
+    src/session/EditableNotes.cpp
+    src/session/LayeredNoteEdits.cpp
     src/session/MidiThruSync.cpp
     src/session/PlaybackSync.cpp
     src/session/Recorder.cpp
