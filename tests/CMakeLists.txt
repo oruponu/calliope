@@ -25,13 +25,13 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/engine/thru/ThruRouter.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/thru/ThruTarget.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/transport/PlaybackClock.cpp
-    ${PROJECT_SOURCE_DIR}/src/io/MetaText.cpp
-    ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
-    ${PROJECT_SOURCE_DIR}/src/io/ProjectFileIO.cpp
-    ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlReader.cpp
-    ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlWriter.cpp
-    ${PROJECT_SOURCE_DIR}/src/io/XmlFieldReader.cpp
-    ${PROJECT_SOURCE_DIR}/src/io/XmlNumberText.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/project/ProjectFileIO.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/project/ProjectXmlReader.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/project/ProjectXmlWriter.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/project/XmlFieldReader.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/project/XmlNumberText.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/smf/MetaText.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/smf/MidiFileIO.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MetaEventRetention.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
     ${PROJECT_SOURCE_DIR}/src/model/SequenceContentsRules.cpp
@@ -110,12 +110,12 @@ target_sources(CalliopeTests PRIVATE
     engine/thru/ThruRouterTests.cpp
     engine/thru/ThruTargetTests.cpp
     engine/transport/PlaybackClockTests.cpp
-    io/MidiFileLoadTests.cpp
-    io/MidiFileRoundTripTests.cpp
-    io/ProjectFileIOTests.cpp
-    io/ProjectXmlReadTests.cpp
-    io/ProjectXmlRoundTripTests.cpp
-    io/XmlNumberTextTests.cpp
+    io/project/ProjectFileIOTests.cpp
+    io/project/ProjectXmlReadTests.cpp
+    io/project/ProjectXmlRoundTripTests.cpp
+    io/project/XmlNumberTextTests.cpp
+    io/smf/MidiFileLoadTests.cpp
+    io/smf/MidiFileRoundTripTests.cpp
     model/DefaultTimelineTests.cpp
     model/MidiSequenceNotificationTests.cpp
     model/RouteTargetTests.cpp

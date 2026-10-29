@@ -1,5 +1,5 @@
-#include "io/MidiFileIO.h"
-#include "io/MetaText.h"
+#include "io/smf/MidiFileIO.h"
+#include "io/smf/MetaText.h"
 #include "model/MetaEventRetention.h"
 #include "model/SequenceContentsRules.h"
 #include "model/controller/ControllerPointConversion.h"

@@ -1,6 +1,6 @@
-#include "io/ProjectXml.h"
-#include "io/ProjectXmlNames.h"
-#include "io/XmlNumberText.h"
+#include "io/project/ProjectXml.h"
+#include "io/project/ProjectXmlNames.h"
+#include "io/project/XmlNumberText.h"
 #include "model/notation/SysExHex.h"
 #include <array>
 #include <cstddef>

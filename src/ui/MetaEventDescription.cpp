@@ -1,5 +1,5 @@
 #include "ui/MetaEventDescription.h"
-#include "io/MetaText.h"
+#include "io/smf/MetaText.h"
 #include "model/notation/SysExHex.h"
 #include <format>
 

@@ -1,4 +1,4 @@
-#include "io/ProjectXml.h"
+#include "io/project/ProjectXml.h"
 #include "support/MetaEventStringMaker.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/SysExEventStringMaker.h"

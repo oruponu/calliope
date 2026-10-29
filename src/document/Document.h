@@ -1,6 +1,6 @@
 #pragma once
 
-#include "io/ProjectXml.h"
+#include "io/project/ProjectXml.h"
 #include "model/MidiSequence.h"
 #include "undo/UndoHistory.h"
 #include <functional>

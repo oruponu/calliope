@@ -29,6 +29,8 @@ set(FOLDER_undo/event "undo")
 set(FOLDER_undo/track "undo")
 
 set(LAYER_io "model")
+set(FOLDER_io/smf "")
+set(FOLDER_io/project "")
 
 set(LAYER_audio "model;engine")
 set(LAYER_device "model;engine")

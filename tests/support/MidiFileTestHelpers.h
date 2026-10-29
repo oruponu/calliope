@@ -1,6 +1,6 @@
 #pragma once
 
-#include "io/MidiFileIO.h"
+#include "io/smf/MidiFileIO.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <optional>
 

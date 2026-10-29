@@ -54,13 +54,13 @@ target_sources(Calliope PRIVATE
     src/engine/thru/ThruRouter.cpp
     src/engine/thru/ThruTarget.cpp
     src/engine/transport/PlaybackClock.cpp
-    src/io/MetaText.cpp
-    src/io/MidiFileIO.cpp
-    src/io/ProjectFileIO.cpp
-    src/io/ProjectXmlReader.cpp
-    src/io/ProjectXmlWriter.cpp
-    src/io/XmlFieldReader.cpp
-    src/io/XmlNumberText.cpp
+    src/io/project/ProjectFileIO.cpp
+    src/io/project/ProjectXmlReader.cpp
+    src/io/project/ProjectXmlWriter.cpp
+    src/io/project/XmlFieldReader.cpp
+    src/io/project/XmlNumberText.cpp
+    src/io/smf/MetaText.cpp
+    src/io/smf/MidiFileIO.cpp
     src/model/MetaEventRetention.cpp
     src/model/MidiSequence.cpp
     src/model/SequenceContentsRules.cpp

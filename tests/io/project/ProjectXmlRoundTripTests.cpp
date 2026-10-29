@@ -1,4 +1,4 @@
-#include "io/ProjectXml.h"
+#include "io/project/ProjectXml.h"
 #include "support/ChordTestHelpers.h"
 #include "support/KeySignatureStringMaker.h"
 #include "support/MetaEventStringMaker.h"

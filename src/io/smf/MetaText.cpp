@@ -1,4 +1,4 @@
-#include "io/MetaText.h"
+#include "io/smf/MetaText.h"
 #include <vector>
 
 #ifdef _WIN32

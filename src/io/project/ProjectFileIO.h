@@ -1,6 +1,6 @@
 #pragma once
 
-#include "io/ProjectXml.h"
+#include "io/project/ProjectXml.h"
 #include "model/MidiSequence.h"
 #include "model/SequenceContents.h"
 #include <juce_core/juce_core.h>

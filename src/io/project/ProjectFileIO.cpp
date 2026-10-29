@@ -1,4 +1,4 @@
-#include "io/ProjectFileIO.h"
+#include "io/project/ProjectFileIO.h"
 
 bool ProjectFileIO::save(const MidiSequence& sequence, const ProjectXml::PluginStateSource& stateSource,
                          const juce::File& file)
