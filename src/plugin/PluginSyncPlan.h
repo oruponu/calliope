@@ -1,7 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
-#include "model/TrackId.h"
+#include "model/track/TrackId.h"
 #include <unordered_set>
 #include <vector>
 

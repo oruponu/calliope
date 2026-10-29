@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/GridLineKind.h"
+#include "model/grid/GridLineKind.h"
 #include "ui/theme/Theme.h"
 
 inline juce::Colour gridLineColour(GridLineKind kind)

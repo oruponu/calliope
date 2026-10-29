@@ -1,8 +1,8 @@
 #pragma once
 
 #include "model/MidiSequence.h"
-#include "model/TimeSignatureChange.h"
-#include "model/TimelineMap.h"
+#include "model/timeline/TimeSignatureChange.h"
+#include "model/timeline/TimelineMap.h"
 #include "support/TimeSignatureStringMaker.h"
 #include <initializer_list>
 #include <stdexcept>

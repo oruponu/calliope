@@ -1,4 +1,4 @@
-#include "model/MidiTrack.h"
+#include "model/track/MidiTrack.h"
 #include <algorithm>
 #include <utility>
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "model/GmPrograms.h"
-#include "model/ProgramVoice.h"
+#include "model/controller/ProgramVoice.h"
+#include "model/notation/GmPrograms.h"
 #include <algorithm>
 
 struct ProgramBrowserState

@@ -3,8 +3,8 @@
 #include "engine/LiveMidiSink.h"
 #include "engine/PlaybackListener.h"
 #include "model/MidiSequence.h"
-#include "model/PluginAssignment.h"
-#include "model/TrackId.h"
+#include "model/track/PluginAssignment.h"
+#include "model/track/TrackId.h"
 #include "plugin/PluginStateChangeWatcher.h"
 #include "plugin/RetiredStateStore.h"
 #include <cstddef>

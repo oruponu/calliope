@@ -1,5 +1,5 @@
 #include "engine/MetronomeClicks.h"
-#include "model/TimelineMap.h"
+#include "model/timeline/TimelineMap.h"
 #include "support/MetronomeClickStringMaker.h"
 #include "support/TimeSignatureTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>

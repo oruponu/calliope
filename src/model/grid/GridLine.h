@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/GridLineKind.h"
+#include "model/grid/GridLineKind.h"
 
 struct GridLine
 {

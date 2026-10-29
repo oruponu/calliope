@@ -1,8 +1,8 @@
 #pragma once
 
-#include "model/KeySignatureChange.h"
 #include "model/SequenceContents.h"
-#include "model/TimeSignatureChange.h"
+#include "model/harmony/KeySignatureChange.h"
+#include "model/timeline/TimeSignatureChange.h"
 
 namespace SequenceContentsRules
 {

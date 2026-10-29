@@ -1,4 +1,4 @@
-#include "model/GmPrograms.h"
+#include "model/notation/GmPrograms.h"
 #include <catch2/catch_test_macros.hpp>
 #include <string_view>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/MidiNote.h"
+#include "model/event/MidiNote.h"
 #include <algorithm>
 #include <optional>
 

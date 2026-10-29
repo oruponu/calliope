@@ -1,7 +1,7 @@
 #pragma once
 // IWYU pragma: always_keep
 
-#include "model/TimeSignatureChange.h"
+#include "model/timeline/TimeSignatureChange.h"
 #include <catch2/catch_tostring.hpp>
 #include <string>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/MetronomeClicks.h"
-#include "model/TimeSignatureChange.h"
+#include "model/timeline/TimeSignatureChange.h"
 #include <vector>
 
 // Whole bars of clicks that end where playback starts, on the beats of the time signature in force there. Ticks count

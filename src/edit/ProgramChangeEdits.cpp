@@ -1,6 +1,6 @@
 #include "edit/ProgramChangeEdits.h"
 #include "edit/ControllerPointEdits.h"
-#include "model/ControllerKind.h"
+#include "model/controller/ControllerKind.h"
 #include <algorithm>
 #include <map>
 #include <ranges>

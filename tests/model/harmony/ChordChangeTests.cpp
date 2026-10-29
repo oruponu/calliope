@@ -1,4 +1,4 @@
-#include "model/ChordChange.h"
+#include "model/harmony/ChordChange.h"
 #include "support/ChordStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 

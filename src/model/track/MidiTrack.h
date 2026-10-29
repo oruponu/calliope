@@ -1,11 +1,11 @@
 #pragma once
 
-#include "model/MetaEvent.h"
-#include "model/MidiEvent.h"
-#include "model/MidiNote.h"
-#include "model/PluginAssignment.h"
-#include "model/SysExEvent.h"
-#include "model/TrackId.h"
+#include "model/event/MetaEvent.h"
+#include "model/event/MidiEvent.h"
+#include "model/event/MidiNote.h"
+#include "model/event/SysExEvent.h"
+#include "model/track/PluginAssignment.h"
+#include "model/track/TrackId.h"
 #include <memory>
 #include <optional>
 #include <string>

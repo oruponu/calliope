@@ -2,8 +2,8 @@
 
 #include "edit/NoteRef.h"
 #include "engine/Take.h"
-#include "model/ControllerPointConversion.h"
 #include "model/MidiSequence.h"
+#include "model/controller/ControllerPointConversion.h"
 #include <algorithm>
 #include <juce_data_structures/juce_data_structures.h>
 #include <map>

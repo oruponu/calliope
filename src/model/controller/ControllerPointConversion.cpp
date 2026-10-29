@@ -1,5 +1,5 @@
-#include "model/ControllerPointConversion.h"
-#include "model/ControllerKind.h"
+#include "model/controller/ControllerPointConversion.h"
+#include "model/controller/ControllerKind.h"
 #include <algorithm>
 #include <map>
 #include <numeric>

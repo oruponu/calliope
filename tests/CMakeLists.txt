@@ -32,20 +32,20 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/io/ProjectXmlWriter.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlFieldReader.cpp
     ${PROJECT_SOURCE_DIR}/src/io/XmlNumberText.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/ControllerLineValue.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/ControllerPointConversion.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/ControllerRamps.cpp
     ${PROJECT_SOURCE_DIR}/src/model/ExclusiveSolo.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/GmPrograms.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MetaEventRetention.cpp
     ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/model/SequenceContentsRules.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/SysExHex.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/TimelineGrid.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/TimelineMap.cpp
     ${PROJECT_SOURCE_DIR}/src/model/TrackDuplication.cpp
     ${PROJECT_SOURCE_DIR}/src/model/TrackOrder.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerLineValue.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerPointConversion.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerRamps.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/grid/TimelineGrid.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/notation/GmPrograms.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/notation/SysExHex.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/timeline/TimelineMap.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/track/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/notation/KeySignatureName.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
@@ -113,27 +113,27 @@ target_sources(CalliopeTests PRIVATE
     io/ProjectXmlReadTests.cpp
     io/ProjectXmlRoundTripTests.cpp
     io/XmlNumberTextTests.cpp
-    model/BarBeatTickTests.cpp
-    model/ChordChangeTests.cpp
-    model/ControllerKindTests.cpp
-    model/ControllerLineValueTests.cpp
-    model/ControllerPointConversionTests.cpp
-    model/ControllerRampsTests.cpp
     model/DefaultTimelineTests.cpp
     model/ExclusiveSoloTests.cpp
-    model/GmProgramsTests.cpp
-    model/GridDivisionTests.cpp
     model/MidiSequenceNotificationTests.cpp
     model/NewTrackTests.cpp
     model/RouteTargetTests.cpp
     model/SequenceContentsRulesTests.cpp
-    model/SysExHexTests.cpp
-    model/TickSecondsTests.cpp
-    model/TimelineGridTests.cpp
     model/TimelineLookupTests.cpp
     model/TrackDuplicationTests.cpp
     model/TrackIdTests.cpp
     model/TrackOrderTests.cpp
+    model/controller/ControllerKindTests.cpp
+    model/controller/ControllerLineValueTests.cpp
+    model/controller/ControllerPointConversionTests.cpp
+    model/controller/ControllerRampsTests.cpp
+    model/grid/GridDivisionTests.cpp
+    model/grid/TimelineGridTests.cpp
+    model/harmony/ChordChangeTests.cpp
+    model/notation/GmProgramsTests.cpp
+    model/notation/SysExHexTests.cpp
+    model/timeline/BarBeatTickTests.cpp
+    model/timeline/TickSecondsTests.cpp
     notation/ChordSymbolTests.cpp
     notation/KeySignatureNameTests.cpp
     plugin/PluginSyncPlanTests.cpp

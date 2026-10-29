@@ -1,7 +1,7 @@
 #pragma once
 
 #include "edit/NoteRef.h"
-#include "model/MidiNote.h"
+#include "model/event/MidiNote.h"
 #include "ui/DraftNote.h"
 #include "ui/DraggedEvents.h"
 #include <map>

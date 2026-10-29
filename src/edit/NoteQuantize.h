@@ -2,8 +2,8 @@
 
 #include "edit/NoteEdit.h"
 #include "edit/NoteRef.h"
-#include "model/MidiNote.h"
-#include "model/TimelineGrid.h"
+#include "model/event/MidiNote.h"
+#include "model/grid/TimelineGrid.h"
 #include <utility>
 #include <vector>
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "model/ChordChange.h"
-#include "model/TimelineGrid.h"
-#include "model/TimelineMap.h"
+#include "model/grid/TimelineGrid.h"
+#include "model/harmony/ChordChange.h"
+#include "model/timeline/TimelineMap.h"
 #include <utility>
 #include <vector>
 

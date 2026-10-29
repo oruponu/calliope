@@ -1,6 +1,6 @@
 #include "model/MidiSequence.h"
-#include "model/TrackId.h"
 #include "model/TrackOrder.h"
+#include "model/track/TrackId.h"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 

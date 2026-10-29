@@ -1,7 +1,7 @@
 #include "ui/plugin/TrackOutputController.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
-#include "model/PluginAssignment.h"
+#include "model/track/PluginAssignment.h"
 #include "plugin/PluginAssignmentCodec.h"
 #include "plugin/VstPluginHost.h"
 #include "ui/plugin/PluginCatalogController.h"

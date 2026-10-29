@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/BarBeatTick.h"
+#include "model/timeline/BarBeatTick.h"
 #include <catch2/catch_tostring.hpp>
 #include <string>
 

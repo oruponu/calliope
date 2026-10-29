@@ -1,8 +1,8 @@
 #pragma once
 
-#include "model/BarBeatTick.h"
-#include "model/TempoChange.h"
-#include "model/TimeSignatureChange.h"
+#include "model/timeline/BarBeatTick.h"
+#include "model/timeline/TempoChange.h"
+#include "model/timeline/TimeSignatureChange.h"
 #include <vector>
 
 class TimelineMap

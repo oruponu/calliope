@@ -1,6 +1,6 @@
 #include "plugin/VstPluginHost.h"
 #include "engine/PlaybackEngine.h"
-#include "model/MidiTrack.h"
+#include "model/track/MidiTrack.h"
 #include "plugin/PluginAssignmentCodec.h"
 #include "plugin/PluginSyncPlan.h"
 #include <optional>

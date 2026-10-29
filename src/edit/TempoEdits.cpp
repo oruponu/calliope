@@ -1,5 +1,5 @@
 #include "edit/TempoEdits.h"
-#include "model/TimelineMap.h"
+#include "model/timeline/TimelineMap.h"
 #include <algorithm>
 #include <limits>
 

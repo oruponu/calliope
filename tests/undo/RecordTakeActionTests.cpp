@@ -1,6 +1,6 @@
-#include "model/ControllerPointConversion.h"
-#include "model/ControllerRamps.h"
 #include "model/MidiSequence.h"
+#include "model/controller/ControllerPointConversion.h"
+#include "model/controller/ControllerRamps.h"
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
 #include "support/NoteRefStringMaker.h"

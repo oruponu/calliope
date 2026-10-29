@@ -5,7 +5,7 @@
 #include "engine/PlaybackProgress.h"
 #include "engine/RecordedNoteEdit.h"
 #include "engine/Take.h"
-#include "model/MidiNote.h"
+#include "model/event/MidiNote.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <map>
 #include <optional>

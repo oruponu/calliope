@@ -1,8 +1,8 @@
 #pragma once
 
 #include "edit/ChordTrackEdits.h"
-#include "model/TimelineGrid.h"
-#include "model/TimelineMap.h"
+#include "model/grid/TimelineGrid.h"
+#include "model/timeline/TimelineMap.h"
 #include "notation/ChordSymbol.h"
 #include "support/ChordStringMaker.h"
 #include <initializer_list>

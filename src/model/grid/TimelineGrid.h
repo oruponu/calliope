@@ -1,8 +1,8 @@
 #pragma once
 
-#include "model/GridDivision.h"
-#include "model/GridLine.h"
-#include "model/TimelineMap.h"
+#include "model/grid/GridDivision.h"
+#include "model/grid/GridLine.h"
+#include "model/timeline/TimelineMap.h"
 #include <optional>
 #include <vector>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/MidiEvent.h"
+#include "model/event/MidiEvent.h"
 #include <vector>
 
 // One piece of a channel's chased state, with the events that set it, in the order they are sent.

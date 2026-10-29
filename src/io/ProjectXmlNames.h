@@ -1,7 +1,7 @@
 #pragma once
 
-#include "model/MidiEvent.h"
-#include "model/MidiTrack.h"
+#include "model/event/MidiEvent.h"
+#include "model/track/MidiTrack.h"
 #include <array>
 #include <utility>
 

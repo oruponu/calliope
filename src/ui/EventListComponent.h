@@ -2,8 +2,8 @@
 
 #include "edit/NoteRef.h"
 #include "engine/RecordingLayer.h"
-#include "model/ControllerKind.h"
 #include "model/MidiSequence.h"
+#include "model/controller/ControllerKind.h"
 #include "ui/EventListItems.h"
 #include "ui/NoteDragPreview.h"
 #include <juce_gui_basics/juce_gui_basics.h>

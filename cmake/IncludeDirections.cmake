@@ -1,2 +1,11 @@
 set(LAYER_model "")
+set(FOLDER_model "model/event;model/track;model/timeline;model/harmony")
+set(FOLDER_model/event "")
+set(FOLDER_model/controller "model/event")
+set(FOLDER_model/track "model/event")
+set(FOLDER_model/timeline "")
+set(FOLDER_model/harmony "")
+set(FOLDER_model/grid "model/timeline")
+set(FOLDER_model/notation "model/harmony")
+
 set(LAYER_plugin "model;engine")

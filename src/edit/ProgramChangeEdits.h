@@ -2,7 +2,7 @@
 
 #include "edit/ControllerPointEditResult.h"
 #include "edit/CopiedControllerPoints.h"
-#include "model/ProgramVoice.h"
+#include "model/controller/ProgramVoice.h"
 #include <map>
 #include <optional>
 #include <set>

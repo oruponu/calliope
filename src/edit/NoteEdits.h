@@ -1,7 +1,7 @@
 #pragma once
 
-#include "model/MidiNote.h"
-#include "model/TimelineGrid.h"
+#include "model/event/MidiNote.h"
+#include "model/grid/TimelineGrid.h"
 #include <optional>
 #include <vector>
 

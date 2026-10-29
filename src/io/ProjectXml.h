@@ -2,7 +2,7 @@
 
 #include "model/MidiSequence.h"
 #include "model/SequenceContents.h"
-#include "model/TrackId.h"
+#include "model/track/TrackId.h"
 #include <cstddef>
 #include <functional>
 #include <juce_core/juce_core.h>

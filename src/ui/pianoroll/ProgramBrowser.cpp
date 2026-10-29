@@ -1,5 +1,5 @@
 #include "ui/pianoroll/ProgramBrowser.h"
-#include "model/GmPrograms.h"
+#include "model/notation/GmPrograms.h"
 #include "ui/theme/Theme.h"
 
 namespace

@@ -1,4 +1,4 @@
-#include "model/SysExHex.h"
+#include "model/notation/SysExHex.h"
 
 namespace
 {

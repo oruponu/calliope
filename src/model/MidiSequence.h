@@ -1,12 +1,12 @@
 #pragma once
 
-#include "model/ChordChange.h"
-#include "model/KeySignatureChange.h"
-#include "model/MetaEvent.h"
-#include "model/MidiTrack.h"
 #include "model/SequenceContents.h"
-#include "model/TimelineMap.h"
-#include "model/TrackId.h"
+#include "model/event/MetaEvent.h"
+#include "model/harmony/ChordChange.h"
+#include "model/harmony/KeySignatureChange.h"
+#include "model/timeline/TimelineMap.h"
+#include "model/track/MidiTrack.h"
+#include "model/track/TrackId.h"
 #include <cstdint>
 #include <memory>
 #include <optional>

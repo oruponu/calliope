@@ -1,7 +1,7 @@
 #include "audio/Recorder.h"
 #include "engine/CountInEnd.h"
 #include "engine/PlaybackEngine.h"
-#include "model/TimelineGrid.h"
+#include "model/grid/TimelineGrid.h"
 #include "undo/RecordTakeAction.h"
 #include "undo/UndoHistory.h"
 #include <optional>

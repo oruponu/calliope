@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/ChordChange.h"
+#include "model/harmony/ChordChange.h"
 #include "notation/ChordSymbolParts.h"
 #include <string>
 

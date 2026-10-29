@@ -1,7 +1,7 @@
-#include "model/MidiNote.h"
 #include "model/MidiSequence.h"
-#include "model/PluginAssignment.h"
 #include "model/TrackDuplication.h"
+#include "model/event/MidiNote.h"
+#include "model/track/PluginAssignment.h"
 #include "support/MidiNoteTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 #include <memory>

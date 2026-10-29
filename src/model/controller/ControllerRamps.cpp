@@ -1,6 +1,6 @@
-#include "model/ControllerRamps.h"
-#include "model/ControllerKind.h"
-#include "model/ControllerPointConversion.h"
+#include "model/controller/ControllerRamps.h"
+#include "model/controller/ControllerKind.h"
+#include "model/controller/ControllerPointConversion.h"
 #include <algorithm>
 #include <cstdlib>
 #include <map>

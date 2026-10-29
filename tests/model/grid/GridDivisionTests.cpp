@@ -1,4 +1,4 @@
-#include "model/GridDivision.h"
+#include "model/grid/GridDivision.h"
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("a straight step is a whole note over the denominator", "[model][grid]")

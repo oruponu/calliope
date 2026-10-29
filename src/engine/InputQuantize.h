@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/PlaybackClock.h"
-#include "model/TimelineGrid.h"
+#include "model/grid/TimelineGrid.h"
 #include <optional>
 
 // Where a note played at playedTick starts when input is quantized: the nearest grid line, the later one on a tie. A

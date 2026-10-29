@@ -1,5 +1,5 @@
 #include "engine/PlaybackSnapshot.h"
-#include "model/ControllerRamps.h"
+#include "model/controller/ControllerRamps.h"
 #include <algorithm>
 
 double PlaybackSnapshot::getTempoAt(int tick) const

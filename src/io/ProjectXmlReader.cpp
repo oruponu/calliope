@@ -2,9 +2,9 @@
 #include "io/ProjectXmlNames.h"
 #include "io/XmlFieldReader.h"
 #include "io/XmlNumberText.h"
-#include "model/ControllerPointConversion.h"
 #include "model/SequenceContentsRules.h"
-#include "model/SysExHex.h"
+#include "model/controller/ControllerPointConversion.h"
+#include "model/notation/SysExHex.h"
 #include <cstdint>
 #include <set>
 #include <utility>

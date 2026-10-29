@@ -1,8 +1,8 @@
 #pragma once
 // IWYU pragma: always_keep
 
-#include "model/SysExEvent.h"
-#include "model/SysExHex.h"
+#include "model/event/SysExEvent.h"
+#include "model/notation/SysExHex.h"
 #include <catch2/catch_tostring.hpp>
 #include <format>
 #include <string>

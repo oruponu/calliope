@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/MidiEvent.h"
+#include "model/event/MidiEvent.h"
 #include <vector>
 
 // Turns each step change of a controller that can ramp into the points the lane draws: a hold point at the previous

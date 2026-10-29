@@ -2,8 +2,8 @@
 
 #include "edit/ControllerPointEditResult.h"
 #include "edit/CopiedControllerPoints.h"
-#include "model/ControllerKind.h"
-#include "model/MidiEvent.h"
+#include "model/controller/ControllerKind.h"
+#include "model/event/MidiEvent.h"
 #include <optional>
 #include <set>
 #include <vector>

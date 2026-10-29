@@ -1,5 +1,5 @@
 #include "ui/EventListComponent.h"
-#include "model/SysExHex.h"
+#include "model/notation/SysExHex.h"
 #include "ui/MetaEventDescription.h"
 #include "ui/RowSelection.h"
 #include "ui/theme/TrackColours.h"

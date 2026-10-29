@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/TempoChange.h"
+#include "model/timeline/TempoChange.h"
 #include <set>
 #include <vector>
 

@@ -1,4 +1,4 @@
-#include "model/TimelineGrid.h"
+#include "model/grid/TimelineGrid.h"
 #include "support/GridLineStringMaker.h"
 #include <catch2/catch_test_macros.hpp>
 #include <limits>

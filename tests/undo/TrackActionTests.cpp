@@ -1,7 +1,7 @@
-#include "model/MidiNote.h"
 #include "model/MidiSequence.h"
-#include "model/MidiTrack.h"
-#include "model/TrackId.h"
+#include "model/event/MidiNote.h"
+#include "model/track/MidiTrack.h"
+#include "model/track/TrackId.h"
 #include "support/MidiNoteTestHelpers.h"
 #include "undo/TrackActions.h"
 #include <catch2/catch_test_macros.hpp>

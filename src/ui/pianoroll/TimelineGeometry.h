@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/GridDivision.h"
+#include "model/grid/GridDivision.h"
 
 class TimelineGeometry
 {

@@ -5,8 +5,8 @@
 #include "engine/RecordingLayer.h"
 #include "engine/RecordingLayerEditor.h"
 #include "engine/TakeBuilder.h"
-#include "model/GridDivision.h"
 #include "model/MidiSequence.h"
+#include "model/grid/GridDivision.h"
 #include <functional>
 #include <juce_events/juce_events.h>
 #include <map>

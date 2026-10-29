@@ -1,7 +1,7 @@
 #pragma once
 
-#include "model/MidiTrack.h"
-#include "model/TrackId.h"
+#include "model/track/MidiTrack.h"
+#include "model/track/TrackId.h"
 #include <functional>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>

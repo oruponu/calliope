@@ -1,4 +1,4 @@
-#include "model/GridDivision.h"
+#include "model/grid/GridDivision.h"
 #include "ui/pianoroll/TimelineGeometry.h"
 #include <catch2/catch_test_macros.hpp>
 

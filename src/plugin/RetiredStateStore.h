@@ -1,7 +1,7 @@
 #pragma once
 
-#include "model/PluginAssignment.h"
-#include "model/TrackId.h"
+#include "model/track/PluginAssignment.h"
+#include "model/track/TrackId.h"
 #include <cstddef>
 #include <memory>
 #include <optional>

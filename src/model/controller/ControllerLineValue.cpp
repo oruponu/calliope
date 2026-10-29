@@ -1,5 +1,5 @@
-#include "model/ControllerLineValue.h"
-#include "model/ControllerRamps.h"
+#include "model/controller/ControllerLineValue.h"
+#include "model/controller/ControllerRamps.h"
 
 std::optional<int> controllerLineValueAt(const std::vector<MidiEvent>& events, const ControllerKind& kind, int tick)
 {

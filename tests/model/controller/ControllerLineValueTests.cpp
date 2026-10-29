@@ -1,6 +1,6 @@
-#include "model/ControllerKind.h"
-#include "model/ControllerLineValue.h"
-#include "model/ControllerRamps.h"
+#include "model/controller/ControllerKind.h"
+#include "model/controller/ControllerLineValue.h"
+#include "model/controller/ControllerRamps.h"
 #include <catch2/catch_test_macros.hpp>
 #include <optional>
 #include <vector>

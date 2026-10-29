@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/TrackId.h"
+#include "model/track/TrackId.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <memory>
 #include <unordered_map>

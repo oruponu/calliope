@@ -3,7 +3,7 @@
 #include "engine/ChaseItem.h"
 #include "engine/ChaseMsbLsb.h"
 #include "engine/ChaseSelection.h"
-#include "model/MidiEvent.h"
+#include "model/event/MidiEvent.h"
 #include <map>
 #include <optional>
 #include <vector>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "model/TimelineGrid.h"
-#include "model/TimelineMap.h"
+#include "model/grid/TimelineGrid.h"
+#include "model/timeline/TimelineMap.h"
 
 namespace GridTest
 {

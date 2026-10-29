@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/MidiNote.h"
+#include "model/event/MidiNote.h"
 
 // A note being drawn, not yet added to its track.
 struct DraftNote

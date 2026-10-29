@@ -1,7 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
-#include "model/TimelineGrid.h"
+#include "model/grid/TimelineGrid.h"
 #include "ui/pianoroll/DisplayedTimeline.h"
 #include "ui/pianoroll/TimelineGeometry.h"
 #include "ui/pianoroll/strips/RangeSelectGesture.h"

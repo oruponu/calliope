@@ -4,8 +4,8 @@
 #include "edit/CopiedControllerPoints.h"
 #include "edit/KeySignatureEdits.h"
 #include "edit/TimeSignatureEdits.h"
-#include "model/MidiNote.h"
-#include "model/TempoChange.h"
+#include "model/event/MidiNote.h"
+#include "model/timeline/TempoChange.h"
 #include <utility>
 #include <variant>
 #include <vector>

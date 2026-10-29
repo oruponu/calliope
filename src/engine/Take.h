@@ -1,8 +1,8 @@
 #pragma once
 
-#include "model/MidiEvent.h"
-#include "model/MidiNote.h"
-#include "model/TrackId.h"
+#include "model/event/MidiEvent.h"
+#include "model/event/MidiNote.h"
+#include "model/track/TrackId.h"
 #include <map>
 #include <vector>
 

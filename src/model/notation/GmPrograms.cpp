@@ -1,4 +1,4 @@
-#include "model/GmPrograms.h"
+#include "model/notation/GmPrograms.h"
 
 namespace
 {

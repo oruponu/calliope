@@ -1,7 +1,7 @@
 #pragma once
 // IWYU pragma: always_keep
 
-#include "model/ChordChange.h"
+#include "model/harmony/ChordChange.h"
 #include "notation/ChordSymbol.h"
 #include <catch2/catch_tostring.hpp>
 #include <format>

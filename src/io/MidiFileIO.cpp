@@ -4,12 +4,12 @@
 #include "edit/TempoEdits.h"
 #include "edit/TimeSignatureEdits.h"
 #include "io/MetaText.h"
-#include "model/ControllerPointConversion.h"
-#include "model/ControllerRamps.h"
-#include "model/KeySignatureChange.h"
 #include "model/MetaEventRetention.h"
 #include "model/SequenceContentsRules.h"
-#include "model/TimeSignatureChange.h"
+#include "model/controller/ControllerPointConversion.h"
+#include "model/controller/ControllerRamps.h"
+#include "model/harmony/KeySignatureChange.h"
+#include "model/timeline/TimeSignatureChange.h"
 #include <algorithm>
 #include <cstdint>
 #include <map>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/MidiEvent.h"
+#include "model/event/MidiEvent.h"
 #include <vector>
 
 // Turns each ramp into the steps it sends, in tick order. The result has no ramps.

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/ControllerKind.h"
+#include "model/controller/ControllerKind.h"
 #include <optional>
 #include <vector>
 

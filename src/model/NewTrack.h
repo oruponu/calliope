@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/MidiTrack.h"
+#include "model/track/MidiTrack.h"
 #include <string>
 
 namespace NewTrack

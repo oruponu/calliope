@@ -1,5 +1,5 @@
-#include "model/TimelineGrid.h"
-#include "model/TimeSignatureChange.h"
+#include "model/grid/TimelineGrid.h"
+#include "model/timeline/TimeSignatureChange.h"
 #include <algorithm>
 #include <limits>
 #include <ranges>

@@ -1,7 +1,7 @@
 #include "engine/TakeBuilder.h"
 #include "engine/ChannelVoiceMessage.h"
 #include "engine/InputQuantize.h"
-#include "model/TimelineGrid.h"
+#include "model/grid/TimelineGrid.h"
 #include <algorithm>
 #include <array>
 #include <limits>

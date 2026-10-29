@@ -1,7 +1,7 @@
 #pragma once
 // IWYU pragma: always_keep
 
-#include "model/GridLine.h"
+#include "model/grid/GridLine.h"
 #include <catch2/catch_tostring.hpp>
 #include <format>
 #include <string>

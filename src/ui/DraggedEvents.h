@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/MidiEvent.h"
+#include "model/event/MidiEvent.h"
 #include <set>
 #include <vector>
 

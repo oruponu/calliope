@@ -1,7 +1,7 @@
 #include "io/ProjectXml.h"
 #include "io/ProjectXmlNames.h"
 #include "io/XmlNumberText.h"
-#include "model/SysExHex.h"
+#include "model/notation/SysExHex.h"
 #include <array>
 #include <cstddef>
 #include <iterator>

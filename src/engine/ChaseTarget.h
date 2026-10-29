@@ -1,8 +1,8 @@
 #pragma once
 
 #include "engine/PlaybackSnapshot.h"
-#include "model/MidiTrack.h"
-#include "model/TrackId.h"
+#include "model/track/MidiTrack.h"
+#include "model/track/TrackId.h"
 
 // Where chased state lands: a MIDI device channel, or a channel of the plugin a track routes to.
 struct ChaseTarget

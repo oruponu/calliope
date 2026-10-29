@@ -1,5 +1,5 @@
 #include "edit/ControllerPointEdits.h"
-#include "model/ControllerPointConversion.h"
+#include "model/controller/ControllerPointConversion.h"
 #include <algorithm>
 #include <limits>
 #include <map>

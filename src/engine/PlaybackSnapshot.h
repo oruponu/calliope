@@ -1,11 +1,11 @@
 #pragma once
 
 #include "engine/Take.h"
-#include "model/MidiEvent.h"
-#include "model/MidiNote.h"
 #include "model/MidiSequence.h"
-#include "model/MidiTrack.h"
-#include "model/SysExEvent.h"
+#include "model/event/MidiEvent.h"
+#include "model/event/MidiNote.h"
+#include "model/event/SysExEvent.h"
+#include "model/track/MidiTrack.h"
 #include <vector>
 
 struct PlaybackTrackContext

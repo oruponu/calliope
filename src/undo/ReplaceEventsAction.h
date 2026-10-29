@@ -1,7 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
-#include "model/TrackId.h"
+#include "model/track/TrackId.h"
 #include "undo/UndoHistory.h"
 #include <juce_data_structures/juce_data_structures.h>
 #include <utility>

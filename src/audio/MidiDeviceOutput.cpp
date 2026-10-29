@@ -1,5 +1,5 @@
 #include "audio/MidiDeviceOutput.h"
-#include "model/MidiTrack.h"
+#include "model/track/MidiTrack.h"
 
 namespace
 {

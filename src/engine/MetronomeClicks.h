@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/TimeSignatureChange.h"
+#include "model/timeline/TimeSignatureChange.h"
 #include <vector>
 
 struct MetronomeClick

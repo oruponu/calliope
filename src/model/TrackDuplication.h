@@ -1,7 +1,7 @@
 #pragma once
 
 #include "model/MidiSequence.h"
-#include "model/MidiTrack.h"
+#include "model/track/MidiTrack.h"
 
 namespace TrackDuplication
 {

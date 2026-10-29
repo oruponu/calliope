@@ -1,4 +1,4 @@
-#include "model/SysExHex.h"
+#include "model/notation/SysExHex.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <cstdint>

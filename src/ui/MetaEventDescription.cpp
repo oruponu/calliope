@@ -1,6 +1,6 @@
 #include "ui/MetaEventDescription.h"
 #include "io/MetaText.h"
-#include "model/SysExHex.h"
+#include "model/notation/SysExHex.h"
 #include <format>
 
 namespace

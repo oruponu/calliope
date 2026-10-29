@@ -1,7 +1,7 @@
 #pragma once
 
-#include "model/KeySignatureChange.h"
-#include "model/TimelineMap.h"
+#include "model/harmony/KeySignatureChange.h"
+#include "model/timeline/TimelineMap.h"
 #include <set>
 #include <vector>
 

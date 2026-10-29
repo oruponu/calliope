@@ -1,5 +1,5 @@
 #include "ui/EventListItems.h"
-#include "model/ControllerPointConversion.h"
+#include "model/controller/ControllerPointConversion.h"
 #include <algorithm>
 #include <iterator>
 #include <ranges>

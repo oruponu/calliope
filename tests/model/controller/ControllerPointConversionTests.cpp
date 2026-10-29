@@ -1,5 +1,5 @@
-#include "model/ControllerPointConversion.h"
-#include "model/ControllerRamps.h"
+#include "model/controller/ControllerPointConversion.h"
+#include "model/controller/ControllerRamps.h"
 #include "support/MidiEventTestHelpers.h"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -48,8 +48,8 @@ TEST_CASE("an unchanged value needs no hold point", "[model][ramp]")
 TEST_CASE("controllers that must not ramp stay steps", "[model][ramp]")
 {
     const Events events{cc(0, 0, 1), cc(960, 0, 2), cc(0, 64, 127), cc(960, 64, 0), cc(0, 101, 0), cc(960, 101, 127)};
-    CHECK(convertStepsToPoints(events) == Events{cc(0, 0, 1), cc(0, 64, 127), cc(0, 101, 0), cc(960, 0, 2),
-                                                 cc(960, 64, 0), cc(960, 101, 127)});
+    CHECK(convertStepsToPoints(events) ==
+          Events{cc(0, 0, 1), cc(0, 64, 127), cc(0, 101, 0), cc(960, 0, 2), cc(960, 64, 0), cc(960, 101, 127)});
 }
 
 TEST_CASE("converting twice changes nothing", "[model][ramp]")

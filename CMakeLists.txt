@@ -27,10 +27,10 @@ target_sources(Calliope PRIVATE
     src/audio/MetronomeProcessor.cpp
     src/audio/MidiDeviceOutput.cpp
     src/audio/MidiInputReconnector.cpp
-    src/audio/UserDisabledMidiInputs.cpp
     src/audio/MidiThru.cpp
     src/audio/MidiThruSync.cpp
     src/audio/Recorder.cpp
+    src/audio/UserDisabledMidiInputs.cpp
     src/document/Document.cpp
     src/edit/ChordTrackEdits.cpp
     src/edit/ControllerPointEdits.cpp
@@ -64,20 +64,20 @@ target_sources(Calliope PRIVATE
     src/io/ProjectXmlWriter.cpp
     src/io/XmlFieldReader.cpp
     src/io/XmlNumberText.cpp
-    src/model/ControllerLineValue.cpp
-    src/model/ControllerPointConversion.cpp
-    src/model/ControllerRamps.cpp
     src/model/ExclusiveSolo.cpp
-    src/model/GmPrograms.cpp
     src/model/MetaEventRetention.cpp
     src/model/MidiSequence.cpp
-    src/model/MidiTrack.cpp
     src/model/SequenceContentsRules.cpp
-    src/model/SysExHex.cpp
-    src/model/TimelineGrid.cpp
-    src/model/TimelineMap.cpp
     src/model/TrackDuplication.cpp
     src/model/TrackOrder.cpp
+    src/model/controller/ControllerLineValue.cpp
+    src/model/controller/ControllerPointConversion.cpp
+    src/model/controller/ControllerRamps.cpp
+    src/model/grid/TimelineGrid.cpp
+    src/model/notation/GmPrograms.cpp
+    src/model/notation/SysExHex.cpp
+    src/model/timeline/TimelineMap.cpp
+    src/model/track/MidiTrack.cpp
     src/notation/ChordSymbol.cpp
     src/notation/KeySignatureName.cpp
     src/plugin/PluginAssignmentCodec.cpp
