@@ -180,3 +180,23 @@ endif()
 
 include(Catch)
 catch_discover_tests(CalliopeTests)
+
+set(INCLUDE_DIRECTIONS_SCRIPT ${PROJECT_SOURCE_DIR}/cmake/CheckIncludeDirections.cmake)
+set(INCLUDE_DIRECTIONS_FIXTURES ${CMAKE_CURRENT_SOURCE_DIR}/include-directions)
+
+add_test(NAME include-directions
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR}/src
+        -DRULES=${PROJECT_SOURCE_DIR}/cmake/IncludeDirections.cmake -P ${INCLUDE_DIRECTIONS_SCRIPT})
+add_test(NAME include-directions-allowed
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${INCLUDE_DIRECTIONS_FIXTURES}/allowed/src
+        -DRULES=${INCLUDE_DIRECTIONS_FIXTURES}/rules.cmake -P ${INCLUDE_DIRECTIONS_SCRIPT})
+add_test(NAME include-directions-layer-violation
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${INCLUDE_DIRECTIONS_FIXTURES}/layer-violation/src
+        -DRULES=${INCLUDE_DIRECTIONS_FIXTURES}/rules.cmake -P ${INCLUDE_DIRECTIONS_SCRIPT})
+add_test(NAME include-directions-folder-violation
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${INCLUDE_DIRECTIONS_FIXTURES}/folder-violation/src
+        -DRULES=${INCLUDE_DIRECTIONS_FIXTURES}/rules.cmake -P ${INCLUDE_DIRECTIONS_SCRIPT})
+set_tests_properties(include-directions-layer-violation PROPERTIES
+    PASS_REGULAR_EXPRESSION "low/a/A\\.h includes \"high/H\\.h\" \\(low/a -> high\\)")
+set_tests_properties(include-directions-folder-violation PROPERTIES
+    PASS_REGULAR_EXPRESSION "low/a/A\\.mm includes \"low/b/B\\.h\" \\(low/a -> low/b\\)")
