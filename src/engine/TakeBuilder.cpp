@@ -1,6 +1,6 @@
 #include "engine/TakeBuilder.h"
-#include "engine/ChannelVoiceMessage.h"
 #include "engine/InputQuantize.h"
+#include "model/event/ChannelVoiceStatus.h"
 #include "model/grid/TimelineGrid.h"
 #include <algorithm>
 #include <array>
@@ -54,7 +54,7 @@ void TakeBuilder::begin(std::optional<TrackId> newTarget, ClockPosition start)
 void TakeBuilder::handle(const std::string& sourceId, const juce::MidiMessage& message, ClockPosition at,
                          const TimelineGrid* grid, LoopRange loop)
 {
-    if (at.pass < pass || !isChannelVoiceMessage(message))
+    if (at.pass < pass || !isChannelVoiceStatus(message.getRawData()[0]))
         return;
 
     const int channel = message.getChannel();
@@ -111,7 +111,7 @@ void TakeBuilder::handle(const std::string& sourceId, const juce::MidiMessage& m
 
 void TakeBuilder::collectCountIn(const std::string& sourceId, const juce::MidiMessage& message)
 {
-    if (!isChannelVoiceMessage(message))
+    if (!isChannelVoiceStatus(message.getRawData()[0]))
         return;
 
     const int channel = message.getChannel();

@@ -1,5 +1,5 @@
 #include "engine/ThruRouter.h"
-#include "engine/ChannelVoiceMessage.h"
+#include "model/event/ChannelVoiceStatus.h"
 #include <algorithm>
 #include <array>
 #include <utility>
@@ -22,7 +22,7 @@ juce::MidiMessage stamped(juce::MidiMessage message, double now)
 
 void ThruRouter::handle(const juce::String& sourceId, const juce::MidiMessage& message, LiveMidiSink& sink)
 {
-    if (!isChannelVoiceMessage(message))
+    if (!isChannelVoiceStatus(message.getRawData()[0]))
         return;
 
     const auto source = sourceId.toStdString();

@@ -129,6 +129,7 @@ target_sources(CalliopeTests PRIVATE
     model/controller/ControllerLineValueTests.cpp
     model/controller/ControllerPointConversionTests.cpp
     model/controller/ControllerRampsTests.cpp
+    model/event/ChannelVoiceStatusTests.cpp
     model/grid/GridDivisionTests.cpp
     model/grid/TimelineGridTests.cpp
     model/harmony/ChordChangeListTests.cpp

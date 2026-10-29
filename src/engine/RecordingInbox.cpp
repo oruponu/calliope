@@ -1,5 +1,5 @@
 #include "engine/RecordingInbox.h"
-#include "engine/ChannelVoiceMessage.h"
+#include "model/event/ChannelVoiceStatus.h"
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -106,7 +106,7 @@ void RecordingInbox::countInEnded()
 
 void RecordingInbox::receive(const juce::String& sourceId, const juce::MidiMessage& message)
 {
-    if (!isChannelVoiceMessage(message))
+    if (!isChannelVoiceStatus(message.getRawData()[0]))
         return;
 
     const double timeMs = message.getTimeStamp() * 1000.0;
