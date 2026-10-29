@@ -11,7 +11,11 @@
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
 #include "ui/transport/MetronomeSettingsComponent.h"
-#include "undo/TrackActions.h"
+#include "undo/track/ChannelChangeAction.h"
+#include "undo/track/TrackAddAction.h"
+#include "undo/track/TrackMoveAction.h"
+#include "undo/track/TrackRemoveAction.h"
+#include "undo/track/TrackRenameAction.h"
 #include <ranges>
 #include <set>
 #include <utility>

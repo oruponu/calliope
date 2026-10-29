@@ -1,5 +1,7 @@
 #include "session/LayeredNoteEdits.h"
-#include "undo/NoteActions.h"
+#include "undo/event/MultiNoteDeleteAction.h"
+#include "undo/event/MultiNoteModifyAction.h"
+#include "undo/event/NoteModification.h"
 #include <utility>
 
 namespace

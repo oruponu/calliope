@@ -4,7 +4,7 @@
 #include "support/MidiEventTestHelpers.h"
 #include "support/MidiNoteTestHelpers.h"
 #include "support/NoteRefStringMaker.h"
-#include "undo/RecordTakeAction.h"
+#include "undo/event/RecordTakeAction.h"
 #include <catch2/catch_test_macros.hpp>
 #include <map>
 #include <vector>

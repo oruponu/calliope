@@ -159,11 +159,11 @@ target_sources(CalliopeTests PRIVATE
     ui/TimelineGeometryTests.cpp
     ui/VelocityBarGrabTests.cpp
     ui/VelocityBarSelectionTests.cpp
-    undo/RecordTakeActionTests.cpp
-    undo/ReplaceEventsActionTests.cpp
     undo/SavePointTrackerTests.cpp
-    undo/TrackActionTests.cpp
     undo/UndoHistoryTests.cpp
+    undo/event/RecordTakeActionTests.cpp
+    undo/event/ReplaceEventsActionTests.cpp
+    undo/track/TrackActionTests.cpp
 )
 
 target_include_directories(CalliopeTests PRIVATE

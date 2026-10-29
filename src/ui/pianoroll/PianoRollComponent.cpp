@@ -4,7 +4,8 @@
 #include "edit/event/NoteQuantize.h"
 #include "ui/pianoroll/GridLineColours.h"
 #include "ui/theme/TrackColours.h"
-#include "undo/NoteActions.h"
+#include "undo/event/MultiNoteAddAction.h"
+#include "undo/event/NoteAddAction.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>

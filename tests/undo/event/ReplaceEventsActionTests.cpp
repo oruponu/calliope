@@ -1,7 +1,7 @@
 #include "edit/controller/ControllerPointEdits.h"
 #include "model/MidiSequence.h"
 #include "support/ControllerPointTestHelpers.h"
-#include "undo/ReplaceEventsAction.h"
+#include "undo/event/ReplaceEventsAction.h"
 #include <catch2/catch_test_macros.hpp>
 
 using namespace ControllerPointTest;

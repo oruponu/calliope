@@ -11,7 +11,7 @@
 #include "ui/pianoroll/DragValueTipPainter.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/TrackColours.h"
-#include "undo/ReplaceEventsAction.h"
+#include "undo/event/ReplaceEventsAction.h"
 #include <algorithm>
 #include <cstdlib>
 #include <utility>

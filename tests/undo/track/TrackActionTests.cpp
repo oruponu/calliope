@@ -3,7 +3,10 @@
 #include "model/track/MidiTrack.h"
 #include "model/track/TrackId.h"
 #include "support/MidiNoteTestHelpers.h"
-#include "undo/TrackActions.h"
+#include "undo/track/ChannelChangeAction.h"
+#include "undo/track/TrackAddAction.h"
+#include "undo/track/TrackMoveAction.h"
+#include "undo/track/TrackRemoveAction.h"
 #include <catch2/catch_test_macros.hpp>
 #include <utility>
 #include <vector>

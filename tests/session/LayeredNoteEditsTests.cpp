@@ -1,6 +1,6 @@
 #include "session/LayeredNoteEdits.h"
 #include "support/MidiNoteTestHelpers.h"
-#include "undo/NoteActions.h"
+#include "undo/event/MultiNoteModifyAction.h"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 
