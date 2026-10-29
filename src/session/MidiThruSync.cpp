@@ -1,4 +1,4 @@
-#include "audio/MidiThruSync.h"
+#include "session/MidiThruSync.h"
 #include "audio/MidiThru.h"
 #include "engine/ThruTarget.h"
 #include <utility>
