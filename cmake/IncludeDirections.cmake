@@ -1,3 +1,6 @@
+# The layers and folders that the files of each layer or folder may include from outside themselves.
+# Checked by CheckIncludeDirections.cmake; layers and folders without a rule are not checked.
+
 set(LAYER_model "")
 set(FOLDER_model "model/event;model/track;model/timeline;model/harmony")
 set(FOLDER_model/event "")
@@ -41,3 +44,7 @@ set(LAYER_device "model;engine")
 set(LAYER_plugin "model;engine")
 
 set(LAYER_session "model;edit;engine;undo;device")
+
+set(LAYER_ui "model;edit;settings;engine;undo;io;document;audio;device;plugin;session")
+
+set(LAYER_app "model;edit;settings;engine;undo;io;document;audio;device;plugin;session;ui")

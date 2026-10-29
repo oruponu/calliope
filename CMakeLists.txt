@@ -20,8 +20,8 @@ juce_add_binary_data(CalliopeData
 )
 
 target_sources(Calliope PRIVATE
-    src/Main.cpp
     src/MainComponent.cpp
+    src/app/Main.cpp
     src/audio/ClickVoice.cpp
     src/audio/Metronome.cpp
     src/audio/MetronomeProcessor.cpp
