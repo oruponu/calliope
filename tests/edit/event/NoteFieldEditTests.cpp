@@ -1,4 +1,4 @@
-#include "engine/NoteFieldEdit.h"
+#include "edit/event/NoteFieldEdit.h"
 #include "support/MidiNoteTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 

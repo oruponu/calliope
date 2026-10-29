@@ -75,6 +75,7 @@ target_sources(CalliopeTests PRIVATE
     edit/event/NoteAdjacentLineTests.cpp
     edit/event/NoteClampShiftTests.cpp
     edit/event/NoteEndResizeTests.cpp
+    edit/event/NoteFieldEditTests.cpp
     edit/event/NoteQuantizeTests.cpp
     edit/event/NoteShiftTests.cpp
     edit/event/NoteStartResizeTests.cpp
@@ -102,7 +103,6 @@ target_sources(CalliopeTests PRIVATE
     engine/CountInTests.cpp
     engine/InputQuantizeTests.cpp
     engine/MetronomeClicksTests.cpp
-    engine/NoteFieldEditTests.cpp
     engine/PlaybackClockTests.cpp
     engine/PlaybackProcessorTests.cpp
     engine/PlaybackSnapshotTests.cpp

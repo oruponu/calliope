@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/NoteFieldEdit.h"
+#include "edit/event/NoteFieldEdit.h"
 
 struct RecordedNoteEdit
 {
