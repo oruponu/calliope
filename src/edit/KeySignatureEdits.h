@@ -14,8 +14,6 @@ struct RelativeKeySignature
 
 namespace KeySignatureEdits
 {
-void add(std::vector<KeySignatureChange>& changes, int tick, int sharpsOrFlats, bool isMinor);
-
 std::vector<KeySignatureChange> afterMove(const std::vector<KeySignatureChange>& before,
                                           const std::vector<int>& movedIndices, int anchorIndex, int targetTick,
                                           const TimelineMap& timeline);

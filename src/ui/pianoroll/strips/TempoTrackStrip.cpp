@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/TempoTrackStrip.h"
 #include "edit/TempoEdits.h"
+#include "model/timeline/TempoChangeList.h"
 #include "ui/pianoroll/DragValueTip.h"
 #include "ui/pianoroll/DragValueTipPainter.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"
@@ -275,7 +276,7 @@ void TempoTrackStrip::mouseDown(const juce::MouseEvent& e)
         if (!std::ranges::contains(changes, tempoTick, &TempoChange::tick))
         {
             auto added = changes;
-            const int addedIndex = TempoEdits::add(added, tempoTick, tempoBpm);
+            const int addedIndex = TempoChangeList::put(added, tempoTick, tempoBpm);
             if (onSelectionTaken)
                 onSelectionTaken();
             selection.selectOnly(addedIndex);

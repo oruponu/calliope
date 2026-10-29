@@ -19,24 +19,6 @@ std::vector<ChordChange> normalizeNoChordRuns(const std::vector<ChordChange>& ch
 }
 } // namespace
 
-void ChordTrackEdits::add(std::vector<ChordChange>& changes, int tick, int chordRoot, int chordType, int bassRoot,
-                          int bassType)
-{
-    for (auto& cc : changes)
-    {
-        if (cc.tick == tick)
-        {
-            cc.chordRoot = chordRoot;
-            cc.chordType = chordType;
-            cc.bassRoot = bassRoot;
-            cc.bassType = bassType;
-            return;
-        }
-    }
-    changes.push_back({tick, chordRoot, chordType, bassRoot, bassType});
-    std::ranges::sort(changes, {}, &ChordChange::tick);
-}
-
 std::pair<int, int> ChordTrackEdits::addSpanAt(const std::vector<ChordChange>& chords, int tick,
                                                const TimelineMap& timeline)
 {

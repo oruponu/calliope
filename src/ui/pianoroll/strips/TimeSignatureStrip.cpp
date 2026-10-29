@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/TimeSignatureStrip.h"
 #include "edit/TimeSignatureEdits.h"
+#include "model/timeline/TimeSignatureChangeList.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
@@ -481,7 +482,7 @@ void TimeSignatureStrip::commitTimeSignatureEdit(int num, int den)
 
     auto before = sequence->getTimeline().getTimeSignatureChanges();
     auto after = before;
-    TimeSignatureEdits::add(after, draft.tick, num, den, sequence->getTimeline().getTicksPerQuarterNote());
+    TimeSignatureChangeList::put(after, draft.tick, num, den, sequence->getTimeline().getTicksPerQuarterNote());
     performReplaceList(undoHistory, sequence, draft.isNew ? "Add Time Signature Change" : "Edit Time Signature Change",
                        std::move(before), std::move(after));
 

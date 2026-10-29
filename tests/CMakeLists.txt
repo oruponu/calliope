@@ -42,12 +42,16 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerPointConversion.cpp
     ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerRamps.cpp
     ${PROJECT_SOURCE_DIR}/src/model/grid/TimelineGrid.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/harmony/ChordChangeList.cpp
     ${PROJECT_SOURCE_DIR}/src/model/harmony/ChordValue.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/harmony/KeySignatureChangeList.cpp
     ${PROJECT_SOURCE_DIR}/src/model/harmony/KeySignatureValue.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/ChordSymbol.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/GmPrograms.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/KeySignatureName.cpp
     ${PROJECT_SOURCE_DIR}/src/model/notation/SysExHex.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/timeline/TempoChangeList.cpp
+    ${PROJECT_SOURCE_DIR}/src/model/timeline/TimeSignatureChangeList.cpp
     ${PROJECT_SOURCE_DIR}/src/model/timeline/TimelineMap.cpp
     ${PROJECT_SOURCE_DIR}/src/model/track/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
@@ -59,7 +63,6 @@ target_sources(CalliopeTests PRIVATE
 target_sources(CalliopeTests PRIVATE
     audio/ClickVoiceTests.cpp
     audio/MetronomeVolumeTests.cpp
-    edit/ChordAddChangeTests.cpp
     edit/ChordAddSpanTests.cpp
     edit/ChordAddTests.cpp
     edit/ChordDeleteTests.cpp
@@ -74,7 +77,6 @@ target_sources(CalliopeTests PRIVATE
     edit/ControllerPointSelectAllTests.cpp
     edit/ControllerPointValueTests.cpp
     edit/EditableNotesTests.cpp
-    edit/KeySignatureAddChangeTests.cpp
     edit/KeySignatureDeleteTests.cpp
     edit/KeySignatureMoveTests.cpp
     edit/KeySignaturePasteTests.cpp
@@ -88,11 +90,9 @@ target_sources(CalliopeTests PRIVATE
     edit/ProgramChangeEditsTests.cpp
     edit/ProgramChangeGroupTests.cpp
     edit/ProgramChangePointTests.cpp
-    edit/TempoAddChangeTests.cpp
     edit/TempoDeleteTests.cpp
     edit/TempoMoveTests.cpp
     edit/TempoPasteTests.cpp
-    edit/TimeSignatureAddChangeTests.cpp
     edit/TimeSignatureDeleteTests.cpp
     edit/TimeSignatureMoveTests.cpp
     edit/TimeSignaturePasteTests.cpp
@@ -131,15 +131,19 @@ target_sources(CalliopeTests PRIVATE
     model/controller/ControllerRampsTests.cpp
     model/grid/GridDivisionTests.cpp
     model/grid/TimelineGridTests.cpp
+    model/harmony/ChordChangeListTests.cpp
     model/harmony/ChordChangeTests.cpp
     model/harmony/ChordValueTests.cpp
+    model/harmony/KeySignatureChangeListTests.cpp
     model/harmony/KeySignatureValueTests.cpp
     model/notation/ChordSymbolTests.cpp
     model/notation/GmProgramsTests.cpp
     model/notation/KeySignatureNameTests.cpp
     model/notation/SysExHexTests.cpp
     model/timeline/BarBeatTickTests.cpp
+    model/timeline/TempoChangeListTests.cpp
     model/timeline/TickSecondsTests.cpp
+    model/timeline/TimeSignatureChangeListTests.cpp
     plugin/PluginSyncPlanTests.cpp
     plugin/RetiredStateStoreTests.cpp
     ui/ControllerLaneScaleTests.cpp

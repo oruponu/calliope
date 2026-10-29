@@ -8,4 +8,6 @@ set(FOLDER_model/harmony "")
 set(FOLDER_model/grid "model/timeline")
 set(FOLDER_model/notation "model/harmony")
 
+set(LAYER_io "model")
+
 set(LAYER_plugin "model;engine")

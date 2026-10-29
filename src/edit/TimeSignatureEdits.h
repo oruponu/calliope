@@ -13,8 +13,6 @@ struct RelativeTimeSignature
 
 namespace TimeSignatureEdits
 {
-void add(std::vector<TimeSignatureChange>& changes, int tick, int num, int den, int ppq);
-
 std::vector<TimeSignatureChange> afterMove(const std::vector<TimeSignatureChange>& before,
                                            const std::vector<int>& movedIndices, int anchorIndex, int targetTick,
                                            int ppq);

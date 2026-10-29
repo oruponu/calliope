@@ -1,68 +1,8 @@
 #include "edit/TimeSignatureEdits.h"
-#include "model/timeline/TimelineMap.h"
+#include "model/timeline/TimeSignatureChangeList.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <ranges>
-
-namespace
-{
-int ticksPerBarOf(const TimeSignatureChange& ts, int ppq)
-{
-    return ppq * 4 / ts.denominator * ts.numerator;
-}
-
-// assumes the first change is at bar 1
-std::vector<int> barNumbersOf(const std::vector<TimeSignatureChange>& changes, int ppq)
-{
-    std::vector<int> bars(changes.size());
-    if (bars.empty())
-        return bars;
-    bars[0] = 1;
-    for (size_t i = 1; i < changes.size(); ++i)
-        bars[i] = bars[i - 1] + (changes[i].tick - changes[i - 1].tick) / ticksPerBarOf(changes[i - 1], ppq);
-    return bars;
-}
-
-void retickFrom(std::vector<TimeSignatureChange>& changes, const std::vector<int>& bars, size_t first, int ppq)
-{
-    for (size_t i = first; i < changes.size(); ++i)
-        changes[i].tick = changes[i - 1].tick + (bars[i] - bars[i - 1]) * ticksPerBarOf(changes[i - 1], ppq);
-}
-} // namespace
-
-void TimeSignatureEdits::add(std::vector<TimeSignatureChange>& changes, int tick, int num, int den, int ppq)
-{
-    TimelineMap timeline;
-    timeline.setTicksPerQuarterNote(ppq);
-    timeline.setTimeSignatureChanges(changes);
-
-    auto bars = changes |
-                std::views::transform([&timeline](const TimeSignatureChange& ts)
-                                      { return timeline.tickToBarBeatTick(ts.tick).bar; }) |
-                std::ranges::to<std::vector>();
-
-    const int targetBar = timeline.tickToBarBeatTick(tick).bar;
-    const auto sameBar = std::ranges::find_last(bars, targetBar);
-    if (!sameBar.empty())
-    {
-        auto& ts = changes[static_cast<size_t>(sameBar.begin() - bars.begin())];
-        ts.numerator = num;
-        ts.denominator = den;
-    }
-    else
-    {
-        size_t insertPos = 0;
-        while (insertPos < changes.size() && changes[insertPos].tick < tick)
-            ++insertPos;
-        changes.insert(changes.begin() + insertPos, {tick, num, den});
-        bars.insert(bars.begin() + insertPos, targetBar);
-    }
-
-    if (!changes.empty())
-        changes[0].tick = 0;
-    retickFrom(changes, bars, 1, ppq);
-}
 
 std::vector<TimeSignatureChange> TimeSignatureEdits::afterMove(const std::vector<TimeSignatureChange>& before,
                                                                const std::vector<int>& movedIndices, int anchorIndex,
@@ -83,12 +23,12 @@ std::vector<TimeSignatureChange> TimeSignatureEdits::afterMove(const std::vector
     if (!isMoving[static_cast<size_t>(anchorIndex)])
         return before;
 
-    const auto bars = barNumbersOf(before, ppq);
+    const auto bars = TimeSignatureChangeList::barNumbers(before, ppq);
 
     auto rebuildFromFirstMoving = [&](const std::vector<int>& barNumbers)
     {
         auto result = before;
-        retickFrom(result, barNumbers, static_cast<size_t>(firstMoving), ppq);
+        TimeSignatureChangeList::retick(result, barNumbers, static_cast<size_t>(firstMoving), ppq);
         return result;
     };
     auto shiftedBars = [&](int delta)
@@ -133,7 +73,7 @@ std::vector<TimeSignatureChange> TimeSignatureEdits::afterDelete(const std::vect
     if (before.empty())
         return before;
 
-    const auto bars = barNumbersOf(before, ppq);
+    const auto bars = TimeSignatureChangeList::barNumbers(before, ppq);
 
     std::vector<TimeSignatureChange> result;
     std::vector<int> resultBars;
@@ -152,7 +92,7 @@ std::vector<TimeSignatureChange> TimeSignatureEdits::afterDelete(const std::vect
     if (result.size() == before.size())
         return before;
 
-    retickFrom(result, resultBars, 1, ppq);
+    TimeSignatureChangeList::retick(result, resultBars, 1, ppq);
     return result;
 }
 
@@ -163,7 +103,7 @@ std::vector<TimeSignatureChange> TimeSignatureEdits::afterPaste(const std::vecto
     if (before.empty() || items.empty())
         return before;
 
-    const auto bars = barNumbersOf(before, ppq);
+    const auto bars = TimeSignatureChangeList::barNumbers(before, ppq);
 
     auto result = before;
     auto resultBars = bars;
@@ -186,6 +126,6 @@ std::vector<TimeSignatureChange> TimeSignatureEdits::afterPaste(const std::vecto
         }
     }
 
-    retickFrom(result, resultBars, 1, ppq);
+    TimeSignatureChangeList::retick(result, resultBars, 1, ppq);
     return result;
 }

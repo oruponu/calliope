@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/ChordStrip.h"
 #include "edit/ChordTrackEdits.h"
+#include "model/harmony/ChordChangeList.h"
 #include "model/harmony/ChordValue.h"
 #include "model/notation/ChordSymbol.h"
 #include "ui/pianoroll/strips/ChordSymbolPainter.h"
@@ -864,7 +865,7 @@ void ChordStrip::commitChordEdit(int chordRoot, int chordType, int bassRoot)
 
         auto before = sequence->getChordChanges();
         auto after = before;
-        ChordTrackEdits::add(after, draft.tick, chordRoot, chordType, bassRoot, bassType);
+        ChordChangeList::put(after, draft.tick, chordRoot, chordType, bassRoot, bassType);
         performReplaceList(undoHistory, sequence, "Edit Chord", std::move(before), std::move(after));
     }
 

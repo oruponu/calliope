@@ -1,11 +1,11 @@
 #include "ui/transport/TransportBarComponent.h"
 #include "document/Document.h"
-#include "edit/KeySignatureEdits.h"
-#include "edit/TempoEdits.h"
-#include "edit/TimeSignatureEdits.h"
 #include "engine/PlaybackEngine.h"
+#include "model/harmony/KeySignatureChangeList.h"
 #include "model/harmony/KeySignatureValue.h"
 #include "model/notation/KeySignatureName.h"
+#include "model/timeline/TempoChangeList.h"
+#include "model/timeline/TimeSignatureChangeList.h"
 #include "ui/theme/Theme.h"
 #include "undo/ReplaceListAction.h"
 #include <utility>
@@ -545,7 +545,7 @@ void TransportBarComponent::setTempoAtPlayhead(double bpm)
 
     auto before = document.getSequence().getTimeline().getTempoChanges();
     auto after = before;
-    TempoEdits::add(after, tc.tick, clamped);
+    TempoChangeList::put(after, tc.tick, clamped);
     performReplaceList(document.getHistory(), &document.getSequence(), "Edit Tempo Change", std::move(before),
                        std::move(after));
 }
@@ -598,7 +598,8 @@ void TransportBarComponent::setTimeSignatureAtPlayhead(int num, int den)
 
     auto before = document.getSequence().getTimeline().getTimeSignatureChanges();
     auto after = before;
-    TimeSignatureEdits::add(after, ts.tick, num, den, document.getSequence().getTimeline().getTicksPerQuarterNote());
+    TimeSignatureChangeList::put(after, ts.tick, num, den,
+                                 document.getSequence().getTimeline().getTicksPerQuarterNote());
     performReplaceList(document.getHistory(), &document.getSequence(), "Edit Time Signature Change", std::move(before),
                        std::move(after));
 }
@@ -647,7 +648,7 @@ void TransportBarComponent::setKeySignatureAtPlayhead(int sharpsOrFlats, bool is
 
     auto before = document.getSequence().getKeySignatureChanges();
     auto after = before;
-    KeySignatureEdits::add(after, ks.tick, sharpsOrFlats, isMinor);
+    KeySignatureChangeList::put(after, ks.tick, sharpsOrFlats, isMinor);
     performReplaceList(document.getHistory(), &document.getSequence(),
                        hasActiveKey ? "Edit Key Signature Change" : "Add Key Signature Change", std::move(before),
                        std::move(after));

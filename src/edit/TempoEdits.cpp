@@ -1,23 +1,8 @@
 #include "edit/TempoEdits.h"
+#include "model/timeline/TempoChangeList.h"
 #include "model/timeline/TimelineMap.h"
 #include <algorithm>
 #include <limits>
-
-int TempoEdits::add(std::vector<TempoChange>& changes, int tick, double bpm)
-{
-    for (size_t i = 0; i < changes.size(); ++i)
-    {
-        if (changes[i].tick == tick)
-        {
-            changes[i].bpm = bpm;
-            return static_cast<int>(i);
-        }
-    }
-    changes.push_back({tick, bpm});
-    std::ranges::sort(changes, {}, &TempoChange::tick);
-    auto it = std::ranges::find(changes, tick, &TempoChange::tick);
-    return static_cast<int>(it - changes.begin());
-}
 
 std::vector<TempoChange> TempoEdits::afterMove(const std::vector<TempoChange>& before,
                                                const std::vector<int>& movedIndices, int anchorIndex, int targetTick,
@@ -90,6 +75,6 @@ std::vector<TempoChange> TempoEdits::afterPaste(const std::vector<TempoChange>& 
 {
     auto after = before;
     for (const auto& item : items)
-        add(after, anchorTick + item.tick, item.bpm);
+        TempoChangeList::put(after, anchorTick + item.tick, item.bpm);
     return after;
 }

@@ -1,15 +1,15 @@
 #include "io/MidiFileIO.h"
-#include "edit/ChordTrackEdits.h"
-#include "edit/KeySignatureEdits.h"
-#include "edit/TempoEdits.h"
-#include "edit/TimeSignatureEdits.h"
 #include "io/MetaText.h"
 #include "model/MetaEventRetention.h"
 #include "model/SequenceContentsRules.h"
 #include "model/controller/ControllerPointConversion.h"
 #include "model/controller/ControllerRamps.h"
+#include "model/harmony/ChordChangeList.h"
 #include "model/harmony/KeySignatureChange.h"
+#include "model/harmony/KeySignatureChangeList.h"
+#include "model/timeline/TempoChangeList.h"
 #include "model/timeline/TimeSignatureChange.h"
+#include "model/timeline/TimeSignatureChangeList.h"
 #include <algorithm>
 #include <cstdint>
 #include <map>
@@ -325,17 +325,17 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                     continue;
                 double bpm = 60000000.0 / secondsPerQuarter / 1000000.0;
                 int tick = static_cast<int>(msg.getTimeStamp());
-                TempoEdits::add(tempoChanges, tick, bpm);
+                TempoChangeList::put(tempoChanges, tick, bpm);
             }
             else if (msg.isTimeSignatureMetaEvent())
             {
                 if (const auto ts = readTimeSignature(msg, ppq))
-                    TimeSignatureEdits::add(timeSignatureChanges, ts->tick, ts->numerator, ts->denominator, ppq);
+                    TimeSignatureChangeList::put(timeSignatureChanges, ts->tick, ts->numerator, ts->denominator, ppq);
             }
             else if (msg.isKeySignatureMetaEvent())
             {
                 if (const auto ks = readKeySignature(msg))
-                    KeySignatureEdits::add(keySignatureChanges, ks->tick, ks->sharpsOrFlats, ks->isMinor);
+                    KeySignatureChangeList::put(keySignatureChanges, ks->tick, ks->sharpsOrFlats, ks->isMinor);
             }
             else if (msg.getMetaEventType() == 0x7F)
             {
@@ -346,7 +346,7 @@ std::optional<SequenceContents> MidiFileIO::load(const juce::File& file)
                     metaData[2] == 0x01)
                 {
                     int tick = static_cast<int>(msg.getTimeStamp());
-                    ChordTrackEdits::add(chordChanges, tick, metaData[3], metaData[4], metaData[5], metaData[6]);
+                    ChordChangeList::put(chordChanges, tick, metaData[3], metaData[4], metaData[5], metaData[6]);
                 }
             }
         }

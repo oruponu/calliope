@@ -74,12 +74,16 @@ target_sources(Calliope PRIVATE
     src/model/controller/ControllerPointConversion.cpp
     src/model/controller/ControllerRamps.cpp
     src/model/grid/TimelineGrid.cpp
+    src/model/harmony/ChordChangeList.cpp
     src/model/harmony/ChordValue.cpp
+    src/model/harmony/KeySignatureChangeList.cpp
     src/model/harmony/KeySignatureValue.cpp
     src/model/notation/ChordSymbol.cpp
     src/model/notation/GmPrograms.cpp
     src/model/notation/KeySignatureName.cpp
     src/model/notation/SysExHex.cpp
+    src/model/timeline/TempoChangeList.cpp
+    src/model/timeline/TimeSignatureChangeList.cpp
     src/model/timeline/TimelineMap.cpp
     src/model/track/MidiTrack.cpp
     src/plugin/PluginAssignmentCodec.cpp

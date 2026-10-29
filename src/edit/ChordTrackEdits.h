@@ -18,8 +18,6 @@ struct RelativeChord
 
 namespace ChordTrackEdits
 {
-void add(std::vector<ChordChange>& changes, int tick, int chordRoot, int chordType, int bassRoot, int bassType);
-
 std::pair<int, int> addSpanAt(const std::vector<ChordChange>& chords, int tick, const TimelineMap& timeline);
 
 std::vector<ChordChange> afterAdd(const std::vector<ChordChange>& before, int startTick, int endTick, int chordRoot,

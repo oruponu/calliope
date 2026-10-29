@@ -1,5 +1,6 @@
 #include "ui/pianoroll/strips/KeySignatureStrip.h"
 #include "edit/KeySignatureEdits.h"
+#include "model/harmony/KeySignatureChangeList.h"
 #include "model/notation/KeySignatureName.h"
 #include "ui/pianoroll/strips/RangeBandPainter.h"
 #include "ui/theme/Theme.h"
@@ -470,7 +471,7 @@ void KeySignatureStrip::commitKeySignatureEdit(int sharpsOrFlats, bool isMinor)
 
     auto before = sequence->getKeySignatureChanges();
     auto after = before;
-    KeySignatureEdits::add(after, draft.tick, sharpsOrFlats, isMinor);
+    KeySignatureChangeList::put(after, draft.tick, sharpsOrFlats, isMinor);
     performReplaceList(undoHistory, sequence, draft.isNew ? "Add Key Signature Change" : "Edit Key Signature Change",
                        std::move(before), std::move(after));
 
