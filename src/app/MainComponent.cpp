@@ -1,4 +1,4 @@
-#include "MainComponent.h"
+#include "app/MainComponent.h"
 #include "audio/MetronomeVolume.h"
 #include "edit/track/NewTrack.h"
 #include "edit/track/TrackDuplication.h"
