@@ -1,7 +1,7 @@
 #pragma once
 
 #include "edit/event/NoteRef.h"
-#include "engine/RecordingLayer.h"
+#include "engine/recording/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include "model/controller/ControllerKind.h"
 #include "ui/EventListItems.h"

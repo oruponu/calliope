@@ -1,10 +1,10 @@
 #pragma once
 
 #include "edit/event/NoteRef.h"
-#include "engine/RecordingInbox.h"
-#include "engine/RecordingLayer.h"
-#include "engine/RecordingLayerEditor.h"
-#include "engine/TakeBuilder.h"
+#include "engine/recording/RecordingInbox.h"
+#include "engine/recording/RecordingLayer.h"
+#include "engine/recording/RecordingLayerEditor.h"
+#include "engine/recording/TakeBuilder.h"
 #include "model/MidiSequence.h"
 #include "model/grid/GridDivision.h"
 #include <functional>

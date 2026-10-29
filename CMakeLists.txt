@@ -40,20 +40,20 @@ target_sources(Calliope PRIVATE
     src/edit/timeline/TimeSignatureEdits.cpp
     src/edit/track/ExclusiveSolo.cpp
     src/edit/track/TrackDuplication.cpp
-    src/engine/Chase.cpp
-    src/engine/ChaseScan.cpp
-    src/engine/ChaseTracker.cpp
-    src/engine/CountIn.cpp
-    src/engine/InputQuantize.cpp
-    src/engine/MetronomeClicks.cpp
-    src/engine/PlaybackClock.cpp
     src/engine/PlaybackEngine.cpp
-    src/engine/PlaybackProcessor.cpp
-    src/engine/PlaybackSnapshot.cpp
-    src/engine/RecordingInbox.cpp
-    src/engine/TakeBuilder.cpp
-    src/engine/ThruRouter.cpp
-    src/engine/ThruTarget.cpp
+    src/engine/chase/Chase.cpp
+    src/engine/chase/ChaseScan.cpp
+    src/engine/chase/ChaseTracker.cpp
+    src/engine/metronome/CountIn.cpp
+    src/engine/metronome/MetronomeClicks.cpp
+    src/engine/playback/PlaybackProcessor.cpp
+    src/engine/playback/PlaybackSnapshot.cpp
+    src/engine/recording/InputQuantize.cpp
+    src/engine/recording/RecordingInbox.cpp
+    src/engine/recording/TakeBuilder.cpp
+    src/engine/thru/ThruRouter.cpp
+    src/engine/thru/ThruTarget.cpp
+    src/engine/transport/PlaybackClock.cpp
     src/io/MetaText.cpp
     src/io/MidiFileIO.cpp
     src/io/ProjectFileIO.cpp

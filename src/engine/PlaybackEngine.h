@@ -1,14 +1,14 @@
 #pragma once
 
-#include "engine/ChaseTracker.h"
-#include "engine/CountIn.h"
-#include "engine/MetronomeListener.h"
-#include "engine/PlaybackClock.h"
-#include "engine/PlaybackListener.h"
-#include "engine/PlaybackProcessor.h"
-#include "engine/PlaybackSnapshot.h"
-#include "engine/RecordingInbox.h"
-#include "engine/RecordingLayer.h"
+#include "engine/chase/ChaseTracker.h"
+#include "engine/metronome/CountIn.h"
+#include "engine/metronome/MetronomeListener.h"
+#include "engine/playback/PlaybackListener.h"
+#include "engine/playback/PlaybackProcessor.h"
+#include "engine/playback/PlaybackSnapshot.h"
+#include "engine/recording/RecordingInbox.h"
+#include "engine/recording/RecordingLayer.h"
+#include "engine/transport/PlaybackClock.h"
 #include "model/MidiSequence.h"
 #include <atomic>
 #include <cstdint>

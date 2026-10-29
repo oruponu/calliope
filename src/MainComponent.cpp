@@ -3,7 +3,7 @@
 #include "audio/MetronomeVolume.h"
 #include "edit/track/NewTrack.h"
 #include "edit/track/TrackDuplication.h"
-#include "engine/CountInBars.h"
+#include "engine/metronome/CountInBars.h"
 #include "model/TrackOrder.h"
 #include "model/grid/GridDivision.h"
 #include "plugin/PluginAssignmentCodec.h"

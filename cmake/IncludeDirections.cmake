@@ -15,6 +15,14 @@ set(FOLDER_edit/track "")
 set(FOLDER_edit/timeline "")
 set(FOLDER_edit/harmony "")
 
+set(LAYER_engine "model;edit")
+set(FOLDER_engine/transport "")
+set(FOLDER_engine/metronome "")
+set(FOLDER_engine/recording "engine/transport")
+set(FOLDER_engine/playback "engine/recording")
+set(FOLDER_engine/chase "engine/playback")
+set(FOLDER_engine/thru "engine/playback")
+
 set(LAYER_io "model")
 
 set(LAYER_audio "model;engine")

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "engine/LiveMidiSink.h"
-#include "engine/PlaybackListener.h"
+#include "engine/playback/PlaybackListener.h"
+#include "engine/thru/LiveMidiSink.h"
 #include "model/MidiSequence.h"
 #include "model/track/PluginAssignment.h"
 #include "model/track/TrackId.h"

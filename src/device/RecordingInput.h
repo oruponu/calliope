@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/RecordingInbox.h"
+#include "engine/recording/RecordingInbox.h"
 #include <juce_audio_devices/juce_audio_devices.h>
 
 class RecordingInput : public juce::MidiInputCallback

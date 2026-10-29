@@ -2,7 +2,7 @@
 
 #include "edit/event/NoteEdit.h"
 #include "edit/event/NoteRef.h"
-#include "engine/RecordingLayerEditor.h"
+#include "engine/recording/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"
 #include "undo/UndoHistory.h"
 #include <set>

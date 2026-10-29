@@ -2,8 +2,8 @@
 
 #include "edit/controller/ControllerPointEditResult.h"
 #include "edit/event/NoteRef.h"
-#include "engine/RecordingLayer.h"
-#include "engine/RecordingLayerEditor.h"
+#include "engine/recording/RecordingLayer.h"
+#include "engine/recording/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"
 #include "model/controller/ControllerKind.h"
 #include "model/controller/ProgramVoice.h"

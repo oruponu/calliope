@@ -1,7 +1,7 @@
 #pragma once
 
 #include "edit/event/NoteRef.h"
-#include "engine/Take.h"
+#include "engine/recording/Take.h"
 #include "model/MidiSequence.h"
 #include "model/controller/ControllerPointConversion.h"
 #include <algorithm>

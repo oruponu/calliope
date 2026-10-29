@@ -1,6 +1,6 @@
 #include "engine/PlaybackEngine.h"
-#include "engine/Chase.h"
-#include "engine/MetronomeClicks.h"
+#include "engine/chase/Chase.h"
+#include "engine/metronome/MetronomeClicks.h"
 #include <algorithm>
 #include <utility>
 

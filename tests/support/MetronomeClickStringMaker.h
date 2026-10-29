@@ -1,7 +1,7 @@
 #pragma once
 // IWYU pragma: always_keep
 
-#include "engine/MetronomeClicks.h"
+#include "engine/metronome/MetronomeClicks.h"
 #include <catch2/catch_tostring.hpp>
 #include <string>
 

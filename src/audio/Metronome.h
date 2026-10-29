@@ -1,7 +1,7 @@
 #pragma once
 
 #include "audio/MetronomeVolume.h"
-#include "engine/MetronomeListener.h"
+#include "engine/metronome/MetronomeListener.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
 class MetronomeProcessor;

@@ -1,6 +1,6 @@
 #include "session/MidiThruSync.h"
 #include "device/MidiThru.h"
-#include "engine/ThruTarget.h"
+#include "engine/thru/ThruTarget.h"
 #include <utility>
 
 MidiThruSync::MidiThruSync(MidiSequence& sequenceRef, MidiThru& thruRef, std::function<int()> activeTrackIndexSource)

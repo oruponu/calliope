@@ -1,8 +1,8 @@
 #pragma once
 
 #include "edit/event/NoteRef.h"
-#include "engine/RecordingLayer.h"
-#include "engine/RecordingLayerEditor.h"
+#include "engine/recording/RecordingLayer.h"
+#include "engine/recording/RecordingLayerEditor.h"
 #include "model/MidiSequence.h"
 #include "model/grid/GridDivision.h"
 #include "model/grid/TimelineGrid.h"

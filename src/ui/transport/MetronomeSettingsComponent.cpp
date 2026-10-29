@@ -1,6 +1,6 @@
 #include "ui/transport/MetronomeSettingsComponent.h"
 #include "audio/MetronomeVolume.h"
-#include "engine/CountInBars.h"
+#include "engine/metronome/CountInBars.h"
 #include "ui/theme/Theme.h"
 
 MetronomeSettingsComponent::MetronomeSettingsComponent()

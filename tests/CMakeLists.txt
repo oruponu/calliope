@@ -12,19 +12,19 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/edit/timeline/TimeSignatureEdits.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/track/ExclusiveSolo.cpp
     ${PROJECT_SOURCE_DIR}/src/edit/track/TrackDuplication.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/Chase.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/ChaseScan.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/ChaseTracker.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/CountIn.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/InputQuantize.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/MetronomeClicks.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/PlaybackClock.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/PlaybackProcessor.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/PlaybackSnapshot.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/RecordingInbox.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/TakeBuilder.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/ThruRouter.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/ThruTarget.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/chase/Chase.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/chase/ChaseScan.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/chase/ChaseTracker.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/metronome/CountIn.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/metronome/MetronomeClicks.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/playback/PlaybackProcessor.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/playback/PlaybackSnapshot.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/recording/InputQuantize.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/recording/RecordingInbox.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/recording/TakeBuilder.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/thru/ThruRouter.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/thru/ThruTarget.cpp
+    ${PROJECT_SOURCE_DIR}/src/engine/transport/PlaybackClock.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MetaText.cpp
     ${PROJECT_SOURCE_DIR}/src/io/MidiFileIO.cpp
     ${PROJECT_SOURCE_DIR}/src/io/ProjectFileIO.cpp
@@ -98,18 +98,18 @@ target_sources(CalliopeTests PRIVATE
     edit/track/ExclusiveSoloTests.cpp
     edit/track/NewTrackTests.cpp
     edit/track/TrackDuplicationTests.cpp
-    engine/ChaseTests.cpp
-    engine/CountInBarsTests.cpp
-    engine/CountInTests.cpp
-    engine/InputQuantizeTests.cpp
-    engine/MetronomeClicksTests.cpp
-    engine/PlaybackClockTests.cpp
-    engine/PlaybackProcessorTests.cpp
-    engine/PlaybackSnapshotTests.cpp
-    engine/RecordingInboxTests.cpp
-    engine/TakeBuilderTests.cpp
-    engine/ThruRouterTests.cpp
-    engine/ThruTargetTests.cpp
+    engine/chase/ChaseTests.cpp
+    engine/metronome/CountInBarsTests.cpp
+    engine/metronome/CountInTests.cpp
+    engine/metronome/MetronomeClicksTests.cpp
+    engine/playback/PlaybackProcessorTests.cpp
+    engine/playback/PlaybackSnapshotTests.cpp
+    engine/recording/InputQuantizeTests.cpp
+    engine/recording/RecordingInboxTests.cpp
+    engine/recording/TakeBuilderTests.cpp
+    engine/thru/ThruRouterTests.cpp
+    engine/thru/ThruTargetTests.cpp
+    engine/transport/PlaybackClockTests.cpp
     io/MidiFileLoadTests.cpp
     io/MidiFileRoundTripTests.cpp
     io/ProjectFileIOTests.cpp

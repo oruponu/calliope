@@ -1,7 +1,7 @@
 #pragma once
 
-#include "engine/LiveMidiSink.h"
-#include "engine/PlaybackListener.h"
+#include "engine/playback/PlaybackListener.h"
+#include "engine/thru/LiveMidiSink.h"
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
 #include <mutex>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/CountInBars.h"
+#include "engine/metronome/CountInBars.h"
 #include "model/MidiSequence.h"
 #include "ui/transport/MetronomeButton.h"
 #include "ui/transport/RecordButton.h"
