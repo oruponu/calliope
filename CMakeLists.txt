@@ -53,7 +53,6 @@ target_sources(Calliope PRIVATE
     src/engine/PlaybackEngine.cpp
     src/engine/PlaybackProcessor.cpp
     src/engine/PlaybackSnapshot.cpp
-    src/engine/PlaybackSync.cpp
     src/engine/RecordingInbox.cpp
     src/engine/TakeBuilder.cpp
     src/engine/ThruRouter.cpp
@@ -89,6 +88,7 @@ target_sources(Calliope PRIVATE
     src/plugin/PluginStateChangeWatcher.cpp
     src/plugin/PluginSyncPlan.cpp
     src/plugin/VstPluginHost.cpp
+    src/session/PlaybackSync.cpp
     src/session/Recorder.cpp
     src/ui/EventListComponent.cpp
     src/ui/EventListItems.cpp

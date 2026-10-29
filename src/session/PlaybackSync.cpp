@@ -1,4 +1,4 @@
-#include "engine/PlaybackSync.h"
+#include "session/PlaybackSync.h"
 
 PlaybackSync::PlaybackSync(PlaybackEngine& engineRef, MidiSequence& sequenceRef)
     : engine(engineRef), sequence(sequenceRef)
