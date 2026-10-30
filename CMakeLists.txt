@@ -181,7 +181,28 @@ add_custom_target(CalliopeIncludeDirections
 )
 add_dependencies(CalliopeModel CalliopeIncludeDirections)
 add_dependencies(CalliopeEdit CalliopeIncludeDirections)
-add_dependencies(Calliope CalliopeIncludeDirections)
+
+# Compiles each model and edit header on its own without JUCE, so that a header no library source includes cannot
+# reach JUCE either.
+file(GLOB_RECURSE calliopeLibraryHeaders CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/model/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/edit/*.h
+)
+set(headerCheckSources "")
+foreach(header IN LISTS calliopeLibraryHeaders)
+    file(RELATIVE_PATH relativeHeader ${CMAKE_CURRENT_SOURCE_DIR}/src ${header})
+    set(headerCheckSource ${CMAKE_CURRENT_BINARY_DIR}/HeaderCheck/${relativeHeader}.cpp)
+    file(CONFIGURE OUTPUT ${headerCheckSource} CONTENT "#include \"${relativeHeader}\"\n")
+    list(APPEND headerCheckSources ${headerCheckSource})
+endforeach()
+add_library(CalliopeHeaderCheck OBJECT ${headerCheckSources})
+target_link_libraries(CalliopeHeaderCheck PRIVATE
+    CalliopeEdit
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_warning_flags
+)
+
+add_dependencies(Calliope CalliopeIncludeDirections CalliopeHeaderCheck)
 
 option(CALLIOPE_BUILD_TESTS "Build unit tests" ON)
 if(CALLIOPE_BUILD_TESTS)

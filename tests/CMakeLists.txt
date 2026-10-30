@@ -161,7 +161,7 @@ endif()
 include(Catch)
 catch_discover_tests(CalliopeTests)
 
-add_dependencies(CalliopeTests CalliopeIncludeDirections)
+add_dependencies(CalliopeTests CalliopeIncludeDirections CalliopeHeaderCheck)
 
 set(INCLUDE_DIRECTIONS_SCRIPT ${PROJECT_SOURCE_DIR}/cmake/CheckIncludeDirections.cmake)
 set(INCLUDE_DIRECTIONS_FIXTURES ${CMAKE_CURRENT_SOURCE_DIR}/include-directions)
