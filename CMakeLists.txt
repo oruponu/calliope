@@ -172,6 +172,17 @@ if(NOT WIN32)
     target_link_libraries(Calliope PRIVATE Iconv::Iconv)
 endif()
 
+add_custom_target(CalliopeIncludeDirections
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/src
+        -DRULES=${CMAKE_CURRENT_SOURCE_DIR}/cmake/IncludeDirections.cmake
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckIncludeDirections.cmake
+    COMMENT "Checking include directions"
+    VERBATIM
+)
+add_dependencies(CalliopeModel CalliopeIncludeDirections)
+add_dependencies(CalliopeEdit CalliopeIncludeDirections)
+add_dependencies(Calliope CalliopeIncludeDirections)
+
 option(CALLIOPE_BUILD_TESTS "Build unit tests" ON)
 if(CALLIOPE_BUILD_TESTS)
     enable_testing()

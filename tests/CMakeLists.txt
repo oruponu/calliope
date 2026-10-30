@@ -161,12 +161,10 @@ endif()
 include(Catch)
 catch_discover_tests(CalliopeTests)
 
+add_dependencies(CalliopeTests CalliopeIncludeDirections)
+
 set(INCLUDE_DIRECTIONS_SCRIPT ${PROJECT_SOURCE_DIR}/cmake/CheckIncludeDirections.cmake)
 set(INCLUDE_DIRECTIONS_FIXTURES ${CMAKE_CURRENT_SOURCE_DIR}/include-directions)
-
-add_test(NAME include-directions
-    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR}/src
-        -DRULES=${PROJECT_SOURCE_DIR}/cmake/IncludeDirections.cmake -P ${INCLUDE_DIRECTIONS_SCRIPT})
 
 # A fixture passes when the check reports expectedOutput, or succeeds when expectedOutput is empty.
 function(add_include_directions_fixture name expectedOutput)
