@@ -26,12 +26,11 @@ ValueEditor::ValueEditor(int value, ValueFormat formatToUse)
     };
     editor.onWheel = [this](int direction)
     {
-        if (!onWheelStep)
-            return;
         readField();
         draft = std::clamp(draft + direction, format.minimum, format.maximum);
         showDraft();
-        onWheelStep(draft);
+        if (onWheelStep)
+            onWheelStep(draft);
     };
     editor.onTabKey = [this](bool backwards) { commit(backwards ? EditorExit::ShiftTab : EditorExit::Tab); };
     addAndMakeVisible(editor);

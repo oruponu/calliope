@@ -405,8 +405,7 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
         const bool isNoteNumber = cell.column == EditedColumn::Event;
         auto valueEditor = std::make_unique<ValueEditor>(isNoteNumber ? editedItem.noteNumber : editedItem.duration,
                                                          isNoteNumber ? noteNumberFormat() : lengthFormat());
-        if (isNoteNumber)
-            valueEditor->onWheelStep = [this](int value) { setEditedValue(value); };
+        valueEditor->onWheelStep = [this](int value) { setEditedValue(value); };
         valueEditor->onCommit = [this](int value, EditorExit exit)
         {
             auto* list = this;
