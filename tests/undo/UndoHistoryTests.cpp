@@ -259,3 +259,66 @@ TEST_CASE("the history is not performing after an action is rejected", "[undo][h
     CHECK_FALSE(history.perform(new RejectedAction));
     CHECK_FALSE(history.isPerforming());
 }
+
+TEST_CASE("cancelling the current transaction rolls it back without a redo step", "[undo][history]")
+{
+    UndoHistory history;
+    int value = 0;
+    history.beginNewTransaction();
+    history.perform(new IncrementAction(value));
+    history.beginNewTransaction();
+    history.perform(new IncrementAction(value));
+    history.perform(new IncrementAction(value));
+
+    CHECK(history.cancelCurrentTransaction());
+    CHECK(value == 1);
+    CHECK_FALSE(history.canRedo());
+    history.undo();
+    CHECK(value == 0);
+}
+
+TEST_CASE("cancelling the current transaction keeps the redo steps from before it", "[undo][history]")
+{
+    UndoHistory history;
+    int value = 0;
+    history.beginNewTransaction();
+    history.perform(new IncrementAction(value));
+    history.undo();
+    history.beginNewTransaction();
+    history.perform(new IncrementAction(value));
+
+    history.cancelCurrentTransaction();
+    CHECK(value == 0);
+    CHECK(history.redo());
+    CHECK(value == 1);
+}
+
+TEST_CASE("cancelling the current transaction returns to the save point before it", "[undo][history]")
+{
+    UndoHistory history;
+    int value = 0;
+    int notifications = 0;
+    history.beginNewTransaction();
+    history.perform(new IncrementAction(value));
+    history.markSaved();
+    history.beginNewTransaction();
+    history.perform(new IncrementAction(value));
+    history.onChanged = [&] { ++notifications; };
+
+    history.cancelCurrentTransaction();
+    CHECK(history.isAtSavePoint());
+    CHECK(notifications == 1);
+}
+
+TEST_CASE("nothing is cancelled once a new transaction has begun", "[undo][history]")
+{
+    UndoHistory history;
+    int value = 0;
+    history.beginNewTransaction();
+    history.perform(new IncrementAction(value));
+    history.beginNewTransaction();
+
+    CHECK_FALSE(history.cancelCurrentTransaction());
+    CHECK(value == 1);
+    CHECK(history.canUndo());
+}

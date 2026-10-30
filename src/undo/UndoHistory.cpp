@@ -50,6 +50,17 @@ bool UndoHistory::redo()
     return true;
 }
 
+bool UndoHistory::cancelCurrentTransaction()
+{
+    const juce::ScopedValueSetter<bool> performingScope(performing, true);
+    if (!undoManager.undoCurrentTransactionOnly())
+        return false;
+
+    savePoint.undone();
+    notifyChanged();
+    return true;
+}
+
 bool UndoHistory::canUndo() const
 {
     return undoManager.canUndo();

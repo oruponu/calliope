@@ -645,3 +645,17 @@ TEST_CASE("a recorded row is not found for a sequence row, nor a row that is not
     CHECK_FALSE(EventListItems::rowOf(items, noteRow(0, 0)).has_value());
     CHECK_FALSE(EventListItems::rowOf(items, ccRow(0, 3, 10)).has_value());
 }
+
+TEST_CASE("an item is moved to the given row and the others keep their order", "[ui][event-list]")
+{
+    const std::vector items{noteRow(0, 0), noteRow(480, 1), noteRow(960, 2), noteRow(1440, 3)};
+    CHECK(sourcesOf(EventListItems::withRowAt(items, noteRow(0, 3), 1)) == std::vector{0, 3, 1, 2});
+    CHECK(sourcesOf(EventListItems::withRowAt(items, noteRow(0, 0), 2)) == std::vector{1, 2, 0, 3});
+    CHECK(sourcesOf(EventListItems::withRowAt(items, noteRow(0, 0), 9)) == std::vector{1, 2, 3, 0});
+}
+
+TEST_CASE("an item that is not listed leaves the rows as they are", "[ui][event-list]")
+{
+    const std::vector items{noteRow(0, 0), noteRow(480, 1)};
+    CHECK(sourcesOf(EventListItems::withRowAt(items, noteRow(0, 5), 0)) == std::vector{0, 1});
+}

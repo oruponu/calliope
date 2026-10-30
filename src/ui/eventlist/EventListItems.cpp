@@ -298,6 +298,19 @@ std::optional<int> EventListItems::rowOf(const std::vector<EventListItem>& items
     return static_cast<int>(it - items.begin());
 }
 
+std::vector<EventListItem> EventListItems::withRowAt(std::vector<EventListItem> items, const EventListItem& item,
+                                                     int row)
+{
+    const auto from = rowOf(items, item);
+    if (!from)
+        return items;
+    auto moved = std::move(items[static_cast<size_t>(*from)]);
+    items.erase(items.begin() + *from);
+    const auto to = std::clamp(row, 0, static_cast<int>(items.size()));
+    items.insert(items.begin() + to, std::move(moved));
+    return items;
+}
+
 std::optional<ControllerKind> EventListItems::controllerOf(const EventListItem& item)
 {
     if (item.isRecording)

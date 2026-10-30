@@ -1,0 +1,20 @@
+#pragma once
+
+#include <functional>
+#include <juce_gui_basics/juce_gui_basics.h>
+
+// Reports the wheel instead of scrolling.
+class PositionFieldEditor : public juce::TextEditor
+{
+public:
+    // direction is +1 (up) or -1 (down)
+    std::function<void(int direction)> onWheel;
+
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
+    {
+        if (onWheel && wheel.deltaY != 0.0f)
+            onWheel(wheel.deltaY > 0.0f ? 1 : -1);
+        else
+            juce::TextEditor::mouseWheelMove(e, wheel);
+    }
+};

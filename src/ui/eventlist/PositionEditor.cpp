@@ -56,6 +56,14 @@ PositionEditor::PositionEditor(const TimelineMap& timelineRef, const BarBeatTick
             if (!hasKeyboardFocus(true))
                 commit(Exit::FocusLost);
         };
+        editor.onWheel = [this, field](int direction)
+        {
+            readFields();
+            draft = EventListPosition::stepped(draft, field, direction, timeline);
+            showDraft();
+            if (onWheelStep)
+                onWheelStep(EventListPosition::toTick(draft, timeline));
+        };
         addAndMakeVisible(editor);
     }
     showDraft();
@@ -96,7 +104,7 @@ void PositionEditor::resized()
     editorOf(PositionField::Tick).setBounds(area);
 }
 
-juce::TextEditor& PositionEditor::editorOf(PositionField field)
+PositionFieldEditor& PositionEditor::editorOf(PositionField field)
 {
     return editors[static_cast<size_t>(field)];
 }

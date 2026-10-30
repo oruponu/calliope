@@ -69,6 +69,9 @@ std::vector<int> eventRows(const std::vector<EventListItem>& items, int trackInd
 std::vector<int> draggedRows(const std::vector<EventListItem>& items, const NoteDragPreview& preview);
 // The row of a note in the sequence by its ref, or of an event in the sequence by its index.
 std::optional<int> rowOf(const std::vector<EventListItem>& items, const EventListItem& item);
+// The items with the item's row moved to the row, or to the end past the last row; the others keep their order.
+// Unchanged when the item is not listed.
+std::vector<EventListItem> withRowAt(std::vector<EventListItem> items, const EventListItem& item, int row);
 // The controller of a control change or pitch bend row in the sequence; none for other rows and recorded ones.
 std::optional<ControllerKind> controllerOf(const EventListItem& item);
 // The event indices of the selected rows that hold the clicked row's controller on its track.

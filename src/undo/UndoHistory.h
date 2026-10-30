@@ -13,6 +13,9 @@ public:
     bool perform(juce::UndoableAction* action);
     bool undo();
     bool redo();
+    // Rolls back the transaction still being added to and drops it, so it leaves no redo step and the redo steps from
+    // before it come back. A save point the transaction discarded from the redo side stays lost.
+    bool cancelCurrentTransaction();
     bool canUndo() const;
     bool canRedo() const;
     juce::String getUndoDescription() const;

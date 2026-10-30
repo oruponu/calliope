@@ -58,9 +58,14 @@ private:
 
     juce::Rectangle<int> positionBounds(int row) const;
     void beginEditing(int row, PositionField field);
+    // Each move is one more action in the edit's undo transaction, so the whole edit undoes in one step. The event
+    // stays on the editor's row until the edit ends.
     void moveEdited(int tick);
     void endEditing(int tick, PositionEditor::Exit exit);
+    void cancelEditing();
     void closeEditor();
+    // Lists the moved event in order, or rolls the moves back when they are not kept.
+    void settleMoves(bool keep);
     void selectAlso(int row);
     bool moveEditedNote(int tick);
     bool moveEditedEvent(int tick);
@@ -84,8 +89,12 @@ private:
 
     juce::ListBox listBox;
     std::unique_ptr<PositionEditor> positionEditor;
+    // The editor's row, which holds the edited event through its moves. Any other rebuild closes the editor.
     int editedRow = -1;
     EventListItem editedItem;
+    EventListItem originalItem;
+    bool moveTransactionOpen = false;
+    bool movingEdited = false;
     double playheadTick = 0.0;
     int lastPlayheadRow = -1;
     bool updatingFromPlayhead = false;
