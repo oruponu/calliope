@@ -1,4 +1,5 @@
 #include "ui/eventlist/EditableRows.h"
+#include <algorithm>
 
 namespace
 {
@@ -9,6 +10,17 @@ std::optional<int> nextRow(const std::vector<EventListItem>& items, int row, boo
         if (EditableRows::isEditable(items[static_cast<size_t>(at)]))
             return at;
     return std::nullopt;
+}
+
+// The row's editable columns in the order Tab goes through them.
+std::vector<EditedColumn> columnsOf(const EventListItem& item)
+{
+    std::vector<EditedColumn> columns{EditedColumn::Position};
+    if (EditableRows::isEventEditable(item))
+        columns.push_back(EditedColumn::Event);
+    if (EditableRows::isLengthEditable(item))
+        columns.push_back(EditedColumn::Length);
+    return columns;
 }
 } // namespace
 
@@ -29,15 +41,21 @@ bool EditableRows::isLengthEditable(const EventListItem& item)
 
 std::optional<EditedCell> EditableRows::next(const std::vector<EventListItem>& items, EditedCell cell, bool backwards)
 {
-    const auto hasEvent = [&items](int row) { return isEventEditable(items[static_cast<size_t>(row)]); };
-    if (!backwards && cell.column == EditedColumn::Position && cell.row >= 0 &&
-        cell.row < static_cast<int>(items.size()) && hasEvent(cell.row))
-        return EditedCell{cell.row, EditedColumn::Event};
-    if (backwards && cell.column != EditedColumn::Position)
-        return EditedCell{cell.row, EditedColumn::Position};
+    if (cell.row >= 0 && cell.row < static_cast<int>(items.size()))
+    {
+        const auto columns = columnsOf(items[static_cast<size_t>(cell.row)]);
+        const auto at = std::ranges::find(columns, cell.column);
+        if (at != columns.end())
+        {
+            if (!backwards && at + 1 != columns.end())
+                return EditedCell{cell.row, *(at + 1)};
+            if (backwards && at != columns.begin())
+                return EditedCell{cell.row, *(at - 1)};
+        }
+    }
 
     const auto row = nextRow(items, cell.row, backwards);
     if (!row)
         return std::nullopt;
-    return EditedCell{*row, backwards && hasEvent(*row) ? EditedColumn::Event : EditedColumn::Position};
+    return EditedCell{*row, backwards ? columnsOf(items[static_cast<size_t>(*row)]).back() : EditedColumn::Position};
 }

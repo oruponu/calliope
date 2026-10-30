@@ -20,6 +20,11 @@ EditedCell eventOf(int row)
 {
     return {row, EditedColumn::Event};
 }
+
+EditedCell lengthOf(int row)
+{
+    return {row, EditedColumn::Length};
+}
 } // namespace
 
 TEST_CASE("notes and channel events can be edited", "[ui][event-list]")
@@ -58,19 +63,14 @@ TEST_CASE("only a note's length can be edited", "[ui][event-list]")
     CHECK_FALSE(EditableRows::isLengthEditable(draft));
 }
 
-TEST_CASE("a length goes on to the next row's position and back to its own row's position", "[ui][event-list]")
-{
-    const std::vector items{itemOf(EventListItem::Note), itemOf(EventListItem::Note)};
-    CHECK(EditableRows::next(items, {0, EditedColumn::Length}, false) == positionOf(1));
-    CHECK(EditableRows::next(items, {0, EditedColumn::Length}, true) == positionOf(0));
-}
-
-TEST_CASE("a note's position is followed by its event and then the next row's position", "[ui][event-list]")
+TEST_CASE("a note's position is followed by its event, its length and then the next row's position", "[ui][event-list]")
 {
     const std::vector items{itemOf(EventListItem::Note), itemOf(EventListItem::Note)};
     CHECK(EditableRows::next(items, positionOf(0), false) == eventOf(0));
-    CHECK(EditableRows::next(items, eventOf(0), false) == positionOf(1));
-    CHECK(EditableRows::next(items, positionOf(1), true) == eventOf(0));
+    CHECK(EditableRows::next(items, eventOf(0), false) == lengthOf(0));
+    CHECK(EditableRows::next(items, lengthOf(0), false) == positionOf(1));
+    CHECK(EditableRows::next(items, positionOf(1), true) == lengthOf(0));
+    CHECK(EditableRows::next(items, lengthOf(0), true) == eventOf(0));
     CHECK(EditableRows::next(items, eventOf(0), true) == positionOf(0));
 }
 
@@ -84,13 +84,13 @@ TEST_CASE("a row whose event cannot be edited goes from its position to the next
 TEST_CASE("the next editable cell skips rows that cannot be edited", "[ui][event-list]")
 {
     const std::vector items{itemOf(EventListItem::Note), itemOf(EventListItem::Meta), itemOf(EventListItem::PitchBend)};
-    CHECK(EditableRows::next(items, eventOf(0), false) == positionOf(2));
-    CHECK(EditableRows::next(items, positionOf(2), true) == eventOf(0));
+    CHECK(EditableRows::next(items, lengthOf(0), false) == positionOf(2));
+    CHECK(EditableRows::next(items, positionOf(2), true) == lengthOf(0));
 }
 
 TEST_CASE("there is no editable cell past the last one", "[ui][event-list]")
 {
     const std::vector items{itemOf(EventListItem::SysEx), itemOf(EventListItem::Note), itemOf(EventListItem::SysEx)};
-    CHECK_FALSE(EditableRows::next(items, eventOf(1), false).has_value());
+    CHECK_FALSE(EditableRows::next(items, lengthOf(1), false).has_value());
     CHECK_FALSE(EditableRows::next(items, positionOf(1), true).has_value());
 }
