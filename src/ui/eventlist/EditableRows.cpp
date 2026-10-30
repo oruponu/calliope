@@ -5,6 +5,11 @@ bool EditableRows::isEditable(const EventListItem& item)
     return !item.isRecording && !item.isDraft && item.kind != EventListItem::Meta && item.kind != EventListItem::SysEx;
 }
 
+bool EditableRows::isEventEditable(const EventListItem& item)
+{
+    return isEditable(item) && item.kind == EventListItem::Note;
+}
+
 std::optional<int> EditableRows::next(const std::vector<EventListItem>& items, int row, bool backwards)
 {
     const int step = backwards ? -1 : 1;

@@ -2,6 +2,7 @@
 
 #include "model/timeline/BarBeatTick.h"
 #include "model/timeline/TimelineMap.h"
+#include "ui/eventlist/EditorExit.h"
 #include "ui/eventlist/PositionField.h"
 #include "ui/eventlist/PositionFieldEditor.h"
 #include <array>
@@ -13,19 +14,11 @@
 class PositionEditor : public juce::Component
 {
 public:
-    enum class Exit
-    {
-        ReturnKey,
-        FocusLost,
-        Tab,
-        ShiftTab
-    };
-
     PositionEditor(const TimelineMap& timeline, const BarBeatTick& position);
 
     std::function<void(int tick)> onWheelStep;
     // Called once when the edit ends, unless onCancel is. Either may destroy the editor.
-    std::function<void(int tick, Exit exit)> onCommit;
+    std::function<void(int tick, EditorExit exit)> onCommit;
     std::function<void()> onCancel;
 
     void focusField(PositionField field);
@@ -39,7 +32,7 @@ private:
     PositionFieldEditor& editorOf(PositionField field);
     void readFields();
     void showDraft();
-    void commit(Exit exit);
+    void commit(EditorExit exit);
 
     const TimelineMap& timeline;
     BarBeatTick draft;

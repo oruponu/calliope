@@ -1,0 +1,54 @@
+#include "ui/eventlist/NoteEditor.h"
+#include "model/notation/NoteName.h"
+#include "ui/theme/Theme.h"
+
+NoteEditor::NoteEditor(int noteNumber) : original(noteNumber), draft(noteNumber)
+{
+    using namespace calliope::theme;
+    editor.setFont(font::sans(font::sizeSM));
+    editor.setIndents(0, 0);
+    editor.setJustification(juce::Justification::centredLeft);
+    editor.setInputRestrictions(4, "0123456789ABCDEFGabcdefg#-");
+    editor.setSelectAllWhenFocused(true);
+    editor.onReturnKey = [this]() { commit(EditorExit::ReturnKey); };
+    editor.onEscapeKey = [this]()
+    {
+        ended = true;
+        if (onCancel)
+            onCancel();
+    };
+    editor.onFocusLost = [this]()
+    {
+        if (!hasKeyboardFocus(true))
+            commit(EditorExit::FocusLost);
+    };
+    addAndMakeVisible(editor);
+    showDraft();
+}
+
+void NoteEditor::focusField()
+{
+    editor.grabKeyboardFocus();
+}
+
+void NoteEditor::resized()
+{
+    editor.setBounds(getLocalBounds());
+}
+
+void NoteEditor::showDraft()
+{
+    editor.setText(juce::String(NoteName::format(draft)), juce::dontSendNotification);
+    if (editor.hasKeyboardFocus(false))
+        editor.selectAll();
+}
+
+void NoteEditor::commit(EditorExit exit)
+{
+    if (ended)
+        return;
+    ended = true;
+    const auto typed = NoteName::parse(editor.getText().toStdString());
+    if (onCommit)
+        onCommit(typed.value_or(original), exit);
+}

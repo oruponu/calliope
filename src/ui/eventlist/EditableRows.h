@@ -8,6 +8,8 @@ namespace EditableRows
 {
 // Notes and channel events in the sequence.
 bool isEditable(const EventListItem& item);
+// Whether the row's event column can be edited: only a note's, for its note number.
+bool isEventEditable(const EventListItem& item);
 // The first editable row after the row (before it, when backwards); none past the last one.
 std::optional<int> next(const std::vector<EventListItem>& items, int row, bool backwards);
 } // namespace EditableRows

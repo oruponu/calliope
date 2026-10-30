@@ -30,6 +30,15 @@ TEST_CASE("meta events, system exclusive messages, recorded rows and the draft n
         CHECK_FALSE(EditableRows::isEditable(item));
 }
 
+TEST_CASE("only a note's event can be edited", "[ui][event-list]")
+{
+    auto recorded = itemOf(EventListItem::Note);
+    recorded.isRecording = true;
+    CHECK(EditableRows::isEventEditable(itemOf(EventListItem::Note)));
+    CHECK_FALSE(EditableRows::isEventEditable(itemOf(EventListItem::ControlChange)));
+    CHECK_FALSE(EditableRows::isEventEditable(recorded));
+}
+
 TEST_CASE("the next editable row skips rows that cannot be edited", "[ui][event-list]")
 {
     const std::vector items{itemOf(EventListItem::Note), itemOf(EventListItem::Meta), itemOf(EventListItem::PitchBend)};

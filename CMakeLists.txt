@@ -110,6 +110,7 @@ target_sources(Calliope PRIVATE
     src/ui/eventlist/EventListItems.cpp
     src/ui/eventlist/EventListPosition.cpp
     src/ui/eventlist/MetaEventDescription.cpp
+    src/ui/eventlist/NoteEditor.cpp
     src/ui/eventlist/PositionEditor.cpp
     src/ui/menu/MainMenuModel.cpp
     src/ui/pianoroll/ControllerLaneComponent.cpp

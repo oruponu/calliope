@@ -43,7 +43,7 @@ PositionEditor::PositionEditor(const TimelineMap& timelineRef, const BarBeatTick
         editor.setJustification(juce::Justification::centred);
         editor.setInputRestrictions(formatOf(field).maxLength, "0123456789");
         editor.setSelectAllWhenFocused(true);
-        editor.onReturnKey = [this]() { commit(Exit::ReturnKey); };
+        editor.onReturnKey = [this]() { commit(EditorExit::ReturnKey); };
         editor.onEscapeKey = [this]()
         {
             ended = true;
@@ -54,7 +54,7 @@ PositionEditor::PositionEditor(const TimelineMap& timelineRef, const BarBeatTick
         editor.onFocusLost = [this]()
         {
             if (!hasKeyboardFocus(true))
-                commit(Exit::FocusLost);
+                commit(EditorExit::FocusLost);
         };
         editor.onWheel = [this, field](int direction)
         {
@@ -70,7 +70,7 @@ PositionEditor::PositionEditor(const TimelineMap& timelineRef, const BarBeatTick
             if (next >= 0 && next < static_cast<int>(kFields.size()))
                 focusField(kFields[static_cast<size_t>(next)]);
             else
-                commit(backwards ? Exit::ShiftTab : Exit::Tab);
+                commit(backwards ? EditorExit::ShiftTab : EditorExit::Tab);
         };
         addAndMakeVisible(editor);
     }
@@ -155,7 +155,7 @@ void PositionEditor::showDraft()
     }
 }
 
-void PositionEditor::commit(Exit exit)
+void PositionEditor::commit(EditorExit exit)
 {
     if (ended)
         return;

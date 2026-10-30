@@ -4,11 +4,14 @@
 #include "engine/recording/RecordingLayer.h"
 #include "model/MidiSequence.h"
 #include "model/controller/ControllerKind.h"
+#include "model/event/MidiNote.h"
 #include "ui/drag/NoteDragPreview.h"
+#include "ui/eventlist/EditedCell.h"
+#include "ui/eventlist/EditorExit.h"
 #include "ui/eventlist/EventListItems.h"
-#include "ui/eventlist/PositionEditor.h"
 #include "ui/eventlist/PositionField.h"
 #include "undo/UndoHistory.h"
+#include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <memory>
 #include <set>
@@ -57,17 +60,24 @@ private:
     void listWasScrolled() override;
 
     juce::Rectangle<int> positionBounds(int row) const;
-    void beginEditing(int row, PositionField field);
-    // Each move is one more action in the edit's undo transaction, so the whole edit undoes in one step. The event
-    // stays on the editor's row until the edit ends.
+    juce::Rectangle<int> noteBounds(int row) const;
+    juce::Rectangle<int> editorBounds(int row) const;
+    // The field is where a position edit starts; a note edit has only one.
+    void beginEditing(EditedCell cell, PositionField field);
+    void showEditor();
     void moveEdited(int tick);
-    void endEditing(int tick, PositionEditor::Exit exit);
+    void setEditedNoteNumber(int noteNumber);
+    // Each edit is one more action in the undo transaction, so the whole edit undoes in one step. The event stays on
+    // the editor's row until the edit ends.
+    void applyEdit(const juce::String& transactionName, const std::function<bool()>& edit);
+    void endEditing(EditorExit exit);
     void cancelEditing();
     void closeEditor();
-    // Lists the moved event in order, or rolls the moves back when they are not kept.
-    void settleMoves(bool keep);
+    // Lists the edited event in order, or rolls the edits back when they are not kept.
+    void settleEdits(bool keep);
     void selectAlso(int row);
     bool moveEditedNote(int tick);
+    bool modifyEditedNote(const std::function<void(MidiNote&)>& change);
     bool moveEditedEvent(int tick);
 
     void rebuildList();
@@ -87,13 +97,14 @@ private:
     NoteDragPreview dragPreview;
 
     juce::ListBox listBox;
-    std::unique_ptr<PositionEditor> positionEditor;
-    // The editor's row, which holds the edited event through its moves. Any other rebuild closes the editor.
+    std::unique_ptr<juce::Component> editor;
+    // The editor's row, which holds the edited event through its edits. Any other rebuild closes the editor.
     int editedRow = -1;
+    EditedColumn editedColumn = EditedColumn::Position;
     EventListItem editedItem;
     EventListItem originalItem;
-    bool moveTransactionOpen = false;
-    bool movingEdited = false;
+    bool editTransactionOpen = false;
+    bool applyingEdit = false;
     double playheadTick = 0.0;
     int lastPlayheadRow = -1;
     bool updatingFromPlayhead = false;
