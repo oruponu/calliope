@@ -2,16 +2,6 @@ juce_add_console_app(CalliopeTests)
 
 target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/audio/ClickVoice.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/controller/ControllerPointEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/controller/ProgramChangeEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/event/NoteEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/event/NoteQuantize.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/harmony/ChordTrackEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/harmony/KeySignatureEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/timeline/TempoEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/timeline/TimeSignatureEdits.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/track/ExclusiveSolo.cpp
-    ${PROJECT_SOURCE_DIR}/src/edit/track/TrackDuplication.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/chase/Chase.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/chase/ChaseScan.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/chase/ChaseTracker.cpp
@@ -32,26 +22,6 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/io/project/XmlNumberText.cpp
     ${PROJECT_SOURCE_DIR}/src/io/smf/MetaText.cpp
     ${PROJECT_SOURCE_DIR}/src/io/smf/MidiFileIO.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/MetaEventRetention.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/MidiSequence.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/SequenceContentsRules.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/TrackOrder.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerLineValue.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerPointConversion.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/controller/ControllerRamps.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/grid/TimelineGrid.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/harmony/ChordChangeList.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/harmony/ChordValue.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/harmony/KeySignatureChangeList.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/harmony/KeySignatureValue.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/notation/ChordSymbol.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/notation/GmPrograms.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/notation/KeySignatureName.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/notation/SysExHex.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/timeline/TempoChangeList.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/timeline/TimeSignatureChangeList.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/timeline/TimelineMap.cpp
-    ${PROJECT_SOURCE_DIR}/src/model/track/MidiTrack.cpp
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
     ${PROJECT_SOURCE_DIR}/src/session/EditableNotes.cpp
     ${PROJECT_SOURCE_DIR}/src/session/LayeredNoteEdits.cpp
@@ -178,6 +148,7 @@ target_compile_definitions(CalliopeTests PRIVATE
 )
 
 target_link_libraries(CalliopeTests PRIVATE
+    CalliopeEdit
     Catch2::Catch2WithMain
     juce::juce_audio_basics
     juce::juce_data_structures

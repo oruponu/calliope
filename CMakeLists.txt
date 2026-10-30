@@ -7,6 +7,48 @@ endif()
 
 add_subdirectory(JUCE)
 
+add_library(CalliopeModel STATIC
+    src/model/MetaEventRetention.cpp
+    src/model/MidiSequence.cpp
+    src/model/SequenceContentsRules.cpp
+    src/model/TrackOrder.cpp
+    src/model/controller/ControllerLineValue.cpp
+    src/model/controller/ControllerPointConversion.cpp
+    src/model/controller/ControllerRamps.cpp
+    src/model/grid/TimelineGrid.cpp
+    src/model/harmony/ChordChangeList.cpp
+    src/model/harmony/ChordValue.cpp
+    src/model/harmony/KeySignatureChangeList.cpp
+    src/model/harmony/KeySignatureValue.cpp
+    src/model/notation/ChordSymbol.cpp
+    src/model/notation/GmPrograms.cpp
+    src/model/notation/KeySignatureName.cpp
+    src/model/notation/SysExHex.cpp
+    src/model/timeline/TempoChangeList.cpp
+    src/model/timeline/TimeSignatureChangeList.cpp
+    src/model/timeline/TimelineMap.cpp
+    src/model/track/MidiTrack.cpp
+)
+target_include_directories(CalliopeModel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_features(CalliopeModel PUBLIC cxx_std_23)
+target_link_libraries(CalliopeModel PRIVATE juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+
+add_library(CalliopeEdit STATIC
+    src/edit/controller/ControllerPointEdits.cpp
+    src/edit/controller/ProgramChangeEdits.cpp
+    src/edit/event/NoteEdits.cpp
+    src/edit/event/NoteQuantize.cpp
+    src/edit/harmony/ChordTrackEdits.cpp
+    src/edit/harmony/KeySignatureEdits.cpp
+    src/edit/timeline/TempoEdits.cpp
+    src/edit/timeline/TimeSignatureEdits.cpp
+    src/edit/track/ExclusiveSolo.cpp
+    src/edit/track/TrackDuplication.cpp
+)
+target_link_libraries(CalliopeEdit
+    PUBLIC CalliopeModel
+    PRIVATE juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+
 juce_add_gui_app(Calliope
     PRODUCT_NAME "Calliope"
 )
@@ -30,16 +72,6 @@ target_sources(Calliope PRIVATE
     src/device/MidiThru.cpp
     src/device/UserDisabledMidiInputs.cpp
     src/document/Document.cpp
-    src/edit/controller/ControllerPointEdits.cpp
-    src/edit/controller/ProgramChangeEdits.cpp
-    src/edit/event/NoteEdits.cpp
-    src/edit/event/NoteQuantize.cpp
-    src/edit/harmony/ChordTrackEdits.cpp
-    src/edit/harmony/KeySignatureEdits.cpp
-    src/edit/timeline/TempoEdits.cpp
-    src/edit/timeline/TimeSignatureEdits.cpp
-    src/edit/track/ExclusiveSolo.cpp
-    src/edit/track/TrackDuplication.cpp
     src/engine/PlaybackEngine.cpp
     src/engine/chase/Chase.cpp
     src/engine/chase/ChaseScan.cpp
@@ -61,26 +93,6 @@ target_sources(Calliope PRIVATE
     src/io/project/XmlNumberText.cpp
     src/io/smf/MetaText.cpp
     src/io/smf/MidiFileIO.cpp
-    src/model/MetaEventRetention.cpp
-    src/model/MidiSequence.cpp
-    src/model/SequenceContentsRules.cpp
-    src/model/TrackOrder.cpp
-    src/model/controller/ControllerLineValue.cpp
-    src/model/controller/ControllerPointConversion.cpp
-    src/model/controller/ControllerRamps.cpp
-    src/model/grid/TimelineGrid.cpp
-    src/model/harmony/ChordChangeList.cpp
-    src/model/harmony/ChordValue.cpp
-    src/model/harmony/KeySignatureChangeList.cpp
-    src/model/harmony/KeySignatureValue.cpp
-    src/model/notation/ChordSymbol.cpp
-    src/model/notation/GmPrograms.cpp
-    src/model/notation/KeySignatureName.cpp
-    src/model/notation/SysExHex.cpp
-    src/model/timeline/TempoChangeList.cpp
-    src/model/timeline/TimeSignatureChangeList.cpp
-    src/model/timeline/TimelineMap.cpp
-    src/model/track/MidiTrack.cpp
     src/plugin/PluginAssignmentCodec.cpp
     src/plugin/PluginStateChangeWatcher.cpp
     src/plugin/PluginSyncPlan.cpp
@@ -145,6 +157,7 @@ target_compile_definitions(Calliope PRIVATE
 
 target_link_libraries(Calliope PRIVATE
     CalliopeData
+    CalliopeEdit
     juce::juce_audio_basics
     juce::juce_audio_devices
     juce::juce_audio_processors
