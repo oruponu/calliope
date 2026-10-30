@@ -59,7 +59,8 @@ foreach(file IN LISTS files)
         string(REGEX MATCH "${includePattern}" unused "${line}")
         set(path ${CMAKE_MATCH_1})
         string(REGEX REPLACE "/.*" "" targetLayer ${path})
-        if(targetLayer STREQUAL path OR NOT IS_DIRECTORY ${SOURCE_DIR}/${targetLayer})
+        if(targetLayer STREQUAL path OR targetLayer STREQUAL "." OR targetLayer STREQUAL ".."
+           OR NOT IS_DIRECTORY ${SOURCE_DIR}/${targetLayer})
             # Found next to the including file: the compiler accepts it, but it hides the direction from this check.
             if(EXISTS ${SOURCE_DIR}/${folder}/${path})
                 report("include path violation: ${file} includes \"${path}\" (relative to the including file)")

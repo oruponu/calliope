@@ -183,6 +183,8 @@ add_include_directions_fixture(layer-violation "low/a/A\\.h includes \"high/H\\.
 add_include_directions_fixture(folder-violation "low/a/A\\.mm includes \"low/b/B\\.h\" \\(low/a -> low/b\\)")
 add_include_directions_fixture(angle-violation "low/a/A\\.h includes \"high/H\\.h\" \\(low/a -> high\\)")
 add_include_directions_fixture(relative-violation "low/L\\.cpp includes \"a/A\\.h\" \\(relative to the including file\\)")
+add_include_directions_fixture(dot-relative-violation
+    "low/b/B\\.h includes \"\\.\\./a/A\\.h\" \\(relative to the including file\\)")
 add_include_directions_fixture(strict-root-file "file outside every layer: Root\\.h")
 add_include_directions_fixture(strict-unruled-layer "layer without a rule: other")
 add_include_directions_fixture(strict-unruled-folder "folder without a rule: low/c")
