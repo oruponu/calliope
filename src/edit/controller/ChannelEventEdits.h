@@ -11,4 +11,7 @@ namespace ChannelEventEdits
 // is selected in the result; a hold point or an index out of range leaves the events as they are with nothing
 // selected.
 ControllerPointEditResult moveTo(const std::vector<MidiEvent>& before, int index, int tick);
+// Sets the value of one event: data2 for a control change or a key pressure, data1 for the others, with a pitch bend's
+// as its 14-bit value. Hold points are made again around it, and it is selected in the result as moveTo selects.
+ControllerPointEditResult setValue(const std::vector<MidiEvent>& before, int index, int value);
 } // namespace ChannelEventEdits

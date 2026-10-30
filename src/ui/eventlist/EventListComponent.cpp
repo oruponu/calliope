@@ -9,10 +9,13 @@
 #include "ui/eventlist/RowSelection.h"
 #include "ui/eventlist/ValueEditor.h"
 #include "ui/eventlist/ValueFormat.h"
+#include "ui/eventlist/ValueText.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/event/NoteModifyAction.h"
 #include "undo/event/ReplaceEventsAction.h"
+#include <algorithm>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace
@@ -24,6 +27,7 @@ constexpr int kColNote = 36;
 constexpr int kColLength = 34;
 constexpr int kColValue = 40;
 constexpr int kPadRight = 8;
+constexpr int kPitchBendCentre = 8192;
 
 ValueFormat noteNumberFormat()
 {
@@ -45,6 +49,54 @@ ValueFormat lengthFormat()
             .maxLength = 7,
             .allowedCharacters = "0123456789",
             .justification = juce::Justification::centredRight};
+}
+
+ValueFormat numberFormat(int minimum, int maximum)
+{
+    return {.format = [](int value) { return std::to_string(value); },
+            .parse = [minimum, maximum](std::string_view text) { return ValueText::parse(text, minimum, maximum); },
+            .minimum = minimum,
+            .maximum = maximum,
+            .maxLength = static_cast<int>(std::max(std::to_string(minimum).size(), std::to_string(maximum).size())),
+            .allowedCharacters = minimum < 0 ? "-0123456789" : "0123456789",
+            .justification = juce::Justification::centredRight};
+}
+
+// The value the VAL column shows: a note's velocity, a channel event's value with a pitch bend's centred on zero.
+int shownValueOf(const EventListItem& item)
+{
+    switch (item.kind)
+    {
+    case EventListItem::Note:
+        return item.velocity;
+    case EventListItem::ControlChange:
+    case EventListItem::KeyPressure:
+        return item.data2;
+    case EventListItem::PitchBend:
+        return item.data1 - kPitchBendCentre;
+    case EventListItem::ProgramChange:
+    case EventListItem::ChannelPressure:
+    case EventListItem::Meta:
+    case EventListItem::SysEx:
+        break;
+    }
+    return item.data1;
+}
+
+ValueFormat valueFormatOf(const EventListItem& item)
+{
+    if (item.kind == EventListItem::Note)
+        return numberFormat(1, 127);
+    if (item.kind == EventListItem::PitchBend)
+        return numberFormat(-kPitchBendCentre, kPitchBendCentre - 1);
+    return numberFormat(0, 127);
+}
+
+// Whether the edits left the event as it was, for every value the event list edits.
+bool sameEdited(const EventListItem& a, const EventListItem& b)
+{
+    return a.tick == b.tick && a.noteNumber == b.noteNumber && a.duration == b.duration && a.velocity == b.velocity &&
+           a.data1 == b.data1 && a.data2 == b.data2;
 }
 } // namespace
 
@@ -315,7 +367,13 @@ void EventListComponent::listBoxItemDoubleClicked(int row, const juce::MouseEven
     }
     const auto length = lengthBounds(row);
     if (e.x >= length.getX() && e.x < length.getRight())
+    {
         beginEditing({row, EditedColumn::Length}, PositionField::Bar);
+        return;
+    }
+    const auto value = valueBounds(row);
+    if (e.x >= value.getX() && e.x < value.getRight())
+        beginEditing({row, EditedColumn::Value}, PositionField::Bar);
 }
 
 void EventListComponent::listWasScrolled()
@@ -343,6 +401,12 @@ juce::Rectangle<int> EventListComponent::lengthBounds(int row) const
     return rowBounds.withX(rowBounds.getWidth() - kPadRight - kColValue - kColLength).withWidth(kColLength);
 }
 
+juce::Rectangle<int> EventListComponent::valueBounds(int row) const
+{
+    const auto rowBounds = listBox.getRowPosition(row, true);
+    return rowBounds.withX(rowBounds.getWidth() - kPadRight - kColValue).withWidth(kColValue);
+}
+
 juce::Rectangle<int> EventListComponent::editorBounds(int row) const
 {
     switch (editedColumn)
@@ -353,6 +417,8 @@ juce::Rectangle<int> EventListComponent::editorBounds(int row) const
         return noteBounds(row);
     case EditedColumn::Length:
         return lengthBounds(row);
+    case EditedColumn::Value:
+        return valueBounds(row);
     }
     return {};
 }
@@ -365,7 +431,8 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
     const auto& item = items[static_cast<size_t>(cell.row)];
     const bool editable = cell.column == EditedColumn::Position ? EditableRows::isEditable(item)
                           : cell.column == EditedColumn::Event  ? EditableRows::isEventEditable(item)
-                                                                : EditableRows::isLengthEditable(item);
+                          : cell.column == EditedColumn::Length ? EditableRows::isLengthEditable(item)
+                                                                : EditableRows::isValueEditable(item);
     if (!editable)
         return;
 
@@ -402,14 +469,17 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
     }
     else
     {
-        const bool isNoteNumber = cell.column == EditedColumn::Event;
-        auto valueEditor = std::make_unique<ValueEditor>(isNoteNumber ? editedItem.noteNumber : editedItem.duration,
-                                                         isNoteNumber ? noteNumberFormat() : lengthFormat());
-        valueEditor->onWheelStep = [this](int value) { setEditedValue(value); };
+        auto valueEditor = cell.column == EditedColumn::Event
+                               ? std::make_unique<ValueEditor>(editedItem.noteNumber, noteNumberFormat())
+                           : cell.column == EditedColumn::Length
+                               ? std::make_unique<ValueEditor>(editedItem.duration, lengthFormat())
+                               : std::make_unique<ValueEditor>(shownValueOf(editedItem), valueFormatOf(editedItem));
+        if (cell.column != EditedColumn::Value)
+            valueEditor->onWheelStep = [this](int value) { setEditedCellValue(value); };
         valueEditor->onCommit = [this](int value, EditorExit exit)
         {
             auto* list = this;
-            list->setEditedValue(value);
+            list->setEditedCellValue(value);
             list->endEditing(exit);
         };
         valueEditor->onCancel = cancel;
@@ -452,12 +522,36 @@ void EventListComponent::setEditedLength(int duration)
               { return modifyEditedNote([duration](MidiNote& note) { note.duration = duration; }); });
 }
 
-void EventListComponent::setEditedValue(int value)
+void EventListComponent::setEditedValue(int shownValue)
 {
-    if (editedColumn == EditedColumn::Event)
+    if (shownValue == shownValueOf(editedItem))
+        return;
+    if (editedItem.kind == EventListItem::Note)
+    {
+        applyEdit("Edit Velocity", [this, shownValue]()
+                  { return modifyEditedNote([shownValue](MidiNote& note) { note.velocity = shownValue; }); });
+        return;
+    }
+    const int value = editedItem.kind == EventListItem::PitchBend ? shownValue + kPitchBendCentre : shownValue;
+    applyEdit("Edit Event Value", [this, value]() { return setEditedEventValue(value); });
+}
+
+void EventListComponent::setEditedCellValue(int value)
+{
+    switch (editedColumn)
+    {
+    case EditedColumn::Event:
         setEditedNoteNumber(value);
-    else
+        break;
+    case EditedColumn::Length:
         setEditedLength(value);
+        break;
+    case EditedColumn::Value:
+        setEditedValue(value);
+        break;
+    case EditedColumn::Position:
+        break;
+    }
 }
 
 void EventListComponent::applyEdit(const juce::String& transactionName, const std::function<bool()>& edit)
@@ -526,8 +620,7 @@ void EventListComponent::settleEdits(bool keep)
 
     const bool wasSelected = listBox.isRowSelected(editedRow);
     // Edits that left the event as it was leave no undo step.
-    if (keep && (editedItem.tick != originalItem.tick || editedItem.noteNumber != originalItem.noteNumber ||
-                 editedItem.duration != originalItem.duration))
+    if (keep && !sameEdited(editedItem, originalItem))
     {
         rebuildList();
     }
@@ -578,13 +671,25 @@ bool EventListComponent::moveEditedEvent(int tick)
 {
     if (editedItem.trackIndex >= sequence->getNumTracks())
         return false;
+    const auto& events = sequence->getTrack(editedItem.trackIndex).getEvents();
+    return replaceEditedEvents(ChannelEventEdits::moveTo(events, editedItem.sourceIndex, tick));
+}
 
-    const auto& track = sequence->getTrack(editedItem.trackIndex);
-    auto result = ChannelEventEdits::moveTo(track.getEvents(), editedItem.sourceIndex, tick);
+bool EventListComponent::setEditedEventValue(int value)
+{
+    if (editedItem.trackIndex >= sequence->getNumTracks())
+        return false;
+    const auto& events = sequence->getTrack(editedItem.trackIndex).getEvents();
+    return replaceEditedEvents(ChannelEventEdits::setValue(events, editedItem.sourceIndex, value));
+}
+
+bool EventListComponent::replaceEditedEvents(ControllerPointEditResult result)
+{
     if (result.selected.empty())
         return false;
 
-    // Set first: the move's rebuild finds the event by its new index to keep it on its row.
+    const auto& track = sequence->getTrack(editedItem.trackIndex);
+    // Set first: the edit's rebuild finds the event by its new index to keep it on its row.
     const int previousIndex = std::exchange(editedItem.sourceIndex, *result.selected.begin());
     if (undoHistory.perform(
             new ReplaceEventsAction(sequence, track.getId(), track.getEvents(), std::move(result.events))))
@@ -696,24 +801,7 @@ juce::String EventListComponent::formatLength(const EventListItem& item)
 
 juce::String EventListComponent::formatValue(const EventListItem& item)
 {
-    switch (item.kind)
-    {
-    case EventListItem::Meta:
+    if (item.kind == EventListItem::Meta || item.kind == EventListItem::SysEx)
         return "--";
-    case EventListItem::SysEx:
-        return "--";
-    case EventListItem::Note:
-        return juce::String(item.velocity);
-    case EventListItem::ControlChange:
-        return juce::String(item.data2);
-    case EventListItem::ProgramChange:
-        return juce::String(item.data1);
-    case EventListItem::PitchBend:
-        return juce::String(item.data1 - 8192);
-    case EventListItem::ChannelPressure:
-        return juce::String(item.data1);
-    case EventListItem::KeyPressure:
-        return juce::String(item.data2);
-    }
-    return {};
+    return juce::String(shownValueOf(item));
 }

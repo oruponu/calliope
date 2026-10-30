@@ -1,5 +1,6 @@
 #pragma once
 
+#include "edit/controller/ControllerPointEditResult.h"
 #include "edit/event/NoteRef.h"
 #include "engine/recording/RecordingLayer.h"
 #include "model/MidiSequence.h"
@@ -62,15 +63,18 @@ private:
     juce::Rectangle<int> positionBounds(int row) const;
     juce::Rectangle<int> noteBounds(int row) const;
     juce::Rectangle<int> lengthBounds(int row) const;
+    juce::Rectangle<int> valueBounds(int row) const;
     juce::Rectangle<int> editorBounds(int row) const;
-    // The field is where a position edit starts; note number and length edits have only one.
+    // The field is where a position edit starts; the other columns' edits have only one.
     void beginEditing(EditedCell cell, PositionField field);
     void showEditor();
     void moveEdited(int tick);
     void setEditedNoteNumber(int noteNumber);
     void setEditedLength(int duration);
-    // The note number or the length, by the edited column.
-    void setEditedValue(int value);
+    // shownValue is as the VAL column shows it.
+    void setEditedValue(int shownValue);
+    // The note number, the length or the value, by the edited column.
+    void setEditedCellValue(int value);
     // Each edit is one more action in the undo transaction, so the whole edit undoes in one step. The event stays on
     // the editor's row until the edit ends.
     void applyEdit(const juce::String& transactionName, const std::function<bool()>& edit);
@@ -83,6 +87,8 @@ private:
     bool moveEditedNote(int tick);
     bool modifyEditedNote(const std::function<void(MidiNote&)>& change);
     bool moveEditedEvent(int tick);
+    bool setEditedEventValue(int value);
+    bool replaceEditedEvents(ControllerPointEditResult result);
 
     void rebuildList();
     void selectRows(const std::vector<int>& rows);

@@ -13,6 +13,8 @@ bool isEditable(const EventListItem& item);
 bool isEventEditable(const EventListItem& item);
 // Whether the row's length can be edited: only a note's.
 bool isLengthEditable(const EventListItem& item);
+// Whether the row's value can be edited: a note's velocity or a channel event's value.
+bool isValueEditable(const EventListItem& item);
 // The editable cell after the cell (before it, when backwards), going through a row's position, event and length;
 // none past the last one.
 std::optional<EditedCell> next(const std::vector<EventListItem>& items, EditedCell cell, bool backwards);

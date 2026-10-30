@@ -20,6 +20,16 @@ MidiEvent sustain(int tick, int value)
 {
     return {.type = MidiEvent::Type::ControlChange, .tick = tick, .data1 = 64, .data2 = value};
 }
+
+MidiEvent keyPressure(int tick, int note, int value)
+{
+    return {.type = MidiEvent::Type::KeyPressure, .tick = tick, .data1 = note, .data2 = value};
+}
+
+MidiEvent bend(int tick, int value)
+{
+    return {.type = MidiEvent::Type::PitchBend, .tick = tick, .data1 = value, .ramp = true};
+}
 } // namespace
 
 TEST_CASE("a moved event goes to its tick in order", "[edit][controller]")
@@ -69,4 +79,33 @@ TEST_CASE("a hold point or an index out of range is not moved", "[edit][controll
     CHECK(ChannelEventEdits::moveTo(events, 1, 960) == result(events, {}));
     CHECK(ChannelEventEdits::moveTo(events, 3, 960) == result(events, {}));
     CHECK(ChannelEventEdits::moveTo(events, -1, 960) == result(events, {}));
+}
+
+TEST_CASE("a set value goes into the data byte that holds the event's value", "[edit][controller]")
+{
+    CHECK(ChannelEventEdits::setValue({pressure(0, 10), pressure(480, 20)}, 1, 30) ==
+          result({pressure(0, 10), pressure(480, 30)}, {1}));
+    CHECK(ChannelEventEdits::setValue({program(0, 5)}, 0, 7) == result({program(0, 7)}, {0}));
+    CHECK(ChannelEventEdits::setValue({sustain(0, 0)}, 0, 127) == result({sustain(0, 127)}, {0}));
+    CHECK(ChannelEventEdits::setValue({keyPressure(0, 60, 10)}, 0, 90) == result({keyPressure(0, 60, 90)}, {0}));
+    CHECK(ChannelEventEdits::setValue({bend(0, 8192)}, 0, 16383) == result({bend(0, 16383)}, {0}));
+}
+
+TEST_CASE("the hold point before the next step holds the set value", "[edit][controller]")
+{
+    CHECK(ChannelEventEdits::setValue({p(0, 10), p(480, 10), p(480, 50)}, 0, 20) ==
+          result({p(0, 20), p(480, 20), p(480, 50)}, {0}));
+}
+
+TEST_CASE("a step set to the value before it needs no hold point", "[edit][controller]")
+{
+    CHECK(ChannelEventEdits::setValue({p(0, 10), p(480, 10), p(480, 50)}, 2, 10) ==
+          result({p(0, 10), p(480, 10)}, {1}));
+}
+
+TEST_CASE("a hold point or an index out of range takes no value", "[edit][controller]")
+{
+    const Events events{p(0, 10), p(480, 10), p(480, 50)};
+    CHECK(ChannelEventEdits::setValue(events, 1, 30) == result(events, {}));
+    CHECK(ChannelEventEdits::setValue(events, 3, 30) == result(events, {}));
 }

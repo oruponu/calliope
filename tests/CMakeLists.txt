@@ -30,6 +30,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/ui/eventlist/EventListPosition.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/eventlist/LengthText.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/eventlist/MetaEventDescription.cpp
+    ${PROJECT_SOURCE_DIR}/src/ui/eventlist/ValueText.cpp
     ${PROJECT_SOURCE_DIR}/src/undo/UndoHistory.cpp
 )
 
@@ -128,6 +129,7 @@ target_sources(CalliopeTests PRIVATE
     ui/eventlist/LengthTextTests.cpp
     ui/eventlist/MetaEventDescriptionTests.cpp
     ui/eventlist/RowSelectionTests.cpp
+    ui/eventlist/ValueTextTests.cpp
     ui/pianoroll/ControllerLaneScaleTests.cpp
     ui/pianoroll/DragValueTipTests.cpp
     ui/pianoroll/EditClipboardTests.cpp

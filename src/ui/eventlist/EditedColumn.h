@@ -4,5 +4,6 @@ enum class EditedColumn
 {
     Position,
     Event,
-    Length
+    Length,
+    Value
 };

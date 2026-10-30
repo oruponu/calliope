@@ -39,6 +39,11 @@ bool EditableRows::isLengthEditable(const EventListItem& item)
     return isEditable(item) && item.kind == EventListItem::Note;
 }
 
+bool EditableRows::isValueEditable(const EventListItem& item)
+{
+    return isEditable(item);
+}
+
 std::optional<EditedCell> EditableRows::next(const std::vector<EventListItem>& items, EditedCell cell, bool backwards)
 {
     if (cell.row >= 0 && cell.row < static_cast<int>(items.size()))
