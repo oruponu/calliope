@@ -356,7 +356,19 @@ void EventListComponent::endEditing(int tick, PositionEditor::Exit exit)
     moveEdited(tick);
     closeEditor();
     settleMoves(true);
+
+    if (exit == PositionEditor::Exit::FocusLost)
+        return;
     if (exit == PositionEditor::Exit::ReturnKey)
+    {
+        grabKeyboardFocus();
+        return;
+    }
+
+    const bool backwards = exit == PositionEditor::Exit::ShiftTab;
+    if (const auto next = EditableRows::next(items, editedRow, backwards))
+        beginEditing(*next, backwards ? PositionField::Tick : PositionField::Bar);
+    else
         grabKeyboardFocus();
 }
 

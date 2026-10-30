@@ -1,5 +1,6 @@
 #include "ui/eventlist/EditableRows.h"
 #include <catch2/catch_test_macros.hpp>
+#include <vector>
 
 namespace
 {
@@ -27,4 +28,18 @@ TEST_CASE("meta events, system exclusive messages, recorded rows and the draft n
     draft.isDraft = true;
     for (const auto& item : {itemOf(EventListItem::Meta), itemOf(EventListItem::SysEx), recorded, draft})
         CHECK_FALSE(EditableRows::isEditable(item));
+}
+
+TEST_CASE("the next editable row skips rows that cannot be edited", "[ui][event-list]")
+{
+    const std::vector items{itemOf(EventListItem::Note), itemOf(EventListItem::Meta), itemOf(EventListItem::PitchBend)};
+    CHECK(EditableRows::next(items, 0, false) == 2);
+    CHECK(EditableRows::next(items, 2, true) == 0);
+}
+
+TEST_CASE("there is no editable row past the last one", "[ui][event-list]")
+{
+    const std::vector items{itemOf(EventListItem::SysEx), itemOf(EventListItem::Note), itemOf(EventListItem::SysEx)};
+    CHECK_FALSE(EditableRows::next(items, 1, false).has_value());
+    CHECK_FALSE(EditableRows::next(items, 1, true).has_value());
 }

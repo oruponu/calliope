@@ -16,7 +16,9 @@ public:
     enum class Exit
     {
         ReturnKey,
-        FocusLost
+        FocusLost,
+        Tab,
+        ShiftTab
     };
 
     PositionEditor(const TimelineMap& timeline, const BarBeatTick& position);

@@ -64,6 +64,14 @@ PositionEditor::PositionEditor(const TimelineMap& timelineRef, const BarBeatTick
             if (onWheelStep)
                 onWheelStep(EventListPosition::toTick(draft, timeline));
         };
+        editor.onTabKey = [this, field](bool backwards)
+        {
+            const int next = static_cast<int>(field) + (backwards ? -1 : 1);
+            if (next >= 0 && next < static_cast<int>(kFields.size()))
+                focusField(kFields[static_cast<size_t>(next)]);
+            else
+                commit(backwards ? Exit::ShiftTab : Exit::Tab);
+        };
         addAndMakeVisible(editor);
     }
     showDraft();
