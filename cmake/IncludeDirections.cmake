@@ -1,5 +1,5 @@
 # The layers and folders that the files of each layer or folder may include from outside themselves.
-# Checked by CheckIncludeDirections.cmake; layers and folders without a rule are not checked.
+# Checked by CheckIncludeDirections.cmake. A new layer, or a new folder in a layer with folder rules, needs a rule here.
 
 set(LAYER_model "")
 set(FOLDER_model "model/event;model/track;model/timeline;model/harmony")

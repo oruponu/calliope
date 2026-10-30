@@ -1,7 +1,7 @@
 # Checks that every project include under SOURCE_DIR goes in a direction that RULES allows. RULES sets
 # LAYER_<layer> and FOLDER_<folder> to the layers or folders their files may include from other layers or other
-# folders of the same layer. Layers and folders without a rule are not checked. Project includes are written from
-# SOURCE_DIR, never from the file.
+# folders of the same layer. Every layer needs a rule, and so does every subfolder of a layer that has folder rules;
+# files may not sit directly under SOURCE_DIR. Project includes are written from SOURCE_DIR, never from the file.
 cmake_minimum_required(VERSION 3.22)
 
 if(NOT DEFINED SOURCE_DIR OR NOT DEFINED RULES)
@@ -21,14 +21,38 @@ macro(report text)
     math(EXPR violationCount "${violationCount} + 1")
 endmacro()
 
+file(GLOB children RELATIVE ${SOURCE_DIR} ${SOURCE_DIR}/*)
+get_cmake_property(ruleNames VARIABLES)
+set(layersWithFolderRules "")
+foreach(child IN LISTS children)
+    if(NOT IS_DIRECTORY ${SOURCE_DIR}/${child})
+        continue()
+    endif()
+    if(NOT DEFINED LAYER_${child})
+        report("layer without a rule: ${child}")
+    endif()
+    foreach(name IN LISTS ruleNames)
+        if(name MATCHES "^FOLDER_${child}/")
+            list(APPEND layersWithFolderRules ${child})
+            break()
+        endif()
+    endforeach()
+endforeach()
+
 set(includePattern "^[ \t]*#[ \t]*include[ \t]*[<\"]([^\">]+)[\">]")
+set(unruledFolders "")
 foreach(file IN LISTS files)
     get_filename_component(folder ${file} DIRECTORY)
-    # Files directly under SOURCE_DIR belong to no layer.
     if(folder STREQUAL "")
+        report("file outside every layer: ${file}")
         continue()
     endif()
     string(REGEX REPLACE "/.*" "" layer ${folder})
+    if(NOT folder STREQUAL layer AND layer IN_LIST layersWithFolderRules AND NOT DEFINED FOLDER_${folder}
+       AND NOT folder IN_LIST unruledFolders)
+        list(APPEND unruledFolders ${folder})
+        report("folder without a rule: ${folder}")
+    endif()
 
     file(STRINGS ${SOURCE_DIR}/${file} lines REGEX "${includePattern}")
     foreach(line IN LISTS lines)
