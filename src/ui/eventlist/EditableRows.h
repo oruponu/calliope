@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/eventlist/EditedCell.h"
 #include "ui/eventlist/EventListItems.h"
 #include <optional>
 #include <vector>
@@ -10,6 +11,7 @@ namespace EditableRows
 bool isEditable(const EventListItem& item);
 // Whether the row's event column can be edited: only a note's, for its note number.
 bool isEventEditable(const EventListItem& item);
-// The first editable row after the row (before it, when backwards); none past the last one.
-std::optional<int> next(const std::vector<EventListItem>& items, int row, bool backwards);
+// The editable cell after the cell (before it, when backwards), going through a row's position and then its event;
+// none past the last one.
+std::optional<EditedCell> next(const std::vector<EventListItem>& items, EditedCell cell, bool backwards);
 } // namespace EditableRows

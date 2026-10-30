@@ -31,6 +31,7 @@ NoteEditor::NoteEditor(int noteNumber) : original(noteNumber), draft(noteNumber)
         if (onWheelStep)
             onWheelStep(draft);
     };
+    editor.onTabKey = [this](bool backwards) { commit(backwards ? EditorExit::ShiftTab : EditorExit::Tab); };
     addAndMakeVisible(editor);
     showDraft();
 }

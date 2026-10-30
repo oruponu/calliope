@@ -432,8 +432,8 @@ void EventListComponent::endEditing(EditorExit exit)
     }
 
     const bool backwards = exit == EditorExit::ShiftTab;
-    if (const auto next = EditableRows::next(items, editedRow, backwards))
-        beginEditing({*next, EditedColumn::Position}, backwards ? PositionField::Tick : PositionField::Bar);
+    if (const auto next = EditableRows::next(items, {editedRow, editedColumn}, backwards))
+        beginEditing(*next, backwards ? PositionField::Tick : PositionField::Bar);
     else
         grabKeyboardFocus();
 }
