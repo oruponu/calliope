@@ -1,6 +1,7 @@
-# Checks that every #include "..." under SOURCE_DIR goes in a direction that RULES allows. RULES sets
+# Checks that every project include under SOURCE_DIR goes in a direction that RULES allows. RULES sets
 # LAYER_<layer> and FOLDER_<folder> to the layers or folders their files may include from other layers or other
-# folders of the same layer. Layers and folders without a rule are not checked.
+# folders of the same layer. Layers and folders without a rule are not checked. Project includes are written from
+# SOURCE_DIR, never from the file.
 cmake_minimum_required(VERSION 3.22)
 
 if(NOT DEFINED SOURCE_DIR OR NOT DEFINED RULES)
@@ -14,8 +15,13 @@ if(NOT files)
     message(FATAL_ERROR "no source files under ${SOURCE_DIR}")
 endif()
 
-set(includePattern "^[ \t]*#[ \t]*include[ \t]*\"([^\"]+)\"")
 set(violationCount 0)
+macro(report text)
+    message("${text}")
+    math(EXPR violationCount "${violationCount} + 1")
+endmacro()
+
+set(includePattern "^[ \t]*#[ \t]*include[ \t]*[<\"]([^\">]+)[\">]")
 foreach(file IN LISTS files)
     get_filename_component(folder ${file} DIRECTORY)
     # Files directly under SOURCE_DIR belong to no layer.
@@ -29,8 +35,12 @@ foreach(file IN LISTS files)
         string(REGEX MATCH "${includePattern}" unused "${line}")
         set(path ${CMAKE_MATCH_1})
         string(REGEX REPLACE "/.*" "" targetLayer ${path})
-        # Headers outside SOURCE_DIR, such as generated ones, are not checked.
         if(targetLayer STREQUAL path OR NOT IS_DIRECTORY ${SOURCE_DIR}/${targetLayer})
+            # Found next to the including file: the compiler accepts it, but it hides the direction from this check.
+            if(EXISTS ${SOURCE_DIR}/${folder}/${path})
+                report("include path violation: ${file} includes \"${path}\" (relative to the including file)")
+            endif()
+            # Otherwise a system, library, or generated header.
             continue()
         endif()
         get_filename_component(targetFolder ${path} DIRECTORY)
@@ -47,8 +57,7 @@ foreach(file IN LISTS files)
         endif()
 
         if(NOT allowed)
-            message("include direction violation: ${file} includes \"${path}\" (${folder} -> ${targetFolder})")
-            math(EXPR violationCount "${violationCount} + 1")
+            report("include direction violation: ${file} includes \"${path}\" (${folder} -> ${targetFolder})")
         endif()
     endforeach()
 endforeach()
