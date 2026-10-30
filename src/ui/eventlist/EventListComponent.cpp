@@ -1,8 +1,12 @@
 #include "ui/eventlist/EventListComponent.h"
+#include "edit/controller/ChannelEventEdits.h"
 #include "model/notation/SysExHex.h"
+#include "ui/eventlist/EditableRows.h"
 #include "ui/eventlist/MetaEventDescription.h"
 #include "ui/eventlist/RowSelection.h"
 #include "ui/theme/TrackColours.h"
+#include "undo/event/NoteModifyAction.h"
+#include "undo/event/ReplaceEventsAction.h"
 #include <utility>
 
 namespace
@@ -15,7 +19,7 @@ constexpr int kColValue = 40;
 constexpr int kPadRight = 8;
 } // namespace
 
-EventListComponent::EventListComponent()
+EventListComponent::EventListComponent(UndoHistory& undoHistoryRef) : undoHistory(undoHistoryRef)
 {
     using namespace calliope::theme;
     listBox.setModel(this);
@@ -157,6 +161,8 @@ void EventListComponent::paint(juce::Graphics& g)
 void EventListComponent::resized()
 {
     listBox.setBounds(0, headerHeight, getWidth(), getHeight() - headerHeight);
+    if (positionEditor != nullptr)
+        positionEditor->setBounds(positionBounds(editedRow));
 }
 
 void EventListComponent::notesChanged(int)
@@ -264,6 +270,128 @@ void EventListComponent::selectedRowsChanged(int lastRowSelected)
     }
 }
 
+void EventListComponent::listBoxItemDoubleClicked(int row, const juce::MouseEvent& e)
+{
+    const auto bounds = positionBounds(row);
+    if (e.x >= bounds.getX() && e.x < bounds.getRight())
+        beginEditing(row, PositionEditor::fieldAt(e.x - bounds.getX()));
+}
+
+void EventListComponent::listWasScrolled()
+{
+    if (positionEditor != nullptr)
+        positionEditor->setBounds(positionBounds(editedRow));
+}
+
+juce::Rectangle<int> EventListComponent::positionBounds(int row) const
+{
+    return listBox.getRowPosition(row, true).withX(kPadLeft + kColDot).withWidth(kColPosition);
+}
+
+void EventListComponent::beginEditing(int row, PositionField field)
+{
+    closeEditor();
+    if (sequence == nullptr || row < 0 || row >= static_cast<int>(items.size()) ||
+        !EditableRows::isEditable(items[static_cast<size_t>(row)]))
+        return;
+
+    editedRow = row;
+    editedItem = items[static_cast<size_t>(row)];
+    listBox.scrollToEnsureRowIsOnscreen(row);
+
+    const auto& timeline = sequence->getTimeline();
+    positionEditor = std::make_unique<PositionEditor>(timeline, timeline.tickToBarBeatTick(editedItem.tick));
+    // Ending the edit destroys the editor along with these lambdas, so they copy this before ending it.
+    positionEditor->onCommit = [this](int tick, PositionEditor::Exit exit)
+    {
+        auto* list = this;
+        list->endEditing(tick, exit);
+    };
+    positionEditor->onCancel = [this]()
+    {
+        auto* list = this;
+        list->closeEditor();
+        list->grabKeyboardFocus();
+    };
+    positionEditor->setBounds(positionBounds(row));
+    listBox.addAndMakeVisible(*positionEditor);
+    positionEditor->focusField(field);
+}
+
+void EventListComponent::moveEdited(int tick)
+{
+    // Moving an event onto its own tick would still put it after the others there.
+    if (tick == editedItem.tick)
+        return;
+
+    const bool wasSelected = listBox.isRowSelected(editedRow);
+    undoHistory.beginNewTransaction(editedItem.kind == EventListItem::Note ? "Move Note" : "Move Event");
+    const bool moved = editedItem.kind == EventListItem::Note ? moveEditedNote(tick) : moveEditedEvent(tick);
+    if (!moved)
+        return;
+
+    const auto row = EventListItems::rowOf(items, editedItem);
+    if (!row)
+        return;
+    if (wasSelected)
+        selectAlso(*row);
+    listBox.scrollToEnsureRowIsOnscreen(*row);
+}
+
+void EventListComponent::endEditing(int tick, PositionEditor::Exit exit)
+{
+    closeEditor();
+    moveEdited(tick);
+    if (exit == PositionEditor::Exit::ReturnKey)
+        grabKeyboardFocus();
+}
+
+void EventListComponent::closeEditor()
+{
+    if (positionEditor == nullptr)
+        return;
+    auto editor = std::move(positionEditor);
+    editor.reset();
+}
+
+void EventListComponent::selectAlso(int row)
+{
+    // The rebuild finds a selected event by its values, which the move changed.
+    updatingFromSelection = true;
+    listBox.selectRow(row, true, false);
+    updatingFromSelection = false;
+}
+
+bool EventListComponent::moveEditedNote(int tick)
+{
+    const auto& item = editedItem;
+    if (item.trackIndex >= sequence->getNumTracks() || item.sourceIndex < 0 ||
+        item.sourceIndex >= sequence->getTrack(item.trackIndex).getNumNotes())
+        return false;
+
+    const auto before = sequence->getTrack(item.trackIndex).getNote(item.sourceIndex);
+    auto after = before;
+    after.startTick = tick;
+    return undoHistory.perform(new NoteModifyAction(sequence, item.trackIndex, item.sourceIndex, before, after));
+}
+
+bool EventListComponent::moveEditedEvent(int tick)
+{
+    if (editedItem.trackIndex >= sequence->getNumTracks())
+        return false;
+
+    const auto& track = sequence->getTrack(editedItem.trackIndex);
+    auto result = ChannelEventEdits::moveTo(track.getEvents(), editedItem.sourceIndex, tick);
+    if (result.selected.empty())
+        return false;
+
+    if (!undoHistory.perform(
+            new ReplaceEventsAction(sequence, track.getId(), track.getEvents(), std::move(result.events))))
+        return false;
+    editedItem.sourceIndex = *result.selected.begin();
+    return true;
+}
+
 void EventListComponent::setRecordingLayer(const RecordingLayer* layer)
 {
     recordingLayer = layer;
@@ -289,6 +417,9 @@ void EventListComponent::clearSelection()
 
 void EventListComponent::rebuildList()
 {
+    // The editor's row may hold another event afterwards.
+    closeEditor();
+
     const auto selection = listBox.getSelectedRows();
     std::vector<int> selectedRows;
     for (const auto& range : selection.getRanges())

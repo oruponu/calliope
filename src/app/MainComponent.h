@@ -176,7 +176,7 @@ private:
     int eventListWidthOnDragStart = 280;
     bool syncingScroll = false;
 
-    EventListComponent eventList;
+    EventListComponent eventList{document.getHistory()};
 
     enum class FocusPanel
     {

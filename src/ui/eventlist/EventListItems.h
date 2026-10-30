@@ -67,6 +67,8 @@ std::vector<int> reselectedRows(const std::vector<EventListItem>& before, const 
 std::vector<int> eventRows(const std::vector<EventListItem>& items, int trackIndex, const std::set<int>& eventIndices);
 // The rows, in order, of the points the preview drags; none when it drags no points.
 std::vector<int> draggedRows(const std::vector<EventListItem>& items, const NoteDragPreview& preview);
+// The row of a note in the sequence by its ref, or of an event in the sequence by its index.
+std::optional<int> rowOf(const std::vector<EventListItem>& items, const EventListItem& item);
 // The controller of a control change or pitch bend row in the sequence; none for other rows and recorded ones.
 std::optional<ControllerKind> controllerOf(const EventListItem& item);
 // The event indices of the selected rows that hold the clicked row's controller on its track.

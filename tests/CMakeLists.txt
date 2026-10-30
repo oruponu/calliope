@@ -25,7 +25,9 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/plugin/PluginSyncPlan.cpp
     ${PROJECT_SOURCE_DIR}/src/session/EditableNotes.cpp
     ${PROJECT_SOURCE_DIR}/src/session/LayeredNoteEdits.cpp
+    ${PROJECT_SOURCE_DIR}/src/ui/eventlist/EditableRows.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/eventlist/EventListItems.cpp
+    ${PROJECT_SOURCE_DIR}/src/ui/eventlist/EventListPosition.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/eventlist/MetaEventDescription.cpp
     ${PROJECT_SOURCE_DIR}/src/undo/UndoHistory.cpp
 )
@@ -33,6 +35,7 @@ target_sources(CalliopeTests PRIVATE
 target_sources(CalliopeTests PRIVATE
     audio/ClickVoiceTests.cpp
     audio/MetronomeVolumeTests.cpp
+    edit/controller/ChannelEventEditsTests.cpp
     edit/controller/ControllerPointAddTests.cpp
     edit/controller/ControllerPointClipboardTests.cpp
     edit/controller/ControllerPointDeleteTests.cpp
@@ -117,7 +120,9 @@ target_sources(CalliopeTests PRIVATE
     plugin/RetiredStateStoreTests.cpp
     session/EditableNotesTests.cpp
     session/LayeredNoteEditsTests.cpp
+    ui/eventlist/EditableRowsTests.cpp
     ui/eventlist/EventListItemsTests.cpp
+    ui/eventlist/EventListPositionTests.cpp
     ui/eventlist/MetaEventDescriptionTests.cpp
     ui/eventlist/RowSelectionTests.cpp
     ui/pianoroll/ControllerLaneScaleTests.cpp

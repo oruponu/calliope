@@ -34,6 +34,7 @@ target_compile_features(CalliopeModel PUBLIC cxx_std_23)
 target_link_libraries(CalliopeModel PRIVATE juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
 add_library(CalliopeEdit STATIC
+    src/edit/controller/ChannelEventEdits.cpp
     src/edit/controller/ControllerPointEdits.cpp
     src/edit/controller/ProgramChangeEdits.cpp
     src/edit/event/NoteEdits.cpp
@@ -103,9 +104,12 @@ target_sources(Calliope PRIVATE
     src/session/PlaybackSync.cpp
     src/session/Recorder.cpp
     src/ui/commands/AppCommands.cpp
+    src/ui/eventlist/EditableRows.cpp
     src/ui/eventlist/EventListComponent.cpp
     src/ui/eventlist/EventListItems.cpp
+    src/ui/eventlist/EventListPosition.cpp
     src/ui/eventlist/MetaEventDescription.cpp
+    src/ui/eventlist/PositionEditor.cpp
     src/ui/menu/MainMenuModel.cpp
     src/ui/pianoroll/ControllerLaneComponent.cpp
     src/ui/pianoroll/ControllerValueEditor.cpp

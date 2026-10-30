@@ -6,14 +6,18 @@
 #include "model/controller/ControllerKind.h"
 #include "ui/drag/NoteDragPreview.h"
 #include "ui/eventlist/EventListItems.h"
+#include "ui/eventlist/PositionEditor.h"
+#include "ui/eventlist/PositionField.h"
+#include "undo/UndoHistory.h"
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <memory>
 #include <set>
 #include <vector>
 
 class EventListComponent : public juce::Component, public MidiSequence::Listener, private juce::ListBoxModel
 {
 public:
-    EventListComponent();
+    explicit EventListComponent(UndoHistory& undoHistoryRef);
     ~EventListComponent() override;
 
     void setSequence(MidiSequence* seq);
@@ -49,6 +53,17 @@ private:
     int getNumRows() override;
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
     void selectedRowsChanged(int lastRowSelected) override;
+    void listBoxItemDoubleClicked(int row, const juce::MouseEvent& e) override;
+    void listWasScrolled() override;
+
+    juce::Rectangle<int> positionBounds(int row) const;
+    void beginEditing(int row, PositionField field);
+    void moveEdited(int tick);
+    void endEditing(int tick, PositionEditor::Exit exit);
+    void closeEditor();
+    void selectAlso(int row);
+    bool moveEditedNote(int tick);
+    bool moveEditedEvent(int tick);
 
     void rebuildList();
     void selectRows(const std::vector<int>& rows);
@@ -60,6 +75,7 @@ private:
     static juce::String formatValue(const EventListItem& item);
     static juce::String noteNumberToName(int noteNumber);
 
+    UndoHistory& undoHistory;
     MidiSequence* sequence = nullptr;
     const RecordingLayer* recordingLayer = nullptr;
     std::set<int> selectedTracks;
@@ -67,6 +83,9 @@ private:
     NoteDragPreview dragPreview;
 
     juce::ListBox listBox;
+    std::unique_ptr<PositionEditor> positionEditor;
+    int editedRow = -1;
+    EventListItem editedItem;
     double playheadTick = 0.0;
     int lastPlayheadRow = -1;
     bool updatingFromPlayhead = false;

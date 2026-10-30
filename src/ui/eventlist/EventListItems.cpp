@@ -279,6 +279,25 @@ std::vector<int> EventListItems::draggedRows(const std::vector<EventListItem>& i
     return eventRows(items, preview.draggedEvents->trackIndex, preview.draggedEvents->dragged);
 }
 
+std::optional<int> EventListItems::rowOf(const std::vector<EventListItem>& items, const EventListItem& item)
+{
+    if (item.kind != EventListItem::Note)
+    {
+        const auto rows = eventRows(items, item.trackIndex, {item.sourceIndex});
+        if (rows.empty())
+            return std::nullopt;
+        return rows.front();
+    }
+
+    const auto ref = noteRefOf(item);
+    const auto it =
+        std::ranges::find_if(items, [&ref](const EventListItem& row)
+                             { return row.kind == EventListItem::Note && !row.isDraft && noteRefOf(row) == ref; });
+    if (it == items.end())
+        return std::nullopt;
+    return static_cast<int>(it - items.begin());
+}
+
 std::optional<ControllerKind> EventListItems::controllerOf(const EventListItem& item)
 {
     if (item.isRecording)

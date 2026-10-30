@@ -631,3 +631,17 @@ TEST_CASE("a clicked row with no controller picks no events", "[ui][event-list]"
     CHECK(EventListItems::sameControllerEvents(items, {0, 1}, 0).empty());
     CHECK(EventListItems::sameControllerEvents(items, {0, 1}, 5).empty());
 }
+
+TEST_CASE("a note row is found by its ref and an event row by its index whatever their ticks", "[ui][event-list]")
+{
+    const std::vector items{noteRow(0, 1), ccRow(0, 0, 10), noteRow(480, 0), ccRow(480, 1, 20)};
+    CHECK(EventListItems::rowOf(items, noteRow(960, 0)) == 2);
+    CHECK(EventListItems::rowOf(items, ccRow(960, 1, 99)) == 3);
+}
+
+TEST_CASE("a recorded row is not found for a sequence row, nor a row that is not listed", "[ui][event-list]")
+{
+    const std::vector items{noteRow(0, 0, true), ccRow(0, 0, 10)};
+    CHECK_FALSE(EventListItems::rowOf(items, noteRow(0, 0)).has_value());
+    CHECK_FALSE(EventListItems::rowOf(items, ccRow(0, 3, 10)).has_value());
+}
