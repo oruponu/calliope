@@ -111,6 +111,7 @@ target_sources(CalliopeTests PRIVATE
     model/notation/ChordSymbolTests.cpp
     model/notation/GmProgramsTests.cpp
     model/notation/KeySignatureNameTests.cpp
+    model/notation/NoteNameTests.cpp
     model/notation/SysExHexTests.cpp
     model/timeline/BarBeatTickTests.cpp
     model/timeline/TempoChangeListTests.cpp

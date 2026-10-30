@@ -1,5 +1,6 @@
 #include "ui/eventlist/EventListComponent.h"
 #include "edit/controller/ChannelEventEdits.h"
+#include "model/notation/NoteName.h"
 #include "model/notation/SysExHex.h"
 #include "ui/eventlist/EditableRows.h"
 #include "ui/eventlist/MetaEventDescription.h"
@@ -532,7 +533,7 @@ juce::String EventListComponent::formatEvent(const EventListItem& item)
     case EventListItem::SysEx:
         return "SysEx F0 " + juce::String(SysExHex::format(item.sysExData)) + " F7";
     case EventListItem::Note:
-        return "Note " + noteNumberToName(item.noteNumber);
+        return "Note " + juce::String(NoteName::format(item.noteNumber));
     case EventListItem::ControlChange:
         return "CC " + juce::String(item.data1);
     case EventListItem::ProgramChange:
@@ -576,12 +577,4 @@ juce::String EventListComponent::formatValue(const EventListItem& item)
         return juce::String(item.data2);
     }
     return {};
-}
-
-juce::String EventListComponent::noteNumberToName(int noteNumber)
-{
-    static const char* names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-    int octave = (noteNumber / 12) - 1;
-    int note = noteNumber % 12;
-    return juce::String(names[note]) + juce::String(octave);
 }

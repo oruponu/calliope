@@ -197,7 +197,6 @@ private:
     int getRulerTop() const;
 
     static bool isBlackKey(int noteNumber);
-    static juce::String getNoteName(int noteNumber);
 
     TimelineGeometry geometry{keyboardWidth};
     DisplayedTimeline displayedTimeline;

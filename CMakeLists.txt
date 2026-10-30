@@ -23,6 +23,7 @@ add_library(CalliopeModel STATIC
     src/model/notation/ChordSymbol.cpp
     src/model/notation/GmPrograms.cpp
     src/model/notation/KeySignatureName.cpp
+    src/model/notation/NoteName.cpp
     src/model/notation/SysExHex.cpp
     src/model/timeline/TempoChangeList.cpp
     src/model/timeline/TimeSignatureChangeList.cpp

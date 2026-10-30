@@ -2,6 +2,7 @@
 #include "edit/event/NoteEdit.h"
 #include "edit/event/NoteEdits.h"
 #include "edit/event/NoteQuantize.h"
+#include "model/notation/NoteName.h"
 #include "ui/pianoroll/GridLineColours.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/event/MultiNoteAddAction.h"
@@ -1470,7 +1471,8 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g)
         int cTop = static_cast<int>(octBottom - whiteKeyH + 0.5);
         int cH = static_cast<int>(whiteKeyH);
         if (cTop + cH >= clip.getY() && cTop <= clip.getBottom())
-            g.drawText(getNoteName(base), kbLeft, cTop, keyboardWidth - 4, cH, juce::Justification::centredRight);
+            g.drawText(juce::String(NoteName::format(base)), kbLeft, cTop, keyboardWidth - 4, cH,
+                       juce::Justification::centredRight);
     }
 
     if (isPreviewing)
@@ -1960,13 +1962,6 @@ bool PianoRollComponent::isBlackKey(int noteNumber)
 {
     int n = noteNumber % 12;
     return n == 1 || n == 3 || n == 6 || n == 8 || n == 10;
-}
-
-juce::String PianoRollComponent::getNoteName(int noteNumber)
-{
-    static const char* names[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-    int octave = (noteNumber / 12) - 1;
-    return juce::String(names[noteNumber % 12]) + juce::String(octave);
 }
 
 bool PianoRollComponent::isNoteSelected(const NoteRef& ref) const

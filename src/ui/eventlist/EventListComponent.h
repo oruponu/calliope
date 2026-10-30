@@ -78,7 +78,6 @@ private:
     static juce::String formatEvent(const EventListItem& item);
     static juce::String formatLength(const EventListItem& item);
     static juce::String formatValue(const EventListItem& item);
-    static juce::String noteNumberToName(int noteNumber);
 
     UndoHistory& undoHistory;
     MidiSequence* sequence = nullptr;
