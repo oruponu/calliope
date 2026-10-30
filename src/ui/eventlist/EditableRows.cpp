@@ -20,6 +20,8 @@ std::vector<EditedColumn> columnsOf(const EventListItem& item)
         columns.push_back(EditedColumn::Event);
     if (EditableRows::isLengthEditable(item))
         columns.push_back(EditedColumn::Length);
+    if (EditableRows::isValueEditable(item))
+        columns.push_back(EditedColumn::Value);
     return columns;
 }
 } // namespace
