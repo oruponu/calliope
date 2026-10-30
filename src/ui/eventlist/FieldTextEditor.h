@@ -4,7 +4,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 // Reports the wheel and Tab instead of scrolling or moving the keyboard focus to another component.
-class PositionFieldEditor : public juce::TextEditor
+class FieldTextEditor : public juce::TextEditor
 {
 public:
     // direction is +1 (up) or -1 (down)

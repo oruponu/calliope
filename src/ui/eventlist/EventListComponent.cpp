@@ -354,6 +354,7 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
     else
     {
         auto noteEditor = std::make_unique<NoteEditor>(editedItem.noteNumber);
+        noteEditor->onWheelStep = [this](int noteNumber) { setEditedNoteNumber(noteNumber); };
         noteEditor->onCommit = [this](int noteNumber, EditorExit exit)
         {
             auto* list = this;

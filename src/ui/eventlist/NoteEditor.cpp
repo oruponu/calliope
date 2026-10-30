@@ -1,6 +1,7 @@
 #include "ui/eventlist/NoteEditor.h"
 #include "model/notation/NoteName.h"
 #include "ui/theme/Theme.h"
+#include <algorithm>
 
 NoteEditor::NoteEditor(int noteNumber) : original(noteNumber), draft(noteNumber)
 {
@@ -22,6 +23,14 @@ NoteEditor::NoteEditor(int noteNumber) : original(noteNumber), draft(noteNumber)
         if (!hasKeyboardFocus(true))
             commit(EditorExit::FocusLost);
     };
+    editor.onWheel = [this](int direction)
+    {
+        readField();
+        draft = std::clamp(draft + direction, 0, 127);
+        showDraft();
+        if (onWheelStep)
+            onWheelStep(draft);
+    };
     addAndMakeVisible(editor);
     showDraft();
 }
@@ -34,6 +43,12 @@ void NoteEditor::focusField()
 void NoteEditor::resized()
 {
     editor.setBounds(getLocalBounds());
+}
+
+void NoteEditor::readField()
+{
+    if (const auto noteNumber = NoteName::parse(editor.getText().toStdString()))
+        draft = *noteNumber;
 }
 
 void NoteEditor::showDraft()

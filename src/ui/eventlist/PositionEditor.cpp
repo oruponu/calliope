@@ -112,7 +112,7 @@ void PositionEditor::resized()
     editorOf(PositionField::Tick).setBounds(area);
 }
 
-PositionFieldEditor& PositionEditor::editorOf(PositionField field)
+FieldTextEditor& PositionEditor::editorOf(PositionField field)
 {
     return editors[static_cast<size_t>(field)];
 }

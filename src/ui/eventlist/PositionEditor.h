@@ -3,8 +3,8 @@
 #include "model/timeline/BarBeatTick.h"
 #include "model/timeline/TimelineMap.h"
 #include "ui/eventlist/EditorExit.h"
+#include "ui/eventlist/FieldTextEditor.h"
 #include "ui/eventlist/PositionField.h"
-#include "ui/eventlist/PositionFieldEditor.h"
 #include <array>
 #include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -29,13 +29,13 @@ public:
     void resized() override;
 
 private:
-    PositionFieldEditor& editorOf(PositionField field);
+    FieldTextEditor& editorOf(PositionField field);
     void readFields();
     void showDraft();
     void commit(EditorExit exit);
 
     const TimelineMap& timeline;
     BarBeatTick draft;
-    std::array<PositionFieldEditor, 3> editors;
+    std::array<FieldTextEditor, 3> editors;
     bool ended = false;
 };
