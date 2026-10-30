@@ -1,22 +1,7 @@
 #pragma once
 
-struct LoopRange
-{
-    bool enabled = false;
-    int start = 0;
-    int end = 0;
-
-    bool operator==(const LoopRange&) const = default;
-};
-
-// A pass is the stretch of playback since playback started, the loop wrapped or the playhead jumped.
-struct ClockPosition
-{
-    int pass = 0;
-    int tick = 0;
-
-    bool operator==(const ClockPosition&) const = default;
-};
+#include "engine/transport/ClockPosition.h"
+#include "engine/transport/LoopRange.h"
 
 // The playhead as of the latest playback timer callback.
 struct PlaybackClock

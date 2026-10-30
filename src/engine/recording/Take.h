@@ -18,14 +18,3 @@ struct TakeTrack
 
 // What a recording segment has finished so far, by the track it was recorded onto.
 using Take = std::map<TrackId, TakeTrack>;
-
-struct HeldTakeNote
-{
-    TrackId track{};
-    int noteNumber = 0;
-    int velocity = 0;
-    int startTick = 0;
-    int id = 0;
-
-    bool operator==(const HeldTakeNote&) const = default;
-};

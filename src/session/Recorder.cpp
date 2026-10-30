@@ -1,6 +1,7 @@
 #include "session/Recorder.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/recording/CountInEnd.h"
+#include "engine/recording/HeldTakeNote.h"
 #include "model/grid/TimelineGrid.h"
 #include "undo/UndoHistory.h"
 #include "undo/event/RecordTakeAction.h"

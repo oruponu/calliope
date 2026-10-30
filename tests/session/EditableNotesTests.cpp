@@ -1,3 +1,4 @@
+#include "engine/recording/HeldTakeNote.h"
 #include "session/EditableNotes.h"
 #include "support/MidiNoteTestHelpers.h"
 #include "support/NoteRefStringMaker.h"

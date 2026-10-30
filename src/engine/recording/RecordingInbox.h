@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/recording/CountInEnd.h"
+#include "engine/recording/InboxItem.h"
 #include "engine/recording/PassBoundary.h"
 #include "engine/transport/PlaybackClock.h"
 #include "engine/transport/PlaybackProgress.h"
@@ -10,19 +11,6 @@
 #include <string>
 #include <variant>
 #include <vector>
-
-struct RecordedInput
-{
-    std::string sourceId;
-    juce::MidiMessage message;
-    ClockPosition position;
-    // The clock's loop when the input was placed.
-    LoopRange loop;
-    // Played before the count-in ended. Its position is the count-in end, which may still move.
-    bool countIn = false;
-};
-
-using InboxItem = std::variant<RecordedInput, PassBoundary, CountInEnd>;
 
 // Shared by the playback timer, the MIDI input thread and the message thread. One lock covers the clock, the
 // recording flag and the queue, so an input is either queued before its segment ends or dropped, and a boundary is

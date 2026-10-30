@@ -1,6 +1,7 @@
 #pragma once
 
 #include "edit/event/NoteRef.h"
+#include "engine/recording/HeldTakeNote.h"
 #include "engine/recording/RecordingInbox.h"
 #include "engine/recording/RecordingLayer.h"
 #include "engine/recording/RecordingLayerEditor.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/playback/PlaybackSnapshot.h"
+#include "engine/playback/PlaybackTrackContext.h"
 #include "model/event/MidiEvent.h"
 #include "model/event/MidiNote.h"
 

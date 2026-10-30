@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/playback/PlaybackSnapshot.h"
+#include "engine/playback/PlaybackTrackContext.h"
 #include "engine/thru/LiveMidiSink.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <optional>

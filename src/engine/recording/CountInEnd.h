@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/transport/PlaybackClock.h"
+#include "engine/transport/LoopRange.h"
 
 // Ends the count-in: count-in input queued before it is recorded at startTick.
 struct CountInEnd

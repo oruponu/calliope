@@ -8,7 +8,7 @@
 #include "engine/playback/PlaybackSnapshot.h"
 #include "engine/recording/RecordingInbox.h"
 #include "engine/recording/RecordingLayer.h"
-#include "engine/transport/PlaybackClock.h"
+#include "engine/transport/LoopRange.h"
 #include "model/MidiSequence.h"
 #include <atomic>
 #include <cstdint>

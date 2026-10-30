@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/playback/PlaybackSnapshot.h"
+#include "engine/playback/PlaybackTrackContext.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 
 // Receives live input already rewritten to the target track's channel. Called on the MIDI input thread

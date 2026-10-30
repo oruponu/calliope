@@ -1,9 +1,11 @@
 #pragma once
 
+#include "engine/recording/HeldTakeNote.h"
 #include "engine/recording/PassBoundary.h"
 #include "engine/recording/RecordedNoteEdit.h"
 #include "engine/recording/Take.h"
-#include "engine/transport/PlaybackClock.h"
+#include "engine/transport/ClockPosition.h"
+#include "engine/transport/LoopRange.h"
 #include "engine/transport/PlaybackProgress.h"
 #include "model/event/MidiNote.h"
 #include <juce_audio_basics/juce_audio_basics.h>

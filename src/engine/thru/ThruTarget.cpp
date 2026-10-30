@@ -1,4 +1,5 @@
 #include "engine/thru/ThruTarget.h"
+#include "engine/playback/PlaybackSnapshot.h"
 
 std::optional<PlaybackTrackContext> resolveThruTarget(const MidiSequence& seq, int activeTrackIndex)
 {

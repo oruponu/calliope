@@ -1,3 +1,4 @@
+#include "engine/recording/HeldTakeNote.h"
 #include "support/NoteRefStringMaker.h"
 #include "ui/eventlist/EventListItems.h"
 #include <catch2/catch_test_macros.hpp>

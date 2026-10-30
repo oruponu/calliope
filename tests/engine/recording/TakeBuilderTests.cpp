@@ -1,3 +1,4 @@
+#include "engine/recording/HeldTakeNote.h"
 #include "engine/recording/TakeBuilder.h"
 #include "support/GridTestHelpers.h"
 #include "support/MidiEventTestHelpers.h"

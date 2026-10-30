@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/transport/PlaybackClock.h"
+#include "engine/transport/LoopRange.h"
 #include "model/grid/TimelineGrid.h"
 #include <optional>
 

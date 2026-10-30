@@ -1,4 +1,5 @@
 #include "engine/recording/TakeBuilder.h"
+#include "engine/recording/HeldTakeNote.h"
 #include "engine/recording/InputQuantize.h"
 #include "model/event/ChannelVoiceStatus.h"
 #include "model/grid/TimelineGrid.h"

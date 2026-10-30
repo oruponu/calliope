@@ -1,12 +1,7 @@
 #pragma once
 
+#include "edit/event/NoteLayer.h"
 #include <compare>
-
-enum class NoteLayer
-{
-    Sequence,
-    Recording
-};
 
 struct NoteRef
 {

@@ -1,4 +1,5 @@
 #include "session/EditableNotes.h"
+#include "engine/recording/HeldTakeNote.h"
 #include <algorithm>
 #include <ranges>
 

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "engine/playback/PlaybackTrackContext.h"
+#include "engine/playback/ScheduledEvent.h"
+#include "engine/playback/ScheduledNote.h"
+#include "engine/playback/ScheduledSysEx.h"
 #include "engine/recording/Take.h"
 #include "model/MidiSequence.h"
 #include "model/event/MidiEvent.h"
@@ -7,33 +11,6 @@
 #include "model/event/SysExEvent.h"
 #include "model/track/MidiTrack.h"
 #include <vector>
-
-struct PlaybackTrackContext
-{
-    TrackId trackId{};
-    int channel = 1;
-    TrackId routeTarget{};
-    MidiTrack::OutputDestination destination = MidiTrack::OutputDestination::MidiDevice;
-    bool operator==(const PlaybackTrackContext&) const = default;
-};
-
-struct ScheduledNote
-{
-    PlaybackTrackContext ctx;
-    MidiNote note;
-};
-
-struct ScheduledEvent
-{
-    PlaybackTrackContext ctx;
-    MidiEvent event;
-};
-
-struct ScheduledSysEx
-{
-    PlaybackTrackContext ctx;
-    SysExEvent sysEx;
-};
 
 struct PlaybackSnapshot
 {

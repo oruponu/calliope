@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/recording/HeldTakeNote.h"
 #include "engine/recording/Take.h"
 #include <vector>
 

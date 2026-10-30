@@ -3,7 +3,7 @@
 #include "engine/chase/ChaseItem.h"
 #include "engine/chase/ChaseScan.h"
 #include "engine/chase/ChaseTarget.h"
-#include "engine/playback/PlaybackSnapshot.h"
+#include "engine/playback/PlaybackTrackContext.h"
 #include <utility>
 #include <vector>
 
