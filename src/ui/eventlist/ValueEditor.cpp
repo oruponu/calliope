@@ -1,15 +1,16 @@
-#include "ui/eventlist/NoteEditor.h"
-#include "model/notation/NoteName.h"
+#include "ui/eventlist/ValueEditor.h"
 #include "ui/theme/Theme.h"
 #include <algorithm>
+#include <utility>
 
-NoteEditor::NoteEditor(int noteNumber) : original(noteNumber), draft(noteNumber)
+ValueEditor::ValueEditor(int value, ValueFormat formatToUse)
+    : format(std::move(formatToUse)), original(value), draft(value)
 {
     using namespace calliope::theme;
     editor.setFont(font::sans(font::sizeSM));
     editor.setIndents(0, 0);
-    editor.setJustification(juce::Justification::centredLeft);
-    editor.setInputRestrictions(4, "0123456789ABCDEFGabcdefg#-");
+    editor.setJustification(format.justification);
+    editor.setInputRestrictions(format.maxLength, format.allowedCharacters);
     editor.setSelectAllWhenFocused(true);
     editor.onReturnKey = [this]() { commit(EditorExit::ReturnKey); };
     editor.onEscapeKey = [this]()
@@ -25,46 +26,47 @@ NoteEditor::NoteEditor(int noteNumber) : original(noteNumber), draft(noteNumber)
     };
     editor.onWheel = [this](int direction)
     {
+        if (!onWheelStep)
+            return;
         readField();
-        draft = std::clamp(draft + direction, 0, 127);
+        draft = std::clamp(draft + direction, format.minimum, format.maximum);
         showDraft();
-        if (onWheelStep)
-            onWheelStep(draft);
+        onWheelStep(draft);
     };
     editor.onTabKey = [this](bool backwards) { commit(backwards ? EditorExit::ShiftTab : EditorExit::Tab); };
     addAndMakeVisible(editor);
     showDraft();
 }
 
-void NoteEditor::focusField()
+void ValueEditor::focusField()
 {
     editor.grabKeyboardFocus();
 }
 
-void NoteEditor::resized()
+void ValueEditor::resized()
 {
     editor.setBounds(getLocalBounds());
 }
 
-void NoteEditor::readField()
+void ValueEditor::readField()
 {
-    if (const auto noteNumber = NoteName::parse(editor.getText().toStdString()))
-        draft = *noteNumber;
+    if (const auto value = format.parse(editor.getText().toStdString()))
+        draft = *value;
 }
 
-void NoteEditor::showDraft()
+void ValueEditor::showDraft()
 {
-    editor.setText(juce::String(NoteName::format(draft)), juce::dontSendNotification);
+    editor.setText(juce::String(format.format(draft)), juce::dontSendNotification);
     if (editor.hasKeyboardFocus(false))
         editor.selectAll();
 }
 
-void NoteEditor::commit(EditorExit exit)
+void ValueEditor::commit(EditorExit exit)
 {
     if (ended)
         return;
     ended = true;
-    const auto typed = NoteName::parse(editor.getText().toStdString());
+    const auto typed = format.parse(editor.getText().toStdString());
     if (onCommit)
         onCommit(typed.value_or(original), exit);
 }

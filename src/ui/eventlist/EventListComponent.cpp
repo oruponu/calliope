@@ -3,13 +3,16 @@
 #include "model/notation/NoteName.h"
 #include "model/notation/SysExHex.h"
 #include "ui/eventlist/EditableRows.h"
+#include "ui/eventlist/LengthText.h"
 #include "ui/eventlist/MetaEventDescription.h"
-#include "ui/eventlist/NoteEditor.h"
 #include "ui/eventlist/PositionEditor.h"
 #include "ui/eventlist/RowSelection.h"
+#include "ui/eventlist/ValueEditor.h"
+#include "ui/eventlist/ValueFormat.h"
 #include "ui/theme/TrackColours.h"
 #include "undo/event/NoteModifyAction.h"
 #include "undo/event/ReplaceEventsAction.h"
+#include <string>
 #include <utility>
 
 namespace
@@ -21,6 +24,28 @@ constexpr int kColNote = 36;
 constexpr int kColLength = 34;
 constexpr int kColValue = 40;
 constexpr int kPadRight = 8;
+
+ValueFormat noteNumberFormat()
+{
+    return {.format = NoteName::format,
+            .parse = NoteName::parse,
+            .minimum = 0,
+            .maximum = 127,
+            .maxLength = 4,
+            .allowedCharacters = "0123456789ABCDEFGabcdefg#-",
+            .justification = juce::Justification::centredLeft};
+}
+
+ValueFormat lengthFormat()
+{
+    return {.format = [](int ticks) { return std::to_string(ticks); },
+            .parse = LengthText::parse,
+            .minimum = 1,
+            .maximum = LengthText::kMaxLength,
+            .maxLength = 7,
+            .allowedCharacters = "0123456789",
+            .justification = juce::Justification::centredRight};
+}
 } // namespace
 
 EventListComponent::EventListComponent(UndoHistory& undoHistoryRef) : undoHistory(undoHistoryRef)
@@ -284,7 +309,13 @@ void EventListComponent::listBoxItemDoubleClicked(int row, const juce::MouseEven
     }
     const auto note = noteBounds(row);
     if (e.x >= note.getX() && e.x < note.getRight())
+    {
         beginEditing({row, EditedColumn::Event}, PositionField::Bar);
+        return;
+    }
+    const auto length = lengthBounds(row);
+    if (e.x >= length.getX() && e.x < length.getRight())
+        beginEditing({row, EditedColumn::Length}, PositionField::Bar);
 }
 
 void EventListComponent::listWasScrolled()
@@ -306,9 +337,24 @@ juce::Rectangle<int> EventListComponent::noteBounds(int row) const
     return listBox.getRowPosition(row, true).withX(kPadLeft + kColDot + kColPosition + labelWidth).withWidth(kColNote);
 }
 
+juce::Rectangle<int> EventListComponent::lengthBounds(int row) const
+{
+    const auto rowBounds = listBox.getRowPosition(row, true);
+    return rowBounds.withX(rowBounds.getWidth() - kPadRight - kColValue - kColLength).withWidth(kColLength);
+}
+
 juce::Rectangle<int> EventListComponent::editorBounds(int row) const
 {
-    return editedColumn == EditedColumn::Position ? positionBounds(row) : noteBounds(row);
+    switch (editedColumn)
+    {
+    case EditedColumn::Position:
+        return positionBounds(row);
+    case EditedColumn::Event:
+        return noteBounds(row);
+    case EditedColumn::Length:
+        return lengthBounds(row);
+    }
+    return {};
 }
 
 void EventListComponent::beginEditing(EditedCell cell, PositionField field)
@@ -317,7 +363,10 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
     if (sequence == nullptr || cell.row < 0 || cell.row >= static_cast<int>(items.size()))
         return;
     const auto& item = items[static_cast<size_t>(cell.row)];
-    if (cell.column == EditedColumn::Position ? !EditableRows::isEditable(item) : !EditableRows::isEventEditable(item))
+    const bool editable = cell.column == EditedColumn::Position ? EditableRows::isEditable(item)
+                          : cell.column == EditedColumn::Event  ? EditableRows::isEventEditable(item)
+                                                                : EditableRows::isLengthEditable(item);
+    if (!editable)
         return;
 
     editedRow = cell.row;
@@ -353,17 +402,20 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
     }
     else
     {
-        auto noteEditor = std::make_unique<NoteEditor>(editedItem.noteNumber);
-        noteEditor->onWheelStep = [this](int noteNumber) { setEditedNoteNumber(noteNumber); };
-        noteEditor->onCommit = [this](int noteNumber, EditorExit exit)
+        const bool isNoteNumber = cell.column == EditedColumn::Event;
+        auto valueEditor = std::make_unique<ValueEditor>(isNoteNumber ? editedItem.noteNumber : editedItem.duration,
+                                                         isNoteNumber ? noteNumberFormat() : lengthFormat());
+        if (isNoteNumber)
+            valueEditor->onWheelStep = [this](int value) { setEditedValue(value); };
+        valueEditor->onCommit = [this](int value, EditorExit exit)
         {
             auto* list = this;
-            list->setEditedNoteNumber(noteNumber);
+            list->setEditedValue(value);
             list->endEditing(exit);
         };
-        noteEditor->onCancel = cancel;
-        auto& shown = *noteEditor;
-        editor = std::move(noteEditor);
+        valueEditor->onCancel = cancel;
+        auto& shown = *valueEditor;
+        editor = std::move(valueEditor);
         showEditor();
         shown.focusField();
     }
@@ -391,6 +443,22 @@ void EventListComponent::setEditedNoteNumber(int noteNumber)
         return;
     applyEdit("Move Note", [this, noteNumber]()
               { return modifyEditedNote([noteNumber](MidiNote& note) { note.noteNumber = noteNumber; }); });
+}
+
+void EventListComponent::setEditedLength(int duration)
+{
+    if (duration == editedItem.duration)
+        return;
+    applyEdit("Resize Note", [this, duration]()
+              { return modifyEditedNote([duration](MidiNote& note) { note.duration = duration; }); });
+}
+
+void EventListComponent::setEditedValue(int value)
+{
+    if (editedColumn == EditedColumn::Event)
+        setEditedNoteNumber(value);
+    else
+        setEditedLength(value);
 }
 
 void EventListComponent::applyEdit(const juce::String& transactionName, const std::function<bool()>& edit)
@@ -458,8 +526,9 @@ void EventListComponent::settleEdits(bool keep)
         return;
 
     const bool wasSelected = listBox.isRowSelected(editedRow);
-    // Edits that came back to where the event was leave no undo step.
-    if (keep && (editedItem.tick != originalItem.tick || editedItem.noteNumber != originalItem.noteNumber))
+    // Edits that left the event as it was leave no undo step.
+    if (keep && (editedItem.tick != originalItem.tick || editedItem.noteNumber != originalItem.noteNumber ||
+                 editedItem.duration != originalItem.duration))
     {
         rebuildList();
     }

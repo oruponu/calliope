@@ -49,6 +49,22 @@ TEST_CASE("only a note's event can be edited", "[ui][event-list]")
     CHECK_FALSE(EditableRows::isEventEditable(recorded));
 }
 
+TEST_CASE("only a note's length can be edited", "[ui][event-list]")
+{
+    auto draft = itemOf(EventListItem::Note);
+    draft.isDraft = true;
+    CHECK(EditableRows::isLengthEditable(itemOf(EventListItem::Note)));
+    CHECK_FALSE(EditableRows::isLengthEditable(itemOf(EventListItem::PitchBend)));
+    CHECK_FALSE(EditableRows::isLengthEditable(draft));
+}
+
+TEST_CASE("a length goes on to the next row's position and back to its own row's position", "[ui][event-list]")
+{
+    const std::vector items{itemOf(EventListItem::Note), itemOf(EventListItem::Note)};
+    CHECK(EditableRows::next(items, {0, EditedColumn::Length}, false) == positionOf(1));
+    CHECK(EditableRows::next(items, {0, EditedColumn::Length}, true) == positionOf(0));
+}
+
 TEST_CASE("a note's position is followed by its event and then the next row's position", "[ui][event-list]")
 {
     const std::vector items{itemOf(EventListItem::Note), itemOf(EventListItem::Note)};

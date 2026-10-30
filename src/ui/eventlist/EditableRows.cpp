@@ -22,13 +22,18 @@ bool EditableRows::isEventEditable(const EventListItem& item)
     return isEditable(item) && item.kind == EventListItem::Note;
 }
 
+bool EditableRows::isLengthEditable(const EventListItem& item)
+{
+    return isEditable(item) && item.kind == EventListItem::Note;
+}
+
 std::optional<EditedCell> EditableRows::next(const std::vector<EventListItem>& items, EditedCell cell, bool backwards)
 {
     const auto hasEvent = [&items](int row) { return isEventEditable(items[static_cast<size_t>(row)]); };
     if (!backwards && cell.column == EditedColumn::Position && cell.row >= 0 &&
         cell.row < static_cast<int>(items.size()) && hasEvent(cell.row))
         return EditedCell{cell.row, EditedColumn::Event};
-    if (backwards && cell.column == EditedColumn::Event)
+    if (backwards && cell.column != EditedColumn::Position)
         return EditedCell{cell.row, EditedColumn::Position};
 
     const auto row = nextRow(items, cell.row, backwards);

@@ -61,12 +61,16 @@ private:
 
     juce::Rectangle<int> positionBounds(int row) const;
     juce::Rectangle<int> noteBounds(int row) const;
+    juce::Rectangle<int> lengthBounds(int row) const;
     juce::Rectangle<int> editorBounds(int row) const;
-    // The field is where a position edit starts; a note edit has only one.
+    // The field is where a position edit starts; note number and length edits have only one.
     void beginEditing(EditedCell cell, PositionField field);
     void showEditor();
     void moveEdited(int tick);
     void setEditedNoteNumber(int noteNumber);
+    void setEditedLength(int duration);
+    // The note number or the length, by the edited column.
+    void setEditedValue(int value);
     // Each edit is one more action in the undo transaction, so the whole edit undoes in one step. The event stays on
     // the editor's row until the edit ends.
     void applyEdit(const juce::String& transactionName, const std::function<bool()>& edit);
