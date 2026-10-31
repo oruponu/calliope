@@ -95,9 +95,20 @@ TEST_CASE("a note goes through its position, event, length and value before the 
     CHECK(EditableRows::next(items, eventOf(0), true) == positionOf(0));
 }
 
-TEST_CASE("a channel event goes through its position and value before the next row", "[ui][event-list]")
+TEST_CASE("a control change goes through its position, event and value before the next row", "[ui][event-list]")
 {
-    const std::vector items{itemOf(EventListItem::ControlChange), itemOf(EventListItem::PitchBend)};
+    const std::vector items{itemOf(EventListItem::ControlChange), itemOf(EventListItem::ControlChange)};
+    CHECK(EditableRows::next(items, positionOf(0), false) == eventOf(0));
+    CHECK(EditableRows::next(items, eventOf(0), false) == valueOf(0));
+    CHECK(EditableRows::next(items, valueOf(0), false) == positionOf(1));
+    CHECK(EditableRows::next(items, positionOf(1), true) == valueOf(0));
+    CHECK(EditableRows::next(items, valueOf(0), true) == eventOf(0));
+    CHECK(EditableRows::next(items, eventOf(0), true) == positionOf(0));
+}
+
+TEST_CASE("another channel event goes through its position and value before the next row", "[ui][event-list]")
+{
+    const std::vector items{itemOf(EventListItem::ProgramChange), itemOf(EventListItem::PitchBend)};
     CHECK(EditableRows::next(items, positionOf(0), false) == valueOf(0));
     CHECK(EditableRows::next(items, valueOf(0), false) == positionOf(1));
     CHECK(EditableRows::next(items, positionOf(1), true) == valueOf(0));
