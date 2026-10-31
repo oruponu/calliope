@@ -9,7 +9,8 @@ namespace EditableRows
 {
 // Notes and channel events in the sequence.
 bool isEditable(const EventListItem& item);
-// Whether the row's event column can be edited: only a note's, for its note number.
+// Whether the row's event column can be edited: a note's, for its note number, or a control change's, for its
+// controller number.
 bool isEventEditable(const EventListItem& item);
 // Whether the row's length can be edited: only a note's.
 bool isLengthEditable(const EventListItem& item);

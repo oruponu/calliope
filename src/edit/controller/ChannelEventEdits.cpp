@@ -25,6 +25,28 @@ int indexAfterConversion(const std::vector<MidiEvent>& steps, const std::vector<
     }
     return -1;
 }
+
+// Changes one event as a step, so the hold points of every step are made again from the values before them. A change
+// that makes the event a hold point is not made: the event list leaves hold points out and could not follow it.
+template <typename Change>
+ControllerPointEditResult changeStep(const std::vector<MidiEvent>& before, int index, Change change)
+{
+    if (index < 0 || index >= static_cast<int>(before.size()))
+        return {before, {}};
+    const auto holds = unsentControllerPoints(before);
+    if (holds[static_cast<size_t>(index)])
+        return {before, {}};
+
+    auto steps = convertHoldsToSteps(before);
+    const auto stepIndex = index - static_cast<int>(std::count(holds.begin(), holds.begin() + index, true));
+    change(steps[static_cast<size_t>(stepIndex)]);
+
+    auto points = convertStepsToPoints(steps);
+    const int changed = indexAfterConversion(steps, points, stepIndex);
+    if (unsentControllerPoints(points)[static_cast<size_t>(changed)])
+        return {before, {}};
+    return {std::move(points), {changed}};
+}
 } // namespace
 
 ControllerPointEditResult ChannelEventEdits::moveTo(const std::vector<MidiEvent>& before, int index, int tick)
@@ -51,19 +73,20 @@ ControllerPointEditResult ChannelEventEdits::moveTo(const std::vector<MidiEvent>
 
 ControllerPointEditResult ChannelEventEdits::setValue(const std::vector<MidiEvent>& before, int index, int value)
 {
-    if (index < 0 || index >= static_cast<int>(before.size()))
-        return {before, {}};
-    const auto holds = unsentControllerPoints(before);
-    if (holds[static_cast<size_t>(index)])
-        return {before, {}};
+    return changeStep(before, index,
+                      [value](MidiEvent& event)
+                      {
+                          const bool inData2 = event.type == MidiEvent::Type::ControlChange ||
+                                               event.type == MidiEvent::Type::KeyPressure;
+                          (inData2 ? event.data2 : event.data1) = value;
+                      });
+}
 
-    auto steps = convertHoldsToSteps(before);
-    const auto stepIndex = index - static_cast<int>(std::count(holds.begin(), holds.begin() + index, true));
-    auto& event = steps[static_cast<size_t>(stepIndex)];
-    const bool inData2 = event.type == MidiEvent::Type::ControlChange || event.type == MidiEvent::Type::KeyPressure;
-    (inData2 ? event.data2 : event.data1) = value;
-
-    auto points = convertStepsToPoints(steps);
-    const int set = indexAfterConversion(steps, points, stepIndex);
-    return {std::move(points), {set}};
+ControllerPointEditResult ChannelEventEdits::setControllerNumber(const std::vector<MidiEvent>& before, int index,
+                                                                 int number)
+{
+    if (index < 0 || index >= static_cast<int>(before.size()) ||
+        before[static_cast<size_t>(index)].type != MidiEvent::Type::ControlChange)
+        return {before, {}};
+    return changeStep(before, index, [number](MidiEvent& event) { event.data1 = number; });
 }

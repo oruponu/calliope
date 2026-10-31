@@ -1,4 +1,5 @@
 #include "edit/controller/ChannelEventEdits.h"
+#include "model/controller/ControllerPointConversion.h"
 #include "support/ControllerPointTestHelpers.h"
 #include <catch2/catch_test_macros.hpp>
 
@@ -19,6 +20,11 @@ MidiEvent program(int tick, int number)
 MidiEvent sustain(int tick, int value)
 {
     return {.type = MidiEvent::Type::ControlChange, .tick = tick, .data1 = 64, .data2 = value};
+}
+
+MidiEvent controlChange(int tick, int number, int value)
+{
+    return {.type = MidiEvent::Type::ControlChange, .tick = tick, .data1 = number, .data2 = value, .ramp = true};
 }
 
 MidiEvent keyPressure(int tick, int note, int value)
@@ -108,4 +114,34 @@ TEST_CASE("a hold point or an index out of range takes no value", "[edit][contro
     const Events events{p(0, 10), p(480, 10), p(480, 50)};
     CHECK(ChannelEventEdits::setValue(events, 1, 30) == result(events, {}));
     CHECK(ChannelEventEdits::setValue(events, 3, 30) == result(events, {}));
+}
+
+TEST_CASE("a set controller number goes into a control change's first data byte", "[edit][controller]")
+{
+    CHECK(ChannelEventEdits::setControllerNumber({controlChange(0, 7, 100), controlChange(480, 7, 90)}, 1, 10) ==
+          result({controlChange(0, 7, 100), controlChange(480, 10, 90)}, {1}));
+}
+
+TEST_CASE("a step given another controller number leaves its hold point behind", "[edit][controller]")
+{
+    CHECK(ChannelEventEdits::setControllerNumber({p(0, 10), p(480, 10), p(480, 50)}, 2, 7) ==
+          result({p(0, 10), controlChange(480, 7, 50)}, {1}));
+}
+
+TEST_CASE("a controller number that would make the event a hold point is not set", "[edit][controller]")
+{
+    const auto events =
+        convertStepsToPoints({controlChange(0, 7, 10), controlChange(480, 10, 10), controlChange(480, 7, 50)});
+    CHECK(ChannelEventEdits::setControllerNumber(events, 1, 7) == result(events, {}));
+}
+
+TEST_CASE("an event other than a control change, a hold point or an index out of range takes no controller number",
+          "[edit][controller]")
+{
+    CHECK(ChannelEventEdits::setControllerNumber({pressure(0, 10)}, 0, 7) == result({pressure(0, 10)}, {}));
+    CHECK(ChannelEventEdits::setControllerNumber({keyPressure(0, 60, 10)}, 0, 7) ==
+          result({keyPressure(0, 60, 10)}, {}));
+    const Events events{p(0, 10), p(480, 10), p(480, 50)};
+    CHECK(ChannelEventEdits::setControllerNumber(events, 1, 7) == result(events, {}));
+    CHECK(ChannelEventEdits::setControllerNumber(events, 3, 7) == result(events, {}));
 }

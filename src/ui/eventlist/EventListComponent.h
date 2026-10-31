@@ -61,7 +61,7 @@ private:
     void listWasScrolled() override;
 
     juce::Rectangle<int> positionBounds(int row) const;
-    juce::Rectangle<int> noteBounds(int row) const;
+    juce::Rectangle<int> eventBounds(int row) const;
     juce::Rectangle<int> lengthBounds(int row) const;
     juce::Rectangle<int> valueBounds(int row) const;
     juce::Rectangle<int> editorBounds(int row) const;
@@ -70,10 +70,12 @@ private:
     void showEditor();
     void moveEdited(int tick);
     void setEditedNoteNumber(int noteNumber);
+    // A note's note number or a control change's controller number.
+    void setEditedEventNumber(int number);
     void setEditedLength(int duration);
     // shownValue is as the VAL column shows it.
     void setEditedValue(int shownValue);
-    // The note number, the length or the value, by the edited column.
+    // The event's number, the length or the value, by the edited column.
     void setEditedCellValue(int value);
     // Each edit is one more action in the undo transaction, so the whole edit undoes in one step. The event stays on
     // the editor's row until the edit ends.
@@ -88,6 +90,7 @@ private:
     bool modifyEditedNote(const std::function<void(MidiNote&)>& change);
     bool moveEditedEvent(int tick);
     bool setEditedEventValue(int value);
+    bool setEditedControllerNumber(int number);
     bool replaceEditedEvents(ControllerPointEditResult result);
 
     void rebuildList();

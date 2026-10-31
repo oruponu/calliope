@@ -62,6 +62,24 @@ ValueFormat numberFormat(int minimum, int maximum)
             .justification = juce::Justification::centredRight};
 }
 
+ValueFormat controllerNumberFormat()
+{
+    auto format = numberFormat(0, 127);
+    format.justification = juce::Justification::centredLeft;
+    return format;
+}
+
+// The number the EVENT column shows: a note's note number or a control change's controller number.
+int eventNumberOf(const EventListItem& item)
+{
+    return item.kind == EventListItem::Note ? item.noteNumber : item.data1;
+}
+
+ValueFormat eventFormatOf(const EventListItem& item)
+{
+    return item.kind == EventListItem::Note ? noteNumberFormat() : controllerNumberFormat();
+}
+
 // The value the VAL column shows: a note's velocity, a channel event's value with a pitch bend's centred on zero.
 int shownValueOf(const EventListItem& item)
 {
@@ -359,8 +377,8 @@ void EventListComponent::listBoxItemDoubleClicked(int row, const juce::MouseEven
         beginEditing({row, EditedColumn::Position}, PositionEditor::fieldAt(e.x - position.getX()));
         return;
     }
-    const auto note = noteBounds(row);
-    if (e.x >= note.getX() && e.x < note.getRight())
+    const auto event = eventBounds(row);
+    if (e.x >= event.getX() && e.x < event.getRight())
     {
         beginEditing({row, EditedColumn::Event}, PositionField::Bar);
         return;
@@ -387,11 +405,14 @@ juce::Rectangle<int> EventListComponent::positionBounds(int row) const
     return listBox.getRowPosition(row, true).withX(kPadLeft + kColDot).withWidth(kColPosition);
 }
 
-juce::Rectangle<int> EventListComponent::noteBounds(int row) const
+juce::Rectangle<int> EventListComponent::eventBounds(int row) const
 {
     using namespace calliope::theme;
-    // Over the note name, after the "Note " the row draws before it.
-    const int labelWidth = juce::GlyphArrangement::getStringWidthInt(font::sans(font::sizeSM), "Note ");
+    // Over the note name or the controller number, after the "Note " or "CC " the row draws before it.
+    const bool isControlChange = row >= 0 && row < static_cast<int>(items.size()) &&
+                                 items[static_cast<size_t>(row)].kind == EventListItem::ControlChange;
+    const int labelWidth =
+        juce::GlyphArrangement::getStringWidthInt(font::sans(font::sizeSM), isControlChange ? "CC " : "Note ");
     return listBox.getRowPosition(row, true).withX(kPadLeft + kColDot + kColPosition + labelWidth).withWidth(kColNote);
 }
 
@@ -414,7 +435,7 @@ juce::Rectangle<int> EventListComponent::editorBounds(int row) const
     case EditedColumn::Position:
         return positionBounds(row);
     case EditedColumn::Event:
-        return noteBounds(row);
+        return eventBounds(row);
     case EditedColumn::Length:
         return lengthBounds(row);
     case EditedColumn::Value:
@@ -470,11 +491,12 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
     else
     {
         auto valueEditor = cell.column == EditedColumn::Event
-                               ? std::make_unique<ValueEditor>(editedItem.noteNumber, noteNumberFormat())
+                               ? std::make_unique<ValueEditor>(eventNumberOf(editedItem), eventFormatOf(editedItem))
                            : cell.column == EditedColumn::Length
                                ? std::make_unique<ValueEditor>(editedItem.duration, lengthFormat())
                                : std::make_unique<ValueEditor>(shownValueOf(editedItem), valueFormatOf(editedItem));
-        valueEditor->onWheelStep = [this](int value) { setEditedCellValue(value); };
+        if (cell.column != EditedColumn::Event || editedItem.kind == EventListItem::Note)
+            valueEditor->onWheelStep = [this](int value) { setEditedCellValue(value); };
         valueEditor->onCommit = [this](int value, EditorExit exit)
         {
             auto* list = this;
@@ -513,6 +535,18 @@ void EventListComponent::setEditedNoteNumber(int noteNumber)
               { return modifyEditedNote([noteNumber](MidiNote& note) { note.noteNumber = noteNumber; }); });
 }
 
+void EventListComponent::setEditedEventNumber(int number)
+{
+    if (editedItem.kind == EventListItem::Note)
+    {
+        setEditedNoteNumber(number);
+        return;
+    }
+    if (number == editedItem.data1)
+        return;
+    applyEdit("Edit Controller Number", [this, number]() { return setEditedControllerNumber(number); });
+}
+
 void EventListComponent::setEditedLength(int duration)
 {
     if (duration == editedItem.duration)
@@ -540,7 +574,7 @@ void EventListComponent::setEditedCellValue(int value)
     switch (editedColumn)
     {
     case EditedColumn::Event:
-        setEditedNoteNumber(value);
+        setEditedEventNumber(value);
         break;
     case EditedColumn::Length:
         setEditedLength(value);
@@ -680,6 +714,14 @@ bool EventListComponent::setEditedEventValue(int value)
         return false;
     const auto& events = sequence->getTrack(editedItem.trackIndex).getEvents();
     return replaceEditedEvents(ChannelEventEdits::setValue(events, editedItem.sourceIndex, value));
+}
+
+bool EventListComponent::setEditedControllerNumber(int number)
+{
+    if (editedItem.trackIndex >= sequence->getNumTracks())
+        return false;
+    const auto& events = sequence->getTrack(editedItem.trackIndex).getEvents();
+    return replaceEditedEvents(ChannelEventEdits::setControllerNumber(events, editedItem.sourceIndex, number));
 }
 
 bool EventListComponent::replaceEditedEvents(ControllerPointEditResult result)
