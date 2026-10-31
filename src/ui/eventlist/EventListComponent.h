@@ -70,7 +70,7 @@ private:
     void showEditor();
     void moveEdited(int tick);
     void setEditedNoteNumber(int noteNumber);
-    // A note's note number or a control change's controller number.
+    // A note's or a key pressure's note number, or a control change's controller number.
     void setEditedEventNumber(int number);
     void setEditedLength(int duration);
     // shownValue is as the VAL column shows it.
@@ -91,6 +91,7 @@ private:
     bool moveEditedEvent(int tick);
     bool setEditedEventValue(int value);
     bool setEditedControllerNumber(int number);
+    bool setEditedKeyPressureNote(int number);
     bool replaceEditedEvents(ControllerPointEditResult result);
 
     void rebuildList();

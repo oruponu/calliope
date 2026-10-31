@@ -145,3 +145,16 @@ TEST_CASE("an event other than a control change, a hold point or an index out of
     CHECK(ChannelEventEdits::setControllerNumber(events, 1, 7) == result(events, {}));
     CHECK(ChannelEventEdits::setControllerNumber(events, 3, 7) == result(events, {}));
 }
+
+TEST_CASE("a set note number goes into a key pressure's first data byte", "[edit][controller]")
+{
+    CHECK(ChannelEventEdits::setNoteNumber({keyPressure(0, 60, 10), keyPressure(480, 60, 20)}, 1, 64) ==
+          result({keyPressure(0, 60, 10), keyPressure(480, 64, 20)}, {1}));
+}
+
+TEST_CASE("an event other than a key pressure or an index out of range takes no note number", "[edit][controller]")
+{
+    CHECK(ChannelEventEdits::setNoteNumber({controlChange(0, 7, 10)}, 0, 64) == result({controlChange(0, 7, 10)}, {}));
+    CHECK(ChannelEventEdits::setNoteNumber({pressure(0, 10)}, 0, 64) == result({pressure(0, 10)}, {}));
+    CHECK(ChannelEventEdits::setNoteNumber({keyPressure(0, 60, 10)}, 1, 64) == result({keyPressure(0, 60, 10)}, {}));
+}

@@ -19,4 +19,7 @@ ControllerPointEditResult setValue(const std::vector<MidiEvent>& before, int ind
 // again around it, and it is selected in the result as moveTo selects; another kind of event, or a number that would
 // make it a hold point, leaves the events as they are with nothing selected.
 ControllerPointEditResult setControllerNumber(const std::vector<MidiEvent>& before, int index, int number);
+// Sets the note number of one key pressure, selected in the result as moveTo selects; another kind of event leaves the
+// events as they are with nothing selected.
+ControllerPointEditResult setNoteNumber(const std::vector<MidiEvent>& before, int index, int number);
 } // namespace ChannelEventEdits

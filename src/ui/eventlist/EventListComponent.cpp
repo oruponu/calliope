@@ -69,7 +69,8 @@ ValueFormat controllerNumberFormat()
     return format;
 }
 
-// The number the EVENT column shows: a note's note number or a control change's controller number.
+// The number the EVENT column shows: a note's or a key pressure's note number, or a control change's controller
+// number.
 int eventNumberOf(const EventListItem& item)
 {
     return item.kind == EventListItem::Note ? item.noteNumber : item.data1;
@@ -77,7 +78,7 @@ int eventNumberOf(const EventListItem& item)
 
 ValueFormat eventFormatOf(const EventListItem& item)
 {
-    return item.kind == EventListItem::Note ? noteNumberFormat() : controllerNumberFormat();
+    return item.kind == EventListItem::ControlChange ? controllerNumberFormat() : noteNumberFormat();
 }
 
 // The value the VAL column shows: a note's velocity, a channel event's value with a pitch bend's centred on zero.
@@ -408,11 +409,13 @@ juce::Rectangle<int> EventListComponent::positionBounds(int row) const
 juce::Rectangle<int> EventListComponent::eventBounds(int row) const
 {
     using namespace calliope::theme;
-    // Over the note name or the controller number, after the "Note " or "CC " the row draws before it.
-    const bool isControlChange = row >= 0 && row < static_cast<int>(items.size()) &&
-                                 items[static_cast<size_t>(row)].kind == EventListItem::ControlChange;
-    const int labelWidth =
-        juce::GlyphArrangement::getStringWidthInt(font::sans(font::sizeSM), isControlChange ? "CC " : "Note ");
+    // Over the note name or the controller number, after the label the row draws before it.
+    const auto kind =
+        row >= 0 && row < static_cast<int>(items.size()) ? items[static_cast<size_t>(row)].kind : EventListItem::Note;
+    const auto* label = kind == EventListItem::ControlChange ? "CC "
+                        : kind == EventListItem::KeyPressure ? "Key Press "
+                                                             : "Note ";
+    const int labelWidth = juce::GlyphArrangement::getStringWidthInt(font::sans(font::sizeSM), label);
     return listBox.getRowPosition(row, true).withX(kPadLeft + kColDot + kColPosition + labelWidth).withWidth(kColNote);
 }
 
@@ -495,7 +498,8 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
                            : cell.column == EditedColumn::Length
                                ? std::make_unique<ValueEditor>(editedItem.duration, lengthFormat())
                                : std::make_unique<ValueEditor>(shownValueOf(editedItem), valueFormatOf(editedItem));
-        valueEditor->onWheelStep = [this](int value) { setEditedCellValue(value); };
+        if (cell.column != EditedColumn::Event || editedItem.kind != EventListItem::KeyPressure)
+            valueEditor->onWheelStep = [this](int value) { setEditedCellValue(value); };
         valueEditor->onCommit = [this](int value, EditorExit exit)
         {
             auto* list = this;
@@ -543,7 +547,9 @@ void EventListComponent::setEditedEventNumber(int number)
     }
     if (number == editedItem.data1)
         return;
-    applyEdit("Edit Controller Number", [this, number]() { return setEditedControllerNumber(number); });
+    const bool isControlChange = editedItem.kind == EventListItem::ControlChange;
+    applyEdit(isControlChange ? "Edit Controller Number" : "Edit Key Pressure Note", [this, isControlChange, number]()
+              { return isControlChange ? setEditedControllerNumber(number) : setEditedKeyPressureNote(number); });
 }
 
 void EventListComponent::setEditedLength(int duration)
@@ -721,6 +727,14 @@ bool EventListComponent::setEditedControllerNumber(int number)
         return false;
     const auto& events = sequence->getTrack(editedItem.trackIndex).getEvents();
     return replaceEditedEvents(ChannelEventEdits::setControllerNumber(events, editedItem.sourceIndex, number));
+}
+
+bool EventListComponent::setEditedKeyPressureNote(int number)
+{
+    if (editedItem.trackIndex >= sequence->getNumTracks())
+        return false;
+    const auto& events = sequence->getTrack(editedItem.trackIndex).getEvents();
+    return replaceEditedEvents(ChannelEventEdits::setNoteNumber(events, editedItem.sourceIndex, number));
 }
 
 bool EventListComponent::replaceEditedEvents(ControllerPointEditResult result)

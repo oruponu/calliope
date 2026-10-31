@@ -90,3 +90,11 @@ ControllerPointEditResult ChannelEventEdits::setControllerNumber(const std::vect
         return {before, {}};
     return changeStep(before, index, [number](MidiEvent& event) { event.data1 = number; });
 }
+
+ControllerPointEditResult ChannelEventEdits::setNoteNumber(const std::vector<MidiEvent>& before, int index, int number)
+{
+    if (index < 0 || index >= static_cast<int>(before.size()) ||
+        before[static_cast<size_t>(index)].type != MidiEvent::Type::KeyPressure)
+        return {before, {}};
+    return changeStep(before, index, [number](MidiEvent& event) { event.data1 = number; });
+}
