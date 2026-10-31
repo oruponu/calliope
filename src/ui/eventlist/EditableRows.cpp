@@ -16,7 +16,7 @@ std::optional<int> nextRow(const std::vector<EventListItem>& items, int row, boo
 std::vector<EditedColumn> columnsOf(const EventListItem& item)
 {
     std::vector<EditedColumn> columns{EditedColumn::Position};
-    if (EditableRows::isEventEditable(item) && item.kind != EventListItem::KeyPressure)
+    if (EditableRows::isEventEditable(item))
         columns.push_back(EditedColumn::Event);
     if (EditableRows::isLengthEditable(item))
         columns.push_back(EditedColumn::Length);

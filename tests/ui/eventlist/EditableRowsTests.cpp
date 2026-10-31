@@ -95,12 +95,17 @@ TEST_CASE("a note goes through its position, event, length and value before the 
     CHECK(EditableRows::next(items, eventOf(0), true) == positionOf(0));
 }
 
-TEST_CASE("a control change goes through its position, event and value before the next row", "[ui][event-list]")
+TEST_CASE("a control change and a key pressure go through their position, event and value before the next row",
+          "[ui][event-list]")
 {
-    const std::vector items{itemOf(EventListItem::ControlChange), itemOf(EventListItem::ControlChange)};
+    const std::vector items{itemOf(EventListItem::ControlChange), itemOf(EventListItem::KeyPressure)};
     CHECK(EditableRows::next(items, positionOf(0), false) == eventOf(0));
     CHECK(EditableRows::next(items, eventOf(0), false) == valueOf(0));
     CHECK(EditableRows::next(items, valueOf(0), false) == positionOf(1));
+    CHECK(EditableRows::next(items, positionOf(1), false) == eventOf(1));
+    CHECK(EditableRows::next(items, eventOf(1), false) == valueOf(1));
+    CHECK(EditableRows::next(items, valueOf(1), true) == eventOf(1));
+    CHECK(EditableRows::next(items, eventOf(1), true) == positionOf(1));
     CHECK(EditableRows::next(items, positionOf(1), true) == valueOf(0));
     CHECK(EditableRows::next(items, valueOf(0), true) == eventOf(0));
     CHECK(EditableRows::next(items, eventOf(0), true) == positionOf(0));
