@@ -827,7 +827,7 @@ juce::String EventListComponent::formatEvent(const EventListItem& item)
     case EventListItem::ChannelPressure:
         return "Ch Press";
     case EventListItem::KeyPressure:
-        return "Key Press";
+        return "Key Press " + juce::String(NoteName::format(item.data1));
     }
     return {};
 }
