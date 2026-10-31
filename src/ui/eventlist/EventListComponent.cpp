@@ -498,8 +498,7 @@ void EventListComponent::beginEditing(EditedCell cell, PositionField field)
                            : cell.column == EditedColumn::Length
                                ? std::make_unique<ValueEditor>(editedItem.duration, lengthFormat())
                                : std::make_unique<ValueEditor>(shownValueOf(editedItem), valueFormatOf(editedItem));
-        if (cell.column != EditedColumn::Event || editedItem.kind != EventListItem::KeyPressure)
-            valueEditor->onWheelStep = [this](int value) { setEditedCellValue(value); };
+        valueEditor->onWheelStep = [this](int value) { setEditedCellValue(value); };
         valueEditor->onCommit = [this](int value, EditorExit exit)
         {
             auto* list = this;
