@@ -5,15 +5,14 @@
 
 inline juce::Colour gridLineColour(GridLineKind kind)
 {
-    using namespace calliope::theme;
     switch (kind)
     {
     case GridLineKind::Bar:
-        return border::strong;
+        return juce::Colours::white.withAlpha(0.15f);
     case GridLineKind::Beat:
-        return border::normal;
+        return juce::Colours::white.withAlpha(0.1f);
     case GridLineKind::Sub:
         break;
     }
-    return border::soft;
+    return juce::Colours::white.withAlpha(0.05f);
 }
