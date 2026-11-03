@@ -17,6 +17,11 @@ LookAndFeel::LookAndFeel()
     monoBold = Typeface::createSystemTypefaceFor(BinaryData::InconsolataBold_ttf, BinaryData::InconsolataBold_ttfSize);
 
     applyColourPalette();
+
+#if JUCE_WINDOWS
+    // Creating the first shadow window here keeps its cost off the first menu.
+    menuShadows.prepare();
+#endif
 }
 
 void LookAndFeel::applyColourPalette()
@@ -129,6 +134,22 @@ void LookAndFeel::drawButtonBackground(Graphics& g, Button& b, const Colour& bac
 
     g.setColour(stroke);
     g.drawRoundedRectangle(bounds, r, 1.0f);
+}
+
+std::unique_ptr<DropShadower> LookAndFeel::createDropShadowerForComponent(Component& component)
+{
+#if JUCE_WINDOWS
+    // On Windows, JUCE gives each menu four new shadow windows, which adds ~120 ms to opening a menu.
+    // One reused window behind the menu draws the same shadow for ~20 ms. Top-level windows ask
+    // before they are on the desktop and discard the shadower once they get a native shadow, so
+    // they keep JUCE's.
+    if (component.isOnDesktop())
+    {
+        menuShadows.attachTo(component);
+        return nullptr;
+    }
+#endif
+    return LookAndFeel_V4::createDropShadowerForComponent(component);
 }
 
 void LookAndFeel::drawPopupMenuBackground(Graphics& g, int w, int h)

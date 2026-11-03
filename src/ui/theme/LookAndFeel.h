@@ -1,6 +1,8 @@
 #pragma once
 
+#include "ui/theme/MenuShadowPool.h"
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <memory>
 
 namespace calliope
 {
@@ -18,6 +20,8 @@ public:
 
     void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
                               bool isMouseOverButton, bool isButtonDown) override;
+
+    std::unique_ptr<juce::DropShadower> createDropShadowerForComponent(juce::Component&) override;
 
     void drawPopupMenuBackground(juce::Graphics&, int width, int height) override;
     void getIdealPopupMenuItemSize(const juce::String& text, bool isSeparator, int standardMenuItemHeight,
@@ -42,5 +46,7 @@ private:
     juce::Typeface::Ptr sansBold;
     juce::Typeface::Ptr mono;
     juce::Typeface::Ptr monoBold;
+
+    MenuShadowPool menuShadows;
 };
 } // namespace calliope
