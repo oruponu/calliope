@@ -27,7 +27,7 @@ void PluginEditorController::showEditor(TrackId trackId)
     if (processor == nullptr)
         return;
 
-    auto* editor = processor->createEditorIfNeeded();
+    auto* editor = processor->createEditorAndMakeActive();
     if (editor == nullptr)
         return;
 

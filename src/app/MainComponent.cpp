@@ -1314,7 +1314,7 @@ void MainComponent::importMidiFile(const juce::File& file)
                                                           .withIconType(juce::MessageBoxIconType::WarningIcon)
                                                           .withTitle("Import MIDI")
                                                           .withMessage("The file could not be read as a MIDI file.")
-                                                          .withButton("OK"),
+                                                          .withButton("OK", 0),
                                                       nullptr);
         return;
     }
@@ -1342,7 +1342,7 @@ void MainComponent::exportMidi()
                                                  .withIconType(juce::MessageBoxIconType::WarningIcon)
                                                  .withTitle("Export MIDI")
                                                  .withMessage("The MIDI file could not be written.")
-                                                 .withButton("OK"),
+                                                 .withButton("OK", 0),
                                              nullptr);
                                      finishFileOperation();
                                  });
@@ -1380,7 +1380,7 @@ void MainComponent::showPluginLoadFailures()
             .withIconType(juce::MessageBoxIconType::WarningIcon)
             .withTitle("Open Project")
             .withMessage("The following plugins could not be loaded:\n" + lines.joinIntoString("\n"))
-            .withButton("OK"),
+            .withButton("OK", 0),
         nullptr);
 }
 
