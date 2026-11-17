@@ -44,6 +44,7 @@ add_library(CalliopeEdit STATIC
     src/edit/event/NoteQuantize.cpp
     src/edit/harmony/ChordTrackEdits.cpp
     src/edit/harmony/KeySignatureEdits.cpp
+    src/edit/time/DeleteTime.cpp
     src/edit/time/InsertSilence.cpp
     src/edit/time/LineCrossings.cpp
     src/edit/time/TimeSignatureBars.cpp

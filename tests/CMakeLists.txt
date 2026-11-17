@@ -64,6 +64,7 @@ target_sources(CalliopeTests PRIVATE
     edit/harmony/KeySignatureDeleteTests.cpp
     edit/harmony/KeySignatureMoveTests.cpp
     edit/harmony/KeySignaturePasteTests.cpp
+    edit/time/DeleteTimeTests.cpp
     edit/time/InsertSilenceTests.cpp
     edit/time/LineCrossingsTests.cpp
     edit/timeline/TempoDeleteTests.cpp

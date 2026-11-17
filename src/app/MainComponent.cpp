@@ -1,5 +1,6 @@
 #include "app/MainComponent.h"
 #include "audio/MetronomeVolume.h"
+#include "edit/time/DeleteTime.h"
 #include "edit/time/InsertSilence.h"
 #include "edit/track/NewTrack.h"
 #include "edit/track/TrackDuplication.h"
@@ -794,6 +795,7 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         result.setTicked(countInEnabled);
         break;
     case AppCommands::insertSilence:
+    case AppCommands::deleteTime:
         result.setActive(!recorder.isRecording());
         break;
     default:
@@ -967,6 +969,9 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::insertSilence:
         insertSilence();
+        return true;
+    case AppCommands::deleteTime:
+        deleteTime();
         return true;
     default:
         return false;
@@ -1435,6 +1440,11 @@ void MainComponent::toggleRecording()
 void MainComponent::insertSilence()
 {
     launchTimeEdit({"Insert Silence", "Insert"}, "Insert Silence", ::insertSilence);
+}
+
+void MainComponent::deleteTime()
+{
+    launchTimeEdit({"Delete Time", "Delete"}, "Delete Time", ::deleteTime);
 }
 
 void MainComponent::launchTimeEdit(

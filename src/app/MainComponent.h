@@ -119,6 +119,7 @@ private:
     void releaseInputSource(const juce::String& deviceIdentifier);
     void toggleRecording();
     void insertSilence();
+    void deleteTime();
     void launchTimeEdit(
         const TimeRangeDialogTexts& texts, const juce::String& transactionName,
         std::function<std::expected<TimedContents, TimeEditError>(const TimedContents&, int start, int end)> edit);

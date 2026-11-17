@@ -42,7 +42,8 @@ void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
                        toggleInputQuantize,
                        toggleCountIn,
                        showMetronomeSettings,
-                       insertSilence});
+                       insertSilence,
+                       deleteTime});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -205,6 +206,9 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
         break;
     case insertSilence:
         result.setInfo("Insert Silence...", "", "Edit", 0);
+        break;
+    case deleteTime:
+        result.setInfo("Delete Time...", "", "Edit", 0);
         break;
     default:
         break;

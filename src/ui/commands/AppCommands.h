@@ -47,7 +47,8 @@ struct AppCommands
         toggleInputQuantize,
         toggleCountIn,
         showMetronomeSettings,
-        insertSilence
+        insertSilence,
+        deleteTime
     };
 
     static void getAllCommands(juce::Array<juce::CommandID>& commands);
