@@ -17,6 +17,7 @@ set(FOLDER_edit/controller "")
 set(FOLDER_edit/track "")
 set(FOLDER_edit/timeline "")
 set(FOLDER_edit/harmony "")
+set(FOLDER_edit/time "")
 
 set(LAYER_settings "")
 

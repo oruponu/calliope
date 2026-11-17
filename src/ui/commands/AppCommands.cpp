@@ -41,7 +41,8 @@ void AppCommands::getAllCommands(juce::Array<juce::CommandID>& commands)
                        quantizeNotes,
                        toggleInputQuantize,
                        toggleCountIn,
-                       showMetronomeSettings});
+                       showMetronomeSettings,
+                       insertSilence});
 }
 
 void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result)
@@ -201,6 +202,9 @@ void AppCommands::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
         break;
     case showMetronomeSettings:
         result.setInfo("Metronome Settings...", "", "Transport", 0);
+        break;
+    case insertSilence:
+        result.setInfo("Insert Silence...", "", "Edit", 0);
         break;
     default:
         break;

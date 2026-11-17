@@ -8,6 +8,7 @@
 #include "device/RecordingInput.h"
 #include "device/UserDisabledMidiInputs.h"
 #include "document/Document.h"
+#include "edit/time/TimeEditError.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/metronome/CountInBars.h"
 #include "engine/recording/RecordingInbox.h"
@@ -27,6 +28,7 @@
 #include "ui/plugin/PluginCatalogController.h"
 #include "ui/plugin/PluginEditorController.h"
 #include "ui/plugin/TrackOutputController.h"
+#include "ui/time/TimeRangeDialogTexts.h"
 #include "ui/tracklist/TrackListComponent.h"
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
@@ -34,9 +36,12 @@
 #include "ui/widgets/ToolButton.h"
 #include "ui/widgets/ZoomStrip.h"
 #include "ui/window/ToolWindow.h"
+#include <expected>
+#include <functional>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
+#include <optional>
 
 class MetronomeSettingsComponent;
 
@@ -113,6 +118,12 @@ private:
     void stopPlayback();
     void releaseInputSource(const juce::String& deviceIdentifier);
     void toggleRecording();
+    void insertSilence();
+    void launchTimeEdit(
+        const TimeRangeDialogTexts& texts, const juce::String& transactionName,
+        std::function<std::expected<TimedContents, TimeEditError>(const TimedContents&, int start, int end)> edit);
+    std::optional<juce::String> applyTimeEdit(const juce::String& transactionName,
+                                              std::expected<TimedContents, TimeEditError> after);
     void onSequenceLoaded();
     void updateTitleBar();
     void finishFileOperation();

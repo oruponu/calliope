@@ -31,6 +31,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/ui/eventlist/LengthText.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/eventlist/MetaEventDescription.cpp
     ${PROJECT_SOURCE_DIR}/src/ui/eventlist/ValueText.cpp
+    ${PROJECT_SOURCE_DIR}/src/ui/time/TimeRangeInput.cpp
     ${PROJECT_SOURCE_DIR}/src/undo/UndoHistory.cpp
 )
 
@@ -64,6 +65,8 @@ target_sources(CalliopeTests PRIVATE
     edit/harmony/KeySignatureDeleteTests.cpp
     edit/harmony/KeySignatureMoveTests.cpp
     edit/harmony/KeySignaturePasteTests.cpp
+    edit/time/InsertSilenceTests.cpp
+    edit/time/LineCrossingsTests.cpp
     edit/timeline/TempoDeleteTests.cpp
     edit/timeline/TempoMoveTests.cpp
     edit/timeline/TempoPasteTests.cpp
@@ -95,6 +98,7 @@ target_sources(CalliopeTests PRIVATE
     model/MidiSequenceNotificationTests.cpp
     model/RouteTargetTests.cpp
     model/SequenceContentsRulesTests.cpp
+    model/TimedContentsTests.cpp
     model/TimelineLookupTests.cpp
     model/TrackIdTests.cpp
     model/TrackOrderTests.cpp
@@ -139,6 +143,8 @@ target_sources(CalliopeTests PRIVATE
     ui/pianoroll/VelocityBarSelectionTests.cpp
     ui/pianoroll/strips/IndexSelectionTests.cpp
     ui/pianoroll/strips/RangeSelectGestureTests.cpp
+    ui/time/TimeRangeInputTests.cpp
+    undo/ReplaceTimedContentsActionTests.cpp
     undo/SavePointTrackerTests.cpp
     undo/UndoHistoryTests.cpp
     undo/event/RecordTakeActionTests.cpp

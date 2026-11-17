@@ -272,6 +272,45 @@ const std::vector<MetaEvent>& MidiSequence::getMetaEvents() const
     return metaEvents;
 }
 
+TimedContents MidiSequence::getTimedContents() const
+{
+    TimedContents contents;
+    contents.ticksPerQuarterNote = timeline.getTicksPerQuarterNote();
+    contents.tempoChanges = timeline.getTempoChanges();
+    contents.timeSignatureChanges = timeline.getTimeSignatureChanges();
+    contents.keySignatureChanges = keySignatureChanges;
+    contents.chordChanges = chordChanges;
+    contents.metaEvents = metaEvents;
+    contents.tracks.reserve(tracks.size());
+    for (const auto& track : tracks)
+        contents.tracks.push_back({track.id, track.notes, track.events, track.sysExEvents, track.metaEvents});
+    return contents;
+}
+
+void MidiSequence::setTimedContents(const TimedContents& contents)
+{
+    ChangeBatch batch(*this);
+    timeline.setTempoChanges(contents.tempoChanges);
+    notifyTempoChanged();
+    timeline.setTimeSignatureChanges(contents.timeSignatureChanges);
+    keySignatureChanges = contents.keySignatureChanges;
+    chordChanges = contents.chordChanges;
+    metaEvents = contents.metaEvents;
+    notifyTimelineMetadataChanged();
+    for (const auto& source : contents.tracks)
+    {
+        const int index = indexOf(source.track);
+        if (index < 0)
+            continue;
+        auto& track = tracks[index];
+        track.notes = source.notes;
+        track.events = source.events;
+        track.sysExEvents = source.sysExEvents;
+        track.metaEvents = source.metaEvents;
+        notifyNotesChanged(index);
+    }
+}
+
 template <typename Callback> void MidiSequence::forEachListener(Callback callback)
 {
     const auto snapshot = listeners;

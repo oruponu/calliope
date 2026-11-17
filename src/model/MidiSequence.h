@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/SequenceContents.h"
+#include "model/TimedContents.h"
 #include "model/event/MetaEvent.h"
 #include "model/harmony/ChordChange.h"
 #include "model/harmony/KeySignatureChange.h"
@@ -90,6 +91,9 @@ public:
     const std::vector<ChordChange>& getChordChanges() const;
     void setChordChanges(std::vector<ChordChange> changes);
     const std::vector<MetaEvent>& getMetaEvents() const;
+
+    TimedContents getTimedContents() const;
+    void setTimedContents(const TimedContents& contents);
 
 private:
     struct PendingNotifications

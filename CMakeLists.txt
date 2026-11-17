@@ -42,6 +42,9 @@ add_library(CalliopeEdit STATIC
     src/edit/event/NoteQuantize.cpp
     src/edit/harmony/ChordTrackEdits.cpp
     src/edit/harmony/KeySignatureEdits.cpp
+    src/edit/time/InsertSilence.cpp
+    src/edit/time/LineCrossings.cpp
+    src/edit/time/TimeSignatureBars.cpp
     src/edit/timeline/TempoEdits.cpp
     src/edit/timeline/TimeSignatureEdits.cpp
     src/edit/track/ExclusiveSolo.cpp
@@ -138,6 +141,9 @@ target_sources(Calliope PRIVATE
     src/ui/theme/LookAndFeel.cpp
     src/ui/theme/MenuShadowPool.cpp
     src/ui/theme/MenuShadowWindow.cpp
+    src/ui/time/TimeEditErrorText.cpp
+    src/ui/time/TimeRangeDialog.cpp
+    src/ui/time/TimeRangeInput.cpp
     src/ui/tracklist/TrackListComponent.cpp
     src/ui/transport/MetronomeSettingsComponent.cpp
     src/ui/transport/TransportBarComponent.cpp

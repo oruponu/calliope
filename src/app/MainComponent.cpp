@@ -1,5 +1,6 @@
 #include "app/MainComponent.h"
 #include "audio/MetronomeVolume.h"
+#include "edit/time/InsertSilence.h"
 #include "edit/track/NewTrack.h"
 #include "edit/track/TrackDuplication.h"
 #include "engine/metronome/CountInBars.h"
@@ -9,8 +10,12 @@
 #include "settings/AppProperties.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
+#include "ui/time/TimeEditErrorText.h"
+#include "ui/time/TimeRangeDialog.h"
+#include "ui/time/TimeRangeInput.h"
 #include "ui/transport/MetronomeSettingsComponent.h"
 #include "ui/widgets/NoTabFocusTraverser.h"
+#include "undo/ReplaceTimedContentsAction.h"
 #include "undo/track/ChannelChangeAction.h"
 #include "undo/track/TrackAddAction.h"
 #include "undo/track/TrackMoveAction.h"
@@ -788,6 +793,9 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
     case AppCommands::toggleCountIn:
         result.setTicked(countInEnabled);
         break;
+    case AppCommands::insertSilence:
+        result.setActive(!recorder.isRecording());
+        break;
     default:
         break;
     }
@@ -956,6 +964,9 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::showMetronomeSettings:
         showMetronomeSettings();
+        return true;
+    case AppCommands::insertSilence:
+        insertSilence();
         return true;
     default:
         return false;
@@ -1419,6 +1430,43 @@ void MainComponent::toggleRecording()
         recorder.finish();
     else
         recorder.start();
+}
+
+void MainComponent::insertSilence()
+{
+    launchTimeEdit({"Insert Silence", "Insert"}, "Insert Silence", ::insertSilence);
+}
+
+void MainComponent::launchTimeEdit(
+    const TimeRangeDialogTexts& texts, const juce::String& transactionName,
+    std::function<std::expected<TimedContents, TimeEditError>(const TimedContents&, int start, int end)> edit)
+{
+    const auto& timeline = document.getSequence().getTimeline();
+    const int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
+    TimeRangeDialog::launch(
+        texts, timeline, TimeRangeInput::initialStart(currentTick, timeline),
+        [this, transactionName, edit = std::move(edit)](int start, int end)
+        { return applyTimeEdit(transactionName, edit(document.getSequence().getTimedContents(), start, end)); }, *this);
+}
+
+std::optional<juce::String> MainComponent::applyTimeEdit(const juce::String& transactionName,
+                                                         std::expected<TimedContents, TimeEditError> after)
+{
+    if (recorder.isRecording())
+        return juce::String("Stop recording first.");
+    if (!after)
+        return timeEditErrorText(after.error());
+
+    auto& sequence = document.getSequence();
+    auto before = sequence.getTimedContents();
+    if (before == *after)
+        return std::nullopt;
+
+    pianoRoll.clearSelection();
+    controllerLane.clearPointSelection();
+    performReplaceTimedContents(document.getHistory(), &sequence, transactionName, std::move(before),
+                                std::move(*after));
+    return std::nullopt;
 }
 
 void MainComponent::onSequenceLoaded()
