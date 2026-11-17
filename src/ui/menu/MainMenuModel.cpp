@@ -52,6 +52,7 @@ juce::PopupMenu MainMenuModel::getMenuForIndex(int menuIndex, const juce::String
         menu.addCommandItem(&commandManager, AppCommands::selectAll);
         menu.addSeparator();
         menu.addCommandItem(&commandManager, AppCommands::insertSilence);
+        menu.addCommandItem(&commandManager, AppCommands::deleteTime);
     }
     else if (menuIndex == 2)
     {
