@@ -1,4 +1,4 @@
-#include "engine/chase/ChaseScan.h"
+#include "model/chase/ChaseScan.h"
 #include <utility>
 
 namespace

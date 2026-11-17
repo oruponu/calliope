@@ -3,7 +3,6 @@ juce_add_console_app(CalliopeTests)
 target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/audio/ClickVoice.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/chase/Chase.cpp
-    ${PROJECT_SOURCE_DIR}/src/engine/chase/ChaseScan.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/chase/ChaseTracker.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/metronome/CountIn.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/metronome/MetronomeClicks.cpp

@@ -10,6 +10,7 @@ set(FOLDER_model/timeline "")
 set(FOLDER_model/harmony "")
 set(FOLDER_model/grid "model/timeline")
 set(FOLDER_model/notation "model/harmony")
+set(FOLDER_model/chase "model/event")
 
 set(LAYER_edit "model")
 set(FOLDER_edit/event "")

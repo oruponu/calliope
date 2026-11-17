@@ -1,5 +1,6 @@
 #include "engine/chase/Chase.h"
-#include "engine/chase/ChaseScan.h"
+#include "model/chase/ChaseDifference.h"
+#include "model/chase/ChaseScan.h"
 #include <algorithm>
 #include <utility>
 
@@ -108,40 +109,10 @@ std::vector<ScheduledEvent> chaseChanges(const ChaseTracker& sent, const std::ve
                                       [&](const ChaseTargetState& s) { return s.target == target; });
         if (now == afterStates.end())
             continue;
-        const auto old = sent.itemsOf(target, tick);
-        const auto differs = [&](const ChaseItem& item)
-        {
-            const auto previous = std::find_if(old.begin(), old.end(), [&](const ChaseItem& i)
-                                               { return i.kind == item.kind && i.number == item.number; });
-            return previous == old.end() || *previous != item;
-        };
-
         const bool contextsUnchanged =
             std::find(contextsChanged.begin(), contextsChanged.end(), target) == contextsChanged.end();
-        const bool programChanged =
-            contextsUnchanged ||
-            (!now->items.empty() && now->items.front().kind == ChaseItem::Kind::Program && differs(now->items.front()));
-        const auto hasPendingBank = [](const std::vector<ChaseItem>& items)
-        {
-            return std::ranges::any_of(items,
-                                       [](const ChaseItem& i) { return i.kind == ChaseItem::Kind::PendingBank; });
-        };
-        // The instrument still holds the bank select that is no longer pending, which would apply to the next program
-        // change; the bank of the current program puts it back.
-        const bool restoresProgramBank = !programChanged && hasPendingBank(old) && !hasPendingBank(now->items);
-        bool parameterSent = false;
-        for (const auto& item : now->items)
-        {
-            if (item.kind == ChaseItem::Kind::Program && restoresProgramBank)
-                for (auto event = item.events.begin(); event + 1 < item.events.end(); ++event)
-                    events.push_back({now->ctx, *event});
-            const bool restoresSelection = item.kind == ChaseItem::Kind::Selection && parameterSent;
-            if (!programChanged && !restoresSelection && !differs(item))
-                continue;
-            parameterSent |= item.kind == ChaseItem::Kind::Parameter;
-            for (const auto& event : item.events)
-                events.push_back({now->ctx, event});
-        }
+        for (const auto& event : chaseEventsToReach(sent.itemsOf(target, tick), now->items, contextsUnchanged))
+            events.push_back({now->ctx, event});
     }
     return events;
 }

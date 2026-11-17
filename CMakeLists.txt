@@ -12,6 +12,8 @@ add_library(CalliopeModel STATIC
     src/model/MidiSequence.cpp
     src/model/SequenceContentsRules.cpp
     src/model/TrackOrder.cpp
+    src/model/chase/ChaseDifference.cpp
+    src/model/chase/ChaseScan.cpp
     src/model/controller/ControllerLineValue.cpp
     src/model/controller/ControllerPointConversion.cpp
     src/model/controller/ControllerRamps.cpp
@@ -79,7 +81,6 @@ target_sources(Calliope PRIVATE
     src/document/Document.cpp
     src/engine/PlaybackEngine.cpp
     src/engine/chase/Chase.cpp
-    src/engine/chase/ChaseScan.cpp
     src/engine/chase/ChaseTracker.cpp
     src/engine/metronome/CountIn.cpp
     src/engine/metronome/MetronomeClicks.cpp

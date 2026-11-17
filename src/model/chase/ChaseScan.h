@@ -1,8 +1,8 @@
 #pragma once
 
-#include "engine/chase/ChaseItem.h"
-#include "engine/chase/ChaseMsbLsb.h"
-#include "engine/chase/ChaseSelection.h"
+#include "model/chase/ChaseItem.h"
+#include "model/chase/ChaseMsbLsb.h"
+#include "model/chase/ChaseSelection.h"
 #include "model/event/MidiEvent.h"
 #include <map>
 #include <optional>

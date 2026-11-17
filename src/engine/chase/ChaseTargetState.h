@@ -1,8 +1,8 @@
 #pragma once
 
-#include "engine/chase/ChaseItem.h"
 #include "engine/chase/ChaseTarget.h"
 #include "engine/playback/PlaybackTrackContext.h"
+#include "model/chase/ChaseItem.h"
 #include <vector>
 
 struct ChaseTargetState
