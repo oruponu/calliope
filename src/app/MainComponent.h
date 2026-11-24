@@ -7,7 +7,9 @@
 #include "device/MidiThru.h"
 #include "device/RecordingInput.h"
 #include "device/UserDisabledMidiInputs.h"
+#include "document/AutoSaver.h"
 #include "document/Document.h"
+#include "document/RecoveryLocation.h"
 #include "edit/time/TimeEditError.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/metronome/CountInBars.h"
@@ -80,6 +82,7 @@ public:
     // `next` runs with the file operation still in progress and must call finishFileOperation() when it is done,
     // unless it quits the app.
     void saveIfNeededThen(std::function<void()> next);
+    void stopAutoSaveAndDiscardRecovery();
 
 private:
     void tracksChanged() override;
@@ -114,6 +117,8 @@ private:
     void exportMidi();
     void onProjectOpened();
     void showPluginLoadFailures();
+    void offerRecovery();
+    bool isAutoSaveBusy() const;
     void showAudioSettings();
     void stopPlayback();
     void releaseInputSource(const juce::String& deviceIdentifier);
@@ -237,6 +242,8 @@ private:
     bool fileOperationInProgress = false;
     std::unique_ptr<juce::FileChooser> midiFileChooser;
     juce::ScopedMessageBox alertBox;
+    std::unique_ptr<juce::AlertWindow> recoveryWindow;
+    AutoSaver autoSaver{document, getRecoveryFile(), [this] { return isAutoSaveBusy(); }};
 
     static constexpr int menuBarHeight = 30;
     static constexpr int transportBarHeight = 64;

@@ -31,6 +31,7 @@ void Document::newDocument()
     history.clear();
     changedOutsideHistory = false;
     history.markSaved();
+    notifyDidReplaceSequence();
 }
 
 bool Document::importMidi(const juce::File& file)
@@ -44,6 +45,7 @@ bool Document::importMidi(const juce::File& file)
     history.clear();
     changedOutsideHistory = false;
     history.markSaved();
+    notifyDidReplaceSequence();
     return true;
 }
 
@@ -54,6 +56,24 @@ bool Document::exportMidi(const juce::File& file) const
 
 void Document::markChanged()
 {
+    changedOutsideHistory = true;
+    updateChangedFlag();
+}
+
+bool Document::writeRecoveryFile(const juce::File& file)
+{
+    if (onWillSave)
+        onWillSave();
+    return RecoveryFileIO::save(sequence, pluginStateSource, getFile(), file);
+}
+
+void Document::restoreRecovered(RecoveredProject recovered)
+{
+    notifyWillReplaceSequence();
+    sequence.replaceContents(std::move(recovered.contents));
+    setFile(recovered.originalFile);
+    history.clear();
+    history.markSaved();
     changedOutsideHistory = true;
     updateChangedFlag();
 }
@@ -73,6 +93,7 @@ juce::Result Document::loadDocument(const juce::File& file)
     history.clear();
     changedOutsideHistory = false;
     history.markSaved();
+    notifyDidReplaceSequence();
     return juce::Result::ok();
 }
 
@@ -124,6 +145,12 @@ void Document::notifyWillReplaceSequence()
         onWillReplaceSequence();
 }
 
+void Document::notifyDidReplaceSequence()
+{
+    if (onDidReplaceSequence)
+        onDidReplaceSequence();
+}
+
 void Document::noteChangeOutsideHistory()
 {
     // Changes made through the undo history are tracked by its save point instead. A ChangeBatch must not be
@@ -134,5 +161,6 @@ void Document::noteChangeOutsideHistory()
 
 void Document::updateChangedFlag()
 {
+    ++revision;
     setChangedFlag(changedOutsideHistory || !history.isAtSavePoint());
 }

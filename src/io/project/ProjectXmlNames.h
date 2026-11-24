@@ -11,6 +11,7 @@ inline constexpr int currentVersion = 1;
 
 inline constexpr const char* projectTag = "CalliopeProject";
 inline constexpr const char* versionAttr = "version";
+inline constexpr const char* recoveredFromAttr = "recoveredFrom";
 
 inline constexpr const char* timelineTag = "Timeline";
 inline constexpr const char* ppqAttr = "ppq";

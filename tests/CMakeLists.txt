@@ -2,6 +2,7 @@ juce_add_console_app(CalliopeTests)
 
 target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/audio/ClickVoice.cpp
+    ${PROJECT_SOURCE_DIR}/src/document/AutoSavePolicy.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/chase/Chase.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/chase/ChaseTracker.cpp
     ${PROJECT_SOURCE_DIR}/src/engine/metronome/CountIn.cpp
@@ -17,6 +18,7 @@ target_sources(CalliopeTests PRIVATE
     ${PROJECT_SOURCE_DIR}/src/io/project/ProjectFileIO.cpp
     ${PROJECT_SOURCE_DIR}/src/io/project/ProjectXmlReader.cpp
     ${PROJECT_SOURCE_DIR}/src/io/project/ProjectXmlWriter.cpp
+    ${PROJECT_SOURCE_DIR}/src/io/project/RecoveryFileIO.cpp
     ${PROJECT_SOURCE_DIR}/src/io/project/XmlFieldReader.cpp
     ${PROJECT_SOURCE_DIR}/src/io/project/XmlNumberText.cpp
     ${PROJECT_SOURCE_DIR}/src/io/smf/MetaText.cpp
@@ -37,6 +39,7 @@ target_sources(CalliopeTests PRIVATE
 target_sources(CalliopeTests PRIVATE
     audio/ClickVoiceTests.cpp
     audio/MetronomeVolumeTests.cpp
+    document/AutoSavePolicyTests.cpp
     edit/controller/ChannelEventEditsTests.cpp
     edit/controller/ControllerPointAddTests.cpp
     edit/controller/ControllerPointClipboardTests.cpp
@@ -91,6 +94,7 @@ target_sources(CalliopeTests PRIVATE
     io/project/ProjectFileIOTests.cpp
     io/project/ProjectXmlReadTests.cpp
     io/project/ProjectXmlRoundTripTests.cpp
+    io/project/RecoveryFileIOTests.cpp
     io/project/XmlNumberTextTests.cpp
     io/smf/MidiFileLoadTests.cpp
     io/smf/MidiFileRoundTripTests.cpp

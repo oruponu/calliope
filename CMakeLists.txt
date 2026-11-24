@@ -79,7 +79,10 @@ target_sources(Calliope PRIVATE
     src/device/MidiInputReconnector.cpp
     src/device/MidiThru.cpp
     src/device/UserDisabledMidiInputs.cpp
+    src/document/AutoSavePolicy.cpp
+    src/document/AutoSaver.cpp
     src/document/Document.cpp
+    src/document/RecoveryLocation.cpp
     src/engine/PlaybackEngine.cpp
     src/engine/chase/Chase.cpp
     src/engine/chase/ChaseTracker.cpp
@@ -96,6 +99,7 @@ target_sources(Calliope PRIVATE
     src/io/project/ProjectFileIO.cpp
     src/io/project/ProjectXmlReader.cpp
     src/io/project/ProjectXmlWriter.cpp
+    src/io/project/RecoveryFileIO.cpp
     src/io/project/XmlFieldReader.cpp
     src/io/project/XmlNumberText.cpp
     src/io/smf/MetaText.cpp

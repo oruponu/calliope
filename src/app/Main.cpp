@@ -36,7 +36,12 @@ public:
         {
             if (auto* content = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
             {
-                content->saveIfNeededThen([] { juce::JUCEApplication::quit(); });
+                content->saveIfNeededThen(
+                    [content]
+                    {
+                        content->stopAutoSaveAndDiscardRecovery();
+                        juce::JUCEApplication::quit();
+                    });
                 return;
             }
         }
