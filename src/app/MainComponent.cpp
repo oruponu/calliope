@@ -8,7 +8,6 @@
 #include "io/project/RecoveryFileIO.h"
 #include "model/TrackOrder.h"
 #include "model/grid/GridDivision.h"
-#include "plugin/PluginAssignmentCodec.h"
 #include "settings/AppProperties.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
@@ -29,16 +28,6 @@
 
 namespace
 {
-bool isProjectFile(const juce::File& file)
-{
-    return file.hasFileExtension(".calliope");
-}
-
-bool isMidiFile(const juce::File& file)
-{
-    return file.hasFileExtension(".mid;.midi");
-}
-
 // A straight grid item's id is its denominator, and a triplet's is this offset plus its denominator.
 constexpr int tripletGridItemIdOffset = 100;
 
@@ -819,22 +808,22 @@ bool MainComponent::perform(const InvocationInfo& info)
     switch (info.commandID)
     {
     case AppCommands::newFile:
-        newFile();
+        fileOperations.newFile();
         return true;
     case AppCommands::openFile:
-        loadFile();
+        fileOperations.open();
         return true;
     case AppCommands::saveFile:
-        saveFile();
+        fileOperations.save();
         return true;
     case AppCommands::saveFileAs:
-        saveFileAs();
+        fileOperations.saveAs();
         return true;
     case AppCommands::importMidi:
-        importMidi();
+        fileOperations.importMidi();
         return true;
     case AppCommands::exportMidi:
-        exportMidi();
+        fileOperations.exportMidi();
         return true;
     case AppCommands::quitApp:
         juce::JUCEApplication::getInstance()->systemRequestedQuit();
@@ -991,10 +980,7 @@ bool MainComponent::perform(const InvocationInfo& info)
 
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files)
 {
-    for (auto& path : files)
-        if (const juce::File file(path); isProjectFile(file) || isMidiFile(file))
-            return true;
-    return false;
+    return FileOperations::canOpenAny(files);
 }
 
 void MainComponent::fileDragEnter(const juce::StringArray&, int, int)
@@ -1014,50 +1000,12 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int)
     fileDragOver = false;
     repaint();
 
-    for (auto& path : files)
-    {
-        const juce::File file(path);
-        if (isProjectFile(file))
-        {
-            saveIfNeededThen(
-                [this, file]
-                {
-                    if (document.loadFrom(file, true).wasOk())
-                        onProjectOpened();
-                    finishFileOperation();
-                });
-            return;
-        }
-        if (isMidiFile(file))
-        {
-            saveIfNeededThen(
-                [this, file]
-                {
-                    importMidiFile(file);
-                    finishFileOperation();
-                });
-            return;
-        }
-    }
+    fileOperations.openDropped(files);
 }
 
 void MainComponent::saveIfNeededThen(std::function<void()> next)
 {
-    if (fileOperationInProgress)
-        return;
-
-    // Commit the recording first so the save prompt covers it.
-    recorder.finish();
-    fileOperationInProgress = true;
-    pluginHost.flushPendingStateChanges();
-    document.saveIfNeededAndUserAgreesAsync(
-        [this, next = std::move(next)](juce::FileBasedDocument::SaveResult result)
-        {
-            if (result == juce::FileBasedDocument::savedOk)
-                next();
-            else
-                finishFileOperation();
-        });
+    fileOperations.saveIfNeededThen(std::move(next));
 }
 
 void MainComponent::stopAutoSaveAndDiscardRecovery()
@@ -1278,142 +1226,9 @@ void MainComponent::zoomVertical(float factor, int anchorYInViewport)
     setVerticalZoom(juce::roundToInt(pianoRoll.getNoteHeight() * factor), anchorYInViewport);
 }
 
-void MainComponent::newFile()
-{
-    saveIfNeededThen(
-        [this]
-        {
-            document.newDocument();
-            onSequenceLoaded();
-            updateTitleBar();
-            finishFileOperation();
-        });
-}
-
-void MainComponent::saveFile()
-{
-    if (fileOperationInProgress)
-        return;
-    fileOperationInProgress = true;
-    document.saveAsync(true, true, [this](juce::FileBasedDocument::SaveResult) { finishFileOperation(); });
-}
-
-void MainComponent::saveFileAs()
-{
-    if (fileOperationInProgress)
-        return;
-    fileOperationInProgress = true;
-    document.saveAsInteractiveAsync(true, [this](juce::FileBasedDocument::SaveResult) { finishFileOperation(); });
-}
-
-void MainComponent::loadFile()
-{
-    saveIfNeededThen(
-        [this]
-        {
-            document.loadFromUserSpecifiedFileAsync(true,
-                                                    [this](juce::Result result)
-                                                    {
-                                                        if (result.wasOk())
-                                                            onProjectOpened();
-                                                        finishFileOperation();
-                                                    });
-        });
-}
-
-void MainComponent::importMidi()
-{
-    saveIfNeededThen(
-        [this]
-        {
-            midiFileChooser = std::make_unique<juce::FileChooser>("Import MIDI File", juce::File{}, "*.mid;*.midi");
-            midiFileChooser->launchAsync(juce::FileBrowserComponent::openMode |
-                                             juce::FileBrowserComponent::canSelectFiles,
-                                         [this](const juce::FileChooser& chooser)
-                                         {
-                                             if (const auto file = chooser.getResult(); file != juce::File{})
-                                                 importMidiFile(file);
-                                             finishFileOperation();
-                                         });
-        });
-}
-
-void MainComponent::importMidiFile(const juce::File& file)
-{
-    if (!document.importMidi(file))
-    {
-        alertBox = juce::AlertWindow::showScopedAsync(juce::MessageBoxOptions()
-                                                          .withIconType(juce::MessageBoxIconType::WarningIcon)
-                                                          .withTitle("Import MIDI")
-                                                          .withMessage("The file could not be read as a MIDI file.")
-                                                          .withButton("OK", 0),
-                                                      nullptr);
-        return;
-    }
-    onSequenceLoaded();
-    updateTitleBar();
-}
-
-void MainComponent::exportMidi()
-{
-    if (fileOperationInProgress)
-        return;
-    fileOperationInProgress = true;
-
-    const auto initialFile =
-        document.getFile() == juce::File{} ? juce::File{} : document.getFile().withFileExtension(".mid");
-    midiFileChooser = std::make_unique<juce::FileChooser>("Export MIDI File", initialFile, "*.mid");
-    midiFileChooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles |
-                                     juce::FileBrowserComponent::warnAboutOverwriting,
-                                 [this](const juce::FileChooser& chooser)
-                                 {
-                                     const auto file = chooser.getResult();
-                                     if (file != juce::File{} && !document.exportMidi(file))
-                                         alertBox = juce::AlertWindow::showScopedAsync(
-                                             juce::MessageBoxOptions()
-                                                 .withIconType(juce::MessageBoxIconType::WarningIcon)
-                                                 .withTitle("Export MIDI")
-                                                 .withMessage("The MIDI file could not be written.")
-                                                 .withButton("OK", 0),
-                                             nullptr);
-                                     finishFileOperation();
-                                 });
-}
-
 void MainComponent::onProjectOpened()
 {
-    onSequenceLoaded();
-    updateTitleBar();
-    showPluginLoadFailures();
-}
-
-void MainComponent::showPluginLoadFailures()
-{
-    const auto& failed = pluginHost.getFailedTracks();
-    const auto& sequence = document.getSequence();
-    juce::StringArray lines;
-    for (int i = 0; i < sequence.getNumTracks(); ++i)
-    {
-        const auto& track = sequence.getTrack(i);
-        const auto& assignment = track.getPluginAssignment();
-        if (assignment == nullptr || !failed.contains(track.getId()))
-            continue;
-
-        const auto description = PluginAssignmentCodec::fromXml(assignment->descriptionXml);
-        const auto trackName =
-            track.getName().empty() ? "Track " + juce::String(i + 1) : juce::String::fromUTF8(track.getName().c_str());
-        lines.add(trackName + ": " + (description ? description->name : juce::String("Unknown plugin")));
-    }
-    if (lines.isEmpty())
-        return;
-
-    alertBox = juce::AlertWindow::showScopedAsync(
-        juce::MessageBoxOptions()
-            .withIconType(juce::MessageBoxIconType::WarningIcon)
-            .withTitle("Open Project")
-            .withMessage("The following plugins could not be loaded:\n" + lines.joinIntoString("\n"))
-            .withButton("OK", 0),
-        nullptr);
+    fileOperations.finishOpeningProject();
 }
 
 void MainComponent::offerRecovery()
@@ -1480,7 +1295,7 @@ void MainComponent::offerRecovery()
 bool MainComponent::isAutoSaveBusy() const
 {
     return playbackEngine.isPlaying() || playbackEngine.isCountingIn() || recorder.isRecording() ||
-           fileOperationInProgress || juce::ModifierKeys::getCurrentModifiersRealtime().isAnyMouseButtonDown();
+           fileOperations.isInProgress() || juce::ModifierKeys::getCurrentModifiersRealtime().isAnyMouseButtonDown();
 }
 
 void MainComponent::showAudioSettings()
@@ -1602,11 +1417,6 @@ void MainComponent::updateTitleBar()
         auto marker = juce::String(document.hasChangedSinceSaved() ? "*" : "");
         window->setName(marker + document.getDocumentTitle() + " - " + appName);
     }
-}
-
-void MainComponent::finishFileOperation()
-{
-    fileOperationInProgress = false;
 }
 
 PlaybackTrackContext MainComponent::makeTrackContext(int trackIndex) const

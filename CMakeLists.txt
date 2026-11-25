@@ -123,6 +123,7 @@ target_sources(Calliope PRIVATE
     src/ui/eventlist/PositionEditor.cpp
     src/ui/eventlist/ValueEditor.cpp
     src/ui/eventlist/ValueText.cpp
+    src/ui/file/FileOperations.cpp
     src/ui/menu/MainMenuModel.cpp
     src/ui/pianoroll/ControllerLaneComponent.cpp
     src/ui/pianoroll/ControllerValueEditor.cpp

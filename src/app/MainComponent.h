@@ -21,6 +21,7 @@
 #include "session/PlaybackSync.h"
 #include "session/Recorder.h"
 #include "ui/eventlist/EventListComponent.h"
+#include "ui/file/FileOperations.h"
 #include "ui/menu/MainMenuModel.h"
 #include "ui/pianoroll/ControllerLaneComponent.h"
 #include "ui/pianoroll/ControllerLaneViewport.h"
@@ -79,8 +80,7 @@ public:
     void fileDragExit(const juce::StringArray& files) override;
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
-    // `next` runs with the file operation still in progress and must call finishFileOperation() when it is done,
-    // unless it quits the app.
+    // next runs with the file operation still in progress and is meant to quit the app.
     void saveIfNeededThen(std::function<void()> next);
     void stopAutoSaveAndDiscardRecovery();
 
@@ -108,15 +108,7 @@ private:
     void setVerticalZoom(int newNoteHeight, int anchorYInViewport);
     void zoomHorizontal(float factor, int anchorXInViewport);
     void zoomVertical(float factor, int anchorYInViewport);
-    void newFile();
-    void saveFile();
-    void saveFileAs();
-    void loadFile();
-    void importMidi();
-    void importMidiFile(const juce::File& file);
-    void exportMidi();
     void onProjectOpened();
-    void showPluginLoadFailures();
     void offerRecovery();
     bool isAutoSaveBusy() const;
     void showAudioSettings();
@@ -132,7 +124,6 @@ private:
                                               std::expected<TimedContents, TimeEditError> after);
     void onSequenceLoaded();
     void updateTitleBar();
-    void finishFileOperation();
     PlaybackTrackContext makeTrackContext(int trackIndex) const;
 
     Document document;
@@ -239,8 +230,11 @@ private:
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
     bool updatingFromEventList = false;
-    bool fileOperationInProgress = false;
-    std::unique_ptr<juce::FileChooser> midiFileChooser;
+    FileOperations fileOperations{document, recorder, pluginHost, [this]
+                                  {
+                                      onSequenceLoaded();
+                                      updateTitleBar();
+                                  }};
     juce::ScopedMessageBox alertBox;
     std::unique_ptr<juce::AlertWindow> recoveryWindow;
     AutoSaver autoSaver{document, getRecoveryFile(), [this] { return isAutoSaveBusy(); }};
