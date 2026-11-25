@@ -5,7 +5,6 @@
 #include "edit/track/NewTrack.h"
 #include "edit/track/TrackDuplication.h"
 #include "engine/metronome/CountInBars.h"
-#include "io/project/RecoveryFileIO.h"
 #include "model/TrackOrder.h"
 #include "model/grid/GridDivision.h"
 #include "settings/AppProperties.h"
@@ -63,7 +62,6 @@ MainComponent::MainComponent()
     document.getSequence().addListener(this);
     document.addChangeListener(this);
     document.onWillReplaceSequence = [this] { stopPlayback(); };
-    document.onDidReplaceSequence = [this] { autoSaver.songReplaced(); };
     pluginHost.setSequence(&document.getSequence());
     pluginHost.setPlaybackEngine(&playbackEngine);
     document.pluginStateSource = [this](TrackId trackId) { return pluginHost.getPluginState(trackId); };
@@ -526,7 +524,7 @@ MainComponent::MainComponent()
         [safeThis = juce::Component::SafePointer<MainComponent>(this)]
         {
             if (safeThis != nullptr)
-                safeThis->offerRecovery();
+                safeThis->recovery.offer();
         });
 }
 
@@ -535,7 +533,7 @@ MainComponent::~MainComponent()
     // Windows destroys owned windows along with their owner, so these must go before the main window does.
     metronomeSettings = nullptr;
     metronomeSettingsWindow.reset();
-    recoveryWindow.reset();
+    recovery.closeWindow();
     editorController.closeAllEditors();
     document.getSequence().removeListener(this);
     document.removeChangeListener(this);
@@ -1010,7 +1008,7 @@ void MainComponent::saveIfNeededThen(std::function<void()> next)
 
 void MainComponent::stopAutoSaveAndDiscardRecovery()
 {
-    autoSaver.stopAndDiscard();
+    recovery.stopAndDiscard();
 }
 
 void MainComponent::tracksChanged()
@@ -1224,78 +1222,6 @@ void MainComponent::zoomHorizontal(float factor, int anchorXInViewport)
 void MainComponent::zoomVertical(float factor, int anchorYInViewport)
 {
     setVerticalZoom(juce::roundToInt(pianoRoll.getNoteHeight() * factor), anchorYInViewport);
-}
-
-void MainComponent::onProjectOpened()
-{
-    fileOperations.finishOpeningProject();
-}
-
-void MainComponent::offerRecovery()
-{
-    const auto recoveryFile = getRecoveryFile();
-    if (!recoveryFile.existsAsFile())
-    {
-        autoSaver.start();
-        return;
-    }
-
-    auto loaded = RecoveryFileIO::load(recoveryFile);
-    if (!loaded)
-    {
-        recoveryFile.deleteFile();
-        alertBox = juce::AlertWindow::showScopedAsync(
-            juce::MessageBoxOptions()
-                .withIconType(juce::MessageBoxIconType::WarningIcon)
-                .withTitle("Recover Unsaved Changes")
-                .withMessage("The unsaved changes from the last session could not be recovered.")
-                .withButton("OK", 0),
-            nullptr);
-        autoSaver.start();
-        return;
-    }
-
-    constexpr int recoverResult = 1;
-    constexpr int discardResult = 2;
-    const auto name =
-        loaded->originalFile == juce::File{} ? juce::String("Untitled") : loaded->originalFile.getFileName();
-    const auto savedAt = recoveryFile.getLastModificationTime().formatted("%Y-%m-%d %H:%M");
-    const auto message = "Calliope did not shut down properly.\nUnsaved changes to \"" + name + "\" from " + savedAt +
-                         " can be recovered.";
-
-    // Built directly rather than from MessageBoxOptions, which would give the Escape key to Discard. Escape does
-    // nothing, so that the choice is always explicit.
-    recoveryWindow =
-        std::make_unique<juce::AlertWindow>("Recover Unsaved Changes", message, juce::MessageBoxIconType::QuestionIcon);
-    recoveryWindow->setEscapeKeyCancels(false);
-    recoveryWindow->addButton("Recover", recoverResult, juce::KeyPress(juce::KeyPress::returnKey));
-    recoveryWindow->addButton("Discard", discardResult);
-
-    auto onChosen = [safeThis = juce::Component::SafePointer<MainComponent>(this), recoveryFile,
-                     recovered = std::move(*loaded)](int result) mutable
-    {
-        // Destroying this component deletes the window, which still calls back afterwards.
-        if (safeThis == nullptr)
-            return;
-        safeThis->recoveryWindow.reset();
-        if (result == discardResult)
-        {
-            recoveryFile.deleteFile();
-        }
-        else
-        {
-            safeThis->document.restoreRecovered(std::move(recovered));
-            safeThis->onProjectOpened();
-        }
-        safeThis->autoSaver.start();
-    };
-    recoveryWindow->enterModalState(true, juce::ModalCallbackFunction::create(std::move(onChosen)), false);
-}
-
-bool MainComponent::isAutoSaveBusy() const
-{
-    return playbackEngine.isPlaying() || playbackEngine.isCountingIn() || recorder.isRecording() ||
-           fileOperations.isInProgress() || juce::ModifierKeys::getCurrentModifiersRealtime().isAnyMouseButtonDown();
 }
 
 void MainComponent::showAudioSettings()

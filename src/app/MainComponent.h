@@ -7,9 +7,7 @@
 #include "device/MidiThru.h"
 #include "device/RecordingInput.h"
 #include "device/UserDisabledMidiInputs.h"
-#include "document/AutoSaver.h"
 #include "document/Document.h"
-#include "document/RecoveryLocation.h"
 #include "edit/time/TimeEditError.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/metronome/CountInBars.h"
@@ -22,6 +20,7 @@
 #include "session/Recorder.h"
 #include "ui/eventlist/EventListComponent.h"
 #include "ui/file/FileOperations.h"
+#include "ui/file/RecoveryController.h"
 #include "ui/menu/MainMenuModel.h"
 #include "ui/pianoroll/ControllerLaneComponent.h"
 #include "ui/pianoroll/ControllerLaneViewport.h"
@@ -108,9 +107,6 @@ private:
     void setVerticalZoom(int newNoteHeight, int anchorYInViewport);
     void zoomHorizontal(float factor, int anchorXInViewport);
     void zoomVertical(float factor, int anchorYInViewport);
-    void onProjectOpened();
-    void offerRecovery();
-    bool isAutoSaveBusy() const;
     void showAudioSettings();
     void stopPlayback();
     void releaseInputSource(const juce::String& deviceIdentifier);
@@ -235,9 +231,7 @@ private:
                                       onSequenceLoaded();
                                       updateTitleBar();
                                   }};
-    juce::ScopedMessageBox alertBox;
-    std::unique_ptr<juce::AlertWindow> recoveryWindow;
-    AutoSaver autoSaver{document, getRecoveryFile(), [this] { return isAutoSaveBusy(); }};
+    RecoveryController recovery{document, playbackEngine, recorder, fileOperations};
 
     static constexpr int menuBarHeight = 30;
     static constexpr int transportBarHeight = 64;
