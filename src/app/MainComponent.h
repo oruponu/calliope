@@ -31,6 +31,7 @@
 #include "ui/plugin/PluginEditorController.h"
 #include "ui/plugin/TrackOutputController.h"
 #include "ui/time/TimeRangeDialogTexts.h"
+#include "ui/tracklist/TrackListActions.h"
 #include "ui/tracklist/TrackListComponent.h"
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
@@ -157,6 +158,7 @@ private:
     PianoRollComponent pianoRoll{document.getHistory(), clipboard};
     PianoRollViewport viewport;
     TrackListComponent trackList;
+    TrackListActions trackListActions{trackList, document, playbackEngine};
     MidiThruSync midiThruSync{document.getSequence(), midiThru, [this] { return trackList.getActiveTrackIndex(); }};
     Recorder recorder{document.getSequence(), document.getHistory(), playbackEngine, recordingInbox,
                       [this] { return trackList.getActiveTrackIndex(); }};

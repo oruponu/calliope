@@ -152,6 +152,7 @@ target_sources(Calliope PRIVATE
     src/ui/time/TimeEditErrorText.cpp
     src/ui/time/TimeRangeDialog.cpp
     src/ui/time/TimeRangeInput.cpp
+    src/ui/tracklist/TrackListActions.cpp
     src/ui/tracklist/TrackListComponent.cpp
     src/ui/transport/MetronomeSettingsComponent.cpp
     src/ui/transport/TransportBarComponent.cpp
