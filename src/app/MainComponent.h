@@ -1,7 +1,6 @@
 #pragma once
 
 #include "audio/Metronome.h"
-#include "audio/MetronomeVolume.h"
 #include "device/MidiDeviceOutput.h"
 #include "device/MidiInputReconnector.h"
 #include "device/MidiThru.h"
@@ -10,7 +9,6 @@
 #include "document/Document.h"
 #include "edit/time/TimeEditError.h"
 #include "engine/PlaybackEngine.h"
-#include "engine/metronome/CountInBars.h"
 #include "engine/recording/RecordingInbox.h"
 #include "model/MidiSequence.h"
 #include "plugin/PluginStateChangeWatcher.h"
@@ -33,20 +31,18 @@
 #include "ui/time/TimeRangeDialogTexts.h"
 #include "ui/tracklist/TrackListActions.h"
 #include "ui/tracklist/TrackListComponent.h"
+#include "ui/transport/MetronomeSettingsController.h"
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
 #include "ui/widgets/PanelFrame.h"
 #include "ui/widgets/ToolButton.h"
 #include "ui/widgets/ZoomStrip.h"
-#include "ui/window/ToolWindow.h"
 #include <expected>
 #include <functional>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <optional>
-
-class MetronomeSettingsComponent;
 
 class MainComponent : public juce::Component,
                       public juce::ApplicationCommandTarget,
@@ -90,12 +86,6 @@ private:
     void setActiveTool(PianoRollComponent::EditMode mode);
     void toggleSnap();
     void toggleInputQuantize();
-    void toggleCountIn();
-    void showMetronomeSettings();
-    void setMetronomeVolume(int percent);
-    void setCountInEnabled(bool enabled);
-    void setCountInBars(int bars);
-    void updateMetronomeSettings();
     void updateInputQuantize();
     void updateFocusBorder();
     bool selectAllTakesControllerPoints() const;
@@ -215,12 +205,8 @@ private:
 
     juce::ComboBox quantizeComboBox;
     bool inputQuantizeEnabled = false;
-    bool countInEnabled = false;
-    int countInBars = CountInBars::defaultBars;
-    int metronomeVolume = MetronomeVolume::defaultPercent;
-    std::unique_ptr<ToolWindow> metronomeSettingsWindow;
-    // Owned by metronomeSettingsWindow.
-    MetronomeSettingsComponent* metronomeSettings = nullptr;
+    MetronomeSettingsController metronomeSettings{transportBar,   playbackEngine, metronome,
+                                                  commandManager, *this,          *this};
 
     juce::Rectangle<int> toolBarBounds;
     int toolBarSeparatorX = 0;

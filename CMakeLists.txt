@@ -155,6 +155,7 @@ target_sources(Calliope PRIVATE
     src/ui/tracklist/TrackListActions.cpp
     src/ui/tracklist/TrackListComponent.cpp
     src/ui/transport/MetronomeSettingsComponent.cpp
+    src/ui/transport/MetronomeSettingsController.cpp
     src/ui/transport/TransportBarComponent.cpp
     src/ui/window/ToolWindow.cpp
     src/undo/UndoHistory.cpp

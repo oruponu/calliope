@@ -1,8 +1,6 @@
 #include "app/MainComponent.h"
-#include "audio/MetronomeVolume.h"
 #include "edit/time/DeleteTime.h"
 #include "edit/time/InsertSilence.h"
-#include "engine/metronome/CountInBars.h"
 #include "model/grid/GridDivision.h"
 #include "settings/AppProperties.h"
 #include "ui/commands/AppCommands.h"
@@ -10,7 +8,6 @@
 #include "ui/time/TimeEditErrorText.h"
 #include "ui/time/TimeRangeDialog.h"
 #include "ui/time/TimeRangeInput.h"
-#include "ui/transport/MetronomeSettingsComponent.h"
 #include "ui/widgets/NoTabFocusTraverser.h"
 #include "undo/ReplaceTimedContentsAction.h"
 #include <ranges>
@@ -330,22 +327,6 @@ MainComponent::MainComponent()
     };
     recorder.onCommitted = [this](const auto& committed) { pianoRoll.recordedNotesCommitted(committed); };
     transportBar.setMetronomeActive(playbackEngine.isMetronomeEnabled());
-    transportBar.onMetronomeToggled = [this](bool enabled)
-    {
-        getAppProperties().getUserSettings()->setValue("metronomeEnabled", enabled);
-        updateMetronomeSettings();
-    };
-    metronomeVolume = MetronomeVolume::clamped(
-        getAppProperties().getUserSettings()->getIntValue("metronomeVolume", MetronomeVolume::defaultPercent));
-    metronome.setVolume(metronomeVolume);
-    transportBar.onMetronomeMenuRequested = [this](juce::Component& target)
-    {
-        juce::PopupMenu menu;
-        menu.addCommandItem(&commandManager, AppCommands::toggleCountIn);
-        menu.addSeparator();
-        menu.addCommandItem(&commandManager, AppCommands::showMetronomeSettings);
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&target));
-    };
 
     pianoRoll.onLoopRegionChanged = [this](int startTick, int endTick)
     {
@@ -388,11 +369,6 @@ MainComponent::MainComponent()
     };
     inputQuantizeEnabled = getAppProperties().getUserSettings()->getBoolValue("inputQuantizeEnabled", false);
     updateInputQuantize();
-    countInEnabled = getAppProperties().getUserSettings()->getBoolValue("countInEnabled", false);
-    transportBar.setCountInEnabled(countInEnabled);
-    countInBars = CountInBars::clamped(
-        getAppProperties().getUserSettings()->getIntValue("countInBars", CountInBars::defaultBars));
-    transportBar.setCountInBars(countInBars);
 
     transportBar.updateDisplay();
 
@@ -428,8 +404,7 @@ MainComponent::MainComponent()
 MainComponent::~MainComponent()
 {
     // Windows destroys owned windows along with their owner, so these must go before the main window does.
-    metronomeSettings = nullptr;
-    metronomeSettingsWindow.reset();
+    metronomeSettings.closeWindow();
     recovery.closeWindow();
     editorController.closeAllEditors();
     document.getSequence().removeListener(this);
@@ -687,7 +662,7 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         result.setTicked(inputQuantizeEnabled);
         break;
     case AppCommands::toggleCountIn:
-        result.setTicked(countInEnabled);
+        result.setTicked(metronomeSettings.isCountInEnabled());
         break;
     case AppCommands::insertSilence:
     case AppCommands::deleteTime:
@@ -857,10 +832,10 @@ bool MainComponent::perform(const InvocationInfo& info)
         toggleInputQuantize();
         return true;
     case AppCommands::toggleCountIn:
-        toggleCountIn();
+        metronomeSettings.toggleCountIn();
         return true;
     case AppCommands::showMetronomeSettings:
-        showMetronomeSettings();
+        metronomeSettings.showWindow();
         return true;
     case AppCommands::insertSilence:
         insertSilence();
@@ -935,63 +910,6 @@ void MainComponent::toggleInputQuantize()
     inputQuantizeEnabled = !inputQuantizeEnabled;
     getAppProperties().getUserSettings()->setValue("inputQuantizeEnabled", inputQuantizeEnabled);
     updateInputQuantize();
-}
-
-void MainComponent::toggleCountIn()
-{
-    setCountInEnabled(!countInEnabled);
-}
-
-void MainComponent::showMetronomeSettings()
-{
-    if (metronomeSettingsWindow == nullptr)
-    {
-        metronomeSettings = new MetronomeSettingsComponent();
-        metronomeSettings->onMetronomeEnabledChanged = [this](bool enabled)
-        {
-            if (enabled != playbackEngine.isMetronomeEnabled())
-                transportBar.toggleMetronome();
-        };
-        metronomeSettings->onVolumeChanged = [this](int percent) { setMetronomeVolume(percent); };
-        metronomeSettings->onCountInEnabledChanged = [this](bool enabled) { setCountInEnabled(enabled); };
-        metronomeSettings->onCountInBarsChanged = [this](int bars) { setCountInBars(bars); };
-        metronomeSettingsWindow =
-            std::make_unique<ToolWindow>("Metronome Settings", metronomeSettings, *this, commandManager, *this);
-    }
-    updateMetronomeSettings();
-    metronomeSettingsWindow->show();
-}
-
-void MainComponent::setMetronomeVolume(int percent)
-{
-    metronomeVolume = percent;
-    metronome.setVolume(percent);
-    getAppProperties().getUserSettings()->setValue("metronomeVolume", percent);
-}
-
-void MainComponent::setCountInEnabled(bool enabled)
-{
-    countInEnabled = enabled;
-    getAppProperties().getUserSettings()->setValue("countInEnabled", countInEnabled);
-    transportBar.setCountInEnabled(countInEnabled);
-    updateMetronomeSettings();
-}
-
-void MainComponent::setCountInBars(int bars)
-{
-    countInBars = bars;
-    getAppProperties().getUserSettings()->setValue("countInBars", countInBars);
-    transportBar.setCountInBars(countInBars);
-}
-
-void MainComponent::updateMetronomeSettings()
-{
-    if (metronomeSettings == nullptr)
-        return;
-    metronomeSettings->setMetronomeEnabled(playbackEngine.isMetronomeEnabled());
-    metronomeSettings->setVolume(metronomeVolume);
-    metronomeSettings->setCountInEnabled(countInEnabled);
-    metronomeSettings->setCountInBars(countInBars);
 }
 
 void MainComponent::updateInputQuantize()
