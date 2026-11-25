@@ -1,15 +1,9 @@
 #include "app/MainComponent.h"
-#include "edit/time/DeleteTime.h"
-#include "edit/time/InsertSilence.h"
 #include "model/grid/GridDivision.h"
 #include "settings/AppProperties.h"
 #include "ui/commands/AppCommands.h"
 #include "ui/theme/Theme.h"
-#include "ui/time/TimeEditErrorText.h"
-#include "ui/time/TimeRangeDialog.h"
-#include "ui/time/TimeRangeInput.h"
 #include "ui/widgets/NoTabFocusTraverser.h"
-#include "undo/ReplaceTimedContentsAction.h"
 #include <ranges>
 #include <set>
 #include <utility>
@@ -838,10 +832,10 @@ bool MainComponent::perform(const InvocationInfo& info)
         metronomeSettings.showWindow();
         return true;
     case AppCommands::insertSilence:
-        insertSilence();
+        timeEdits.insertSilence();
         return true;
     case AppCommands::deleteTime:
-        deleteTime();
+        timeEdits.deleteTime();
         return true;
     default:
         return false;
@@ -1074,48 +1068,6 @@ void MainComponent::toggleRecording()
         recorder.finish();
     else
         recorder.start();
-}
-
-void MainComponent::insertSilence()
-{
-    launchTimeEdit({"Insert Silence", "Insert"}, "Insert Silence", ::insertSilence);
-}
-
-void MainComponent::deleteTime()
-{
-    launchTimeEdit({"Delete Time", "Delete"}, "Delete Time", ::deleteTime);
-}
-
-void MainComponent::launchTimeEdit(
-    const TimeRangeDialogTexts& texts, const juce::String& transactionName,
-    std::function<std::expected<TimedContents, TimeEditError>(const TimedContents&, int start, int end)> edit)
-{
-    const auto& timeline = document.getSequence().getTimeline();
-    const int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
-    TimeRangeDialog::launch(
-        texts, timeline, TimeRangeInput::initialStart(currentTick, timeline),
-        [this, transactionName, edit = std::move(edit)](int start, int end)
-        { return applyTimeEdit(transactionName, edit(document.getSequence().getTimedContents(), start, end)); }, *this);
-}
-
-std::optional<juce::String> MainComponent::applyTimeEdit(const juce::String& transactionName,
-                                                         std::expected<TimedContents, TimeEditError> after)
-{
-    if (recorder.isRecording())
-        return juce::String("Stop recording first.");
-    if (!after)
-        return timeEditErrorText(after.error());
-
-    auto& sequence = document.getSequence();
-    auto before = sequence.getTimedContents();
-    if (before == *after)
-        return std::nullopt;
-
-    pianoRoll.clearSelection();
-    controllerLane.clearPointSelection();
-    performReplaceTimedContents(document.getHistory(), &sequence, transactionName, std::move(before),
-                                std::move(*after));
-    return std::nullopt;
 }
 
 void MainComponent::onSequenceLoaded()

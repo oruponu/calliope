@@ -150,6 +150,7 @@ target_sources(Calliope PRIVATE
     src/ui/theme/MenuShadowPool.cpp
     src/ui/theme/MenuShadowWindow.cpp
     src/ui/time/TimeEditErrorText.cpp
+    src/ui/time/TimeEditLauncher.cpp
     src/ui/time/TimeRangeDialog.cpp
     src/ui/time/TimeRangeInput.cpp
     src/ui/tracklist/TrackListActions.cpp

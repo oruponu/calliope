@@ -7,7 +7,6 @@
 #include "device/RecordingInput.h"
 #include "device/UserDisabledMidiInputs.h"
 #include "document/Document.h"
-#include "edit/time/TimeEditError.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/recording/RecordingInbox.h"
 #include "model/MidiSequence.h"
@@ -28,7 +27,7 @@
 #include "ui/plugin/PluginCatalogController.h"
 #include "ui/plugin/PluginEditorController.h"
 #include "ui/plugin/TrackOutputController.h"
-#include "ui/time/TimeRangeDialogTexts.h"
+#include "ui/time/TimeEditLauncher.h"
 #include "ui/tracklist/TrackListActions.h"
 #include "ui/tracklist/TrackListComponent.h"
 #include "ui/transport/MetronomeSettingsController.h"
@@ -37,7 +36,6 @@
 #include "ui/widgets/PanelFrame.h"
 #include "ui/widgets/ToolButton.h"
 #include "ui/widgets/ZoomStrip.h"
-#include <expected>
 #include <functional>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -102,13 +100,6 @@ private:
     void stopPlayback();
     void releaseInputSource(const juce::String& deviceIdentifier);
     void toggleRecording();
-    void insertSilence();
-    void deleteTime();
-    void launchTimeEdit(
-        const TimeRangeDialogTexts& texts, const juce::String& transactionName,
-        std::function<std::expected<TimedContents, TimeEditError>(const TimedContents&, int start, int end)> edit);
-    std::optional<juce::String> applyTimeEdit(const juce::String& transactionName,
-                                              std::expected<TimedContents, TimeEditError> after);
     void onSequenceLoaded();
     void updateTitleBar();
     PlaybackTrackContext makeTrackContext(int trackIndex) const;
@@ -156,6 +147,11 @@ private:
     juce::Rectangle<int> trackListHeaderBounds;
 
     ControllerLaneComponent controllerLane{document.getHistory(), clipboard};
+    TimeEditLauncher timeEdits{document, playbackEngine, recorder, *this, [this]
+                               {
+                                   pianoRoll.clearSelection();
+                                   controllerLane.clearPointSelection();
+                               }};
 
     ControllerLaneViewport controllerLaneViewport;
 
