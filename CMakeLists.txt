@@ -157,6 +157,7 @@ target_sources(Calliope PRIVATE
     src/ui/time/TimeRangeInput.cpp
     src/ui/tracklist/TrackListActions.cpp
     src/ui/tracklist/TrackListComponent.cpp
+    src/ui/tracklist/TrackListPanel.cpp
     src/ui/transport/MetronomeSettingsComponent.cpp
     src/ui/transport/MetronomeSettingsController.cpp
     src/ui/transport/TransportBarComponent.cpp

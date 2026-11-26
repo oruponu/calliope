@@ -9,7 +9,6 @@
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
 #include "engine/recording/RecordingInbox.h"
-#include "model/MidiSequence.h"
 #include "plugin/PluginStateChangeWatcher.h"
 #include "plugin/VstPluginHost.h"
 #include "session/MidiThruSync.h"
@@ -25,7 +24,7 @@
 #include "ui/plugin/TrackOutputController.h"
 #include "ui/time/TimeEditLauncher.h"
 #include "ui/tracklist/TrackListActions.h"
-#include "ui/tracklist/TrackListComponent.h"
+#include "ui/tracklist/TrackListPanel.h"
 #include "ui/transport/MetronomeSettingsController.h"
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
@@ -40,8 +39,7 @@ class MainComponent : public juce::Component,
                       public juce::ApplicationCommandTarget,
                       public juce::FileDragAndDropTarget,
                       public juce::ChangeListener,
-                      public juce::FocusChangeListener,
-                      public MidiSequence::Listener
+                      public juce::FocusChangeListener
 {
 public:
     MainComponent();
@@ -72,8 +70,6 @@ public:
     void stopAutoSaveAndDiscardRecovery();
 
 private:
-    void tracksChanged() override;
-
     void toggleInputQuantize();
     void updateInputQuantize();
     void updateFocusBorder();
@@ -117,13 +113,12 @@ private:
     TransportBarComponent transportBar{document, playbackEngine};
 
     PianoRollPanel pianoRollPanel{document.getHistory()};
-    TrackListComponent trackList;
-    TrackListActions trackListActions{trackList, document, playbackEngine};
-    MidiThruSync midiThruSync{document.getSequence(), midiThru, [this] { return trackList.getActiveTrackIndex(); }};
+    TrackListPanel trackListPanel;
+    TrackListActions trackListActions{trackListPanel.getTrackList(), document, playbackEngine};
+    MidiThruSync midiThruSync{document.getSequence(), midiThru,
+                              [this] { return trackListPanel.getTrackList().getActiveTrackIndex(); }};
     Recorder recorder{document.getSequence(), document.getHistory(), playbackEngine, recordingInbox,
-                      [this] { return trackList.getActiveTrackIndex(); }};
-    juce::Viewport trackListViewport;
-    juce::Rectangle<int> trackListHeaderBounds;
+                      [this] { return trackListPanel.getTrackList().getActiveTrackIndex(); }};
 
     TimeEditLauncher timeEdits{document, playbackEngine, recorder, *this, [this] { pianoRollPanel.clearSelections(); }};
 

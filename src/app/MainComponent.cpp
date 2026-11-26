@@ -29,7 +29,6 @@ MainComponent::MainComponent()
     metronome.prepare(audioGraph, audioOutNodeId);
 
     document.newDocument();
-    document.getSequence().addListener(this);
     document.addChangeListener(this);
     document.onWillReplaceSequence = [this] { stopPlayback(); };
     pluginHost.setSequence(&document.getSequence());
@@ -82,11 +81,9 @@ MainComponent::MainComponent()
     { eventList.setNoteDragPreview(preview); };
     addAndMakeVisible(pianoRollPanel);
 
-    trackList.setSequence(&document.getSequence());
-    trackListViewport.setViewedComponent(&trackList, false);
-    trackListViewport.setScrollBarsShown(true, false);
-    addAndMakeVisible(trackListViewport);
-    trackList.onTrackSelected = [this](int activeIdx, const std::set<int>& selected)
+    trackListPanel.setSequence(&document.getSequence());
+    addAndMakeVisible(trackListPanel);
+    trackListPanel.getTrackList().onTrackSelected = [this](int activeIdx, const std::set<int>& selected)
     {
         pianoRollPanel.getPianoRoll().setSelectedTracks(activeIdx, selected);
         pianoRollPanel.getControllerLane().setSelectedTracks(activeIdx, selected);
@@ -94,11 +91,12 @@ MainComponent::MainComponent()
         midiThruSync.activeTrackChanged();
         recorder.activeTrackChanged();
     };
-    trackList.pluginNameForTrack = [this](int trackIndex)
+    trackListPanel.getTrackList().pluginNameForTrack = [this](int trackIndex)
     { return pluginHost.getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
-    trackList.onEditorButtonClicked = [this](int trackIndex)
+    trackListPanel.getTrackList().onEditorButtonClicked = [this](int trackIndex)
     { editorController.showEditor(document.getSequence().getTrack(trackIndex).getId()); };
-    trackList.onPluginLabelClicked = [this](int trackIndex) { trackOutput.showOutputMenu(trackIndex); };
+    trackListPanel.getTrackList().onPluginLabelClicked = [this](int trackIndex)
+    { trackOutput.showOutputMenu(trackIndex); };
 
     pianoRollPanel.getControllerLane().onNoteDragPreviewChanged = [this](const auto& preview)
     { eventList.setNoteDragPreview(preview); };
@@ -218,7 +216,6 @@ MainComponent::MainComponent()
 
     transportBar.updateDisplay();
 
-    trackList.setWantsKeyboardFocus(true);
     eventList.setWantsKeyboardFocus(true);
     addAndMakeVisible(trackListFrame);
     addAndMakeVisible(pianoRollFrame);
@@ -247,7 +244,6 @@ MainComponent::~MainComponent()
     metronomeSettings.closeWindow();
     recovery.closeWindow();
     editorController.closeAllEditors();
-    document.getSequence().removeListener(this);
     document.removeChangeListener(this);
     juce::Desktop::getInstance().removeFocusChangeListener(this);
     audioDeviceManager.removeChangeListener(this);
@@ -276,20 +272,6 @@ void MainComponent::paint(juce::Graphics& g)
     g.setColour(surface::bg2);
     for (auto* frame : {&trackListFrame, &pianoRollFrame, &eventListFrame})
         g.fillRect(frame->getBounds());
-
-    if (!trackListHeaderBounds.isEmpty())
-    {
-        g.setColour(surface::bg2);
-        g.fillRect(trackListHeaderBounds);
-        g.setColour(border::soft);
-        g.drawHorizontalLine(trackListHeaderBounds.getBottom() - 1, static_cast<float>(trackListHeaderBounds.getX()),
-                             static_cast<float>(trackListHeaderBounds.getRight()));
-        int numTracks = document.getSequence().getNumTracks();
-        g.setColour(text::t3);
-        g.setFont(font::sans(font::sizeXS));
-        g.drawText(juce::String::fromUTF8("TRACKS \xc2\xb7 ") + juce::String(numTracks),
-                   trackListHeaderBounds.reduced(12, 0), juce::Justification::centredLeft);
-    }
 }
 
 void MainComponent::paintOverChildren(juce::Graphics& g)
@@ -318,9 +300,7 @@ void MainComponent::resized()
     auto trackListColumn = area.removeFromLeft(clampedTrackListW);
     trackListFrame.setBounds(trackListColumn);
     trackListColumn.reduce(panelPadding, panelPadding);
-    trackListHeaderBounds = trackListColumn.removeFromTop(PianoRollToolBar::height);
-    trackListViewport.setBounds(trackListColumn);
-    trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
+    trackListPanel.setBounds(trackListColumn);
     trackListDivider.setBounds(area.removeFromLeft(panelGap));
     int clampedEventListW = juce::jlimit(80, juce::jmax(80, area.getWidth() - 200), eventListWidth);
     auto eventListColumn = area.removeFromRight(clampedEventListW);
@@ -367,7 +347,7 @@ void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
     { return &panel == focusedComponent || panel.isParentOf(focusedComponent); };
 
     FocusPanel detected = focusedPanel;
-    if (belongsTo(trackList))
+    if (trackListPanel.claimsFocus(focusedComponent))
     {
         detected = FocusPanel::TrackList;
     }
@@ -510,12 +490,12 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::undo:
         document.getHistory().undo();
-        trackList.refresh();
+        trackListPanel.getTrackList().refresh();
         pianoRollPanel.deselectNotes();
         return true;
     case AppCommands::redo:
         document.getHistory().redo();
-        trackList.refresh();
+        trackListPanel.getTrackList().refresh();
         pianoRollPanel.deselectNotes();
         return true;
     case AppCommands::cut:
@@ -649,11 +629,6 @@ void MainComponent::stopAutoSaveAndDiscardRecovery()
     recovery.stopAndDiscard();
 }
 
-void MainComponent::tracksChanged()
-{
-    repaint(trackListHeaderBounds);
-}
-
 void MainComponent::toggleInputQuantize()
 {
     inputQuantizeEnabled = !inputQuantizeEnabled;
@@ -735,14 +710,13 @@ void MainComponent::onSequenceLoaded()
     pianoRollPanel.setLoopRegion(false, 0, 0);
     transportBar.updateDisplay();
 
-    trackList.setSequence(&document.getSequence());
+    trackListPanel.setSequence(&document.getSequence());
 
     eventList.setSequence(&document.getSequence());
     eventList.setSelectedTracks(allTracks);
     eventList.setPlayheadTick(0);
 
     pianoRollPanel.scrollToMiddleC(getHeight() / 2);
-    repaint(trackListHeaderBounds);
 }
 
 void MainComponent::updateTitleBar()

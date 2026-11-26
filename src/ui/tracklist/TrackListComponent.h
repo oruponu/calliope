@@ -14,6 +14,7 @@ public:
 
     void setSequence(MidiSequence* seq);
     void refresh();
+    void updateSize();
 
     int getActiveTrackIndex() const;
     void setActiveTrackIndex(int index);
@@ -59,7 +60,6 @@ private:
     juce::Rectangle<int> getPluginLabelBounds(int rowIndex) const;
     juce::Rectangle<int> getChannelLabelBounds(int rowIndex) const;
     juce::Rectangle<int> getAddButtonBounds() const;
-    void updateSize();
     void scrollRowIntoView(int rowIndex);
     void selectRangeTo(int row);
     void toggleMuted(int row);
