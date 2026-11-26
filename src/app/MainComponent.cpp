@@ -8,19 +8,6 @@
 #include <set>
 #include <utility>
 
-namespace
-{
-// A straight grid item's id is its denominator, and a triplet's is this offset plus its denominator.
-constexpr int tripletGridItemIdOffset = 100;
-
-GridDivision gridDivisionForItemId(int id)
-{
-    if (id > tripletGridItemIdOffset)
-        return {id - tripletGridItemIdOffset, true};
-    return {id};
-}
-} // namespace
-
 MainComponent::MainComponent()
 {
     if (!midiOutput.open(getAppProperties().getUserSettings()->getValue("midiOutputDeviceId")))
@@ -229,8 +216,8 @@ MainComponent::MainComponent()
     controllerLaneDivider.onDrag = [this](int deltaY)
     {
         int minH = 60;
-        int maxH =
-            getHeight() - menuBarHeight - transportBarHeight - 2 * (panelGap + panelPadding) - toolBarHeight - 150;
+        int maxH = getHeight() - menuBarHeight - transportBarHeight - 2 * (panelGap + panelPadding) -
+                   PianoRollToolBar::height - 150;
         controllerLaneHeight = juce::jlimit(minH, maxH, controllerLaneHeightOnDragStart - deltaY);
         resized();
     };
@@ -329,38 +316,23 @@ MainComponent::MainComponent()
         controllerLane.setLoopRegion(enabled, startTick, endTick);
     };
 
-    addAndMakeVisible(editToolButton);
-    editToolButton.onClick = [this]() { setActiveTool(PianoRollComponent::EditMode::Edit); };
-
-    addAndMakeVisible(selectToolButton);
-    selectToolButton.setActive(true);
-    selectToolButton.onClick = [this]() { setActiveTool(PianoRollComponent::EditMode::Select); };
-
-    addAndMakeVisible(snapButton);
-    const bool snapEnabled = getAppProperties().getUserSettings()->getBoolValue("snapEnabled", true);
-    snapButton.setActive(snapEnabled);
-    pianoRoll.setSnapEnabled(snapEnabled);
-    controllerLane.setSnapEnabled(snapEnabled);
-    snapButton.onClick = [this]() { toggleSnap(); };
-
-    addAndMakeVisible(quantizeComboBox);
-    quantizeComboBox.addItem("1/1", 1);
-    quantizeComboBox.addItem("1/2", 2);
-    quantizeComboBox.addItem("1/4", 4);
-    quantizeComboBox.addItem("1/8", 8);
-    quantizeComboBox.addItem("1/16", 16);
-    quantizeComboBox.addItem("1/32", 32);
-    quantizeComboBox.addSeparator();
-    for (int denominator : {2, 4, 8, 16, 32})
-        quantizeComboBox.addItem("1/" + juce::String(denominator) + "T", tripletGridItemIdOffset + denominator);
-    quantizeComboBox.setSelectedId(16, juce::dontSendNotification);
-    quantizeComboBox.onChange = [this]()
+    addAndMakeVisible(toolBar);
+    toolBar.onToolClicked = [this](auto mode) { setActiveTool(mode); };
+    toolBar.onSnapChanged = [this](bool enabled)
     {
-        const GridDivision division = gridDivisionForItemId(quantizeComboBox.getSelectedId());
+        pianoRoll.setSnapEnabled(enabled);
+        controllerLane.setSnapEnabled(enabled);
+    };
+    toolBar.onGridDivisionChanged = [this](GridDivision division)
+    {
         pianoRoll.setGridDivision(division);
         controllerLane.setGridDivision(division);
         updateInputQuantize();
     };
+    toolBar.onBackgroundClicked = [this]() { pianoRoll.grabKeyboardFocus(); };
+    const bool snapEnabled = toolBar.isSnapEnabled();
+    pianoRoll.setSnapEnabled(snapEnabled);
+    controllerLane.setSnapEnabled(snapEnabled);
     inputQuantizeEnabled = getAppProperties().getUserSettings()->getBoolValue("inputQuantizeEnabled", false);
     updateInputQuantize();
 
@@ -370,9 +342,6 @@ MainComponent::MainComponent()
     pianoRoll.setWantsKeyboardFocus(true);
     eventList.setWantsKeyboardFocus(true);
     controllerLane.setWantsKeyboardFocus(true);
-    selectToolButton.setWantsKeyboardFocus(true);
-    editToolButton.setWantsKeyboardFocus(true);
-    snapButton.setWantsKeyboardFocus(true);
     addAndMakeVisible(trackListFrame);
     addAndMakeVisible(pianoRollFrame);
     addAndMakeVisible(eventListFrame);
@@ -431,14 +400,6 @@ void MainComponent::paint(juce::Graphics& g)
     for (auto* frame : {&trackListFrame, &pianoRollFrame, &eventListFrame})
         g.fillRect(frame->getBounds());
 
-    g.setColour(surface::surface2);
-    g.fillRect(toolBarBounds);
-    g.setColour(border::strong);
-    g.drawHorizontalLine(toolBarBounds.getBottom() - 1, static_cast<float>(toolBarBounds.getX()),
-                         static_cast<float>(toolBarBounds.getRight()));
-    g.drawVerticalLine(toolBarSeparatorX, static_cast<float>(toolBarBounds.getY() + 8),
-                       static_cast<float>(toolBarBounds.getBottom() - 8));
-
     if (!trackListHeaderBounds.isEmpty())
     {
         g.setColour(surface::bg2);
@@ -480,7 +441,7 @@ void MainComponent::resized()
     auto trackListColumn = area.removeFromLeft(clampedTrackListW);
     trackListFrame.setBounds(trackListColumn);
     trackListColumn.reduce(panelPadding, panelPadding);
-    trackListHeaderBounds = trackListColumn.removeFromTop(toolBarHeight);
+    trackListHeaderBounds = trackListColumn.removeFromTop(PianoRollToolBar::height);
     trackListViewport.setBounds(trackListColumn);
     trackList.setSize(trackListViewport.getMaximumVisibleWidth(), trackList.getHeight());
     trackListDivider.setBounds(area.removeFromLeft(panelGap));
@@ -493,23 +454,8 @@ void MainComponent::resized()
     pianoRollFrame.setBounds(area);
     area.reduce(panelPadding, panelPadding);
 
-    auto toolBarArea = area.removeFromTop(toolBarHeight);
-    toolBarBounds = toolBarArea;
-    {
-        const int btnSize = 28;
-        const int pad = 4;
-        auto toolBtnArea =
-            toolBarArea.withTrimmedLeft(pad * 2).withSizeKeepingCentre(toolBarArea.getWidth() - pad * 2, btnSize);
-        selectToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
-        toolBtnArea.removeFromLeft(pad);
-        editToolButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
-        toolBtnArea.removeFromLeft(pad * 2);
-        toolBarSeparatorX = toolBtnArea.getX();
-        toolBtnArea.removeFromLeft(pad * 2);
-        snapButton.setBounds(toolBtnArea.removeFromLeft(btnSize));
-        toolBtnArea.removeFromLeft(pad);
-        quantizeComboBox.setBounds(toolBtnArea.removeFromLeft(70).withSizeKeepingCentre(70, 26));
-    }
+    auto toolBarArea = area.removeFromTop(PianoRollToolBar::height);
+    toolBar.setBounds(toolBarArea);
 
     int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
     auto editorArea = area.removeFromBottom(clampedEditorH);
@@ -535,12 +481,6 @@ void MainComponent::parentHierarchyChanged()
     if (auto* topLevel = getTopLevelComponent())
         topLevel->addKeyListener(commandManager.getKeyMappings());
     updateTitleBar();
-}
-
-void MainComponent::mouseDown(const juce::MouseEvent& e)
-{
-    if (toolBarBounds.contains(e.getPosition()))
-        pianoRoll.grabKeyboardFocus();
 }
 
 std::unique_ptr<juce::ComponentTraverser> MainComponent::createKeyboardFocusTraverser()
@@ -580,8 +520,7 @@ void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
     {
         detected = FocusPanel::TrackList;
     }
-    else if (belongsTo(pianoRoll) || belongsTo(controllerLane) || belongsTo(quantizeComboBox) ||
-             belongsTo(selectToolButton) || belongsTo(editToolButton) || belongsTo(snapButton))
+    else if (belongsTo(pianoRoll) || belongsTo(controllerLane) || toolBar.contains(focusedComponent))
     {
         detected = FocusPanel::PianoRoll;
         controllerLaneFocused = belongsTo(controllerLane);
@@ -884,19 +823,14 @@ void MainComponent::tracksChanged()
 
 void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
 {
-    editToolButton.setActive(mode == PianoRollComponent::EditMode::Edit);
-    selectToolButton.setActive(mode == PianoRollComponent::EditMode::Select);
+    toolBar.setActiveTool(mode);
     pianoRoll.setEditMode(mode);
     controllerLane.setEditToolSelected(mode == PianoRollComponent::EditMode::Edit);
 }
 
 void MainComponent::toggleSnap()
 {
-    const bool enabled = !snapButton.isActive();
-    snapButton.setActive(enabled);
-    pianoRoll.setSnapEnabled(enabled);
-    controllerLane.setSnapEnabled(enabled);
-    getAppProperties().getUserSettings()->setValue("snapEnabled", enabled);
+    toolBar.toggleSnap();
 }
 
 void MainComponent::toggleInputQuantize()
@@ -908,8 +842,7 @@ void MainComponent::toggleInputQuantize()
 
 void MainComponent::updateInputQuantize()
 {
-    recorder.setInputQuantize(
-        inputQuantizeEnabled ? std::optional(gridDivisionForItemId(quantizeComboBox.getSelectedId())) : std::nullopt);
+    recorder.setInputQuantize(inputQuantizeEnabled ? std::optional(toolBar.getGridDivision()) : std::nullopt);
 }
 
 void MainComponent::updateFocusBorder()

@@ -141,6 +141,7 @@ target_sources(CalliopeTests PRIVATE
     ui/pianoroll/ControllerLaneScaleTests.cpp
     ui/pianoroll/DragValueTipTests.cpp
     ui/pianoroll/EditClipboardTests.cpp
+    ui/pianoroll/GridItemIdsTests.cpp
     ui/pianoroll/ProgramBrowserStateTests.cpp
     ui/pianoroll/TimelineGeometryTests.cpp
     ui/pianoroll/VelocityBarGrabTests.cpp

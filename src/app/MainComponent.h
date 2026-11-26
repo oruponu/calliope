@@ -23,6 +23,7 @@
 #include "ui/pianoroll/ControllerLaneViewport.h"
 #include "ui/pianoroll/EditClipboard.h"
 #include "ui/pianoroll/PianoRollComponent.h"
+#include "ui/pianoroll/PianoRollToolBar.h"
 #include "ui/pianoroll/PianoRollViewport.h"
 #include "ui/plugin/PluginCatalogController.h"
 #include "ui/plugin/PluginEditorController.h"
@@ -34,7 +35,6 @@
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
 #include "ui/widgets/PanelFrame.h"
-#include "ui/widgets/ToolButton.h"
 #include "ui/widgets/ZoomStrip.h"
 #include <functional>
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -57,7 +57,6 @@ public:
     void paintOverChildren(juce::Graphics&) override;
     void resized() override;
     void parentHierarchyChanged() override;
-    void mouseDown(const juce::MouseEvent& e) override;
     std::unique_ptr<juce::ComponentTraverser> createKeyboardFocusTraverser() override;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
@@ -195,17 +194,10 @@ private:
 
     juce::MenuBarComponent menuBar;
 
-    ToolButton editToolButton{ToolButton::EditTool};
-    ToolButton selectToolButton{ToolButton::SelectTool};
-    ToolButton snapButton{ToolButton::Snap};
-
-    juce::ComboBox quantizeComboBox;
+    PianoRollToolBar toolBar;
     bool inputQuantizeEnabled = false;
     MetronomeSettingsController metronomeSettings{transportBar,   playbackEngine, metronome,
                                                   commandManager, *this,          *this};
-
-    juce::Rectangle<int> toolBarBounds;
-    int toolBarSeparatorX = 0;
 
     std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
@@ -219,7 +211,6 @@ private:
 
     static constexpr int menuBarHeight = 30;
     static constexpr int transportBarHeight = 64;
-    static constexpr int toolBarHeight = 32;
     static constexpr int dividerThickness = 5;
     static constexpr int panelGap = 6;
     static constexpr int panelPadding = 4;
