@@ -46,17 +46,6 @@ MainComponent::MainComponent()
 
     pianoRollPanel.setSequence(&document.getSequence());
 
-    pianoRollPanel.getPianoRoll().onNoteSelectionChanged = [this](const auto& selected)
-    {
-        pianoRollPanel.getControllerLane().repaint();
-        if (!selected.empty())
-            pianoRollPanel.getControllerLane().clearPointSelection();
-        if (updatingFromEventList)
-            return;
-        eventList.setSelectedNotes(selected);
-    };
-    pianoRollPanel.getPianoRoll().onSelectionTaken = [this]()
-    { pianoRollPanel.getControllerLane().clearPointSelection(); };
     pianoRollPanel.getPianoRoll().onNotePreview = [this](const MidiNote& note)
     {
         auto ctx = makeTrackContext(pianoRollPanel.getPianoRoll().getActiveTrackIndex());
@@ -69,43 +58,16 @@ MainComponent::MainComponent()
         midiOutput.onNoteOff(ctx, note);
         pluginHost.onNoteOff(ctx, note);
     };
-    pianoRollPanel.getPianoRoll().onNoteDragPreviewChanged = [this](const auto& preview)
-    { eventList.setNoteDragPreview(preview); };
     addAndMakeVisible(pianoRollPanel);
 
     trackListPanel.setSequence(&document.getSequence());
     addAndMakeVisible(trackListPanel);
-    trackListPanel.getTrackList().onTrackSelected = [this](int activeIdx, const std::set<int>& selected)
-    {
-        pianoRollPanel.getPianoRoll().setSelectedTracks(activeIdx, selected);
-        pianoRollPanel.getControllerLane().setSelectedTracks(activeIdx, selected);
-        eventList.setSelectedTracks(selected);
-        midiThruSync.activeTrackChanged();
-        recorder.activeTrackChanged();
-    };
     trackListPanel.getTrackList().pluginNameForTrack = [this](int trackIndex)
     { return pluginHost.getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
     trackListPanel.getTrackList().onEditorButtonClicked = [this](int trackIndex)
     { editorController.showEditor(document.getSequence().getTrack(trackIndex).getId()); };
     trackListPanel.getTrackList().onPluginLabelClicked = [this](int trackIndex)
     { trackOutput.showOutputMenu(trackIndex); };
-
-    pianoRollPanel.getControllerLane().onNoteDragPreviewChanged = [this](const auto& preview)
-    { eventList.setNoteDragPreview(preview); };
-    pianoRollPanel.getControllerLane().onPointSelectionTaken = [this]()
-    { pianoRollPanel.getPianoRoll().clearSelection(); };
-    pianoRollPanel.getControllerLane().onPointSelectionChanged = [this](int trackIndex, const auto& events)
-    {
-        if (!updatingFromEventList)
-            eventList.setSelectedEvents(trackIndex, events);
-    };
-    pianoRollPanel.getControllerLane().noteSelection = [this]()
-    { return pianoRollPanel.getPianoRoll().getSelectedNotes(); };
-    pianoRollPanel.getControllerLane().onNotesSelected = [this](const auto& notes)
-    {
-        pianoRollPanel.getPianoRoll().setSelectedNotes(notes);
-        eventList.setSelectedNotes(pianoRollPanel.getPianoRoll().getSelectedNotes());
-    };
 
     addAndMakeVisible(trackListDivider);
     trackListDivider.onDragStart = [this]() { trackListWidthOnDragStart = trackListWidth; };
@@ -129,23 +91,6 @@ MainComponent::MainComponent()
 
     eventList.setSequence(&document.getSequence());
     eventList.setSelectedTracks({0});
-    eventList.onNoteSelectionFromList = [this](const auto& noteRefs)
-    {
-        updatingFromEventList = true;
-        pianoRollPanel.getControllerLane().clearPointSelection();
-        pianoRollPanel.getPianoRoll().setSelectedNotes(noteRefs);
-        updatingFromEventList = false;
-        pianoRollPanel.getControllerLane().repaint();
-    };
-    eventList.onControllerSelectionFromList = [this](int trackIndex, const ControllerKind& kind, const auto& events)
-    {
-        // Switching the active track from a click in the list would surprise; other tracks' rows stay in the list.
-        if (trackIndex != pianoRollPanel.getPianoRoll().getActiveTrackIndex())
-            return;
-        updatingFromEventList = true;
-        pianoRollPanel.getControllerLane().showAndSelectPoints(kind, events);
-        updatingFromEventList = false;
-    };
     addAndMakeVisible(eventList);
 
     menuBar.setModel(&mainMenuModel);

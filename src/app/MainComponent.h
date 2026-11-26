@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/PlayheadLinks.h"
+#include "app/SelectionLinks.h"
 #include "audio/Metronome.h"
 #include "device/MidiDeviceOutput.h"
 #include "device/MidiInputReconnector.h"
@@ -131,6 +132,11 @@ private:
 
     EventListComponent eventList{document.getHistory()};
     PlayheadLinks playheadLinks{pianoRollPanel, eventList, transportBar, playbackEngine, *this};
+    SelectionLinks selectionLinks{pianoRollPanel, eventList, trackListPanel.getTrackList(), [this]
+                                  {
+                                      midiThruSync.activeTrackChanged();
+                                      recorder.activeTrackChanged();
+                                  }};
 
     enum class FocusPanel
     {
@@ -160,7 +166,6 @@ private:
                                                   commandManager, *this,          *this};
 
     bool fileDragOver = false;
-    bool updatingFromEventList = false;
     FileOperations fileOperations{document, recorder, pluginHost, [this]
                                   {
                                       onSequenceLoaded();
