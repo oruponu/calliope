@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/PlayheadLinks.h"
 #include "audio/Metronome.h"
 #include "device/MidiDeviceOutput.h"
 #include "device/MidiInputReconnector.h"
@@ -73,7 +74,6 @@ private:
     void toggleInputQuantize();
     void updateInputQuantize();
     void updateFocusBorder();
-    void onVBlank();
     void showAudioSettings();
     void stopPlayback();
     void releaseInputSource(const juce::String& deviceIdentifier);
@@ -130,6 +130,7 @@ private:
     int eventListWidthOnDragStart = 280;
 
     EventListComponent eventList{document.getHistory()};
+    PlayheadLinks playheadLinks{pianoRollPanel, eventList, transportBar, playbackEngine, *this};
 
     enum class FocusPanel
     {
@@ -158,7 +159,6 @@ private:
     MetronomeSettingsController metronomeSettings{transportBar,   playbackEngine, metronome,
                                                   commandManager, *this,          *this};
 
-    std::unique_ptr<juce::VBlankAttachment> vblankAttachment;
     bool fileDragOver = false;
     bool updatingFromEventList = false;
     FileOperations fileOperations{document, recorder, pluginHost, [this]

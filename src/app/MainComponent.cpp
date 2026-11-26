@@ -46,14 +46,6 @@ MainComponent::MainComponent()
 
     pianoRollPanel.setSequence(&document.getSequence());
 
-    pianoRollPanel.getPianoRoll().onPlayheadMoved = [this](int tick)
-    {
-        transportBar.stopCountIn();
-        playbackEngine.setPositionInTicks(tick);
-        pianoRollPanel.getControllerLane().setPlayheadTick(tick);
-        eventList.setPlayheadTick(tick);
-        transportBar.updateDisplay();
-    };
     pianoRollPanel.getPianoRoll().onNoteSelectionChanged = [this](const auto& selected)
     {
         pianoRollPanel.getControllerLane().repaint();
@@ -137,14 +129,6 @@ MainComponent::MainComponent()
 
     eventList.setSequence(&document.getSequence());
     eventList.setSelectedTracks({0});
-    eventList.onEventSelected = [this](int tick)
-    {
-        transportBar.stopCountIn();
-        playbackEngine.setPositionInTicks(tick);
-        pianoRollPanel.getPianoRoll().setPlayheadTick(tick);
-        transportBar.updateDisplay();
-        pianoRollPanel.scrollToPlayhead(tick);
-    };
     eventList.onNoteSelectionFromList = [this](const auto& noteRefs)
     {
         updatingFromEventList = true;
@@ -168,26 +152,6 @@ MainComponent::MainComponent()
     addAndMakeVisible(menuBar);
 
     addAndMakeVisible(transportBar);
-    transportBar.onPlayheadMoved = [this](double tick)
-    {
-        pianoRollPanel.getPianoRoll().setPlayheadTick(tick);
-        pianoRollPanel.getControllerLane().setPlayheadTick(tick);
-        eventList.setPlayheadTick(tick);
-    };
-    transportBar.onScrollToPlayhead = [this](int tick) { pianoRollPanel.scrollToPlayhead(tick); };
-    transportBar.onReturnToStart = [this]() { pianoRollPanel.scrollToStart(); };
-    transportBar.onPlaybackStateChanged = [this](bool playing)
-    {
-        if (playing)
-            vblankAttachment = std::make_unique<juce::VBlankAttachment>(this, [this]() { onVBlank(); });
-        else
-            vblankAttachment.reset();
-    };
-    transportBar.onLoopRegionChanged = [this](bool enabled, int startTick, int endTick)
-    {
-        pianoRollPanel.getPianoRoll().setLoopRegion(enabled, startTick, endTick);
-        pianoRollPanel.getControllerLane().setLoopRegion(enabled, startTick, endTick);
-    };
     transportBar.onRecordToggled = [this] { toggleRecording(); };
     recorder.onRecordingChanged = [this](bool recording) { transportBar.setRecordActive(recording); };
     pianoRollPanel.getPianoRoll().setRecordingLayer(&recorder, &recorder);
@@ -202,13 +166,6 @@ MainComponent::MainComponent()
     recorder.onCommitted = [this](const auto& committed)
     { pianoRollPanel.getPianoRoll().recordedNotesCommitted(committed); };
     transportBar.setMetronomeActive(playbackEngine.isMetronomeEnabled());
-
-    pianoRollPanel.getPianoRoll().onLoopRegionChanged = [this](int startTick, int endTick)
-    {
-        playbackEngine.setLoopRange(startTick, endTick);
-        bool enabled = playbackEngine.isLoopEnabled();
-        pianoRollPanel.getControllerLane().setLoopRegion(enabled, startTick, endTick);
-    };
 
     pianoRollPanel.onGridDivisionChanged = [this](GridDivision) { updateInputQuantize(); };
     inputQuantizeEnabled = getAppProperties().getUserSettings()->getBoolValue("inputQuantizeEnabled", false);
@@ -250,7 +207,7 @@ MainComponent::~MainComponent()
     audioDeviceManager.removeMidiInputDeviceCallback({}, &midiThru);
     audioDeviceManager.removeMidiInputDeviceCallback({}, &recordingInput);
     menuBar.setModel(nullptr);
-    vblankAttachment.reset();
+    playheadLinks.stopFollowing();
     playbackEngine.stop();
     pianoRollPanel.getPianoRoll().setRecordingLayer(nullptr, nullptr);
     pianoRollPanel.getControllerLane().setRecordingLayer(nullptr, nullptr);
@@ -648,16 +605,6 @@ void MainComponent::updateFocusBorder()
     eventListFrame.setFocused(focusedPanel == FocusPanel::EventList);
 }
 
-void MainComponent::onVBlank()
-{
-    double tick = playbackEngine.getCurrentTick();
-    pianoRollPanel.getPianoRoll().setPlayheadTick(tick);
-    pianoRollPanel.getControllerLane().setPlayheadTick(tick);
-    eventList.setPlayheadTick(tick);
-    transportBar.updateDisplay();
-    pianoRollPanel.scrollToPlayhead(static_cast<int>(tick));
-}
-
 void MainComponent::showAudioSettings()
 {
     auto* selector = new juce::AudioDeviceSelectorComponent(audioDeviceManager, 0, 0, 2, 2, false, false, true, false);
@@ -678,7 +625,7 @@ void MainComponent::stopPlayback()
     playbackEngine.stop();
     midiOutput.reset();
     transportBar.setPlaying(false);
-    vblankAttachment.reset();
+    playheadLinks.stopFollowing();
 }
 
 void MainComponent::releaseInputSource(const juce::String& deviceIdentifier)
