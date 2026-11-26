@@ -45,82 +45,42 @@ MainComponent::MainComponent()
     const bool metronomeEnabled = getAppProperties().getUserSettings()->getBoolValue("metronomeEnabled", false);
     playbackEngine.setMetronomeEnabled(metronomeEnabled);
 
-    pianoRoll.setSequence(&document.getSequence());
+    pianoRollPanel.setSequence(&document.getSequence());
 
-    pianoRoll.onPlayheadMoved = [this](int tick)
+    pianoRollPanel.getPianoRoll().onPlayheadMoved = [this](int tick)
     {
         transportBar.stopCountIn();
         playbackEngine.setPositionInTicks(tick);
-        controllerLane.setPlayheadTick(tick);
+        pianoRollPanel.getControllerLane().setPlayheadTick(tick);
         eventList.setPlayheadTick(tick);
         transportBar.updateDisplay();
     };
-    pianoRoll.onNoteSelectionChanged = [this](const auto& selected)
+    pianoRollPanel.getPianoRoll().onNoteSelectionChanged = [this](const auto& selected)
     {
-        controllerLane.repaint();
+        pianoRollPanel.getControllerLane().repaint();
         if (!selected.empty())
-            controllerLane.clearPointSelection();
+            pianoRollPanel.getControllerLane().clearPointSelection();
         if (updatingFromEventList)
             return;
         eventList.setSelectedNotes(selected);
     };
-    pianoRoll.onSelectionTaken = [this]() { controllerLane.clearPointSelection(); };
-    pianoRoll.onNotePreview = [this](const MidiNote& note)
+    pianoRollPanel.getPianoRoll().onSelectionTaken = [this]()
+    { pianoRollPanel.getControllerLane().clearPointSelection(); };
+    pianoRollPanel.getPianoRoll().onNotePreview = [this](const MidiNote& note)
     {
-        auto ctx = makeTrackContext(pianoRoll.getActiveTrackIndex());
+        auto ctx = makeTrackContext(pianoRollPanel.getPianoRoll().getActiveTrackIndex());
         midiOutput.onNoteOn(ctx, note);
         pluginHost.onNoteOn(ctx, note);
     };
-    pianoRoll.onNotePreviewEnd = [this](const MidiNote& note)
+    pianoRollPanel.getPianoRoll().onNotePreviewEnd = [this](const MidiNote& note)
     {
-        auto ctx = makeTrackContext(pianoRoll.getActiveTrackIndex());
+        auto ctx = makeTrackContext(pianoRollPanel.getPianoRoll().getActiveTrackIndex());
         midiOutput.onNoteOff(ctx, note);
         pluginHost.onNoteOff(ctx, note);
     };
-    pianoRoll.onNoteDragPreviewChanged = [this](const auto& preview) { eventList.setNoteDragPreview(preview); };
-    pianoRoll.onScrollToNote = [this](int startTick, int noteNumber) { scrollNoteIntoView(startTick, noteNumber); };
-    pianoRoll.onScrollVertical = [this](int deltaY) { scrollViewVertically(deltaY); };
-    pianoRoll.onScrollHorizontal = [this](int deltaX) { scrollViewHorizontally(deltaX); };
-    viewport.setViewedComponent(&pianoRoll, false);
-    viewport.setScrollBarsShown(true, false);
-    viewport.setVerticalScrollBarBottomInset(zoomStripLength);
-    viewport.onReachedEnd = [this]()
-    {
-        pianoRoll.extendContent();
-        controllerLane.setContentBeats(pianoRoll.getContentBeats());
-    };
-    viewport.onVisibleAreaChanged = [this]()
-    {
-        pianoRoll.updateSize();
-        controllerLane.updateSize();
-        if (!syncingScroll)
-        {
-            syncingScroll = true;
-            controllerLaneViewport.setViewPosition(viewport.getViewPositionX(), 0);
-            syncingScroll = false;
-        }
-    };
-    viewport.onZoom = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
-    {
-        float factor = wheel.deltaY > 0 ? 1.15f : (1.0f / 1.15f);
-        if (e.mods.isShiftDown())
-            zoomVertical(factor, e.getPosition().y);
-        else
-            zoomHorizontal(factor, e.getPosition().x);
-    };
-    pianoRoll.onRulerWheel = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
-    {
-        float factor = wheel.deltaY > 0 ? 1.15f : (1.0f / 1.15f);
-        auto relEvent = e.getEventRelativeTo(&viewport);
-        zoomHorizontal(factor, relEvent.getPosition().x);
-    };
-    pianoRoll.onRulerDrag = [this](const juce::MouseEvent& e, int deltaY)
-    {
-        float factor = std::pow(1.01f, static_cast<float>(deltaY));
-        auto relEvent = e.getEventRelativeTo(&viewport);
-        zoomHorizontal(factor, relEvent.getPosition().x);
-    };
-    addAndMakeVisible(viewport);
+    pianoRollPanel.getPianoRoll().onNoteDragPreviewChanged = [this](const auto& preview)
+    { eventList.setNoteDragPreview(preview); };
+    addAndMakeVisible(pianoRollPanel);
 
     trackList.setSequence(&document.getSequence());
     trackListViewport.setViewedComponent(&trackList, false);
@@ -128,8 +88,8 @@ MainComponent::MainComponent()
     addAndMakeVisible(trackListViewport);
     trackList.onTrackSelected = [this](int activeIdx, const std::set<int>& selected)
     {
-        pianoRoll.setSelectedTracks(activeIdx, selected);
-        controllerLane.setSelectedTracks(activeIdx, selected);
+        pianoRollPanel.getPianoRoll().setSelectedTracks(activeIdx, selected);
+        pianoRollPanel.getControllerLane().setSelectedTracks(activeIdx, selected);
         eventList.setSelectedTracks(selected);
         midiThruSync.activeTrackChanged();
         recorder.activeTrackChanged();
@@ -140,86 +100,21 @@ MainComponent::MainComponent()
     { editorController.showEditor(document.getSequence().getTrack(trackIndex).getId()); };
     trackList.onPluginLabelClicked = [this](int trackIndex) { trackOutput.showOutputMenu(trackIndex); };
 
-    controllerLane.setSequence(&document.getSequence());
-    controllerLane.setSelectedTracks(0, {0});
-    controllerLane.onMouseWheel = [this](const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
-    {
-        if (e.mods.isCommandDown())
-        {
-            float factor = w.deltaY > 0 ? 1.15f : (1.0f / 1.15f);
-            auto relEvent = e.getEventRelativeTo(&controllerLaneViewport);
-            zoomHorizontal(factor, relEvent.getPosition().x);
-            return;
-        }
-        int scrollSpeed = 600;
-        int newX = viewport.getViewPositionX() - juce::roundToInt(w.deltaX * scrollSpeed);
-        int newY = viewport.getViewPositionY() - juce::roundToInt(w.deltaY * scrollSpeed);
-        newX = juce::jlimit(0, juce::jmax(0, pianoRoll.getWidth() - viewport.getViewWidth()), newX);
-        newY = juce::jlimit(0, juce::jmax(0, pianoRoll.getHeight() - viewport.getViewHeight()), newY);
-        viewport.setViewPosition(newX, newY);
-    };
-    controllerLane.onNoteDragPreviewChanged = [this](const auto& preview) { eventList.setNoteDragPreview(preview); };
-    controllerLane.onPointSelectionTaken = [this]() { pianoRoll.clearSelection(); };
-    controllerLane.onPointSelectionChanged = [this](int trackIndex, const auto& events)
+    pianoRollPanel.getControllerLane().onNoteDragPreviewChanged = [this](const auto& preview)
+    { eventList.setNoteDragPreview(preview); };
+    pianoRollPanel.getControllerLane().onPointSelectionTaken = [this]()
+    { pianoRollPanel.getPianoRoll().clearSelection(); };
+    pianoRollPanel.getControllerLane().onPointSelectionChanged = [this](int trackIndex, const auto& events)
     {
         if (!updatingFromEventList)
             eventList.setSelectedEvents(trackIndex, events);
     };
-    controllerLane.noteSelection = [this]() { return pianoRoll.getSelectedNotes(); };
-    controllerLane.onNotesSelected = [this](const auto& notes)
+    pianoRollPanel.getControllerLane().noteSelection = [this]()
+    { return pianoRollPanel.getPianoRoll().getSelectedNotes(); };
+    pianoRollPanel.getControllerLane().onNotesSelected = [this](const auto& notes)
     {
-        pianoRoll.setSelectedNotes(notes);
-        eventList.setSelectedNotes(pianoRoll.getSelectedNotes());
-    };
-    controllerLaneViewport.setViewedComponent(&controllerLane, false);
-    controllerLaneViewport.setScrollBarsShown(false, true);
-    controllerLaneViewport.setHorizontalScrollBarRightInset(zoomStripLength);
-    controllerLane.setRightPadding(viewport.getScrollBarThickness());
-    controllerLaneViewport.onVisibleAreaChanged = [this]()
-    {
-        if (!syncingScroll)
-        {
-            syncingScroll = true;
-            viewport.setViewPosition(controllerLaneViewport.getViewPositionX(), viewport.getViewPositionY());
-            syncingScroll = false;
-        }
-    };
-    controllerLaneViewport.onReachedEnd = [this]()
-    {
-        pianoRoll.extendContent();
-        controllerLane.setContentBeats(pianoRoll.getContentBeats());
-    };
-    addAndMakeVisible(controllerLaneViewport);
-
-    horizontalZoomStrip.slider.setRange(PianoRollComponent::minBeatWidth, PianoRollComponent::maxBeatWidth, 1);
-    horizontalZoomStrip.slider.setSkewFactorFromMidPoint(PianoRollComponent::defaultBeatWidth);
-    horizontalZoomStrip.slider.setValue(pianoRoll.getBeatWidth(), juce::dontSendNotification);
-    horizontalZoomStrip.slider.setDoubleClickReturnValue(true, PianoRollComponent::defaultBeatWidth);
-    horizontalZoomStrip.slider.onValueChange = [this]()
-    { setHorizontalZoom(static_cast<int>(horizontalZoomStrip.slider.getValue()), viewport.getViewWidth() / 2); };
-    horizontalZoomStrip.onZoomIn = [this]() { zoomHorizontal(1.15f, viewport.getViewWidth() / 2); };
-    horizontalZoomStrip.onZoomOut = [this]() { zoomHorizontal(1.0f / 1.15f, viewport.getViewWidth() / 2); };
-    addAndMakeVisible(horizontalZoomStrip);
-
-    verticalZoomStrip.slider.setRange(PianoRollComponent::minNoteHeight, PianoRollComponent::maxNoteHeight, 1);
-    verticalZoomStrip.slider.setSkewFactorFromMidPoint(PianoRollComponent::defaultNoteHeight);
-    verticalZoomStrip.slider.setValue(pianoRoll.getNoteHeight(), juce::dontSendNotification);
-    verticalZoomStrip.slider.setDoubleClickReturnValue(true, PianoRollComponent::defaultNoteHeight);
-    verticalZoomStrip.slider.onValueChange = [this]()
-    { setVerticalZoom(static_cast<int>(verticalZoomStrip.slider.getValue()), viewport.getViewHeight() / 2); };
-    verticalZoomStrip.onZoomIn = [this]() { zoomVertical(1.15f, viewport.getViewHeight() / 2); };
-    verticalZoomStrip.onZoomOut = [this]() { zoomVertical(1.0f / 1.15f, viewport.getViewHeight() / 2); };
-    addAndMakeVisible(verticalZoomStrip);
-
-    addAndMakeVisible(controllerLaneDivider);
-    controllerLaneDivider.onDragStart = [this]() { controllerLaneHeightOnDragStart = controllerLaneHeight; };
-    controllerLaneDivider.onDrag = [this](int deltaY)
-    {
-        int minH = 60;
-        int maxH = getHeight() - menuBarHeight - transportBarHeight - 2 * (panelGap + panelPadding) -
-                   PianoRollToolBar::height - 150;
-        controllerLaneHeight = juce::jlimit(minH, maxH, controllerLaneHeightOnDragStart - deltaY);
-        resized();
+        pianoRollPanel.getPianoRoll().setSelectedNotes(notes);
+        eventList.setSelectedNotes(pianoRollPanel.getPianoRoll().getSelectedNotes());
     };
 
     addAndMakeVisible(trackListDivider);
@@ -248,25 +143,25 @@ MainComponent::MainComponent()
     {
         transportBar.stopCountIn();
         playbackEngine.setPositionInTicks(tick);
-        pianoRoll.setPlayheadTick(tick);
+        pianoRollPanel.getPianoRoll().setPlayheadTick(tick);
         transportBar.updateDisplay();
-        scrollToPlayhead(tick);
+        pianoRollPanel.scrollToPlayhead(tick);
     };
     eventList.onNoteSelectionFromList = [this](const auto& noteRefs)
     {
         updatingFromEventList = true;
-        controllerLane.clearPointSelection();
-        pianoRoll.setSelectedNotes(noteRefs);
+        pianoRollPanel.getControllerLane().clearPointSelection();
+        pianoRollPanel.getPianoRoll().setSelectedNotes(noteRefs);
         updatingFromEventList = false;
-        controllerLane.repaint();
+        pianoRollPanel.getControllerLane().repaint();
     };
     eventList.onControllerSelectionFromList = [this](int trackIndex, const ControllerKind& kind, const auto& events)
     {
         // Switching the active track from a click in the list would surprise; other tracks' rows stay in the list.
-        if (trackIndex != pianoRoll.getActiveTrackIndex())
+        if (trackIndex != pianoRollPanel.getPianoRoll().getActiveTrackIndex())
             return;
         updatingFromEventList = true;
-        controllerLane.showAndSelectPoints(kind, events);
+        pianoRollPanel.getControllerLane().showAndSelectPoints(kind, events);
         updatingFromEventList = false;
     };
     addAndMakeVisible(eventList);
@@ -277,12 +172,12 @@ MainComponent::MainComponent()
     addAndMakeVisible(transportBar);
     transportBar.onPlayheadMoved = [this](double tick)
     {
-        pianoRoll.setPlayheadTick(tick);
-        controllerLane.setPlayheadTick(tick);
+        pianoRollPanel.getPianoRoll().setPlayheadTick(tick);
+        pianoRollPanel.getControllerLane().setPlayheadTick(tick);
         eventList.setPlayheadTick(tick);
     };
-    transportBar.onScrollToPlayhead = [this](int tick) { scrollToPlayhead(tick); };
-    transportBar.onReturnToStart = [this]() { viewport.setViewPosition(0, viewport.getViewPositionY()); };
+    transportBar.onScrollToPlayhead = [this](int tick) { pianoRollPanel.scrollToPlayhead(tick); };
+    transportBar.onReturnToStart = [this]() { pianoRollPanel.scrollToStart(); };
     transportBar.onPlaybackStateChanged = [this](bool playing)
     {
         if (playing)
@@ -292,56 +187,39 @@ MainComponent::MainComponent()
     };
     transportBar.onLoopRegionChanged = [this](bool enabled, int startTick, int endTick)
     {
-        pianoRoll.setLoopRegion(enabled, startTick, endTick);
-        controllerLane.setLoopRegion(enabled, startTick, endTick);
+        pianoRollPanel.getPianoRoll().setLoopRegion(enabled, startTick, endTick);
+        pianoRollPanel.getControllerLane().setLoopRegion(enabled, startTick, endTick);
     };
     transportBar.onRecordToggled = [this] { toggleRecording(); };
     recorder.onRecordingChanged = [this](bool recording) { transportBar.setRecordActive(recording); };
-    pianoRoll.setRecordingLayer(&recorder, &recorder);
-    controllerLane.setRecordingLayer(&recorder, &recorder);
+    pianoRollPanel.getPianoRoll().setRecordingLayer(&recorder, &recorder);
+    pianoRollPanel.getControllerLane().setRecordingLayer(&recorder, &recorder);
     eventList.setRecordingLayer(&recorder);
     recorder.onLayerChanged = [this]
     {
-        pianoRoll.recordingLayerChanged();
-        controllerLane.recordingLayerChanged();
+        pianoRollPanel.getPianoRoll().recordingLayerChanged();
+        pianoRollPanel.getControllerLane().recordingLayerChanged();
         eventList.recordingLayerChanged();
     };
-    recorder.onCommitted = [this](const auto& committed) { pianoRoll.recordedNotesCommitted(committed); };
+    recorder.onCommitted = [this](const auto& committed)
+    { pianoRollPanel.getPianoRoll().recordedNotesCommitted(committed); };
     transportBar.setMetronomeActive(playbackEngine.isMetronomeEnabled());
 
-    pianoRoll.onLoopRegionChanged = [this](int startTick, int endTick)
+    pianoRollPanel.getPianoRoll().onLoopRegionChanged = [this](int startTick, int endTick)
     {
         playbackEngine.setLoopRange(startTick, endTick);
         bool enabled = playbackEngine.isLoopEnabled();
-        controllerLane.setLoopRegion(enabled, startTick, endTick);
+        pianoRollPanel.getControllerLane().setLoopRegion(enabled, startTick, endTick);
     };
 
-    addAndMakeVisible(toolBar);
-    toolBar.onToolClicked = [this](auto mode) { setActiveTool(mode); };
-    toolBar.onSnapChanged = [this](bool enabled)
-    {
-        pianoRoll.setSnapEnabled(enabled);
-        controllerLane.setSnapEnabled(enabled);
-    };
-    toolBar.onGridDivisionChanged = [this](GridDivision division)
-    {
-        pianoRoll.setGridDivision(division);
-        controllerLane.setGridDivision(division);
-        updateInputQuantize();
-    };
-    toolBar.onBackgroundClicked = [this]() { pianoRoll.grabKeyboardFocus(); };
-    const bool snapEnabled = toolBar.isSnapEnabled();
-    pianoRoll.setSnapEnabled(snapEnabled);
-    controllerLane.setSnapEnabled(snapEnabled);
+    pianoRollPanel.onGridDivisionChanged = [this](GridDivision) { updateInputQuantize(); };
     inputQuantizeEnabled = getAppProperties().getUserSettings()->getBoolValue("inputQuantizeEnabled", false);
     updateInputQuantize();
 
     transportBar.updateDisplay();
 
     trackList.setWantsKeyboardFocus(true);
-    pianoRoll.setWantsKeyboardFocus(true);
     eventList.setWantsKeyboardFocus(true);
-    controllerLane.setWantsKeyboardFocus(true);
     addAndMakeVisible(trackListFrame);
     addAndMakeVisible(pianoRollFrame);
     addAndMakeVisible(eventListFrame);
@@ -352,8 +230,7 @@ MainComponent::MainComponent()
     setWantsKeyboardFocus(true);
     setSize(1280, 800);
 
-    int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * pianoRoll.noteHeight - getHeight() / 2;
-    viewport.setViewPosition(0, c4Y);
+    pianoRollPanel.scrollToMiddleC(getHeight() / 2);
 
     // Asks once the main window is showing.
     juce::MessageManager::callAsync(
@@ -379,8 +256,8 @@ MainComponent::~MainComponent()
     menuBar.setModel(nullptr);
     vblankAttachment.reset();
     playbackEngine.stop();
-    pianoRoll.setRecordingLayer(nullptr, nullptr);
-    controllerLane.setRecordingLayer(nullptr, nullptr);
+    pianoRollPanel.getPianoRoll().setRecordingLayer(nullptr, nullptr);
+    pianoRollPanel.getControllerLane().setRecordingLayer(nullptr, nullptr);
     eventList.setRecordingLayer(nullptr);
     playbackEngine.setMetronomeListener(nullptr);
     playbackEngine.removeListener(&pluginHost);
@@ -453,27 +330,7 @@ void MainComponent::resized()
     eventListDivider.setBounds(area.removeFromRight(panelGap));
     pianoRollFrame.setBounds(area);
     area.reduce(panelPadding, panelPadding);
-
-    auto toolBarArea = area.removeFromTop(PianoRollToolBar::height);
-    toolBar.setBounds(toolBarArea);
-
-    int clampedEditorH = juce::jlimit(0, area.getHeight() - 100, controllerLaneHeight);
-    auto editorArea = area.removeFromBottom(clampedEditorH);
-    auto divArea = area.removeFromBottom(dividerThickness);
-
-    viewport.setBounds(area);
-    pianoRoll.updateSize();
-    controllerLaneDivider.setBounds(divArea);
-    controllerLaneViewport.setBounds(editorArea);
-    controllerLane.setSize(std::max(controllerLane.getWidth(), editorArea.getWidth()),
-                           controllerLaneViewport.getMaximumVisibleHeight());
-    controllerLane.updateSize();
-
-    int sbThickness = viewport.getScrollBarThickness();
-    verticalZoomStrip.setBounds(viewport.getRight() - sbThickness, viewport.getBottom() - zoomStripLength, sbThickness,
-                                zoomStripLength);
-    horizontalZoomStrip.setBounds(controllerLaneViewport.getRight() - zoomStripLength,
-                                  controllerLaneViewport.getBottom() - sbThickness, zoomStripLength, sbThickness);
+    pianoRollPanel.setBounds(area);
 }
 
 void MainComponent::parentHierarchyChanged()
@@ -501,12 +358,6 @@ void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
     }
 }
 
-bool MainComponent::selectAllTakesControllerPoints() const
-{
-    // The velocity view shows notes, so Select All there still selects the piano roll's notes.
-    return controllerLaneFocused && controllerLane.getDisplayMode() != ControllerLaneComponent::DisplayMode::Velocity;
-}
-
 void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
 {
     if (focusedComponent == nullptr)
@@ -520,10 +371,9 @@ void MainComponent::globalFocusChanged(juce::Component* focusedComponent)
     {
         detected = FocusPanel::TrackList;
     }
-    else if (belongsTo(pianoRoll) || belongsTo(controllerLane) || toolBar.contains(focusedComponent))
+    else if (pianoRollPanel.claimsFocus(focusedComponent))
     {
         detected = FocusPanel::PianoRoll;
-        controllerLaneFocused = belongsTo(controllerLane);
     }
     else if (belongsTo(eventList))
     {
@@ -565,25 +415,22 @@ void MainComponent::getCommandInfo(juce::CommandID commandID, juce::ApplicationC
         break;
     case AppCommands::cut:
     case AppCommands::copy:
-        result.setActive(pianoRoll.hasSelection() || controllerLane.hasPointSelection());
+        result.setActive(pianoRollPanel.canCutOrCopy());
         break;
     case AppCommands::paste:
-        result.setActive(clipboard.hasControllerPoints() ? controllerLane.canPastePoints()
-                                                         : pianoRoll.hasClipboardContent());
+        result.setActive(pianoRollPanel.canPaste());
         break;
     case AppCommands::selectAll:
-        result.setActive(focusedPanel == FocusPanel::PianoRoll &&
-                         (selectAllTakesControllerPoints() ? controllerLane.canSelectAllPoints()
-                                                           : pianoRoll.hasNotesInActiveTrack()));
+        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRollPanel.canSelectAll());
         break;
     case AppCommands::moveNotesUp:
     case AppCommands::moveNotesDown:
     case AppCommands::quantizeNotes:
-        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasSelectedNotes());
+        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRollPanel.hasSelectedNotes());
         break;
     case AppCommands::moveSelectionPrev:
     case AppCommands::moveSelectionNext:
-        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRoll.hasNotesInActiveTrack());
+        result.setActive(focusedPanel == FocusPanel::PianoRoll && pianoRollPanel.hasNotesInActiveTrack());
         break;
     case AppCommands::scrollViewUp:
     case AppCommands::scrollViewDown:
@@ -653,100 +500,86 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     }
     case AppCommands::switchToEditTool:
-        setActiveTool(PianoRollComponent::EditMode::Edit);
+        pianoRollPanel.setActiveTool(PianoRollComponent::EditMode::Edit);
         return true;
     case AppCommands::switchToSelectTool:
-        setActiveTool(PianoRollComponent::EditMode::Select);
+        pianoRollPanel.setActiveTool(PianoRollComponent::EditMode::Select);
         return true;
     case AppCommands::toggleSnap:
-        toggleSnap();
+        pianoRollPanel.toggleSnap();
         return true;
     case AppCommands::undo:
         document.getHistory().undo();
         trackList.refresh();
-        pianoRoll.setSelectedNotes({});
+        pianoRollPanel.deselectNotes();
         return true;
     case AppCommands::redo:
         document.getHistory().redo();
         trackList.refresh();
-        pianoRoll.setSelectedNotes({});
+        pianoRollPanel.deselectNotes();
         return true;
     case AppCommands::cut:
-        if (controllerLane.hasPointSelection())
-            controllerLane.cutSelectedPoints();
-        else
-            pianoRoll.cutSelection();
+        pianoRollPanel.cut();
         return true;
     case AppCommands::copy:
-        if (controllerLane.hasPointSelection())
-            controllerLane.copySelectedPoints();
-        else
-            pianoRoll.copySelection();
+        pianoRollPanel.copy();
         return true;
     case AppCommands::paste:
     {
-        const int tick = static_cast<int>(playbackEngine.getCurrentTick());
-        if (clipboard.hasControllerPoints())
-            controllerLane.pastePoints(tick);
-        else
-            pianoRoll.paste(tick);
+        pianoRollPanel.paste(static_cast<int>(playbackEngine.getCurrentTick()));
         return true;
     }
     case AppCommands::selectAll:
         if (focusedPanel != FocusPanel::PianoRoll)
             return true;
-        if (selectAllTakesControllerPoints())
-            controllerLane.selectAllPoints();
-        else
-            pianoRoll.selectAllNotes();
+        pianoRollPanel.selectAll();
         return true;
     case AppCommands::moveNotesUp:
         if (focusedPanel == FocusPanel::PianoRoll)
-            pianoRoll.nudgeSelectedNotesPitch(1);
+            pianoRollPanel.nudgeSelectedNotesPitch(1);
         return true;
     case AppCommands::moveNotesDown:
         if (focusedPanel == FocusPanel::PianoRoll)
-            pianoRoll.nudgeSelectedNotesPitch(-1);
+            pianoRollPanel.nudgeSelectedNotesPitch(-1);
         return true;
     case AppCommands::moveSelectionPrev:
         if (focusedPanel == FocusPanel::PianoRoll)
-            pianoRoll.moveSelectionToAdjacentNote(-1);
+            pianoRollPanel.moveSelectionToAdjacentNote(-1);
         return true;
     case AppCommands::moveSelectionNext:
         if (focusedPanel == FocusPanel::PianoRoll)
-            pianoRoll.moveSelectionToAdjacentNote(1);
+            pianoRollPanel.moveSelectionToAdjacentNote(1);
         return true;
     case AppCommands::scrollViewUp:
         if (focusedPanel == FocusPanel::PianoRoll)
-            scrollViewVertically(-PianoRollComponent::defaultNoteHeight);
+            pianoRollPanel.scrollViewUp();
         return true;
     case AppCommands::scrollViewDown:
         if (focusedPanel == FocusPanel::PianoRoll)
-            scrollViewVertically(PianoRollComponent::defaultNoteHeight);
+            pianoRollPanel.scrollViewDown();
         return true;
     case AppCommands::scrollViewLeft:
         if (focusedPanel == FocusPanel::PianoRoll)
-            scrollViewHorizontally(-PianoRollComponent::defaultBeatWidth);
+            pianoRollPanel.scrollViewLeft();
         return true;
     case AppCommands::scrollViewRight:
         if (focusedPanel == FocusPanel::PianoRoll)
-            scrollViewHorizontally(PianoRollComponent::defaultBeatWidth);
+            pianoRollPanel.scrollViewRight();
         return true;
     case AppCommands::zoomInHorizontal:
-        zoomHorizontal(1.15f, viewport.getViewWidth() / 2);
+        pianoRollPanel.zoomInHorizontally();
         return true;
     case AppCommands::zoomOutHorizontal:
-        zoomHorizontal(1.0f / 1.15f, viewport.getViewWidth() / 2);
+        pianoRollPanel.zoomOutHorizontally();
         return true;
     case AppCommands::zoomInVertical:
-        zoomVertical(1.15f, viewport.getViewHeight() / 2);
+        pianoRollPanel.zoomInVertically();
         return true;
     case AppCommands::zoomOutVertical:
-        zoomVertical(1.0f / 1.15f, viewport.getViewHeight() / 2);
+        pianoRollPanel.zoomOutVertically();
         return true;
     case AppCommands::zoomReset:
-        setHorizontalZoom(PianoRollComponent::defaultBeatWidth, viewport.getViewWidth() / 2);
-        setVerticalZoom(PianoRollComponent::defaultNoteHeight, viewport.getViewHeight() / 2);
+        pianoRollPanel.resetZoom();
         return true;
     case AppCommands::toggleLoop:
         transportBar.toggleLoop();
@@ -759,7 +592,7 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::quantizeNotes:
         if (focusedPanel == FocusPanel::PianoRoll)
-            pianoRoll.quantizeSelectedNotes();
+            pianoRollPanel.quantizeSelectedNotes();
         return true;
     case AppCommands::toggleInputQuantize:
         toggleInputQuantize();
@@ -821,18 +654,6 @@ void MainComponent::tracksChanged()
     repaint(trackListHeaderBounds);
 }
 
-void MainComponent::setActiveTool(PianoRollComponent::EditMode mode)
-{
-    toolBar.setActiveTool(mode);
-    pianoRoll.setEditMode(mode);
-    controllerLane.setEditToolSelected(mode == PianoRollComponent::EditMode::Edit);
-}
-
-void MainComponent::toggleSnap()
-{
-    toolBar.toggleSnap();
-}
-
 void MainComponent::toggleInputQuantize()
 {
     inputQuantizeEnabled = !inputQuantizeEnabled;
@@ -842,7 +663,7 @@ void MainComponent::toggleInputQuantize()
 
 void MainComponent::updateInputQuantize()
 {
-    recorder.setInputQuantize(inputQuantizeEnabled ? std::optional(toolBar.getGridDivision()) : std::nullopt);
+    recorder.setInputQuantize(inputQuantizeEnabled ? std::optional(pianoRollPanel.getGridDivision()) : std::nullopt);
 }
 
 void MainComponent::updateFocusBorder()
@@ -855,115 +676,11 @@ void MainComponent::updateFocusBorder()
 void MainComponent::onVBlank()
 {
     double tick = playbackEngine.getCurrentTick();
-    pianoRoll.setPlayheadTick(tick);
-    controllerLane.setPlayheadTick(tick);
+    pianoRollPanel.getPianoRoll().setPlayheadTick(tick);
+    pianoRollPanel.getControllerLane().setPlayheadTick(tick);
     eventList.setPlayheadTick(tick);
     transportBar.updateDisplay();
-    scrollToPlayhead(static_cast<int>(tick));
-}
-
-void MainComponent::scrollToPlayhead(int tick)
-{
-    int playheadX = pianoRoll.tickToX(tick);
-    int viewX = viewport.getViewPositionX();
-    int viewRight = viewX + viewport.getViewWidth();
-
-    if (playheadX < viewX + PianoRollComponent::keyboardWidth || playheadX > viewRight - 20)
-    {
-        int desiredX = playheadX - PianoRollComponent::keyboardWidth;
-        while (desiredX + viewport.getViewWidth() > pianoRoll.getWidth())
-            pianoRoll.extendContent();
-        controllerLane.setContentBeats(pianoRoll.getContentBeats());
-
-        viewport.setViewPosition(desiredX, viewport.getViewPositionY());
-    }
-}
-
-void MainComponent::scrollNoteIntoView(int startTick, int noteNumber)
-{
-    int noteX = pianoRoll.tickToX(startTick);
-    int noteY = pianoRoll.noteToY(noteNumber);
-    int noteH = pianoRoll.getNoteHeight();
-
-    int viewX = viewport.getViewPositionX();
-    int viewW = viewport.getViewWidth();
-    int viewY = viewport.getViewPositionY();
-    int viewH = viewport.getViewHeight();
-
-    int newX = viewX;
-    if (noteX < viewX + PianoRollComponent::keyboardWidth)
-        newX = noteX - PianoRollComponent::keyboardWidth;
-    else if (noteX > viewX + viewW - 20)
-        newX = noteX - viewW + 20;
-
-    newX = juce::jmax(0, newX);
-    while (newX + viewW > pianoRoll.getWidth())
-        pianoRoll.extendContent();
-    controllerLane.setContentBeats(pianoRoll.getContentBeats());
-
-    int newY = viewY;
-    if (noteY < viewY + PianoRollComponent::gridTopOffset)
-        newY = noteY - PianoRollComponent::gridTopOffset;
-    else if (noteY + noteH > viewY + viewH)
-        newY = noteY + noteH - viewH;
-
-    newY = juce::jmax(0, newY);
-
-    if (newX != viewX || newY != viewY)
-        viewport.setViewPosition(newX, newY);
-}
-
-void MainComponent::scrollViewVertically(int deltaY)
-{
-    int newY = viewport.getViewPositionY() + deltaY;
-    newY = juce::jlimit(0, juce::jmax(0, pianoRoll.getHeight() - viewport.getViewHeight()), newY);
-    viewport.setViewPosition(viewport.getViewPositionX(), newY);
-}
-
-void MainComponent::scrollViewHorizontally(int deltaX)
-{
-    int newX = viewport.getViewPositionX() + deltaX;
-    newX = juce::jlimit(0, juce::jmax(0, pianoRoll.getWidth() - viewport.getViewWidth()), newX);
-    viewport.setViewPosition(newX, viewport.getViewPositionY());
-}
-
-void MainComponent::setHorizontalZoom(int newBeatWidth, int anchorXInViewport)
-{
-    newBeatWidth = juce::jlimit(PianoRollComponent::minBeatWidth, PianoRollComponent::maxBeatWidth, newBeatWidth);
-    if (newBeatWidth == pianoRoll.getBeatWidth())
-        return;
-
-    int tickAtAnchor = pianoRoll.xToTick(viewport.getViewPositionX() + anchorXInViewport);
-    pianoRoll.setBeatWidth(newBeatWidth);
-    controllerLane.setBeatWidth(newBeatWidth);
-    horizontalZoomStrip.slider.setValue(newBeatWidth, juce::dontSendNotification);
-
-    int newContentX = pianoRoll.tickToX(tickAtAnchor);
-    viewport.setViewPosition(juce::jmax(0, newContentX - anchorXInViewport), viewport.getViewPositionY());
-}
-
-void MainComponent::setVerticalZoom(int newNoteHeight, int anchorYInViewport)
-{
-    newNoteHeight = juce::jlimit(PianoRollComponent::minNoteHeight, PianoRollComponent::maxNoteHeight, newNoteHeight);
-    if (newNoteHeight == pianoRoll.getNoteHeight())
-        return;
-
-    int noteAtAnchor = pianoRoll.yToNote(viewport.getViewPositionY() + anchorYInViewport);
-    pianoRoll.setNoteHeight(newNoteHeight);
-    verticalZoomStrip.slider.setValue(newNoteHeight, juce::dontSendNotification);
-
-    int newContentY = pianoRoll.noteToY(noteAtAnchor);
-    viewport.setViewPosition(viewport.getViewPositionX(), juce::jmax(0, newContentY - anchorYInViewport));
-}
-
-void MainComponent::zoomHorizontal(float factor, int anchorXInViewport)
-{
-    setHorizontalZoom(juce::roundToInt(pianoRoll.getBeatWidth() * factor), anchorXInViewport);
-}
-
-void MainComponent::zoomVertical(float factor, int anchorYInViewport)
-{
-    setVerticalZoom(juce::roundToInt(pianoRoll.getNoteHeight() * factor), anchorYInViewport);
+    pianoRollPanel.scrollToPlayhead(static_cast<int>(tick));
 }
 
 void MainComponent::showAudioSettings()
@@ -1009,29 +726,22 @@ void MainComponent::onSequenceLoaded()
     playbackEngine.setLoopEnabled(false);
     playbackEngine.setLoopRange(0, 0);
     transportBar.setLoopActive(false);
-    pianoRoll.setLoopRegion(false, 0, 0);
-    controllerLane.setLoopRegion(false, 0, 0);
 
     const auto allTracks = std::views::iota(0, document.getSequence().getNumTracks()) | std::ranges::to<std::set>();
 
-    pianoRoll.setSequence(&document.getSequence());
-    pianoRoll.setSelectedTracks(0, allTracks);
-    pianoRoll.setPlayheadTick(0);
+    pianoRollPanel.setSequence(&document.getSequence());
+    pianoRollPanel.setSelectedTracks(0, allTracks);
+    pianoRollPanel.setPlayheadTick(0);
+    pianoRollPanel.setLoopRegion(false, 0, 0);
     transportBar.updateDisplay();
 
     trackList.setSequence(&document.getSequence());
-
-    controllerLane.setSequence(&document.getSequence());
-    controllerLane.setContentBeats(pianoRoll.getContentBeats());
-    controllerLane.setSelectedTracks(0, allTracks);
-    controllerLane.setPlayheadTick(0);
 
     eventList.setSequence(&document.getSequence());
     eventList.setSelectedTracks(allTracks);
     eventList.setPlayheadTick(0);
 
-    int c4Y = PianoRollComponent::gridTopOffset + (127 - 60) * pianoRoll.noteHeight - getHeight() / 2;
-    viewport.setViewPosition(0, c4Y);
+    pianoRollPanel.scrollToMiddleC(getHeight() / 2);
     repaint(trackListHeaderBounds);
 }
 

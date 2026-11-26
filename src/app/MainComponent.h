@@ -19,12 +19,7 @@
 #include "ui/file/FileOperations.h"
 #include "ui/file/RecoveryController.h"
 #include "ui/menu/MainMenuModel.h"
-#include "ui/pianoroll/ControllerLaneComponent.h"
-#include "ui/pianoroll/ControllerLaneViewport.h"
-#include "ui/pianoroll/EditClipboard.h"
-#include "ui/pianoroll/PianoRollComponent.h"
-#include "ui/pianoroll/PianoRollToolBar.h"
-#include "ui/pianoroll/PianoRollViewport.h"
+#include "ui/pianoroll/PianoRollPanel.h"
 #include "ui/plugin/PluginCatalogController.h"
 #include "ui/plugin/PluginEditorController.h"
 #include "ui/plugin/TrackOutputController.h"
@@ -35,7 +30,6 @@
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
 #include "ui/widgets/PanelFrame.h"
-#include "ui/widgets/ZoomStrip.h"
 #include <functional>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -80,21 +74,10 @@ public:
 private:
     void tracksChanged() override;
 
-    void setActiveTool(PianoRollComponent::EditMode mode);
-    void toggleSnap();
     void toggleInputQuantize();
     void updateInputQuantize();
     void updateFocusBorder();
-    bool selectAllTakesControllerPoints() const;
     void onVBlank();
-    void scrollToPlayhead(int tick);
-    void scrollNoteIntoView(int startTick, int noteNumber);
-    void scrollViewVertically(int deltaY);
-    void scrollViewHorizontally(int deltaX);
-    void setHorizontalZoom(int newBeatWidth, int anchorXInViewport);
-    void setVerticalZoom(int newNoteHeight, int anchorYInViewport);
-    void zoomHorizontal(float factor, int anchorXInViewport);
-    void zoomVertical(float factor, int anchorYInViewport);
     void showAudioSettings();
     void stopPlayback();
     void releaseInputSource(const juce::String& deviceIdentifier);
@@ -133,10 +116,7 @@ private:
 
     TransportBarComponent transportBar{document, playbackEngine};
 
-    // Shared by the piano roll and the controller lane, so one copy replaces the other's.
-    EditClipboard clipboard;
-    PianoRollComponent pianoRoll{document.getHistory(), clipboard};
-    PianoRollViewport viewport;
+    PianoRollPanel pianoRollPanel{document.getHistory()};
     TrackListComponent trackList;
     TrackListActions trackListActions{trackList, document, playbackEngine};
     MidiThruSync midiThruSync{document.getSequence(), midiThru, [this] { return trackList.getActiveTrackIndex(); }};
@@ -145,27 +125,14 @@ private:
     juce::Viewport trackListViewport;
     juce::Rectangle<int> trackListHeaderBounds;
 
-    ControllerLaneComponent controllerLane{document.getHistory(), clipboard};
-    TimeEditLauncher timeEdits{document, playbackEngine, recorder, *this, [this]
-                               {
-                                   pianoRoll.clearSelection();
-                                   controllerLane.clearPointSelection();
-                               }};
+    TimeEditLauncher timeEdits{document, playbackEngine, recorder, *this, [this] { pianoRollPanel.clearSelections(); }};
 
-    ControllerLaneViewport controllerLaneViewport;
-
-    Divider controllerLaneDivider{Divider::Horizontal};
     Divider trackListDivider{Divider::Vertical, Divider::Gutter};
     Divider eventListDivider{Divider::Vertical, Divider::Gutter};
-    ZoomStrip horizontalZoomStrip{ZoomStrip::Horizontal};
-    ZoomStrip verticalZoomStrip{ZoomStrip::Vertical};
-    int controllerLaneHeight = 120;
-    int controllerLaneHeightOnDragStart = 120;
     int trackListWidth = 248;
     int trackListWidthOnDragStart = 248;
     int eventListWidth = 280;
     int eventListWidthOnDragStart = 280;
-    bool syncingScroll = false;
 
     EventListComponent eventList{document.getHistory()};
 
@@ -176,8 +143,6 @@ private:
         EventList
     };
     FocusPanel focusedPanel = FocusPanel::PianoRoll;
-    // Whether the controller lane, rather than the piano roll or its tool buttons, took the focus last.
-    bool controllerLaneFocused = false;
     PanelFrame trackListFrame;
     PanelFrame pianoRollFrame;
     PanelFrame eventListFrame;
@@ -194,7 +159,6 @@ private:
 
     juce::MenuBarComponent menuBar;
 
-    PianoRollToolBar toolBar;
     bool inputQuantizeEnabled = false;
     MetronomeSettingsController metronomeSettings{transportBar,   playbackEngine, metronome,
                                                   commandManager, *this,          *this};
@@ -211,10 +175,8 @@ private:
 
     static constexpr int menuBarHeight = 30;
     static constexpr int transportBarHeight = 64;
-    static constexpr int dividerThickness = 5;
     static constexpr int panelGap = 6;
     static constexpr int panelPadding = 4;
-    static constexpr int zoomStripLength = 100;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
