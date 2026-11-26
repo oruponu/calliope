@@ -10,60 +10,36 @@
 
 MainComponent::MainComponent()
 {
-    if (!midiOutput.open(getAppProperties().getUserSettings()->getValue("midiOutputDeviceId")))
-        midiOutput.open();
-
-    auto savedAudioState = getAppProperties().getUserSettings()->getXmlValue("audioDeviceState");
-    audioDeviceManager.initialise(0, 2, savedAudioState.get(), true);
-    audioDeviceManager.addChangeListener(this);
-    audioDeviceManager.addMidiInputDeviceCallback({}, &midiThru);
-    audioDeviceManager.addMidiInputDeviceCallback({}, &recordingInput);
-
-    using IOProcessor = juce::AudioProcessorGraph::AudioGraphIOProcessor;
-    const auto audioOutNodeId = audioGraph.addNode(std::make_unique<IOProcessor>(IOProcessor::audioOutputNode))->nodeID;
-    pluginHost.prepare(audioGraph, audioOutNodeId);
-
-    audioDeviceManager.addAudioCallback(&audioPlayer);
-    audioPlayer.setProcessor(&audioGraph);
-    // The graph has no output channels until the player prepares it, so connections made earlier are rejected.
-    metronome.prepare(audioGraph, audioOutNodeId);
-
     document.newDocument();
     document.addChangeListener(this);
     document.onWillReplaceSequence = [this] { stopPlayback(); };
-    pluginHost.setSequence(&document.getSequence());
-    pluginHost.setPlaybackEngine(&playbackEngine);
-    document.pluginStateSource = [this](TrackId trackId) { return pluginHost.getPluginState(trackId); };
-    pluginHost.onPluginStateChanged = [this] { document.markChanged(); };
-    document.onWillSave = [this] { pluginHost.flushPendingStateChanges(); };
+    audio.getPluginHost().setSequence(&document.getSequence());
+    document.pluginStateSource = [this](TrackId trackId) { return audio.getPluginHost().getPluginState(trackId); };
+    audio.getPluginHost().onPluginStateChanged = [this] { document.markChanged(); };
+    document.onWillSave = [this] { audio.getPluginHost().flushPendingStateChanges(); };
 
-    playbackEngine.setSequence(&document.getSequence());
-    playbackEngine.addListener(&midiOutput);
-    playbackEngine.addListener(&pluginHost);
-    playbackEngine.setMetronomeListener(&metronome);
-    const bool metronomeEnabled = getAppProperties().getUserSettings()->getBoolValue("metronomeEnabled", false);
-    playbackEngine.setMetronomeEnabled(metronomeEnabled);
+    audio.getPlaybackEngine().setSequence(&document.getSequence());
 
     pianoRollPanel.setSequence(&document.getSequence());
 
     pianoRollPanel.getPianoRoll().onNotePreview = [this](const MidiNote& note)
     {
         auto ctx = makeTrackContext(pianoRollPanel.getPianoRoll().getActiveTrackIndex());
-        midiOutput.onNoteOn(ctx, note);
-        pluginHost.onNoteOn(ctx, note);
+        audio.getMidiOutput().onNoteOn(ctx, note);
+        audio.getPluginHost().onNoteOn(ctx, note);
     };
     pianoRollPanel.getPianoRoll().onNotePreviewEnd = [this](const MidiNote& note)
     {
         auto ctx = makeTrackContext(pianoRollPanel.getPianoRoll().getActiveTrackIndex());
-        midiOutput.onNoteOff(ctx, note);
-        pluginHost.onNoteOff(ctx, note);
+        audio.getMidiOutput().onNoteOff(ctx, note);
+        audio.getPluginHost().onNoteOff(ctx, note);
     };
     addAndMakeVisible(pianoRollPanel);
 
     trackListPanel.setSequence(&document.getSequence());
     addAndMakeVisible(trackListPanel);
     trackListPanel.getTrackList().pluginNameForTrack = [this](int trackIndex)
-    { return pluginHost.getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
+    { return audio.getPluginHost().getPluginName(document.getSequence().getTrack(trackIndex).getId()); };
     trackListPanel.getTrackList().onEditorButtonClicked = [this](int trackIndex)
     { editorController.showEditor(document.getSequence().getTrack(trackIndex).getId()); };
     trackListPanel.getTrackList().onPluginLabelClicked = [this](int trackIndex)
@@ -110,7 +86,7 @@ MainComponent::MainComponent()
     };
     recorder.onCommitted = [this](const auto& committed)
     { pianoRollPanel.getPianoRoll().recordedNotesCommitted(committed); };
-    transportBar.setMetronomeActive(playbackEngine.isMetronomeEnabled());
+    transportBar.setMetronomeActive(audio.getPlaybackEngine().isMetronomeEnabled());
 
     pianoRollPanel.onGridDivisionChanged = [this](GridDivision) { updateInputQuantize(); };
     inputQuantizeEnabled = getAppProperties().getUserSettings()->getBoolValue("inputQuantizeEnabled", false);
@@ -148,22 +124,14 @@ MainComponent::~MainComponent()
     editorController.closeAllEditors();
     document.removeChangeListener(this);
     juce::Desktop::getInstance().removeFocusChangeListener(this);
-    audioDeviceManager.removeChangeListener(this);
-    audioDeviceManager.removeMidiInputDeviceCallback({}, &midiThru);
-    audioDeviceManager.removeMidiInputDeviceCallback({}, &recordingInput);
+    audio.detachInputs();
     menuBar.setModel(nullptr);
     playheadLinks.stopFollowing();
-    playbackEngine.stop();
+    audio.getPlaybackEngine().stop();
     pianoRollPanel.getPianoRoll().setRecordingLayer(nullptr, nullptr);
     pianoRollPanel.getControllerLane().setRecordingLayer(nullptr, nullptr);
     eventList.setRecordingLayer(nullptr);
-    playbackEngine.setMetronomeListener(nullptr);
-    playbackEngine.removeListener(&pluginHost);
-    playbackEngine.removeListener(&midiOutput);
-    midiOutput.close();
-    audioPlayer.setProcessor(nullptr);
-    audioDeviceManager.removeAudioCallback(&audioPlayer);
-    audioDeviceManager.closeAudioDevice();
+    audio.shutDown();
 }
 
 void MainComponent::paint(juce::Graphics& g)
@@ -229,12 +197,7 @@ std::unique_ptr<juce::ComponentTraverser> MainComponent::createKeyboardFocusTrav
 
 void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
-    if (source == &audioDeviceManager)
-    {
-        if (auto xml = audioDeviceManager.createStateXml())
-            getAppProperties().getUserSettings()->setValue("audioDeviceState", xml.get());
-    }
-    else if (source == &document)
+    if (source == &document)
     {
         updateTitleBar();
     }
@@ -368,7 +331,7 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::prevBar:
     {
-        int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
+        int currentTick = static_cast<int>(audio.getPlaybackEngine().getCurrentTick());
         auto bbt = document.getSequence().getTimeline().tickToBarBeatTick(currentTick);
         int targetBar = juce::jmax(1, bbt.bar - 1);
         transportBar.jumpToTick(document.getSequence().getTimeline().barStartToTick(targetBar));
@@ -376,7 +339,7 @@ bool MainComponent::perform(const InvocationInfo& info)
     }
     case AppCommands::nextBar:
     {
-        int currentTick = static_cast<int>(playbackEngine.getCurrentTick());
+        int currentTick = static_cast<int>(audio.getPlaybackEngine().getCurrentTick());
         auto bbt = document.getSequence().getTimeline().tickToBarBeatTick(currentTick);
         transportBar.jumpToTick(document.getSequence().getTimeline().barStartToTick(bbt.bar + 1));
         return true;
@@ -408,7 +371,7 @@ bool MainComponent::perform(const InvocationInfo& info)
         return true;
     case AppCommands::paste:
     {
-        pianoRollPanel.paste(static_cast<int>(playbackEngine.getCurrentTick()));
+        pianoRollPanel.paste(static_cast<int>(audio.getPlaybackEngine().getCurrentTick()));
         return true;
     }
     case AppCommands::selectAll:
@@ -550,33 +513,12 @@ void MainComponent::updateFocusBorder()
     eventListFrame.setFocused(focusedPanel == FocusPanel::EventList);
 }
 
-void MainComponent::showAudioSettings()
-{
-    auto* selector = new juce::AudioDeviceSelectorComponent(audioDeviceManager, 0, 0, 2, 2, false, false, true, false);
-    selector->setSize(500, 450);
-
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(selector);
-    options.dialogTitle = "Audio Settings";
-    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    options.launchAsync();
-}
-
 void MainComponent::stopPlayback()
 {
-    playbackEngine.stop();
-    midiOutput.reset();
+    audio.getPlaybackEngine().stop();
+    audio.getMidiOutput().reset();
     transportBar.setPlaying(false);
     playheadLinks.stopFollowing();
-}
-
-void MainComponent::releaseInputSource(const juce::String& deviceIdentifier)
-{
-    midiThru.releaseSource(deviceIdentifier);
-    recorder.releaseSource(deviceIdentifier);
 }
 
 void MainComponent::toggleRecording()
@@ -589,9 +531,9 @@ void MainComponent::toggleRecording()
 
 void MainComponent::onSequenceLoaded()
 {
-    playbackEngine.setPositionInTicks(0);
-    playbackEngine.setLoopEnabled(false);
-    playbackEngine.setLoopRange(0, 0);
+    audio.getPlaybackEngine().setPositionInTicks(0);
+    audio.getPlaybackEngine().setLoopEnabled(false);
+    audio.getPlaybackEngine().setLoopRange(0, 0);
     transportBar.setLoopActive(false);
 
     const auto allTracks = std::views::iota(0, document.getSequence().getNumTracks()) | std::ranges::to<std::set>();

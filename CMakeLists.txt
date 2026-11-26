@@ -70,6 +70,7 @@ juce_add_binary_data(CalliopeData
 )
 
 target_sources(Calliope PRIVATE
+    src/app/AudioMidiHost.cpp
     src/app/Main.cpp
     src/app/MainComponent.cpp
     src/app/PlayheadLinks.cpp
@@ -163,6 +164,7 @@ target_sources(Calliope PRIVATE
     src/ui/transport/MetronomeSettingsComponent.cpp
     src/ui/transport/MetronomeSettingsController.cpp
     src/ui/transport/TransportBarComponent.cpp
+    src/ui/window/AudioSettingsDialog.cpp
     src/ui/window/ToolWindow.cpp
     src/undo/UndoHistory.cpp
 )

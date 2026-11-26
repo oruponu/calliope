@@ -1,18 +1,10 @@
 #pragma once
 
+#include "app/AudioMidiHost.h"
 #include "app/PlayheadLinks.h"
 #include "app/SelectionLinks.h"
-#include "audio/Metronome.h"
-#include "device/MidiDeviceOutput.h"
-#include "device/MidiInputReconnector.h"
-#include "device/MidiThru.h"
-#include "device/RecordingInput.h"
-#include "device/UserDisabledMidiInputs.h"
 #include "document/Document.h"
 #include "engine/PlaybackEngine.h"
-#include "engine/recording/RecordingInbox.h"
-#include "plugin/PluginStateChangeWatcher.h"
-#include "plugin/VstPluginHost.h"
 #include "session/MidiThruSync.h"
 #include "session/PlaybackSync.h"
 #include "session/Recorder.h"
@@ -31,9 +23,8 @@
 #include "ui/transport/TransportBarComponent.h"
 #include "ui/widgets/Divider.h"
 #include "ui/widgets/PanelFrame.h"
+#include "ui/window/AudioSettingsDialog.h"
 #include <functional>
-#include <juce_audio_processors/juce_audio_processors.h>
-#include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <optional>
 
@@ -75,53 +66,35 @@ private:
     void toggleInputQuantize();
     void updateInputQuantize();
     void updateFocusBorder();
-    void showAudioSettings();
     void stopPlayback();
-    void releaseInputSource(const juce::String& deviceIdentifier);
     void toggleRecording();
     void onSequenceLoaded();
     void updateTitleBar();
     PlaybackTrackContext makeTrackContext(int trackIndex) const;
 
     Document document;
-    // Declared before the engine, which keeps a pointer to it, so that it outlives the engine.
-    RecordingInbox recordingInbox;
-    PlaybackEngine playbackEngine;
-    PlaybackSync playbackSync{playbackEngine, document.getSequence()};
-    MidiDeviceOutput midiOutput;
-    juce::AudioDeviceManager audioDeviceManager;
-    // Declared before the graph so that it is destroyed after every plugin the graph owns.
-    PluginStateChangeWatcher pluginStateWatcher;
-    juce::AudioProcessorGraph audioGraph;
-    juce::AudioProcessorPlayer audioPlayer;
-    Metronome metronome;
-    VstPluginHost pluginHost{pluginStateWatcher};
-    MidiThru midiThru{{&midiOutput, &pluginHost}};
-    RecordingInput recordingInput{recordingInbox};
-    MidiInputReconnector midiInputReconnector{audioDeviceManager,
-                                              [this](const juce::String& id) { releaseInputSource(id); }};
-    UserDisabledMidiInputs userDisabledMidiInputs{audioDeviceManager,
-                                                  [this](const juce::String& id) { releaseInputSource(id); }};
-    PluginCatalogController pluginCatalog{pluginHost.getFormatManager()};
-    TrackOutputController trackOutput{pluginHost,
-                                      document,
-                                      playbackEngine,
-                                      pluginCatalog,
-                                      [this] { stopPlayback(); },
-                                      [this](TrackId trackId) { editorController.showEditor(trackId); }};
-    PluginEditorController editorController{pluginHost, *this, commandManager, *this};
+    AudioMidiHost audio{[this](const juce::String& id) { recorder.releaseSource(id); }};
+    PlaybackSync playbackSync{audio.getPlaybackEngine(), document.getSequence()};
+    PluginCatalogController pluginCatalog{audio.getPluginHost().getFormatManager()};
+    TrackOutputController trackOutput{
+        audio.getPluginHost(),      document,
+        audio.getPlaybackEngine(),  pluginCatalog,
+        [this] { stopPlayback(); }, [this](TrackId trackId) { editorController.showEditor(trackId); }};
+    PluginEditorController editorController{audio.getPluginHost(), *this, commandManager, *this};
 
-    TransportBarComponent transportBar{document, playbackEngine};
+    TransportBarComponent transportBar{document, audio.getPlaybackEngine()};
 
     PianoRollPanel pianoRollPanel{document.getHistory()};
     TrackListPanel trackListPanel;
-    TrackListActions trackListActions{trackListPanel.getTrackList(), document, playbackEngine};
-    MidiThruSync midiThruSync{document.getSequence(), midiThru,
+    TrackListActions trackListActions{trackListPanel.getTrackList(), document, audio.getPlaybackEngine()};
+    MidiThruSync midiThruSync{document.getSequence(), audio.getMidiThru(),
                               [this] { return trackListPanel.getTrackList().getActiveTrackIndex(); }};
-    Recorder recorder{document.getSequence(), document.getHistory(), playbackEngine, recordingInbox,
+    Recorder recorder{document.getSequence(), document.getHistory(), audio.getPlaybackEngine(),
+                      audio.getRecordingInbox(),
                       [this] { return trackListPanel.getTrackList().getActiveTrackIndex(); }};
 
-    TimeEditLauncher timeEdits{document, playbackEngine, recorder, *this, [this] { pianoRollPanel.clearSelections(); }};
+    TimeEditLauncher timeEdits{document, audio.getPlaybackEngine(), recorder, *this,
+                               [this] { pianoRollPanel.clearSelections(); }};
 
     Divider trackListDivider{Divider::Vertical, Divider::Gutter};
     Divider eventListDivider{Divider::Vertical, Divider::Gutter};
@@ -131,7 +104,7 @@ private:
     int eventListWidthOnDragStart = 280;
 
     EventListComponent eventList{document.getHistory()};
-    PlayheadLinks playheadLinks{pianoRollPanel, eventList, transportBar, playbackEngine, *this};
+    PlayheadLinks playheadLinks{pianoRollPanel, eventList, transportBar, audio.getPlaybackEngine(), *this};
     SelectionLinks selectionLinks{pianoRollPanel, eventList, trackListPanel.getTrackList(), [this]
                                   {
                                       midiThruSync.activeTrackChanged();
@@ -154,24 +127,29 @@ private:
     MainMenuModel mainMenuModel{commandManager,
                                 pluginCatalog,
                                 trackOutput,
-                                midiOutput,
-                                audioDeviceManager,
-                                userDisabledMidiInputs,
-                                [this] { showAudioSettings(); }};
+                                audio.getMidiOutput(),
+                                audio.getAudioDeviceManager(),
+                                audio.getUserDisabledMidiInputs(),
+                                [this]
+                                {
+                                    showAudioSettingsDialog(
+                                        audio.getAudioDeviceManager(),
+                                        getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+                                }};
 
     juce::MenuBarComponent menuBar;
 
     bool inputQuantizeEnabled = false;
-    MetronomeSettingsController metronomeSettings{transportBar,   playbackEngine, metronome,
-                                                  commandManager, *this,          *this};
+    MetronomeSettingsController metronomeSettings{
+        transportBar, audio.getPlaybackEngine(), audio.getMetronome(), commandManager, *this, *this};
 
     bool fileDragOver = false;
-    FileOperations fileOperations{document, recorder, pluginHost, [this]
+    FileOperations fileOperations{document, recorder, audio.getPluginHost(), [this]
                                   {
                                       onSequenceLoaded();
                                       updateTitleBar();
                                   }};
-    RecoveryController recovery{document, playbackEngine, recorder, fileOperations};
+    RecoveryController recovery{document, audio.getPlaybackEngine(), recorder, fileOperations};
 
     static constexpr int menuBarHeight = 30;
     static constexpr int transportBarHeight = 64;
